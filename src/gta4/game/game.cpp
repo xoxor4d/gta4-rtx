@@ -2,7 +2,7 @@
 #include "structs.hpp"
 #include "shared/common/flags.hpp"
 
-namespace mods::gta4::game
+namespace gta4::game
 {
 	// helper vars
 	bool was_loadscreen_active = false;

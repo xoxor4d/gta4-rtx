@@ -1,6 +1,6 @@
 #pragma once
 
-namespace mods::gta4
+namespace gta4
 {
 	void on_begin_scene_cb();
 	void main();

@@ -1,7 +1,7 @@
 #pragma once
 #include "structs.hpp"
 
-namespace mods::gta4::game
+namespace gta4::game
 {
 	// helper vars
 	extern bool was_loadscreen_active;

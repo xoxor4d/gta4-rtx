@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-namespace mods::gta4::game
+namespace gta4::game
 {
 	struct grmShaderInfo_Parameter
 	{

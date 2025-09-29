@@ -3,7 +3,7 @@
 
 #include "shared/common/toml.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 	void game_settings::write_toml()
 	{

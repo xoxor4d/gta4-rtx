@@ -6,7 +6,7 @@
 #include "shared/common/remix_vars.hpp"
 #include "shared/common/shader_cache.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 #pragma region D3D9Device
 

@@ -1,5 +1,5 @@
 #pragma once
-namespace mods::gta4
+namespace gta4
 {
 	class game_settings final : public shared::common::loader::component_module
 	{

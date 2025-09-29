@@ -27,7 +27,7 @@
 
 #include "imgui.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 	namespace
 	{

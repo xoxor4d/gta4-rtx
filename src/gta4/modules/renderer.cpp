@@ -4,7 +4,7 @@
 #include "game_settings.hpp"
 #include "imgui.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 	int g_is_instance_rendering = 0;
 	int g_is_sky_rendering = 0;

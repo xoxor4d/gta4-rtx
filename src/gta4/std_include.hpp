@@ -60,14 +60,14 @@
 #include <misc/cpp/imgui_stdlib.h>
 #pragma warning(pop)
 
-#include "../../shared/globals.hpp"
-#include "../../shared/utils/utils.hpp"
-#include "../../shared/utils/vector.hpp"
-#include "../../shared/utils/hooking.hpp"
-#include "../../shared/utils/memory.hpp"
-#include "../../shared/utils/function.hpp"
-#include "../../shared/common/console.hpp"
-#include "../../shared/common/loader.hpp"
+#include "../shared/globals.hpp"
+#include "../shared/utils/utils.hpp"
+#include "../shared/utils/vector.hpp"
+#include "../shared/utils/hooking.hpp"
+#include "../shared/utils/memory.hpp"
+#include "../shared/utils/function.hpp"
+#include "../shared/common/console.hpp"
+#include "../shared/common/loader.hpp"
 #include "game/structs.hpp"
 #include "game/game.hpp"
 #include "gta4.hpp"

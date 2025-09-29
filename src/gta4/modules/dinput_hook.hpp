@@ -5,7 +5,7 @@
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
 
-namespace mods::gta4
+namespace gta4
 {
 	class dinput final : public shared::common::loader::component_module
 	{

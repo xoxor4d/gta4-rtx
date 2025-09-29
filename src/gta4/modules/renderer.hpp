@@ -1,7 +1,7 @@
 #pragma once
 #include "shared/utils/utils.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 	extern bool g_test;
 

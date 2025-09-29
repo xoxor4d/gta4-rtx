@@ -5,7 +5,7 @@
 #include "imgui.hpp"
 #include "shared/common/remix_api.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 	namespace cmd
 	{

@@ -5,7 +5,7 @@
 #include "modules/d3d9ex.hpp"
 #include "modules/game_settings.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 	std::unordered_set<HWND> wnd_class_list; // so we don't print the same window strings over and over again
 
@@ -70,7 +70,7 @@ namespace mods::gta4
 			Beep(523, 100);
 		}
 
-		mods::gta4::main();
+		gta4::main();
 		return 0;
 	}
 }
@@ -78,9 +78,9 @@ namespace mods::gta4
 RECT gRect = {};
 BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 {
-	if (mods::gta4::game_settings::get()->fix_windowed_hud.get_as<bool>())
+	if (gta4::game_settings::get()->fix_windowed_hud.get_as<bool>())
 	{
-		const auto res_setting = mods::gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
+		const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
 		gRect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
 	}
 	else
@@ -94,14 +94,14 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 HWND gWnd;
 HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
-	if (mods::gta4::game_settings::get()->fix_windowed_hud.get_as<bool>())
+	if (gta4::game_settings::get()->fix_windowed_hud.get_as<bool>())
 	{
 		gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, 1920, 1080, hWndParent, hMenu, hInstance, lpParam);
 
-		const auto res_setting = mods::gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
+		const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
 
-		*reinterpret_cast<int*>(mods::gta4::game::systemMetrics_xRight) = static_cast<int>(res_setting->x); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
-		*reinterpret_cast<int*>(mods::gta4::game::systemMetrics_yBottom) = static_cast<int>(res_setting->y); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
+		*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res_setting->x); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
+		*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res_setting->y); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
 	}
 	else {
 		gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
@@ -119,7 +119,7 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		shared::globals::setup_exe_module();
 		shared::globals::setup_homepath();
 
-		mods::gta4::game::init_game_addresses();
+		gta4::game::init_game_addresses();
 
 		if (const auto MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)
 		{
@@ -129,17 +129,17 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 			return TRUE;
 		}
 
-		shared::common::loader::module_loader::register_module(std::make_unique<mods::gta4::d3d9ex>());
-		shared::common::loader::module_loader::register_module(std::make_unique<mods::gta4::game_settings>());
+		shared::common::loader::module_loader::register_module(std::make_unique<gta4::d3d9ex>());
+		shared::common::loader::module_loader::register_module(std::make_unique<gta4::game_settings>());
 
-		shared::utils::hook::set(mods::gta4::game::import_addr__SetRect, SetRect_hk);
-		shared::utils::hook::set(mods::gta4::game::import_addr__CreateWindowExA, CreateWindowExA_hk);
+		shared::utils::hook::set(gta4::game::import_addr__SetRect, SetRect_hk);
+		shared::utils::hook::set(gta4::game::import_addr__CreateWindowExA, CreateWindowExA_hk);
 
 		// allow actual commandline args + commandline.txt
-		shared::utils::hook::nop(mods::gta4::game::nop_addr__allow_commandline01, 6);
-		shared::utils::hook::conditional_jump_to_jmp(mods::gta4::game::jmp_addr__allow_commandline02);
+		shared::utils::hook::nop(gta4::game::nop_addr__allow_commandline01, 6);
+		shared::utils::hook::conditional_jump_to_jmp(gta4::game::jmp_addr__allow_commandline02);
 
-		if (const auto t = CreateThread(nullptr, 0, mods::gta4::find_game_window_by_sha1, nullptr, 0, nullptr); t) {
+		if (const auto t = CreateThread(nullptr, 0, gta4::find_game_window_by_sha1, nullptr, 0, nullptr); t) {
 			CloseHandle(t);
 		}
 	}

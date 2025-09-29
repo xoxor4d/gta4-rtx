@@ -8,7 +8,7 @@
 #include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
 
-namespace mods::gta4
+namespace gta4
 {
 	int  g_is_rendering_static = 0;
 	int  g_is_rendering_vehicle = 0;
