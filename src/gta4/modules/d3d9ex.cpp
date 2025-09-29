@@ -3,7 +3,7 @@
 
 #include "imgui.hpp"
 #include "renderer.hpp"
-#include "shared/common/remix_vars.hpp"
+#include "remix_vars.hpp"
 #include "shared/common/shader_cache.hpp"
 
 namespace gta4
@@ -116,7 +116,7 @@ namespace gta4
 		}
 
 		shared::globals::last_frame_time = current_time;
-		shared::common::remix_vars::on_client_frame();
+		remix_vars::on_client_frame();
 
 		renderer::get()->m_modified_draw_prim = false;
 

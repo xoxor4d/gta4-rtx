@@ -1,19 +1,25 @@
 #pragma once
 
-namespace shared::common
+namespace gta4
 {
-	class remix_vars
+	class remix_vars final : public shared::common::loader::component_module
 	{
 	public:
-		// enforce singleton pattern
-		remix_vars(const remix_vars&) = delete;
-		remix_vars& operator=(const remix_vars&) = delete;
+		remix_vars();
 
-		static remix_vars& get();
+		static inline remix_vars* p_this = nullptr;
+		static remix_vars* get() { return p_this; }
 
-		static void initialize(std::function<bool()> is_game_paused_callback = nullptr, float* game_frametime = nullptr);
-		static void initialize(bool* is_game_paused, float* game_frametime);
-		static bool is_initialized() { return get().m_initialized; }
+		void initialize(std::function<bool()> is_game_paused_callback = nullptr, float* game_frametime = nullptr);
+		void initialize(bool* is_game_paused, float* game_frametime);
+
+		static bool is_initialized()
+		{
+			if (const auto mod = get(); mod && mod->m_initialized) {
+				return true;
+			}
+			return false;
+		}
 
 		static void xo_vars_parse_options_fn();
 
@@ -113,7 +119,6 @@ namespace shared::common
 		static void				parse_and_apply_conf_with_lerp(const std::string& conf_name, const std::uint64_t& identifier, const EASE_TYPE ease, float duration, float delay = 0.0f, float delay_transition_back = 0.0f);
 
 		static void				on_map_load(std::string map_name);
-		//static void				on_sound_start(std::uint32_t hash, const std::string_view& sound_name);
 		static void				on_client_frame();
 
 		struct interpolate_entry_s
@@ -132,45 +137,36 @@ namespace shared::common
 		};
 
 		static inline std::vector<interpolate_entry_s> interpolate_stack;
-
-		//static bool add_linear_interpolate_entry(option_handle handle, const option_value& goal, float duration, const std::string& remix_var_name = "");
-		//static bool add_smooth_interpolate_entry(option_handle handle, const option_value& goal, float duration, const std::string& remix_var_name = "");
-		//static bool add_progressive_interpolate_entry(option_handle handle, const option_value& goal, float speed, const std::string& remix_var_name = "");
-
 		bool add_interpolate_entry(const std::uint64_t& identifier, option_handle handle, const option_value& goal, float duration, float delay, float delay_transition_back, EASE_TYPE ease, const std::string& remix_var_name = "");
 
 		static bool is_paused()
 		{
-			if (get().is_initialized()) 
+			if (get()->is_initialized()) 
 			{
-				if (get().m_is_paused_callback) {
-					return get().m_is_paused_callback();
+				if (get()->m_is_paused_callback) {
+					return get()->m_is_paused_callback();
 				}
 
-				return *get().m_is_game_paused_ptr;
+				return *get()->m_is_game_paused_ptr;
 			}
 
-			return get().m_is_game_paused_internal;
+			return false;
 		}
 
 		static float get_frametime()
 		{
-			if (get().is_initialized()) {
-				return *get().m_frametime_ptr;
+			if (get()->is_initialized() && get()->m_frametime_ptr) {
+				return *get()->m_frametime_ptr;
 			}
 
-			return get().m_frametime_internal;
+			return shared::globals::frame_time_ms;
 		}
 
 	private:
-		remix_vars() : m_initialized(false) {}
-		bool m_initialized;
+		bool m_initialized = false;
 
 		std::function<bool()> m_is_paused_callback;
 		bool* m_is_game_paused_ptr = nullptr;
-		bool m_is_game_paused_internal = false;
-
 		float* m_frametime_ptr = nullptr;
-		float m_frametime_internal = 16.0f;
 	};
 }

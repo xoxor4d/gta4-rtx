@@ -1,58 +1,41 @@
 #include "std_include.hpp"
 #include "remix_vars.hpp"
-#include "remix_api.hpp"
+#include "shared/common/remix_api.hpp"
 
-namespace shared::common
+namespace gta4
 {
-	remix_vars& remix_vars::get()
-	{
-		static remix_vars instance;
-		return instance;
-	}
-
 	// use a callback function for paused instead of a bool pointer
 	void remix_vars::initialize(std::function<bool()> is_game_paused_callback, float* game_frametime)
 	{
-		auto& instance = get();
-		if (!instance.m_initialized)
+		if (!m_initialized)
 		{
 			if (is_game_paused_callback) {
-				instance.m_is_paused_callback = is_game_paused_callback;
-			} else {
-				instance.m_is_game_paused_ptr = &instance.m_is_game_paused_internal;
+				m_is_paused_callback = is_game_paused_callback;
 			}
 
 			if (game_frametime) {
-				get().m_frametime_ptr = game_frametime;
-			}
-			else {
-				get().m_frametime_ptr = &get().m_frametime_internal;
+				m_frametime_ptr = game_frametime;
 			}
 
 			parse_rtx_options();
-			instance.m_initialized = true;
+			m_initialized = true;
 		}
 	}
 
 	void remix_vars::initialize(bool* is_game_paused, float* game_frametime)
 	{
-		auto& instance = get();
-		if (!instance.m_initialized)
+		if (!m_initialized)
 		{
 			if (is_game_paused) {
-				get().m_is_game_paused_ptr = is_game_paused;
-			} else {
-				get().m_is_game_paused_ptr = &get().m_is_game_paused_internal;
+				m_is_game_paused_ptr = is_game_paused;
 			}
 
 			if (game_frametime) {
-				get().m_frametime_ptr = game_frametime;
-			} else {
-				get().m_frametime_ptr = &get().m_frametime_internal;
+				m_frametime_ptr = game_frametime;
 			}
 
 			parse_rtx_options();
-			instance.m_initialized = true;
+			m_initialized = true;
 		}
 	}
 
@@ -132,7 +115,7 @@ namespace shared::common
 	 */
 	bool remix_vars::set_option(option_handle o, const option_value& v, const bool is_level_setting)
 	{
-		if (o && remix_api::is_initialized())
+		if (o && shared::common::remix_api::is_initialized())
 		{
 			o->second.current = v;
 
@@ -169,7 +152,7 @@ namespace shared::common
 
 			if (!var_str.empty())
 			{
-				remix_api::get().m_bridge.SetConfigVariable(o->first.c_str(), var_str.c_str());
+				shared::common::remix_api::get().m_bridge.SetConfigVariable(o->first.c_str(), var_str.c_str());
 				return true;
 			}
 
@@ -189,7 +172,7 @@ namespace shared::common
 	 */
 	bool remix_vars::reset_option(option_handle o, const bool reset_to_level_state)
 	{
-		if (o && remix_api::is_initialized())
+		if (o && shared::common::remix_api::is_initialized())
 		{
 			o->second.current = reset_to_level_state ? o->second.reset_level : o->second.reset;
 
@@ -214,7 +197,7 @@ namespace shared::common
 	 */
 	void remix_vars::reset_all_modified(const bool reset_to_level_state)
 	{
-		if (remix_api::is_initialized())
+		if (shared::common::remix_api::is_initialized())
 		{
 			auto count = 0u;
 			for (auto& o : options)
@@ -248,24 +231,24 @@ namespace shared::common
 			out.enabled = str == "True";
 			break;
 		case OPTION_TYPE_INT:
-			out.integer = utils::try_stoi(str);
+			out.integer = shared::utils::try_stoi(str);
 			break;
 		case OPTION_TYPE_FLOAT:
-			out.value = utils::try_stof(str);
+			out.value = shared::utils::try_stof(str);
 			break;
 		case OPTION_TYPE_VEC2:
-			if (const auto v = utils::split(str, ','); v.size() == 2)
+			if (const auto v = shared::utils::split(str, ','); v.size() == 2)
 			{
-				out.vector[0] = utils::try_stof(v[0]);
-				out.vector[1] = utils::try_stof(v[1]);
+				out.vector[0] = shared::utils::try_stof(v[0]);
+				out.vector[1] = shared::utils::try_stof(v[1]);
 			}
 			break;
 		case OPTION_TYPE_VEC3:
-			if (const auto v = utils::split(str, ','); v.size() == 3)
+			if (const auto v = shared::utils::split(str, ','); v.size() == 3)
 			{
-				out.vector[0] = utils::try_stof(v[0]);
-				out.vector[1] = utils::try_stof(v[1]);
-				out.vector[2] = utils::try_stof(v[2]);
+				out.vector[0] = shared::utils::try_stof(v[0]);
+				out.vector[1] = shared::utils::try_stof(v[1]);
+				out.vector[2] = shared::utils::try_stof(v[2]);
 			}
 			break;
 		}
@@ -290,24 +273,24 @@ namespace shared::common
 		}
 		else if (is_single_num_or_vector(str))
 		{
-			if (const auto x = utils::split(str, ','); x.size() > 1)
+			if (const auto x = shared::utils::split(str, ','); x.size() > 1)
 			{
 				// is vector
 				out.type = OPTION_TYPE_VEC2;
-				out.current.vector[0] = utils::try_stof(x[0]);
-				out.current.vector[1] = utils::try_stof(x[1]);
+				out.current.vector[0] =  shared::utils::try_stof(x[0]);
+				out.current.vector[1] =  shared::utils::try_stof(x[1]);
 
 				if (x.size() > 2)
 				{
 					out.type = OPTION_TYPE_VEC3;
-					out.current.vector[2] = utils::try_stof(x[2]);
+					out.current.vector[2] = shared::utils::try_stof(x[2]);
 				}
 			}
 			else
 			{
 				// is single float
 				out.type = OPTION_TYPE_FLOAT; // treat everything as float
-				out.current.value = utils::try_stof(str);
+				out.current.value = shared::utils::try_stof(str);
 			}
 		}
 
@@ -324,15 +307,15 @@ namespace shared::common
 	void remix_vars::parse_rtx_options()
 	{
 		std::ifstream file;
-		if (utils::open_file_homepath("", "rtx.conf", file))
+		if (shared::utils::open_file_homepath("", "rtx.conf", file))
 		{
 			std::string input;
 			while (std::getline(file, input))
 			{
-				if (auto pair = utils::split(input, '='); pair.size() == 2u)
+				if (auto pair = shared::utils::split(input, '='); pair.size() == 2u)
 				{
-					utils::trim(pair[0]);
-					utils::trim(pair[1]);
+					 shared::utils::trim(pair[0]);
+					 shared::utils::trim(pair[1]);
 
 					if (!pair[1].starts_with("0x") && !pair[1].empty())
 					{
@@ -359,20 +342,20 @@ namespace shared::common
 	void remix_vars::parse_and_apply_conf_with_lerp(const std::string& conf_name, const std::uint64_t& identifier, const EASE_TYPE ease, const float duration, const float delay, const float delay_transition_back)
 	{
 		std::ifstream file;
-		if (utils::open_file_homepath("rtx_comp\\map_configs", conf_name, file))
+		if (shared::utils::open_file_homepath("rtx_comp\\map_configs", conf_name, file))
 		{
 			std::string input;
 			while (std::getline(file, input))
 			{
-				if (utils::starts_with(input, "#") || input.empty()) {
+				if (shared::utils::starts_with(input, "#") || input.empty()) {
 					continue;
 				}
 
-				if (auto pair = utils::split(input, '=');
+				if (auto pair = shared::utils::split(input, '=');
 					pair.size() == 2u)
 				{
-					utils::trim(pair[0]);
-					utils::trim(pair[1]);
+					 shared::utils::trim(pair[0]);
+					 shared::utils::trim(pair[1]);
 
 					if (pair[1].starts_with("0x") || pair[1].empty()) {
 						continue;
@@ -382,7 +365,7 @@ namespace shared::common
 					{
 						const auto& v = string_to_option_value(o->second.type, pair[1]);
 
-						remix_vars::get().add_interpolate_entry(identifier, o, v, duration, delay, delay_transition_back, ease);
+						remix_vars::get()->add_interpolate_entry(identifier, o, v, duration, delay, delay_transition_back, ease);
 						//DEBUG_PRINT("[VAR-LERP] Start lerping var: %s to: %s\n", o->first.c_str(), pair[1].c_str());
 					}
 				}
@@ -422,7 +405,7 @@ namespace shared::common
 				return false;
 			}
 
-			h = remix_vars::get().get_option(remix_var_name);
+			h = remix_vars::get()->get_option(remix_var_name);
 		}
 
 		if (h)
@@ -543,13 +526,13 @@ namespace shared::common
 		remix_vars::custom_options.clear();
 		remix_vars::interpolate_stack.clear();
 
-		utils::replace_all(map_name, ".bms", ".conf");
+		shared::utils::replace_all(map_name, ".bms", ".conf");
 
 		if (!map_name.ends_with(".conf")) {
 			map_name += ".conf";
 		}
 
-		parse_and_apply_conf_with_lerp(map_name, utils::string_hash64(map_name), EASE_TYPE_SIN_IN, 0.0f, 0.0f);
+		parse_and_apply_conf_with_lerp(map_name, shared::utils::string_hash64(map_name), EASE_TYPE_SIN_IN, 0.0f, 0.0f);
 	}
 
 	// Interpolates all variables on the 'interpolate_stack' and removes them once they reach their goal. \n
@@ -581,7 +564,7 @@ namespace shared::common
 
 				for (auto& ip : interpolate_stack)
 				{
-					ip._time_elapsed += get().get_frametime(); //globalv->frametime;
+					ip._time_elapsed += get()->get_frametime(); //globalv->frametime;
 
 					// initial 'time_elapsed' value can be negative because of transition delay
 					// or if transitioning backwards with delay 
@@ -617,7 +600,7 @@ namespace shared::common
 							if (!transition_time_exceeded)
 							{
 								lerp_float(&ip.option->second.current.value, ip.start.value, ip.goal.value, f, ip.style);
-								ip._complete = utils::float_equal(ip.option->second.current.value, ip.goal.value);
+								ip._complete = shared::utils::float_equal(ip.option->second.current.value, ip.goal.value);
 							}
 							else
 							{
@@ -633,8 +616,8 @@ namespace shared::common
 							{
 								lerp_float(&ip.option->second.current.vector[0], ip.start.vector[0], ip.goal.vector[0], f, ip.style);
 								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], f, ip.style);
-								ip._complete =  utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
-											&& utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1]);
+								ip._complete = shared::utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
+											&& shared::utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1]);
 							}
 							else
 							{
@@ -652,9 +635,9 @@ namespace shared::common
 								lerp_float(&ip.option->second.current.vector[0], ip.start.vector[0], ip.goal.vector[0], f, ip.style);
 								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], f, ip.style);
 								lerp_float(&ip.option->second.current.vector[2], ip.start.vector[2], ip.goal.vector[2], f, ip.style);
-								ip._complete =  utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
-											&& utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1])
-											&& utils::float_equal(ip.option->second.current.vector[2], ip.goal.vector[2]);
+								ip._complete = shared::utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
+											&& shared::utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1])
+											&& shared::utils::float_equal(ip.option->second.current.vector[2], ip.goal.vector[2]);
 							}
 							else
 							{
@@ -689,7 +672,7 @@ namespace shared::common
 					}
 
 					if (!ip.option->second.not_a_remix_var) {
-						remix_vars::get().set_option(ip.option, ip.option->second.current, false);
+						remix_vars::get()->set_option(ip.option, ip.option->second.current, false);
 					}
 
 					// detect completion of first transition - check / setup backwards transition
@@ -707,60 +690,6 @@ namespace shared::common
 		}
 	}
 
-	// #
-	// #
-
-	//void remix_vars::on_sound_start(const std::uint32_t hash, const std::string_view& sound_name)
-	//{
-	//	// check for spawn trigger
-	//	auto& msettings = map_settings::get_map_settings();
-	//	for (auto it = msettings.remix_transitions.begin(); it != msettings.remix_transitions.end();)
-	//	{
-	//		// only handle sound transitions
-	//		if (it->trigger_type != map_settings::TRANSITION_TRIGGER_TYPE::SOUND) {
-	//			++it; continue;
-	//		}
-
-	//		bool iterpp = false;
-	//		if ((it->sound_hash && it->sound_hash == hash) || it->sound_name == sound_name)
-	//		{
-	//			bool can_add_transition = true;
-
-	//			// do not allow the same transition twice
-	//			for (const auto& ip : remix_vars::interpolate_stack)
-	//			{
-	//				if (ip.identifier == it->hash)
-	//				{
-	//					can_add_transition = false;
-	//					break;
-	//				}
-	//			}
-
-	//			if (can_add_transition)
-	//			{
-	//				remix_vars::parse_and_apply_conf_with_lerp(
-	//					it->config_name,
-	//					it->hash,
-	//					it->interpolate_type,
-	//					it->duration,
-	//					it->delay_in,
-	//					it->delay_out);
-
-	//				if (it->mode <= map_settings::TRANSITION_MODE::ONCE_ON_LEAVE)
-	//				{
-	//					it = msettings.remix_transitions.erase(it);
-	//					iterpp = true; // erase returns the next iterator
-	//				}
-	//			}
-	//		}
-
-	//		if (!iterpp) {
-	//			++it;
-	//		}
-	//	}
-	//}
-
-	//ConCommand xo_vars_parse_options_cmd{};
 	void remix_vars::xo_vars_parse_options_fn()
 	{
 		remix_vars::options.clear();
@@ -768,7 +697,7 @@ namespace shared::common
 		remix_vars::parse_rtx_options();
 
 		// reset all settings to rtx.conf level (incl. runtime settings)
-		if (remix_api::is_initialized())
+		if (shared::common::remix_api::is_initialized())
 		{
 			for (auto& o : remix_vars::options)
 			{
@@ -778,15 +707,24 @@ namespace shared::common
 		}
 	}
 
-	//ConCommand xo_vars_reset_all_options_cmd{};
 	void xo_vars_reset_all_options_fn()
 	{
 		remix_vars::reset_all_modified(false);
 	}
 
-	//ConCommand xo_vars_clear_transitions_cmd{};
 	void xo_vars_clear_transitions_fn()
 	{
 		remix_vars::interpolate_stack.clear();
+	}
+
+	remix_vars::remix_vars()
+	{
+		p_this = this;
+
+		initialize(game::CMenuManager__m_MenuActive, nullptr);
+
+		// -----
+		m_initialized = true;
+		std::cout << "[REMIX_VARS] loaded\n";
 	}
 }

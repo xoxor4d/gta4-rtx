@@ -3,6 +3,7 @@
 
 #include "game_settings.hpp"
 #include "imgui.hpp"
+#include "remix_markers.hpp"
 
 namespace gta4
 {
@@ -31,7 +32,7 @@ namespace gta4
 
 			const auto dev = shared::globals::d3d_device;
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\sky.png", &tex_addons::sky);
-			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white01.png", &tex_addons::white01);
+			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white01.png", &tex_addons::white01); // marker meshes
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white02.png", &tex_addons::white02);
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
 
@@ -44,70 +45,70 @@ namespace gta4
 
 	// uses unused Renderstate 149 to set per drawcall modifiers
 	// ~ currently req. runtime changes
-	void set_remix_modifier(IDirect3DDevice9* dev, drawcall_mod_context& ctx, RemixModifier mod)
+	void renderer::set_remix_modifier(IDirect3DDevice9* dev, RemixModifier mod)
 	{
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)149);
-		ctx.modifiers.remix_modifier |= mod;
+		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)149);
+		dc_ctx.modifiers.remix_modifier |= mod;
 
-		dev->SetRenderState((D3DRENDERSTATETYPE)149, static_cast<DWORD>(ctx.modifiers.remix_modifier));
+		dev->SetRenderState((D3DRENDERSTATETYPE)149, static_cast<DWORD>(dc_ctx.modifiers.remix_modifier));
 	}
 
 	// uses unused Renderstate 149 & 169 to tweak the emissive intensity of remix materials (legacy/opaque)
 	// ~ currently req. runtime changes --> remixTempFloat01FromD3D
 	/// @param no_overrides	will not override any previously set intensity if true
-	void set_remix_emissive_intensity(IDirect3DDevice9* dev, drawcall_mod_context& ctx, float intensity, bool no_overrides = false)
+	void renderer::set_remix_emissive_intensity(IDirect3DDevice9* dev, float intensity, bool no_overrides)
 	{
-		const bool result = ctx.save_rs(dev, (D3DRENDERSTATETYPE)169);
+		const bool result = dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)169);
 		if (!result && no_overrides) {
 			return;
 		}
 
-		set_remix_modifier(dev, ctx, RemixModifier::EmissiveScalar);
+		set_remix_modifier(dev, RemixModifier::EmissiveScalar);
 		dev->SetRenderState((D3DRENDERSTATETYPE)169, *reinterpret_cast<DWORD*>(&intensity));
 	}
 
 	// uses unused Renderstate 149 & 177 to tweak the roughness of remix materials (legacy/opaque)
 	// ~ currently req. runtime changes --> remixTempFloat02FromD3D
-	void set_remix_roughness_scalar(IDirect3DDevice9* dev, drawcall_mod_context& ctx, float roughness_scalar)
+	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar)
 	{
-		set_remix_modifier(dev, ctx, RemixModifier::RoughnessScalar);
+		set_remix_modifier(dev, RemixModifier::RoughnessScalar);
 
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)177);
+		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)177);
 		dev->SetRenderState((D3DRENDERSTATETYPE)177, *reinterpret_cast<DWORD*>(&roughness_scalar));
 	}
 
 
 	// uses unused Renderstate 169 to pass per drawcall data
 	// ~ currently req. runtime changes --> remixTempFloat02FromD3D
-	void set_remix_temp_float01(IDirect3DDevice9* dev, drawcall_mod_context& ctx, float value)
+	void renderer::set_remix_temp_float01(IDirect3DDevice9* dev, float value)
 	{
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)169);
+		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)169);
 		dev->SetRenderState((D3DRENDERSTATETYPE)169, *reinterpret_cast<DWORD*>(&value));
 	}
 
 	// uses unused Renderstate 177 to pass per drawcall data
 	// ~ currently req. runtime changes --> remixTempFloat02FromD3D
-	void set_remix_temp_float02(IDirect3DDevice9* dev, drawcall_mod_context& ctx, float value)
+	void renderer::set_remix_temp_float02(IDirect3DDevice9* dev, float value)
 	{
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)177);
+		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)177);
 		dev->SetRenderState((D3DRENDERSTATETYPE)177, *reinterpret_cast<DWORD*>(&value));
 	}
 
 
 	// uses unused Renderstate 42 to set remix texture categories
 	// ~ currently req. runtime changes
-	void set_remix_texture_categories(IDirect3DDevice9* dev, drawcall_mod_context& ctx, const InstanceCategories& cat)
+	void renderer::set_remix_texture_categories(IDirect3DDevice9* dev, const InstanceCategories& cat)
 	{
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
-		ctx.modifiers.remix_instance_categories |= cat;
-		dev->SetRenderState((D3DRENDERSTATETYPE)42, static_cast<DWORD>(ctx.modifiers.remix_instance_categories));
+		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+		dc_ctx.modifiers.remix_instance_categories |= cat;
+		dev->SetRenderState((D3DRENDERSTATETYPE)42, static_cast<DWORD>(dc_ctx.modifiers.remix_instance_categories));
 	}
 
 	// uses unused Renderstate 150 to set custom remix hash
 	// ~ currently req. runtime changes
-	void set_remix_texture_hash(IDirect3DDevice9* dev, drawcall_mod_context& ctx, const std::uint32_t& hash)
+	void renderer::set_remix_texture_hash(IDirect3DDevice9* dev, const std::uint32_t& hash)
 	{
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
+		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
 		dev->SetRenderState((D3DRENDERSTATETYPE)150, hash);
 	}
 
@@ -191,7 +192,7 @@ namespace gta4
 		ctx.save_rs(dev, D3DRS_SRCBLEND);
 		dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
 
-		set_remix_emissive_intensity(dev, ctx, intensity);
+		renderer::set_remix_emissive_intensity(dev, intensity);
 	}
 
 	// ----
@@ -546,17 +547,17 @@ namespace gta4
 									switch (stype)
 									{
 									case EmissiveShaderType::EmissiveNight:
-										set_remix_emissive_intensity(shared::globals::d3d_device, ctx,
+										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
 											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_night_surfaces_emissive_scalar.get_as<float>());
 										break;
 
 									case EmissiveShaderType::Emissive:
-										set_remix_emissive_intensity(shared::globals::d3d_device, ctx,
+										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
 											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_surfaces_emissive_scalar.get_as<float>());
 										break;
 
 									case EmissiveShaderType::EmissiveStrong:
-										set_remix_emissive_intensity(shared::globals::d3d_device, ctx,
+										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
 											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>(), true);
 										break;
 									}
@@ -578,8 +579,8 @@ namespace gta4
 							else*/ if (gs->decal_dirt_shader_usage.get_as<bool>() && register_num == 66u && ctx.info.shader_name.ends_with("gta_decal_dirt.fxc"))
 							{
 								float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->decal_dirt_shader_scalar.get_as<float>();
-								set_remix_temp_float01(shared::globals::d3d_device, ctx, intensity);
-								set_remix_temp_float02(shared::globals::d3d_device, ctx, gs->decal_dirt_shader_contrast.get_as<float>());
+								renderer::set_remix_temp_float01(shared::globals::d3d_device, intensity);
+								renderer::set_remix_temp_float02(shared::globals::d3d_device, gs->decal_dirt_shader_contrast.get_as<float>());
 							}
 						}
 
@@ -697,7 +698,7 @@ namespace gta4
 			// + custom sky texture because sky and traffic lights share the same texture
 			if (g_is_sky_rendering)
 			{
-				set_remix_texture_categories(dev, ctx, InstanceCategories::Sky);
+				set_remix_texture_categories(dev, InstanceCategories::Sky);
 
 				if (ctx.info.shader_name.ends_with("im.fxc"))
 				{
@@ -709,7 +710,7 @@ namespace gta4
 
 			if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))  
 			{
-				set_remix_texture_categories(dev, ctx, InstanceCategories::Particle);
+				set_remix_texture_categories(dev, InstanceCategories::Particle);
 				ctx.modifiers.is_fx = true;
 
 				ctx.save_ps(dev);
@@ -824,14 +825,14 @@ namespace gta4
 				{
 					if (gs->decal_dirt_shader_usage.get_as<bool>())
 					{
-						set_remix_modifier(dev, ctx, RemixModifier::DecalDirt | RemixModifier::EnableVertexColor);
-						set_remix_texture_categories(dev, ctx, InstanceCategories::DecalStatic);
+						set_remix_modifier(dev, RemixModifier::DecalDirt | RemixModifier::EnableVertexColor);
+						set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
 
 						// using a texture in slot1 in the opaque shader is semi working but the texture is not always updated/correct and and cause
 						// conflicts with other textures
 					}
 					else {
-						set_remix_texture_categories(dev, ctx, InstanceCategories::Ignore);
+						set_remix_texture_categories(dev, InstanceCategories::Ignore);
 					}
 				}
 			}
@@ -843,10 +844,10 @@ namespace gta4
 				if (gs->render_emissive_surfaces_using_shaders.get_as<bool>())
 				{
 					if (im->m_dbg_tag_static_emissive_as_index != -1) {
-						set_remix_texture_categories(dev, ctx, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
+						set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
 					}
 					else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
-						set_remix_texture_categories(dev, ctx, InstanceCategories::DecalStatic /*InstanceCategories::IgnoreTransparencyLayer*/); //1 << im->m_dbg_tag_emissivenight_as_index);
+						set_remix_texture_categories(dev, InstanceCategories::DecalStatic /*InstanceCategories::IgnoreTransparencyLayer*/); //1 << im->m_dbg_tag_emissivenight_as_index);
 					}
 
 					render_with_ff = false;
@@ -983,7 +984,7 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 			}
 
-			set_remix_texture_categories(dev, ctx, InstanceCategories::IgnoreBakedLighting);
+			set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
 
 			if (g_is_rendering_static)
 			{
@@ -1046,7 +1047,7 @@ namespace gta4
 				const float wetness_value = get_wetness(); 
 				if (wetness_value > 0.0f)
 				{
-					set_remix_modifier(dev, ctx, RemixModifier::RoughnessScalar);
+					set_remix_modifier(dev, RemixModifier::RoughnessScalar);
 
 					const float adjusted_wetness = std::clamp(wetness_value * gs->game_wetness_scalar.get_as<float>(), 0.0f, 1.0f);
 					float scalar = 1.0f - adjusted_wetness;
@@ -1135,7 +1136,7 @@ namespace gta4
 				ctx.save_rs(dev, D3DRS_ZENABLE);
 				dev->SetRenderState(D3DRS_ZENABLE, FALSE);
 
-				set_remix_texture_categories(dev, ctx, InstanceCategories::WorldMatte | InstanceCategories::IgnoreOpacityMicromap);
+				set_remix_texture_categories(dev, InstanceCategories::WorldMatte | InstanceCategories::IgnoreOpacityMicromap);
 			}
 
 			if (ctx.modifiers.dual_render_mode_blend_diffuse)
@@ -1307,6 +1308,7 @@ namespace gta4
 	void post_render_sky()
 	{
 		renderer::get()->m_modified_draw_prim = false;
+		remix_markers::get()->draw_nocull_markers();
 	}
 
 	__declspec (naked) void on_sky_render_stub()
@@ -1316,6 +1318,9 @@ namespace gta4
 			mov		g_is_sky_rendering, 1;
 			call	game::func_addr__on_sky_render_stub;
 			mov		g_is_sky_rendering, 0;
+			pushad;
+			call	post_render_sky;
+			popad;
 			jmp		game::retn_addr__on_sky_render_stub;
 		}
 	}

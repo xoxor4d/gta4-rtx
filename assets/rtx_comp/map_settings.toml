@@ -1,0 +1,23 @@
+# ##########################################################################################################################################
+# >> Spawn unique markers meshes
+#
+# :: Can be used as anchor mesh (same one can be spawned multiple times)
+#    > They can be spawned and adjusted in-game via the imgui menu
+#
+# ~~ Parameters:
+#   {          
+#       #                   comment         
+#       marker_num =        num of marker                                                           [int 0-inf]
+#       position = []       position of the marker mesh                                             [3D Vector]
+#       rotation = []       rotation of the marker mesh                                             [3D Vector]
+#       scale = []          scale of the marker mesh                                                [3D Vector]
+#       cull_distance =     disable drawing of marker mesh after this distance from the player      [Float]
+#   }, 
+#   { ... },
+# ]
+
+MARKER = [
+
+    # first safehouse test
+    { marker_num = 170, position = [895.40, -495.05, 18.91], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 15.00 },
+]

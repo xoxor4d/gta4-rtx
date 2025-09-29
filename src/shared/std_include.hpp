@@ -39,6 +39,7 @@
 #define STATIC_ASSERT_OFFSET(struct, member, offset)	static_assert(offsetof(struct, member) == offset, "Offset check")
 #define XASSERT(x) if (x) MessageBoxA(HWND_DESKTOP, #x, "FATAL ERROR", MB_ICONERROR)
 
+#include "toml.hpp"
 #include "MinHook.h"
 #include "bridge_remix_api.h"
 
@@ -49,5 +50,6 @@
 #include "utils/memory.hpp"
 #include "utils/function.hpp"
 #include "common/loader.hpp"
+#include "common/toml_ext.hpp"
 
 using namespace std::literals;

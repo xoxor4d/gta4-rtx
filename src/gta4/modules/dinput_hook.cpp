@@ -323,6 +323,8 @@ namespace gta4
 			dinput8->Release();
 		}
 
+		// -----
 		m_initialized = true;
+		std::cout << "[DINPUT8] loaded\n";
 	}
 }

@@ -157,6 +157,7 @@ namespace gta4
 	private:
 		void tab_dev();
 		void tab_gamesettings();
+		void tab_map_settings();
 		bool m_im_window_focused = false;
 		bool m_im_window_hovered = false;
 		std::string m_devgui_custom_footer_content;

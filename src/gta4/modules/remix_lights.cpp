@@ -378,7 +378,7 @@ namespace gta4
 
 				const Vector circle_pos = def.mPosition;
 
-				if (circle_pos.DistTo(player_pos) > 20.0f) {
+				if (fabs(circle_pos.DistTo(player_pos)) > 20.0f) {
 					continue;
 				}
 

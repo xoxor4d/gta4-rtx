@@ -2,9 +2,10 @@
 #include "imgui.hpp"
 
 #include "game_settings.hpp"
+#include "map_settings.hpp"
 #include "remix_lights.hpp"
-#include "renderer.hpp"
-#include "shared/common/flags.hpp"
+#include "remix_vars.hpp"
+#include "shared/common/toml_ext.hpp"
 #include "shared/imgui/imgui_helper.hpp"
 #include "shared/imgui/font_awesome_solid_900.hpp"
 #include "shared/imgui/font_defines.hpp"
@@ -556,6 +557,425 @@ namespace gta4
 		}
 	}
 
+	bool reload_mapsettings_popup()
+	{
+		bool result = false;
+		if (ImGui::BeginPopupModal("Reload MapSettings?", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+		{
+			shared::imgui::draw_background_blur();
+			const auto half_width = ImGui::GetContentRegionMax().x * 0.5f;
+			auto line1_str = "You'll loose all unsaved changes if you continue!";
+			auto line2_str = "Use the copy to clipboard buttons and manually update  ";
+			auto line3_str = "the map_settings.toml file if you've made changes.";
+
+			ImGui::Spacing();
+			ImGui::SetCursorPosX(5.0f + half_width - (ImGui::CalcTextSize(line1_str).x * 0.5f));
+			ImGui::TextUnformatted(line1_str);
+
+			ImGui::Spacing();
+			ImGui::SetCursorPosX(5.0f + half_width - (ImGui::CalcTextSize(line2_str).x * 0.5f));
+			ImGui::TextUnformatted(line2_str);
+			ImGui::SetCursorPosX(5.0f + half_width - (ImGui::CalcTextSize(line3_str).x * 0.5f));
+			ImGui::TextUnformatted(line3_str);
+
+			ImGui::Spacing(0, 8);
+			ImGui::Spacing(0, 0); ImGui::SameLine();
+
+			ImVec2 button_size(half_width - 6.0f - ImGui::GetStyle().WindowPadding.x, 0.0f);
+			if (ImGui::Button("Reload", button_size))
+			{
+				result = true;
+				map_settings::load_settings();
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::SameLine(0, 6);
+			if (ImGui::Button("Cancel", button_size)) {
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+
+		return result;
+	}
+
+	bool reload_mapsettings_button_with_popup(const char* ID)
+	{
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (ImGui::Button(shared::utils::va("Reload MapSettings  %s##%s", ICON_FA_REDO, ID), ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+		{
+			if (!ImGui::IsPopupOpen("Reload MapSettings?")) {
+				ImGui::OpenPopup("Reload MapSettings?");
+			}
+		}
+		ImGui::PopFont();
+
+		return reload_mapsettings_popup();
+	}
+
+	void cont_mapsettings_general()
+	{
+		//auto& ms = map_settings::get_map_settings();
+
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (ImGui::Button("Reload rtx.conf    " ICON_FA_REDO, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
+		{
+			if (!ImGui::IsPopupOpen("Reload RtxConf?")) {
+				ImGui::OpenPopup("Reload RtxConf?");
+			}
+		} ImGui::PopFont();
+
+		// popup
+		if (ImGui::BeginPopupModal("Reload RtxConf?", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+		{
+			shared::imgui::draw_background_blur();
+			ImGui::Spacing(0.0f, 0.0f);
+
+			const auto half_width = ImGui::GetContentRegionMax().x * 0.5f;
+			auto line1_str = "This will reload the rtx.conf file and re-apply all of it's variables.  ";
+			auto line3_str = "(excluding texture hashes)";
+
+			ImGui::Spacing();
+			ImGui::SetCursorPosX(5.0f + half_width - (ImGui::CalcTextSize(line1_str).x * 0.5f));
+			ImGui::TextUnformatted(line1_str);
+
+			ImGui::PushFont(shared::imgui::font::BOLD);
+			ImGui::SetCursorPosX(5.0f + half_width - (ImGui::CalcTextSize(line3_str).x * 0.5f));
+			ImGui::TextUnformatted(line3_str);
+			ImGui::PopFont();
+
+			ImGui::Spacing(0, 8);
+			ImGui::Spacing(0, 0); ImGui::SameLine();
+
+			ImVec2 button_size(half_width - 6.0f - ImGui::GetStyle().WindowPadding.x, 0.0f);
+			if (ImGui::Button("Reload", button_size))
+			{
+				remix_vars::xo_vars_parse_options_fn();
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::SameLine(0, 6.0f);
+			if (ImGui::Button("Cancel", button_size)) {
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
+
+		ImGui::SameLine();
+		reload_mapsettings_button_with_popup("General");
+
+		//const auto two_row_button_size = ImVec2((ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 1) / 2.0f, 0);
+		//ImGui::SeparatorTextLarge(" Debug Views / Info ", true);
+	}
+
+	void cont_mapsettings_marker_manipulation()
+	{
+		auto& markers = map_settings::get_map_settings().map_markers;
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (ImGui::Button("Copy All Markers to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
+		{
+			ImGui::LogToClipboard();
+			ImGui::LogText("%s", shared::common::toml_ext::build_map_marker_array(markers).c_str());
+			ImGui::LogFinish();
+		} ImGui::PopFont();
+
+		ImGui::SameLine();
+		reload_mapsettings_button_with_popup("MapMarker");
+		//ImGui::Spacing(0, 4);
+
+		constexpr auto in_buflen = 1024u;
+		static char in_area_buf[in_buflen], in_nleaf_buf[in_buflen];
+		static map_settings::marker_settings_s* selection = nullptr;
+
+		//
+		// MARKER TABLE
+
+		ImGui::TableHeaderDropshadow();
+		if (ImGui::BeginTable("MarkerTable", 9,
+			ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_ContextMenuInBody |
+			ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_ScrollY, ImVec2(0, 380)))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1); // make top row always visible
+			ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoHide, 12.0f);
+			ImGui::TableSetupColumn("Num", ImGuiTableColumnFlags_NoResize, 24.0f);
+			ImGui::TableSetupColumn("Vis", ImGuiTableColumnFlags_NoResize, 24.0f);
+			ImGui::TableSetupColumn("Comment", ImGuiTableColumnFlags_WidthStretch, 200.0f);
+			ImGui::TableSetupColumn("Pos", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 200.0f);
+			ImGui::TableSetupColumn("Rot", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 180.0f);
+			ImGui::TableSetupColumn("Scale", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 130.0f);
+			ImGui::TableSetupColumn("CullDist", ImGuiTableColumnFlags_NoResize, 60.0f);
+			ImGui::TableSetupColumn("##Delete", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoReorder | ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoClip, 16.0f);
+			ImGui::TableHeadersRow();
+
+			bool selection_matches_any_entry = false;
+			map_settings::marker_settings_s* marked_for_deletion = nullptr;
+
+			for (auto i = 0u; i < markers.size(); i++)
+			{
+				auto& m = markers[i];
+
+				// default selection
+				if (!selection) {
+					selection = &m;
+				}
+
+				ImGui::TableNextRow();
+
+				// save Y offset
+				const auto save_row_min_y_pos = ImGui::GetCursorScreenPos().y - ImGui::GetStyle().FramePadding.y + ImGui::GetStyle().CellPadding.y;
+
+				// handle row background color for selected entry
+				const bool is_selected = selection && selection == &m;
+				if (is_selected) {
+					ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_TableRowBgAlt));
+				}
+
+				// -
+				ImGui::TableNextColumn();
+				if (!is_selected) // only selectable if not selected
+				{
+					ImGui::Style_InvisibleSelectorPush(); // never show selection - we use tablebg
+					if (ImGui::Selectable(shared::utils::va("%d", i), false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap, ImVec2(0, 22 + ImGui::GetStyle().CellPadding.y * 1.0f))) {
+						selection = &m;
+					}
+					ImGui::Style_InvisibleSelectorPop();
+
+					if (ImGui::IsItemHovered()) {
+						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.6f)));///*ImGui::GetColorU32(ImGuiCol_TableRowBgAlt)*/);
+					}
+				}
+				else {
+					ImGui::Text("%d", i); // if selected
+				}
+
+				if (selection && selection == &m) {
+					selection_matches_any_entry = true; // check that the selection ptr is up to date
+				}
+
+				// - marker num
+				ImGui::TableNextColumn();
+				ImGui::Text("%d", m.index);
+
+				// - is visible
+				ImGui::TableNextColumn();
+				ImGui::Text(m.internal__is_hidden ? ICON_FA_EYE_SLASH : ICON_FA_EYE);
+
+				// - comment
+				ImGui::TableNextColumn();
+				ImGui::TextWrapped(m.comment.c_str());
+
+				const auto row_max_y_pos = ImGui::GetItemRectMax().y;
+
+				// - pos
+				ImGui::TableNextColumn(); ImGui::Spacing();
+				ImGui::Text("%.2f, %.2f, %.2f", m.origin.x, m.origin.y, m.origin.z);
+
+				// - rot
+				ImGui::TableNextColumn(); ImGui::Spacing();
+				ImGui::Text("%.2f, %.2f, %.2f", m.rotation.x, m.rotation.y, m.rotation.z);
+
+				// - scale
+				ImGui::TableNextColumn(); ImGui::Spacing();
+				ImGui::Text("%.2f, %.2f, %.2f", m.scale.x, m.scale.y, m.scale.z);
+
+				// - scale
+				ImGui::TableNextColumn();
+				ImGui::Text("%.2f", m.cull_distance);
+
+				// delete Button
+				ImGui::TableNextColumn();
+				{
+					ImGui::Style_DeleteButtonPush();
+					ImGui::PushID((int)i);
+
+					const auto btn_size = ImVec2(16, is_selected ? (row_max_y_pos - save_row_min_y_pos) : 25.0f);
+					if (ImGui::Button("x##Marker", btn_size)) {
+						marked_for_deletion = &m;
+					}
+
+					ImGui::Style_DeleteButtonPop();
+					ImGui::PopID();
+				}
+
+			} // end for loop
+
+			if (!selection_matches_any_entry)
+			{
+				for (auto& m : markers)
+				{
+					if (selection && selection == &m)
+					{
+						selection_matches_any_entry = true;
+						break;
+					}
+				}
+
+				if (!selection_matches_any_entry) {
+					selection = nullptr;
+				}
+			}
+			/*else if (selection) {
+				game::debug_add_text_overlay(&selection->origin.x, "[ImGui] Selected Marker", 0, 0.8f, 1.0f, 0.3f, 0.8f);
+			}*/
+
+			// remove entry
+			if (marked_for_deletion)
+			{
+				for (auto it = markers.begin(); it != markers.end(); ++it)
+				{
+					if (&*it == marked_for_deletion)
+					{
+						markers.erase(it);
+						selection = nullptr;
+						break;
+					}
+				}
+			}
+			ImGui::EndTable();
+		}
+
+		ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonGreen, true);
+		if (ImGui::Button("++ Marker"))
+		{
+			std::uint32_t free_marker = 0u;
+			for (auto i = 0u; i < markers.size(); i++)
+			{
+				if (markers[i].index == free_marker)
+				{
+					free_marker++;
+					i = 0u; // restart loop
+				}
+			}
+
+			Vector player_pos;
+			player_pos = game::FindPlayerCentreOfWorld(&player_pos);
+
+			markers.emplace_back(map_settings::marker_settings_s {
+					free_marker, player_pos - Vector(0, 0, 0.5f)
+				});
+
+			selection = &markers.back();
+		}
+		ImGui::Style_ColorButtonPop();
+
+		if (selection)
+		{
+			ImGui::SameLine();
+			ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonYellow, true);
+			if (ImGui::Button("Duplicate Current Marker"))
+			{
+				markers.emplace_back(map_settings::marker_settings_s{
+					.index = selection->index,
+					.origin = selection->origin,
+					.rotation = selection->rotation,
+					.scale = selection->scale,
+					.cull_distance = selection->cull_distance,
+					.comment = selection->comment,
+					});
+
+				selection = &markers.back();
+			}
+			ImGui::Style_ColorButtonPop();
+		}
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!selection);
+		{
+			/*if (ImGui::Button("TP to Marker")) {
+				interfaces::get()->m_engine->execute_client_cmd_unrestricted(shared::utils::va("sv_cheats 1; noclip; setpos %.2f %.2f %.2f", selection->origin.x, selection->origin.y, selection->origin.z - 40.0f));
+			}
+
+			ImGui::SameLine();*/
+
+			Vector player_pos;
+			player_pos = game::FindPlayerCentreOfWorld(&player_pos);
+
+			if (ImGui::Button("TP Marker to Player", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+			{
+				selection->origin = player_pos;
+				selection->origin.z -= 0.5f;
+			}
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+
+		ImGui::SeparatorText("Modify Marker");
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+
+		if (selection)
+		{
+			int temp_num = (int)selection->index;
+
+			SET_CHILD_WIDGET_WIDTH;
+			if (ImGui::DragInt("Number", &temp_num, 0.1f, 0, 50000, "%d", ImGuiSliderFlags_AlwaysClamp))
+			{
+				if (temp_num < 0) {
+					temp_num = 0;
+				}
+				
+				selection->index = (std::uint32_t)temp_num;
+			}
+
+			//ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
+			ImGui::Widget_PrettyDragVec3("Origin", &selection->origin.x, true, 80.0f, 0.5f,
+				-FLT_MAX, FLT_MAX, "X", "Y", "Z");
+			//ImGui::PopStyleVar();
+
+			// RAD2DEG -> DEG2RAD 
+			Vector temp_rot = { RAD2DEG(selection->rotation.x), RAD2DEG(selection->rotation.y), RAD2DEG(selection->rotation.z) };
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
+			if (ImGui::Widget_PrettyDragVec3("Rotation", &temp_rot.x, true, 80.0f, 0.1f,
+				-360.0f, 360.0f, "Rx", "Ry", "Rz"))
+			{
+				selection->rotation = { DEG2RAD(temp_rot.x), DEG2RAD(temp_rot.y), DEG2RAD(temp_rot.z) };
+			} ImGui::PopStyleVar();
+
+			{
+				ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
+				ImGui::Widget_PrettyDragVec3("Scale", &selection->scale.x, true, 80.0f, 0.01f,
+					-FLT_MAX, FLT_MAX, "Sx", "Sy", "Sz");
+				ImGui::PopStyleVar();
+			}
+
+			SET_CHILD_WIDGET_WIDTH;
+			ImGui::DragFloat("Cull Distance", &selection->cull_distance, 0.05f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+
+			SET_CHILD_WIDGET_WIDTH;
+			ImGui::InputText("Comment", &selection->comment);
+
+		} // selection
+
+		ImGui::Spacing();
+	}
+
+	void imgui::tab_map_settings()
+	{
+		// general settings
+		{
+			static float cont_general_height = 0.0f;
+			cont_general_height = ImGui::Widget_ContainerWithCollapsingTitle("General Settings", cont_general_height, cont_mapsettings_general,
+				false, ICON_FA_ELLIPSIS_H, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		ImGui::Spacing(0, 6.0f);
+		ImGui::SeparatorText("The following settings do NOT auto-save.");
+		ImGui::TextDisabled("Export to clipboard and override the settings manually!");
+		ImGui::Spacing(0, 6.0f);
+
+		// marker manipulation
+		{
+			static float cont_marker_manip_height = 0.0f;
+			cont_marker_manip_height = ImGui::Widget_ContainerWithCollapsingTitle("Marker Manipulation", cont_marker_manip_height, cont_mapsettings_marker_manipulation,
+				false, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+	}
+
 	void imgui::devgui()
 	{
 		ImGui::SetNextWindowSize(ImVec2(900, 800), ImGuiCond_FirstUseEver);
@@ -609,6 +1029,7 @@ namespace gta4
 			ImGui::PopStyleVar(1);
 			ADD_TAB("Dev", tab_dev);
 			ADD_TAB("Game Settings", tab_gamesettings);
+			ADD_TAB("Map Settings", tab_map_settings);
 			ImGui::EndTabBar();
 		}
 		else {
@@ -852,8 +1273,8 @@ namespace gta4
 		ImGui_ImplWin32_Init(shared::globals::main_window);
 		g_game_wndproc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(shared::globals::main_window, GWLP_WNDPROC, LONG_PTR(wnd_proc_hk)));
 
+		// ---
 		m_initialized = true;
-
 		std::cout << "[IMGUI] loaded\n";
 	}
 }

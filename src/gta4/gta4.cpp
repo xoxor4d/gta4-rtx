@@ -3,7 +3,9 @@
 #include "modules/dinput_hook.hpp"
 #include "modules/game_settings.hpp"
 #include "modules/imgui.hpp"
+#include "modules/map_settings.hpp"
 #include "modules/remix_lights.hpp"
+#include "modules/remix_markers.hpp"
 #include "modules/renderer.hpp"
 #include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
@@ -22,8 +24,6 @@ namespace gta4
 			tex_addons::init_texture_addons();
 		}
 
-		//remix_lights::on_client_frame();
-
 		// check if loadscreen was active once
 		if (!game::was_loadscreen_active && game::CMenuManager__m_LoadscreenActive && *game::CMenuManager__m_LoadscreenActive) {
 			game::was_loadscreen_active = true;
@@ -36,38 +36,6 @@ namespace gta4
 			game::is_in_game = true;
 		}
 
-		//remix_lights::get()->draw_all_active_lights();
-
-		//D3DXMATRIX view_matrix, proj_matrix;
-		//if (const auto im = imgui::get(); im && im->m_dbg_use_fake_camera)
-		//{
-		//	// Construct view matrix
-		//	D3DXMATRIX rotation, translation;
-		//	D3DXMatrixRotationYawPitchRoll(&rotation,
-		//		D3DXToRadian(im->m_dbg_camera_yaw),		// Yaw in radians
-		//		D3DXToRadian(im->m_dbg_camera_pitch),	// Pitch in radians
-		//		0.0f);									// No roll for simplicity
-
-		//	D3DXMatrixTranslation(&translation,
-		//		-im->m_dbg_camera_pos[0],				// Negate for camera (moves world opposite)
-		//		-im->m_dbg_camera_pos[1],
-		//		-im->m_dbg_camera_pos[2]);
-
-		//	D3DXMatrixMultiply(&view_matrix, &rotation, &translation);
-
-		//	// Construct projection matrix
-		//	D3DXMatrixPerspectiveFovLH(&proj_matrix,
-		//		D3DXToRadian(im->m_dbg_camera_fov), // FOV in radians
-		//		im->m_dbg_camera_aspect,
-		//		im->m_dbg_camera_near_plane,
-		//		im->m_dbg_camera_far_plane);
-
-		//	shared::globals::d3d_device->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
-		//	shared::globals::d3d_device->SetTransform(D3DTS_VIEW, &view_matrix);
-		//	shared::globals::d3d_device->SetTransform(D3DTS_PROJECTION, &proj_matrix);
-		//}
-
-		//if (im->m_dbg_use_game_camera)
 		{
 			shared::globals::d3d_device->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
 
@@ -233,6 +201,8 @@ namespace gta4
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer>());
 		shared::common::loader::module_loader::register_module(std::make_unique<dinput>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_lights>());
+		shared::common::loader::module_loader::register_module(std::make_unique<map_settings>());
+		shared::common::loader::module_loader::register_module(std::make_unique<remix_markers>());
 
 		//shared::utils::hook(0x415648, pre_non_blended_surfs, HOOK_JUMP).install()->quick();
 

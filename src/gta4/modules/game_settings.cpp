@@ -1,7 +1,6 @@
 #include "std_include.hpp"
 #include "game_settings.hpp"
-
-#include "shared/common/toml.hpp"
+#include "shared/common/toml_ext.hpp"
 
 namespace gta4
 {
@@ -39,79 +38,6 @@ namespace gta4
 			try
 			{
 				auto config = toml::parse("rtx_comp\\game_settings.toml");
-
-				// #
-				auto to_bool = [](const toml::value& entry, const bool default_setting = false)
-					{
-						if (entry.is_boolean()) {
-							return static_cast<bool>(entry.as_boolean());
-						}
-
-						if (entry.is_integer()) {
-							return static_cast<bool>(entry.as_integer());
-						}
-
-						try { // this will fail and let the user know whats wrong
-							return static_cast<bool>(entry.as_boolean());
-						}
-						catch (toml::type_error& err) {
-							shared::common::set_console_color_red(true);
-							shared::common::console(); printf("%s\n", err.what());
-							shared::common::set_console_color_default();
-						}
-
-						return default_setting;
-					};
-
-				// #
-				auto to_int = [](const toml::value& entry, const int default_setting = 0)
-					{
-						if (entry.is_boolean()) {
-							return static_cast<int>(entry.as_boolean());
-						}
-
-						if (entry.is_integer()) {
-							return static_cast<int>(entry.as_integer());
-						}
-
-						if (entry.is_floating()) {
-							return static_cast<int>(entry.as_floating());
-						}
-
-						try { // this will fail and let the user know whats wrong
-							return static_cast<int>(entry.as_integer());
-						}
-						catch (toml::type_error& err) {
-							shared::common::set_console_color_red(true);
-							shared::common::console(); printf("%s\n", err.what());
-							shared::common::set_console_color_default();
-						}
-
-						return default_setting;
-					};
-
-				// #
-				auto to_float = [](const toml::value& entry, const float default_setting = 0.0f)
-					{
-						if (entry.is_integer()) {
-							return static_cast<float>(entry.as_integer());
-						}
-
-						if (entry.is_floating()) {
-							return static_cast<float>(entry.as_floating());
-						}
-
-						try { // this will fail and let the user know whats wrong
-							return static_cast<float>(entry.as_floating());
-						}
-						catch (toml::type_error& err) {
-							shared::common::set_console_color_red(true);
-							shared::common::console(); printf("%s\n", err.what());
-							shared::common::set_console_color_default();
-						}
-
-						return default_setting;
-					};
 
 				// #
 				auto to_vec = [](const toml::value& entry, const var_type type, float* default_vec = nullptr)
@@ -171,18 +97,18 @@ namespace gta4
 				if (config.contains((#name))) {																					\
 					switch (vars.##name.get_type()) {																			\
 						case (var_type_boolean):																				\
-							vars.##name.set_var(to_bool(config.at(#name), vars.##name.get_as<bool>()), true); break;			\
+							vars.##name.set_var(shared::common::toml_ext::to_bool(config.at(#name), vars.##name.get_as<bool>()), true); break;			\
 						case (var_type_integer):																				\
-							vars.##name.set_var(to_int(config.at(#name), vars.##name.get_as<int>()), true); break;				\
+							vars.##name.set_var(shared::common::toml_ext::to_int(config.at(#name), vars.##name.get_as<int>()), true); break;				\
 						case (var_type_value):																					\
-							vars.##name.set_var(to_float(config.at(#name), vars.##name.get_as<float>()), true); break;			\
+							vars.##name.set_var(shared::common::toml_ext::to_float(config.at(#name), vars.##name.get_as<float>()), true); break;			\
 						case (var_type_vec2):																					\
 						case (var_type_vec3):																					\
 						case (var_type_vec4):																					\
 							const auto vec = to_vec(config.at(#name), vars.##name.get_type(), vars.##name.get_as<float*>());	\
 							vars.##name.set_vec(vec.data(), true); break;														\
 					}																											\
-				} 
+				}
 
 				ASSIGN(fix_windowed_hud);
 				ASSIGN(fix_windowed_hud_resolution);
@@ -228,7 +154,7 @@ namespace gta4
 				shared::common::set_console_color_red(true);
 				shared::common::console();
 				std::cout << err.what() << "\n";
-				std::cout << "[GameSettings] Not writing defaults! Please check 'game_settings.toml' or remove the file to re-generate it on next startup!\n";
+				std::cout << "[!][GameSettings] Not writing defaults! Please check 'game_settings.toml' or remove the file to re-generate it on next startup!\n";
 				shared::common::set_console_color_default();
 				return false;
 			}
@@ -242,5 +168,9 @@ namespace gta4
 	game_settings::game_settings()
 	{
 		parse_toml();
+
+		// -----
+		m_initialized = true;
+		std::cout << "[GAME_SETTINGS] loaded\n";
 	}
 }

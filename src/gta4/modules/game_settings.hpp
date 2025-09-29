@@ -1,4 +1,5 @@
 #pragma once
+
 namespace gta4
 {
 	class game_settings final : public shared::common::loader::component_module
@@ -9,11 +10,21 @@ namespace gta4
 	
 		static inline game_settings* p_this = nullptr;
 		static auto get() { return &vars; }
-	
+
+		static bool is_initialized()
+		{
+			if (p_this && p_this->m_initialized) {
+				return true;
+			}
+			return false;
+		}
+
 		static void write_toml();
 		static bool parse_toml();
 	
 	private:
+		bool m_initialized = false;
+
 		union var_value
 		{
 			bool boolean;

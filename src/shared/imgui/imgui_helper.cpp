@@ -226,6 +226,25 @@ namespace ImGui
 		}
 	}
 
+	void SeparatorTextLarge(const char* text, bool pre_spacing)
+	{
+		if (pre_spacing) {
+			Spacing(0, 12);
+		}
+
+		PushFont(shared::imgui::font::BOLD_LARGE);
+		SeparatorText(text);
+		PopFont();
+		Spacing(0, 4);
+	}
+
+	// Calculates the width for each buttons to fit in a single row, accounting for ImGui's content region and inter-button spacing
+	float CalcButtonWidthSameRow(std::uint8_t btn_count)
+	{
+		const auto b = static_cast<float>(btn_count);
+		return (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * std::max(b, 0.0f)) / std::max(b, 1.0f);
+	}
+
 	// Draw wrapped text containing all unsigned integers from the provided unordered_set
 	void TextWrapped_IntegersFromUnorderedSet(const std::unordered_set<std::uint32_t>& set)
 	{
@@ -888,7 +907,7 @@ namespace ImGui
 			EndChild();
 			PopStyleVar(2);
 		}
-		SetCursorScreenPos(GetCursorScreenPos() + ImVec2(0, expanded ? 36.0f : 8.0f));
+		SetCursorScreenPos(GetCursorScreenPos() + ImVec2(0, 8.0f));
 		return GetItemRectSize().y + 6.0f/*- 28.0f*/;
 	}
 
