@@ -1,0 +1,106 @@
+#pragma once
+#include "structs.hpp"
+
+namespace mods::gta4::game
+{
+	// helper vars
+	extern bool was_loadscreen_active;
+	extern bool is_in_game;
+
+
+	// --------------
+	// game variables
+
+	extern DWORD* d3d_dev_addr;
+	extern IDirect3DVertexShader9** g_currentVertexShader;
+	extern IDirect3DPixelShader9** g_currentPixelShader;
+
+	inline IDirect3DDevice9* get_d3d_device() {
+		return reinterpret_cast<IDirect3DDevice9*>(*d3d_dev_addr);
+	}
+
+	extern bool* CMenuManager__m_MenuActive;
+	extern bool* CMenuManager__m_LoadscreenActive;
+
+	/*extern CLightSource* g_lightList;
+	extern std::uint32_t* g_lightCount;*/
+
+	extern CLightSource* g_lightListSrc;
+	extern std::uint32_t* g_lightListSrcCount;
+
+	extern CDirectionalLight* g_directionalLights;
+
+	extern grmShaderInfo_Parameter* pGlobalShaderParameters;
+	extern uint32_t* pGlobalShaderParameterCount;
+	extern grmShaderInfo_Parameter* getGlobalShaderInfoParam(const char* name);
+
+	extern char* pShaderConstFloatCountMap;
+	extern int* pRenderStateIndexMap;
+	extern g_viewports2* pViewports;
+	extern currentViewport_ptr* pCurrentViewport;
+	extern D3DXMATRIX* pCurrentWorldTransform;
+
+	extern float* pTimeCycleWetnessChange;
+	extern float* pTimeCycleWetness;
+	extern float* pTimeCycleSpecularOffset;
+
+	//extern CLightSource* m_renderLights;
+	//extern std::uint32_t* m_numRenderLights;
+	extern DWORD* m_renderLights_addr;
+	extern DWORD* m_numRenderLights_addr;
+
+	inline CLightSource* get_renderLights() {
+		return reinterpret_cast<CLightSource*>(*m_renderLights_addr);
+	}
+
+	inline std::uint32_t get_renderLightsCount() {
+		return *reinterpret_cast<std::uint32_t*>(m_numRenderLights_addr);
+	}
+
+	extern int* systemMetrics_xRight;
+	extern int* systemMetrics_yBottom;
+
+	// --------------
+	// game functions
+
+	typedef Vector(__cdecl* FindPlayerCentreOfWorld_t)(Vector*);
+		extern FindPlayerCentreOfWorld_t FindPlayerCentreOfWorld;
+
+
+	// --------------
+	// game asm offsets
+
+	extern uint32_t hk_addr__SetupVsPsPass_hk;
+	extern uint32_t func_addr__SetupTextureAndSampler;
+	extern uint32_t hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub;
+	extern uint32_t retn_addr__on_instanced_render__pre_setup_vs_ps_pass_stub;
+	extern uint32_t retn_addr__on_instanced_render__post_setup_vs_ps_pass_stub;
+	extern uint32_t retn_addr__on_phone_phase_clear_stub;
+	extern uint32_t func_addr__on_sky_render_stub;
+	extern uint32_t retn_addr__on_sky_render_stub;
+
+	extern uint32_t retn_addr__pre_entity_surfs_stub;
+	extern uint32_t hk_addr__post_entity_surfs_stub;
+
+	extern uint32_t retn_addr__pre_vehicle_surfs_stub;
+	extern uint32_t hk_addr__post_vehicle_surfs_stub;
+
+	extern uint32_t hk_addr__static_world_culling_check_hk;
+	extern uint32_t nop_addr__static_world_frustum_patch01;
+	extern uint32_t nop_addr__static_world_frustum_patch02;
+
+	extern uint32_t hk_addr__on_update_light_list_stub;
+	extern uint32_t retn_addr__on_render_light_list_stub;
+
+	extern uint32_t nop_addr__allow_commandline01;
+	extern uint32_t jmp_addr__allow_commandline02;
+
+	extern uint32_t import_addr__SetRect;
+	extern uint32_t import_addr__CreateWindowExA;
+
+	extern uint32_t nop_addr__disable_postfx_drawing;
+
+	// ---
+
+	extern void init_game_addresses();
+}

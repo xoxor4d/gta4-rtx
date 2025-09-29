@@ -1,0 +1,75 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Text garbage
+*.ii
+*.s
+
+# My garbage :)
+Win32/
+x64/
+doctest_with_main.dir/
+scripts/bench/project/*
+scripts/bench/catch*.hpp
+scripts/bench/results.txt
+build/
+build-mingw/
+*.pyc
+*vscode*
+.idea/
+cmake-build-*/
+bazel-*
+
+# MacOS/Xcode
+*.DS_Store
+*.xcodeproj/
+XCBuildData/
+
+# Visual Studio
+*.vcxproj
+*.vcxproj.filters
+*.sln
+*.lastbuildstate
+*.recipe
+*.tlog
+*.exp
+*.ilk
+*.pdb
+
+# Ninja
+build.ninja
+.ninja_log
+.ninja_deps
+
+# CMake generated
+CMakeFiles/
+CMakeScripts/
+generated/
+cmake_install.cmake
+CTestTestFile.cmake
+CMakeCache.txt
+*.FileListAbsolute.txt
+CTestCostData.txt
+*.Build.CppClean.log
+LastTest.log
+LastTestsFailed.log
+temp

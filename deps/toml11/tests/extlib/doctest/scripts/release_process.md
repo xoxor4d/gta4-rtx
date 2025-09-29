@@ -1,0 +1,18 @@
+- update version in version.txt (following semver)
+- run update_stuff.py from the scripts folder
+- regenerate test output (actually only the `version` test's output changes and that was done to maximize code coverage - might remove it to simplify the release process)
+    - first run cmake with -DDOCTEST_TEST_MODE=COLLECT
+    - then run ctest & git add the changed and/or new .txt files
+- run changelog generator (WIP)
+- commit in dev
+- rebase dev onto master (linear history instead of merge commits)
+- push all branches (git push --all)
+- create github release with the same semver tag as the changelog
+    - copy the text from a previous release and update the version numbers & dates
+- OPTIONAL: update packages (I've never done it)
+    - vcpkg https://github.com/Microsoft/vcpkg/tree/master/ports/doctest
+    - hunter
+        - https://github.com/ruslo/hunter/blob/master/cmake/configs/default.cmake
+        - https://github.com/ruslo/hunter/blob/master/cmake/projects/doctest/hunter.cmake
+    - conan
+        - https://github.com/bincrafters/conan-doctest

@@ -1,0 +1,342 @@
+﻿#pragma once
+
+namespace mods::gta4::game
+{
+	struct grmShaderInfo_Parameter
+	{
+		char nbType;
+		char nbCount;
+		char nbValueLength;
+		char nbAnnotationsCount;
+		const char* pszName;
+		const char* pszDescription;
+		int dwNameHash;
+		int dwDescriptionHash;
+		int pAnnotations;
+		void* pValue;
+		int16_t m_wVertexFragmentRegister;
+		int16_t m_wPixelFragmentRegister;
+		int pdwParameterHashes;
+		int field_24;
+		int field_28;
+		int field_2C;
+	};
+
+	enum eLightType
+	{
+		LT_POINT = 0x0,
+		LT_DIR = 0x1,
+		LT_SPOT = 0x2,
+		LT_AO = 0x3,
+		LT_CLAMPED = 0x4,
+	};
+
+	struct CLightSource
+	{
+		Vector mDirection;
+		float field_C;
+		Vector mTangent;
+		float field_1C;
+		Vector mPosition;
+		float field_2C;
+		Vector4D mColor;
+		float mIntensity;
+		eLightType mType;
+		int mFlags;
+		int mTxdHash;
+		int mTextureHash;
+		float mRadius;
+		float mInnerConeAngle;
+		float mOuterConeAngle;
+		int field_60;
+		int32_t mShadowCacheIndex;
+		int mInteriorIndex;
+		int mRoomIndex;
+		float mVolumeSize;
+		float mVolumeScale;
+		int8_t gap78[7];
+		char field_7F;
+	};
+
+	struct CDirectionalLight
+	{
+		Vector mDirection;
+		float field_C;
+		int8_t gap10[32];
+		Vector4D mColor;
+		float mIntensity;
+		int field_44;
+		int8_t gap48[56];
+	};
+
+	struct sceneviewport_s
+	{
+		char pad_0x0000[0x10]; //0x0000
+		D3DXMATRIX N0000044C; //0x0010 
+		D3DXMATRIX N00000462; //0x0050 
+		D3DXMATRIX identity; //0x0090 
+		D3DXMATRIX also_view; //0x00D0 
+		D3DXMATRIX N00000472; //0x0110 
+		D3DXMATRIX N00000476; //0x0150 
+		D3DXMATRIX view; //0x0190 
+		D3DXMATRIX proj; //0x01D0 
+		char pad_0x0210[0x5F4]; //0x0210
+	};
+
+	struct g_viewports2
+	{
+		char pad_0x0000[0x10]; //0x0000
+		sceneviewport_s* sceneviewport; //0x0010 
+		char pad_0x0014[0x2C]; //0x0014
+	}; //Size=0x0040
+
+
+	struct grcViewport
+	{
+		D3DXMATRIX world;
+		D3DXMATRIX cameraInv;
+		D3DXMATRIX N00000917;
+		D3DXMATRIX wv;
+		D3DXMATRIX wvp;
+		D3DXMATRIX viewInv;
+		D3DXMATRIX view;
+		D3DXMATRIX proj;
+		D3DXMATRIX wvpFrustum;
+		D3DXMATRIX localFrustum;
+		float wp1_x;
+		float wp1_y;
+		float wp1_w;
+		float wp1_h;
+		float wp1_minZ;
+		float wp1_maxZ;
+		float wp2_x;
+		float wp2_y;
+		float wp2_w;
+		float wp2_h;
+		float wp2_minZ;
+		float wp2_maxZ;
+		int width;
+		int height;
+		float fov;
+		float aspect;
+		float nearclip;
+		float farclip;
+		char pad_0x02C8[8];
+		float scalex;
+		float scaley;
+		char pad_0x02D8[24];
+		bool isPersp;
+		char pad_0x02F1[15];
+		float frustumClipPlane0[4];
+		float frustumClipPlane1[4];
+		float frustumClipPlane2[4];
+		float frustumClipPlane3[4];
+		float frustumClipPlane4[4];
+		float frustumClipPlane5[4];
+		char pad_0x0360[420];
+	};
+
+	struct CRenderphase
+	{
+		DWORD dword0;
+		BYTE gap4[24];
+		BYTE byte1C;
+		BYTE gap1D[147];
+		grcViewport grcviewportB0;
+		grcViewport grcviewportB1;
+		BYTE ga[100];
+		int unk;
+	};
+
+	struct currentViewport_ptr {
+		grcViewport* wp;
+	};
+
+	struct constant_register_stack_s
+	{
+		std::uint8_t type;
+		__int8 pad;
+		std::uint16_t register_num;
+		int unk;
+	};
+
+	struct ps_data_s
+	{
+		int unk0;
+		constant_register_stack_s* register_pool;
+		IDirect3DPixelShader9* shader;
+	};
+
+	struct vs_data_s
+	{
+		int unk0;
+		constant_register_stack_s* register_pool;
+		IDirect3DVertexShader9* shader;
+	};
+
+	struct const_stack_s
+	{
+		std::uint8_t constant_pool_index;
+		std::uint8_t register_pool_index;
+	};
+
+	struct vs_info_s
+	{
+		int vs_data_index;
+		const_stack_s* vs_constant_stack;
+		__int16 num_vs_constants;
+		__int16 unk;
+	};
+
+	struct ps_info_s
+	{
+		int ps_data_index;
+		const_stack_s* ps_constant_stack;
+		__int16 num_ps_constants;
+		__int16 unk;
+	};
+
+	struct renderstate_value_stack_s
+	{
+		int renderstate_index;
+		int renderstate_data;
+	};
+
+	struct current_pass_s
+	{
+		vs_info_s vs_info;
+		ps_info_s ps_info;
+		renderstate_value_stack_s* renderstate_value_stack;
+		unsigned __int16 num_renderstates;
+		__int16 pad;
+	};
+
+	
+
+
+	struct grcTexturePC_vtbl
+	{
+		void* unk1;
+		void* unk2;
+		void* unk3;
+		void* unk4;
+		void* unk5;
+		void* unk6;
+		void* unk7;
+		void* unk8;
+		void* unk9;
+		void* unk10;
+	};
+
+	struct grcTexturePC
+	{
+		grcTexturePC_vtbl* vtbl; //0x0000 
+		char pad_0x0004[0x4]; //0x0004
+		DWORD N000000D4; //0x0008 
+		DWORD N000000D5; //0x000C 
+		char pad_0x0010[0x4]; //0x0010
+		char* texture_filename; //0x0014 
+		IDirect3DBaseTexture9* d3d_texture_handle; //0x0018 
+		char pad_0x001C[0x4]; //0x001C
+		char fileformat_str[4]; //0x695888 
+		char pad_0x0024[0x2C]; //0x0024
+	}; //Size=0x0050
+
+	struct grcTextureReference_vtbl
+	{
+		void* unk1;
+		void* unk2;
+		void* unk3;
+		void* unk4;
+		void* unk5;
+		void* unk6;
+		void* unk7;
+		void* unk8;
+		void* unk9;
+		void* unk10;
+	};
+
+	struct grcTextureReference
+	{
+		grcTextureReference_vtbl* vtbl;
+		char pad_0x0004[0x4]; //0x0004
+		__int16 N00000096; //0x0008 
+		__int16 N000000CD; //0x000A 
+		char pad_0x000C[0x8]; //0x000C
+		char* texture_name_no_ext; //0x0014 
+		grcTexturePC* texture_info; //0x0018 
+		char pad_0x001C[0x44]; //0x001C
+
+	};
+
+	// should be union?
+	// also points to float arrays?
+	union shader_constant_s
+	{
+		grcTextureReference* texture_ref;
+		float* float_arr;
+		int* int_ptr;
+		BOOL* bool_ptr;
+		void* constant_ptr;
+	};
+
+	struct sampler_constant_data_s
+	{
+		__int8 unk1_lo;
+		__int8 unk2_hi;
+		__int8 unk3_lo;
+		__int8 unk3_hi;
+		int unk4;
+		int unk5;
+		int unk6;
+		int unk7;
+		int unk8;
+		int unk9;
+		int unk10;
+		int unk11;
+		int unk12;
+		int unk13;
+		int unk14;
+	};
+
+	struct shader_data_sub_s
+	{
+		sampler_constant_data_s* sampler_constant_data;
+		int pad1;
+		vs_data_s* vs_data;
+		int pad2;
+		ps_data_s* ps_data;
+		int pad3;
+		const char* shader_name;
+	};
+
+	struct shader_data_s
+	{
+		void* phase_info;
+		int pad0;
+		shader_data_sub_s sub;
+	};
+
+	struct shader_info_sub_s
+	{
+		shader_constant_s* constants;
+		shader_data_s* data;
+		__int16 unk1;
+		__int16 unk2;
+		__int16 unk3;
+		__int16 unk4;
+		__int8* constant_float_count_array;
+	};
+
+	struct sampler_data_s
+	{
+		__int16 unk01;
+		__int8 unk02;
+		__int8 unk03;
+		int unk2;
+		int unk3;
+		int unk4;
+		int unk5;
+		int unk6;
+	};
+}

@@ -1,0 +1,12 @@
+<dl>
+{{ range .Page.Pages }}
+  <dt>
+    <a href="{{ .RelPermalink }}">{{ partial "docs/title" . }}</a>
+  </dt>
+  {{ if (in $.Params "summary") -}}
+  <dd class="markdown-inner">
+    {{ default .Summary .Description }}
+  </dd>
+  {{ end -}}
+{{ end }}
+</dl>

@@ -1,0 +1,178 @@
+#pragma once
+
+namespace mods::gta4
+{
+	class imgui final : public shared::common::loader::component_module
+	{
+	public:
+		imgui();
+
+		static inline imgui* p_this = nullptr;
+		static imgui* get() { return p_this; }
+
+		static void on_present();
+
+		void devgui();
+		bool input_message(UINT message_type, WPARAM wparam, LPARAM lparam);
+
+		bool m_initialized_device = false;
+
+		void style_xo();
+
+		ImVec4 ImGuiCol_ButtonGreen = ImVec4(0.3f, 0.4f, 0.05f, 0.7f);
+		ImVec4 ImGuiCol_ButtonYellow = ImVec4(0.4f, 0.3f, 0.1f, 0.8f);
+		ImVec4 ImGuiCol_ButtonRed = ImVec4(0.48f, 0.15f, 0.15f, 1.00f);
+		ImVec4 ImGuiCol_ContainerBackground = ImVec4(0.220f, 0.220f, 0.220f, 0.863f);
+		ImVec4 ImGuiCol_ContainerBorder = ImVec4(0.099f, 0.099f, 0.099f, 0.901f);
+
+		Vector m_debug_vector = { 0.0f, 0.0f, 0.0f };
+		Vector m_debug_vector2 = { 0.0f, 0.0f, 0.0f };
+
+		D3DXMATRIX m_dbg_phone_projection_matrix_offset;
+		D3DXMATRIX m_debug_mtx02;
+		D3DXMATRIX m_debug_mtx03;
+
+		bool m_dbg_do_not_render_static = false;
+		bool m_dbg_do_not_render_vehicle = false;
+		bool m_dbg_do_not_render_instances = false;
+		bool m_dbg_do_not_render_stencil_zero = false;
+		bool m_dbg_do_not_render_tree_foliage = false;
+		bool m_dbg_do_not_render_ff = false;
+		bool m_dbg_toggle_ff = false;
+		bool m_dbg_disable_ps_for_static = false;
+		int m_dbg_tag_static_emissive_as_index = -1;
+
+		bool m_dbg_enable_ignore_shader_logic = false;
+		bool m_dbg_ignore_all = false;
+		bool m_dbg_ignore_drawprimitive = false;
+		bool m_dbg_ignore_cascade = false;
+		bool m_dbg_ignore_deferred_lighting = false;
+		bool m_dbg_ignore_gpuptfx_simplerender = false;
+		bool m_dbg_ignore_gta_atmoscatt_clouds = false;
+		bool m_dbg_ignore_gta_cubemap_reflect = false;
+		bool m_dbg_ignore_gta_cutout_fence = false;
+		bool m_dbg_ignore_gta_decal = false;
+		bool m_dbg_ignore_gta_decal_amb_only = false;
+		bool m_dbg_ignore_gta_decal_dirt = false;
+		bool m_dbg_ignore_gta_decal_glue = false;
+		bool m_dbg_ignore_gta_decal_normal_only = false;
+		bool m_dbg_ignore_gta_default = false;
+		bool m_dbg_ignore_gta_diffuse_instance = false;
+		bool m_dbg_ignore_gta_emissive = false;
+		bool m_dbg_ignore_gta_emissivenight = false;
+		bool m_dbg_ignore_gta_emissivestrong = false;
+		bool m_dbg_ignore_gta_glass = false;
+		bool m_dbg_ignore_gta_glass_emissive = false;
+		bool m_dbg_ignore_gta_glass_emissivenight = false;
+		bool m_dbg_ignore_gta_glass_normal_spec_reflect = false;
+		bool m_dbg_ignore_gta_glass_reflect = false;
+		bool m_dbg_ignore_gta_glass_spec = false;
+		bool m_dbg_ignore_gta_grass = false;
+		bool m_dbg_ignore_gta_hair_sorted_alpha = false;
+		bool m_dbg_ignore_gta_hair_sorted_alpha_exp = false;
+		bool m_dbg_ignore_gta_im = false;
+		bool m_dbg_ignore_gta_normal = false;
+		bool m_dbg_ignore_gta_normal_cubemap_reflect = false;
+		bool m_dbg_ignore_gta_normal_decal = false;
+		bool m_dbg_ignore_gta_normal_reflect = false;
+		bool m_dbg_ignore_gta_normal_reflect_alpha = false;
+		bool m_dbg_ignore_gta_normal_reflect_decal = false;
+		bool m_dbg_ignore_gta_normal_spec = false;
+		bool m_dbg_ignore_gta_normal_spec_cubemap_reflect = false;
+		bool m_dbg_ignore_gta_normal_spec_decal = false;
+		bool m_dbg_ignore_gta_normal_spec_reflect = false;
+		bool m_dbg_ignore_gta_normal_spec_reflect_decal = false;
+		bool m_dbg_ignore_gta_normal_spec_reflect_emissive = false;
+		bool m_dbg_ignore_gta_normal_spec_reflect_emissivenight = false;
+		bool m_dbg_ignore_gta_parallax = false;
+		bool m_dbg_ignore_gta_parallax_specmap = false;
+		bool m_dbg_ignore_gta_parallax_steep = false;
+		bool m_dbg_ignore_gta_ped = false;
+		bool m_dbg_ignore_gta_ped_face = false;
+		bool m_dbg_ignore_gta_ped_reflect = false;
+		bool m_dbg_ignore_gta_ped_skin = false;
+		bool m_dbg_ignore_gta_ped_skin_blendshape = false;
+		bool m_dbg_ignore_gta_projtex = false;
+		bool m_dbg_ignore_gta_projtex_steep = false;
+		bool m_dbg_ignore_gta_radar = false;
+		bool m_dbg_ignore_gta_reflect = false;
+		bool m_dbg_ignore_gta_reflect_decal = false;
+		bool m_dbg_ignore_gta_rmptfx_gpurender = false;
+		bool m_dbg_ignore_gta_rmptfx_litsprite = false;
+		bool m_dbg_ignore_gta_rmptfx_mesh = false;
+		bool m_dbg_ignore_gta_rmptfx_raindrops = false;
+		bool m_dbg_ignore_gta_spec = false;
+		bool m_dbg_ignore_gta_spec_decal = false;
+		bool m_dbg_ignore_gta_spec_reflect = false;
+		bool m_dbg_ignore_gta_spec_reflect_decal = false;
+		bool m_dbg_ignore_gta_terrain = false;
+		bool m_dbg_ignore_gta_trees = false;
+		bool m_dbg_ignore_gta_vehicle_badges = false;
+		bool m_dbg_ignore_gta_vehicle_basic = false;
+		bool m_dbg_ignore_gta_vehicle_chrome = false;
+		bool m_dbg_ignore_gta_vehicle_disc = false;
+		bool m_dbg_ignore_gta_vehicle_generic = false;
+		bool m_dbg_ignore_gta_vehicle_interior = false;
+		bool m_dbg_ignore_gta_vehicle_interior2 = false;
+		bool m_dbg_ignore_gta_vehicle_lightsemissive = false;
+		bool m_dbg_ignore_gta_vehicle_mesh = false;
+		bool m_dbg_ignore_gta_vehicle_paint1 = false;
+		bool m_dbg_ignore_gta_vehicle_paint2 = false;
+		bool m_dbg_ignore_gta_vehicle_paint3 = false;
+		bool m_dbg_ignore_gta_vehicle_rims1 = false;
+		bool m_dbg_ignore_gta_vehicle_rims2 = false;
+		bool m_dbg_ignore_gta_vehicle_rims3 = false;
+		bool m_dbg_ignore_gta_vehicle_rubber = false;
+		bool m_dbg_ignore_gta_vehicle_shuts = false;
+		bool m_dbg_ignore_gta_vehicle_tire = false;
+		bool m_dbg_ignore_gta_vehicle_vehglass = false;
+		bool m_dbg_ignore_gta_wire = false;
+		bool m_dbg_ignore_mirror = false;
+		bool m_dbg_ignore_rage_atmoscatt_clouds = false;
+		bool m_dbg_ignore_rage_billboard_nobump = false;
+		bool m_dbg_ignore_rage_bink = false;
+		bool m_dbg_ignore_rage_default = false;
+		bool m_dbg_ignore_rage_fastmipmap = false;
+		bool m_dbg_ignore_rage_im = false;
+		bool m_dbg_ignore_rage_perlinnoise = false;
+		bool m_dbg_ignore_rage_postfx = false;
+		bool m_dbg_ignore_rmptfx_collision = false;
+		bool m_dbg_ignore_rmptfx_default = false;
+		bool m_dbg_ignore_rmptfx_litsprite = false;
+		bool m_dbg_ignore_shadowSmartBlit = false;
+		bool m_dbg_ignore_shadowZ = false;
+		bool m_dbg_ignore_shadowZDir = false;
+		bool m_dbg_ignore_water = false;
+		bool m_dbg_ignore_waterTex = false;
+
+
+		static bool is_initialized()
+		{
+			if (const auto im = imgui::get(); im && im->m_initialized){
+				return true;
+			}
+			return false;
+		}
+
+	private:
+		void tab_dev();
+		void tab_gamesettings();
+		bool m_im_window_focused = false;
+		bool m_im_window_hovered = false;
+		std::string m_devgui_custom_footer_content;
+
+		bool m_initialized = false;
+
+		static void questionmark(const char* desc)
+		{
+			ImGui::TextDisabled("(?)");
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(desc);
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+		}
+	};
+}

@@ -1,0 +1,6 @@
+[doctest] listing all test suites
+===============================================================================
+exception related
+===============================================================================
+[doctest] unskipped test cases passing the current filters: 4
+[doctest] test suites with unskipped test cases passing the current filters: 1

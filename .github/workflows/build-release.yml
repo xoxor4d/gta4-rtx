@@ -1,0 +1,55 @@
+name: Build-Release
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build binary
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        configuration:
+          - Release
+
+    steps:
+      - name: Wait for previous workflows
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: softprops/turnstyle@v1
+        with:
+          poll-interval-seconds: 10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check out files
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+          lfs: false
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Generate project files
+        run: tools/premake5 vs2022
+
+      - name: Set up problem matching
+        uses: ammaraskar/msvc-problem-matcher@master
+
+      - name: Build ${{matrix.configuration}}-binaries-gta4-rtx
+        run: msbuild /m /v:minimal /p:Configuration=${{matrix.configuration}} /p:Platform=Win32 build/gta4-rtx.sln
+
+      - name: Move build files 
+        run: |
+          move build/bin/${{matrix.configuration}}/*.dll ./assets/
+          move build/bin/${{matrix.configuration}}/*.asi ./assets/
+          move build/bin/${{matrix.configuration}}/*.pdb ./assets/
+
+      - name: Upload ${{matrix.configuration}}-binaries-gta4-rtx
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{matrix.configuration}}-binaries-gta4-rtx
+          include-hidden-files: true
+          path: |
+            ./assets/
