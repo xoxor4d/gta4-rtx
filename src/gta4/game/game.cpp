@@ -49,11 +49,16 @@ namespace gta4::game
 	int* systemMetrics_xRight = nullptr;
 	int* systemMetrics_yBottom = nullptr;
 
+	uint32_t* ms_dwNativeTableSize = nullptr;
+	uint32_t** ms_pNatives = nullptr;
+
+	uint8_t* m_CodePause = nullptr;
+
 	// --------------
 	// game functions
 
-	FindPlayerCentreOfWorld_t FindPlayerCentreOfWorld = (FindPlayerCentreOfWorld_t)nullptr;
-
+	FindPlayerCentreOfWorld_t FindPlayerCentreOfWorld = nullptr;
+	getNativeAddress_t getNativeAddress = nullptr;
 
 	// --------------
 	// game asm offsets
@@ -208,6 +213,20 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
+		if (const auto offset = shared::utils::mem::find_pattern("89 1D ? ? ? ? ? ? F7 D9 0B C8 51 8B CE FF 57 ? 33 C9 A3 ? ? ? ? 85 DB 7E ? ? ? ? ? ? ? ? 41 3B CB 7D ? A1 ? ? ? ? EB ? 5F 5E C7 05 ? ? ? ? ? ? ? ? 5B C2 ? ? 5F 5E 89 0D ? ? ? ? 5B C2 ? ? 56", 
+			2, "ms_dwNativeTableSize", use_pattern, 0x86FC94); offset) {
+			ms_dwNativeTableSize = (uint32_t*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("8B 15 ? ? ? ? 53 64 8B 1D ? ? ? ? 85 D2", 2, "ms_pNatives", use_pattern, 0x86E730); offset) {
+			ms_pNatives = (uint32_t**)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+
+		if (const auto offset = shared::utils::mem::find_pattern("0A 05 ? ? ? ? 75 ? F6 43", 2, "m_CodePause", use_pattern, 0x4C4D4F); offset) {
+			m_CodePause = (uint8_t*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 		// end GAME_VARIABLES
 #pragma endregion
 
@@ -217,6 +236,10 @@ namespace gta4::game
 
 		if (const auto offset = shared::utils::mem::find_pattern("E8 ? ? ? ? F3 0F 10 44 24 ? F3 0F 10 64 24 ? F3 0F 5C 44 24", 0, "FindPlayerCentreOfWorld", use_pattern, 0x94C1F2); offset) {
 			FindPlayerCentreOfWorld = (FindPlayerCentreOfWorld_t)shared::utils::mem::resolve_relative_call_address(offset); found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("E8 ? ? ? ? 8B D8 85 DB 75 ? 50", 0, "getNativeAddress", use_pattern, 0x86E508); offset) {
+			getNativeAddress = (getNativeAddress_t)shared::utils::mem::resolve_relative_call_address(offset); found_pattern_count++;
 		} total_pattern_count++;
 
 		// end GAME_FUNCTIONS

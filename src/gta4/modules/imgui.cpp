@@ -3,6 +3,7 @@
 
 #include "game_settings.hpp"
 #include "map_settings.hpp"
+#include "natives.hpp"
 #include "remix_lights.hpp"
 #include "remix_vars.hpp"
 #include "shared/common/toml_ext.hpp"
@@ -815,9 +816,18 @@ namespace gta4
 					selection = nullptr;
 				}
 			}
-			/*else if (selection) {
-				game::debug_add_text_overlay(&selection->origin.x, "[ImGui] Selected Marker", 0, 0.8f, 1.0f, 0.3f, 0.8f);
-			}*/
+			else if (selection) 
+			{
+				int32_t vp_id = 0u;
+				natives::GetGameViewportId(&vp_id);
+
+				float vp_pos[2] = {};
+				natives::GetViewportPositionOfCoord(selection->origin.x, selection->origin.y, selection->origin.z, vp_id, &vp_pos[0], &vp_pos[1]);
+
+				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+				ImGui::GetBackgroundDrawList()->AddText(ImVec2(vp_pos[0], vp_pos[1]), ImGui::GetColorU32(ImGuiCol_Text), "[ImGui] Selected Marker");
+				ImGui::PopFont();
+			}
 
 			// remove entry
 			if (marked_for_deletion)
@@ -972,7 +982,7 @@ namespace gta4
 		{
 			static float cont_marker_manip_height = 0.0f;
 			cont_marker_manip_height = ImGui::Widget_ContainerWithCollapsingTitle("Marker Manipulation", cont_marker_manip_height, cont_mapsettings_marker_manipulation,
-				false, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+				true, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
 

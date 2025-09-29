@@ -4,6 +4,7 @@
 #include "modules/game_settings.hpp"
 #include "modules/imgui.hpp"
 #include "modules/map_settings.hpp"
+#include "modules/natives.hpp"
 #include "modules/remix_lights.hpp"
 #include "modules/remix_markers.hpp"
 #include "modules/renderer.hpp"
@@ -203,6 +204,7 @@ namespace gta4
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<map_settings>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_markers>());
+		shared::common::loader::module_loader::register_module(std::make_unique<natives>());
 
 		//shared::utils::hook(0x415648, pre_non_blended_surfs, HOOK_JUMP).install()->quick();
 

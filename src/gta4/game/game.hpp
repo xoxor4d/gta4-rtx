@@ -60,12 +60,19 @@ namespace gta4::game
 	extern int* systemMetrics_xRight;
 	extern int* systemMetrics_yBottom;
 
+	extern uint32_t* ms_dwNativeTableSize;
+	extern uint32_t** ms_pNatives;
+
+	extern uint8_t* m_CodePause;
+
 	// --------------
 	// game functions
 
 	typedef Vector(__cdecl* FindPlayerCentreOfWorld_t)(Vector*);
 		extern FindPlayerCentreOfWorld_t FindPlayerCentreOfWorld;
 
+	typedef	void* (__stdcall* getNativeAddress_t)(uint32_t);
+		extern getNativeAddress_t getNativeAddress;
 
 	// --------------
 	// game asm offsets
