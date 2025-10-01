@@ -4,7 +4,7 @@
 
 namespace shared::imgui
 {
-	//bool world2screen(const Vector& in, Vector& out);
+	bool world_to_screen(const Vector& world_position, ImVec2& screen_position_out);
 
 	void get_and_add_integers_to_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len = 0u, bool clear_buf = false);
 	void get_and_remove_integers_from_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len = 0u, bool clear_buf = false);

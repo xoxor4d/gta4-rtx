@@ -818,14 +818,11 @@ namespace gta4
 			}
 			else if (selection) 
 			{
-				int32_t vp_id = 0u;
-				natives::GetGameViewportId(&vp_id);
-
-				float vp_pos[2] = {};
-				natives::GetViewportPositionOfCoord(selection->origin.x, selection->origin.y, selection->origin.z, vp_id, &vp_pos[0], &vp_pos[1]);
+				ImVec2 viewport_pos = {};
+				shared::imgui::world_to_screen(selection->origin, viewport_pos);
 
 				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-				ImGui::GetBackgroundDrawList()->AddText(ImVec2(vp_pos[0], vp_pos[1]), ImGui::GetColorU32(ImGuiCol_Text), "[ImGui] Selected Marker");
+				ImGui::GetBackgroundDrawList()->AddText(viewport_pos, ImGui::GetColorU32(ImGuiCol_Text), "[ImGui] Selected Marker");
 				ImGui::PopFont();
 			}
 

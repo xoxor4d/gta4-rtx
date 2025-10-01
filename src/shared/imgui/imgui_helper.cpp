@@ -4,37 +4,18 @@
 #include "imgui_internal.h"
 #include "imgui_helper.hpp"
 
+#include "gta4/modules/natives.hpp"
 #include "shared/globals.hpp"
 
 namespace shared::imgui
 {
-	/*bool world2screen(const Vector& in, Vector& out)
+	bool world_to_screen(const Vector& world_position, ImVec2& screen_position_out)
 	{
-		auto& matrix = interfaces::get()->m_engine->world_to_screen_matrix();
+		int32_t vp_id = 0u;
+		gta4::natives::GetGameViewportId(&vp_id);
 
-		out.x = in.Dot(matrix.m[0]) + matrix.m[0][3];
-		out.y = in.Dot(matrix.m[1]) + matrix.m[1][3];
-		out.z = 0.0f;
-
-		const float perspective_div = in.Dot(matrix.m[3]) + matrix.m[3][3];
-		if (perspective_div < 0.001f)
-		{
-			out.x *= 100000.0f;
-			out.y *= 100000.0f;
-			return false;
-		}
-
-		out.x /= perspective_div;
-		out.y /= perspective_div;
-
-		int screen_w, screen_h;
-		interfaces::get()->m_engine->get_screen_size(screen_w, screen_h);
-
-		out.x = ((float)screen_w / 2.0f) + (out.x * (float)screen_w) / 2.0f;
-		out.y = ((float)screen_h / 2.0f) - (out.y * (float)screen_h) / 2.0f;
-
-		return true;
-	}*/
+		return gta4::natives::GetViewportPositionOfCoord(world_position.x, world_position.y, world_position.z, vp_id, &screen_position_out.x, &screen_position_out.y);
+	}
 
 	void get_and_add_integers_to_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len, const bool clear_buf)
 	{
