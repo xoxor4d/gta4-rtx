@@ -37,6 +37,36 @@ namespace gta4
 		return TRUE;
 	}
 
+	// we want to focus and lock the mouse cursor to the game window on init or we get mouse decoupling in windowed mode
+	DWORD WINAPI focus_and_lock_cursor_on_init()
+	{
+		HWND hwnd = shared::globals::main_window;
+		if (!IsWindow(hwnd)) {
+			return 1;
+		}
+
+		BringWindowToTop(hwnd);
+		SetActiveWindow(hwnd);
+		SetForegroundWindow(hwnd);
+		SetFocus(hwnd);
+
+		// lock cursor to client rect
+		RECT rect;
+		GetClientRect(hwnd, &rect);
+		POINT topLeft = { 0, 0 };
+		ClientToScreen(hwnd, &topLeft);
+		OffsetRect(&rect, topLeft.x, topLeft.y);
+		ClipCursor(&rect);
+
+		// center cursor
+		const int centerX = topLeft.x + (rect.right - rect.left) / 2;
+		const int centerY = topLeft.y + (rect.bottom - rect.top) / 2;
+		SetCursorPos(centerX, centerY);
+		ShowCursor(FALSE);
+
+		return 0;
+	}
+
 	DWORD WINAPI find_game_window_by_sha1([[maybe_unused]] LPVOID lpParam)
 	{
 		shared::common::console();
@@ -69,6 +99,8 @@ namespace gta4
 		if (!shared::common::flags::has_flag("nobeep")) {
 			Beep(523, 100);
 		}
+
+		focus_and_lock_cursor_on_init();
 
 		gta4::main();
 		return 0;
@@ -110,6 +142,27 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 	return gWnd;
 }
 
+void on_create_game_window_hk()
+{
+	// delayed hooking because of FusionFix
+	shared::utils::hook::set(gta4::game::import_addr__SetRect, SetRect_hk);
+	shared::utils::hook::set(gta4::game::import_addr__CreateWindowExA, CreateWindowExA_hk);
+}
+
+__declspec (naked) void on_create_game_window_stub()
+{
+	__asm
+	{
+		pushad;
+		call	on_create_game_window_hk;
+		popad;
+
+		push    0;
+		cmovnz  ebx, edi;
+		jmp		gta4::game::retn_addr__on_create_game_window_hk;
+	}
+}
+
 BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 {
 	if (ul_reason_for_call == DLL_PROCESS_ATTACH) 
@@ -132,8 +185,8 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		shared::common::loader::module_loader::register_module(std::make_unique<gta4::d3d9ex>());
 		shared::common::loader::module_loader::register_module(std::make_unique<gta4::game_settings>());
 
-		shared::utils::hook::set(gta4::game::import_addr__SetRect, SetRect_hk);
-		shared::utils::hook::set(gta4::game::import_addr__CreateWindowExA, CreateWindowExA_hk);
+		// we have to hook SetRect and CreateWindowExA after FusionFix (disables FusionFix' hooks)
+		shared::utils::hook(gta4::game::hk_addr__on_create_game_window_hk, on_create_game_window_stub, HOOK_JUMP).install()->quick();
 
 		// allow actual commandline args + commandline.txt
 		shared::utils::hook::nop(gta4::game::nop_addr__allow_commandline01, 6);
