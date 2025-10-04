@@ -225,8 +225,31 @@ namespace gta4
 					ImGui::Checkbox("Disable Pixelshader for Static objects rendered via FF", &im->m_dbg_disable_ps_for_static);
 					ImGui::SliderInt("Tag EmissiveNight surfaces as Category", &im->m_dbg_tag_static_emissive_as_index, -1, 23);
 
+					ImGui::Spacing(0, 6);
+
 					ImGui::Checkbox("Visualize Api Lights", &cmd::show_api_lights);
 					TT("Visualize all spawned api lights");
+
+					ImGui::Spacing(0, 6);
+
+					ImGui::DragFloat("TimeCyc Fog Start Scalar", &im->m_dbg_timecyc_fog_start_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Fog Density Scalar", &im->m_dbg_timecyc_fog_density_scalar, 0.01f);
+
+					ImGui::Spacing(0, 2);
+
+					ImGui::DragFloat("TimeCyc Debug01 Scalar", &im->m_dbg_timecyc_debug01_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug02 Scalar", &im->m_dbg_timecyc_debug02_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug03 Scalar", &im->m_dbg_timecyc_debug03_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug04 Scalar", &im->m_dbg_timecyc_debug04_scalar, 0.01f);
+
+					ImGui::Spacing(0, 2);
+
+					ImGui::DragFloat("TimeCyc Debug01 Offset", &im->m_dbg_timecyc_debug01_offset, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug02 Offset", &im->m_dbg_timecyc_debug02_offset, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug03 Offset", &im->m_dbg_timecyc_debug03_offset, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug04 Offset", &im->m_dbg_timecyc_debug04_offset, 0.01f);
+
+					ImGui::Spacing(0, 6);
 
 					ImGui::DragFloat3("Debug Vector", &im->m_debug_vector.x, 0.01f);
 					ImGui::DragFloat3("Debug Vector 2", &im->m_debug_vector2.x, 0.1f);
@@ -349,9 +372,7 @@ namespace gta4
 				ImGui::Checkbox("Fixed function Trees", gs->fixed_function_trees.get_as<bool*>()); TT(gs->fixed_function_trees.get_tooltip_string().c_str());
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->tree_foliage_alpha_cutout_value.get_as<float*>();
-
 					if (ImGui::DragFloat("Tree Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
@@ -359,9 +380,7 @@ namespace gta4
 				}
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->grass_foliage_alpha_cutout_value.get_as<float*>();
-
 					if (ImGui::DragFloat("Grass Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
@@ -369,63 +388,65 @@ namespace gta4
 				}
 
 				ImGui::Spacing(0, 8);
-				ImGui::SeparatorText(" Culling ");
+				ImGui::SeparatorText(" Anti Culling of Static Objects ");
 				ImGui::Spacing(0, 8);
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->nocull_dist_near_static.get_as<float*>();
-
-					if (ImGui::DragFloat("Near NoCull Distance Static Objects", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f")) {
+					if (ImGui::DragFloat("Near: No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
 					TT(gs->nocull_dist_near_static.get_tooltip_string().c_str());
 				}
 
+				ImGui::Spacing(0, 4);
+
 				// ----
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->nocull_dist_medium_static.get_as<float*>();
-					const auto& near_dist = gs->nocull_dist_near_static.get_as<float>();
-
-					if (ImGui::DragFloat("Medium NoCull Distance Static Objects", gs_var_ptr, 0.5f, near_dist, FLT_MAX, "%.2f")) {
-						*gs_var_ptr = *gs_var_ptr < near_dist ? 0.0f : *gs_var_ptr;
+					//const auto& near_dist = gs->nocull_dist_near_static.get_as<float>();
+					if (ImGui::DragFloat("Near to Medium Cascade: Medium Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
 					TT(gs->nocull_dist_medium_static.get_tooltip_string().c_str());
 				}
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->nocull_radius_medium_static.get_as<float*>();
-
-					if (ImGui::DragFloat("Medium NoCull Radius Static Objects", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f")) {
+					if (ImGui::DragFloat("Near to Medium Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
 					TT(gs->nocull_radius_medium_static.get_tooltip_string().c_str());
 				}
 
+				ImGui::Spacing(0, 4);
+
 				// ----
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->nocull_dist_far_static.get_as<float*>();
-					const auto& med_dist = gs->nocull_dist_medium_static.get_as<float>();
-
-					if (ImGui::DragFloat("Far NoCull Distance Static Objects", gs_var_ptr, 0.5f, med_dist, FLT_MAX, "%.2f")) {
-						*gs_var_ptr = *gs_var_ptr < med_dist ? 0.0f : *gs_var_ptr;
+					//const auto& med_dist = gs->nocull_dist_medium_static.get_as<float>();
+					if (ImGui::DragFloat("Medium to Far Cascade: Far Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
 					TT(gs->nocull_dist_far_static.get_tooltip_string().c_str());
 				}
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->nocull_radius_far_static.get_as<float*>();
-
-					if (ImGui::DragFloat("Far NoCull Radius Static Objects", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f")) {
+					if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
 					TT(gs->nocull_radius_far_static.get_tooltip_string().c_str());
+				}
+
+				{
+					auto gs_var_ptr = gs->nocull_height_far_static.get_as<float*>();
+					if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Height", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+					}
+					TT(gs->nocull_height_far_static.get_tooltip_string().c_str());
 				}
 
 				ImGui::Spacing(0, 8);
@@ -433,9 +454,7 @@ namespace gta4
 				ImGui::Spacing(0, 8);
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->game_wetness_scalar.get_as<float*>();
-
 					if (ImGui::DragFloat("Game Wetness Scalar", gs_var_ptr, 0.02f, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
@@ -450,9 +469,7 @@ namespace gta4
 				TT(gs->decal_dirt_shader_usage.get_tooltip_string().c_str());
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->decal_dirt_shader_scalar.get_as<float*>();
-
 					if (ImGui::DragFloat("Dirt Decal Shader Scalar", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
@@ -460,9 +477,7 @@ namespace gta4
 				}
 
 				{
-					//SET_CHILD_WIDGET_WIDTH_MAN(120.0f);
 					auto gs_var_ptr = gs->decal_dirt_shader_contrast.get_as<float*>();
-
 					if (ImGui::DragFloat("Dirt Decal Shader Contrast", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}

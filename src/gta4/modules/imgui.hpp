@@ -42,6 +42,19 @@ namespace gta4
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;
 
+		float m_dbg_timecyc_fog_start_scalar = 1.0f;
+		float m_dbg_timecyc_fog_density_scalar = 1.0f;
+
+		float m_dbg_timecyc_debug01_scalar = 1.0f;
+		float m_dbg_timecyc_debug02_scalar = 1.0f;
+		float m_dbg_timecyc_debug03_scalar = 1.0f;
+		float m_dbg_timecyc_debug04_scalar = 1.0f;
+
+		float m_dbg_timecyc_debug01_offset = 1.0f;
+		float m_dbg_timecyc_debug02_offset = 1.0f;
+		float m_dbg_timecyc_debug03_offset = 1.0f;
+		float m_dbg_timecyc_debug04_offset = 1.0f;
+
 		bool m_dbg_enable_ignore_shader_logic = false;
 		bool m_dbg_ignore_all = false;
 		bool m_dbg_ignore_drawprimitive = false;

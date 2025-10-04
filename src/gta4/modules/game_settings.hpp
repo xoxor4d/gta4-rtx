@@ -369,14 +369,22 @@ namespace gta4
 			{
 				"nocull_dist_far_static",
 				("Distance (radius around player) were an object radius is checked against the 'nocull_radius_far_static' setting. Objects with larger radii will NOT get culled."),
-				300.0f
+				1000.0f
 			};
 
 			variable nocull_radius_far_static =
 			{
 				"nocull_radius_far_static",
 				("The minimum radius an object has to have to not get culled within the distance set by 'nocull_dist_far_static'"),
-				80.0f
+				50.0f
+			};
+
+			variable nocull_height_far_static =
+			{
+				"nocull_height_far_static",
+				("The minimum height an object has to have to not get culled within the distance set by 'nocull_dist_far_static'"
+				"# Setting this to 0 disables the condition."),
+				13.0f
 			};
 
 			// --
@@ -499,7 +507,7 @@ namespace gta4
 			{
 				"decal_dirt_shader_scalar",
 				("Scale decal_dirt shader strength"),
-				0.5f
+				0.25f
 			};
 
 			variable decal_dirt_shader_contrast =

@@ -375,8 +375,10 @@ namespace gta4
 		}
 		else
 		{
+			shared::common::set_console_color_red(true);
 			shared::common::console();
 			std::cout << "[RemixVars] Failed to find config : \"rtx_comp\\map_configs\" in \"" << conf_name << "\"\n";
+			shared::common::set_console_color_default();
 		}
 	}
 
@@ -521,7 +523,7 @@ namespace gta4
 		}
 	}
 
-	void remix_vars::on_map_load(std::string map_name)
+	/*void remix_vars::on_map_load(std::string map_name)
 	{
 		remix_vars::custom_options.clear();
 		remix_vars::interpolate_stack.clear();
@@ -533,7 +535,7 @@ namespace gta4
 		}
 
 		parse_and_apply_conf_with_lerp(map_name, shared::utils::string_hash64(map_name), EASE_TYPE_SIN_IN, 0.0f, 0.0f);
-	}
+	}*/
 
 	// Interpolates all variables on the 'interpolate_stack' and removes them once they reach their goal. \n
 	void remix_vars::on_client_frame()

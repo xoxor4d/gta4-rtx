@@ -118,7 +118,7 @@ namespace gta4
 		static void				parse_rtx_options();
 		static void				parse_and_apply_conf_with_lerp(const std::string& conf_name, const std::uint64_t& identifier, const EASE_TYPE ease, float duration, float delay = 0.0f, float delay_transition_back = 0.0f);
 
-		static void				on_map_load(std::string map_name);
+		//static void				on_map_load(std::string map_name);
 		static void				on_client_frame();
 
 		struct interpolate_entry_s

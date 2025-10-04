@@ -53,6 +53,7 @@ namespace gta4::game
 	uint32_t** ms_pNatives = nullptr;
 
 	uint8_t* m_CodePause = nullptr;
+	TimeCycleParams* m_pCurrentTimeCycleParams = nullptr;
 
 	// --------------
 	// game functions
@@ -88,6 +89,8 @@ namespace gta4::game
 	uint32_t nop_addr__allow_commandline01 = 0u;
 	uint32_t jmp_addr__allow_commandline02 = 0u;
 
+	uint32_t hk_addr__on_create_game_window_hk = 0u;
+	uint32_t retn_addr__on_create_game_window_hk = 0u;
 	uint32_t import_addr__SetRect = 0u;
 	uint32_t import_addr__CreateWindowExA = 0u;
 
@@ -227,6 +230,13 @@ namespace gta4::game
 			m_CodePause = (uint8_t*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
+
+
+
+		if (const auto offset = shared::utils::mem::find_pattern("68 ? ? ? ? E8 ? ? ? ? 0F B6 05 ? ? ? ? 8B 0D", 1, "m_pCurrentTimeCycleParams", use_pattern, 0xAF4306); offset) {
+			m_pCurrentTimeCycleParams = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 		// end GAME_VARIABLES
 #pragma endregion
 
@@ -336,6 +346,12 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
+		// 
+		if (const auto offset = shared::utils::mem::find_pattern("6A ? 0F 45 DF", 0, "hk_addr__on_create_game_window_hk", use_pattern, 0x420D91); offset) {
+			hk_addr__on_create_game_window_hk = offset; found_pattern_count++;
+			retn_addr__on_create_game_window_hk = hk_addr__on_create_game_window_hk + 5u;
+		} total_pattern_count++;
+
 		// 0xE733C4
 		if (const auto offset = shared::utils::mem::find_pattern("FF 15 ? ? ? ? 80 3D ? ? ? ? ? 74 ? 6A", 2, "import_addr__SetRect", use_pattern, 0x4209C5); offset) {
 			import_addr__SetRect = *(DWORD*)offset; found_pattern_count++;
@@ -345,6 +361,8 @@ namespace gta4::game
 		if (const auto offset = shared::utils::mem::find_pattern("FF 15 ? ? ? ? 8B F0 6A", 2, "import_addr__CreateWindowExA", use_pattern, 0x420E5B); offset) {
 			import_addr__CreateWindowExA = *(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
+
+
 
 
 		if (const auto offset = shared::utils::mem::find_pattern("A2 ? ? ? ? E8 ? ? ? ? 8B CE E8 ? ? ? ? 8B CE", 12, "nop_addr__disable_postfx_drawing", use_pattern, 0x92F547); offset) {

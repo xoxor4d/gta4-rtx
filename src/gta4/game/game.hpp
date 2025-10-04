@@ -65,6 +65,8 @@ namespace gta4::game
 
 	extern uint8_t* m_CodePause;
 
+	extern TimeCycleParams* m_pCurrentTimeCycleParams;
+
 	// --------------
 	// game functions
 
@@ -102,6 +104,8 @@ namespace gta4::game
 	extern uint32_t nop_addr__allow_commandline01;
 	extern uint32_t jmp_addr__allow_commandline02;
 
+	extern uint32_t hk_addr__on_create_game_window_hk;
+	extern uint32_t retn_addr__on_create_game_window_hk;
 	extern uint32_t import_addr__SetRect;
 	extern uint32_t import_addr__CreateWindowExA;
 

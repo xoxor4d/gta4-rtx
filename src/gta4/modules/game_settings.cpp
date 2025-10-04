@@ -121,6 +121,7 @@ namespace gta4
 				ASSIGN(nocull_radius_medium_static);
 				ASSIGN(nocull_dist_far_static);
 				ASSIGN(nocull_radius_far_static);
+				ASSIGN(nocull_height_far_static);
 
 				ASSIGN(translate_game_lights);
 				ASSIGN(translate_game_light_radius_scalar);
