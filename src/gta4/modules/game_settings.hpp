@@ -319,8 +319,8 @@ namespace gta4
 				1920, 1080
 			};
 
-			// --
 
+			// -----
 			variable fixed_function_trees =
 			{
 				"fixed_function_trees",
@@ -342,8 +342,8 @@ namespace gta4
 				0.6f
 			};
 
-			// --
 
+			// -----
 			variable nocull_dist_near_static =
 			{
 				"nocull_dist_near_static",
@@ -387,8 +387,8 @@ namespace gta4
 				13.0f
 			};
 
-			// --
 
+			// -----
 			variable translate_game_lights =
 			{
 				"translate_game_lights",
@@ -446,8 +446,8 @@ namespace gta4
 				true
 			};
 
-			// --
 
+			// -----
 			variable game_wetness_scalar =
 			{
 				"game_wetness_scalar",
@@ -455,8 +455,8 @@ namespace gta4
 				1.8f
 			};
 
-			// --
 
+			// -----
 			variable render_emissive_surfaces_using_shaders =
 			{
 				"render_emissive_surfaces_using_shaders",
@@ -493,8 +493,8 @@ namespace gta4
 				0.4f
 			};
 
-			// --
 
+			// -----
 			variable decal_dirt_shader_usage =
 			{
 				"handle_decal_dirt_shader",
@@ -517,14 +517,162 @@ namespace gta4
 				1.0f
 			};
 
-			// --
 
+			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",
 				("Scale alpha of gta_rmptfx_litsprite"),
 				40.0f
 			};
+
+
+			// -----
+			variable timecycle_fogcolor_enabled = {
+				"timecycle_fogcolor_enabled",
+				("Enables automatic adjustment of 'rtx.volumetrics.singleScatteringAlbedo' based on timecycle settings."),
+				true
+			};
+
+			variable timecycle_fogcolor_base_strength = {
+				"timecycle_fogcolor_base_strength",
+				("Sets the base vector (rgb=val) of 'rtx.volumetrics.singleScatteringAlbedo'. Static offset not bound to any timecycle variable."),
+				0.3f
+			};
+
+			variable timecycle_fogcolor_influence_scalar = {
+				"timecycle_fogcolor_influence_scalar",
+				("Controls how much the fogcolor timecycle variable influences 'rtx.volumetrics.singleScatteringAlbedo'"),
+				0.55f
+			};
+
+
+			variable timecycle_fogdensity_enabled = {
+				"timecycle_fogdensity_enabled",
+				("Enables automatic adjustment of 'rtx.volumetrics.transmittanceMeasurementDistanceMeters' based on timecycle settings."),
+				true
+			};
+
+			variable timecycle_fogdensity_influence_scalar = {
+				"timecycle_fogdensity_influence_scalar",
+				("Controls how much the fogdensity timecycle variable influences 'rtx.volumetrics.transmittanceMeasurementDistanceMeters'"),
+				2.0f
+			};
+
+
+			variable timecycle_skyhorizonheight_enabled = {
+				"timecycle_skyhorizonheight_enabled",
+				("Enables automatic adjustment of 'rtx.volumetrics.atmosphereHeightMeters' based on timecycle settings."
+				"# Also influences 'rtx.volumetrics.transmittanceMeasurementDistanceMeters' based on low/high transmittance offsets."),
+				true
+			};
+
+			variable timecycle_skyhorizonheight_scalar = {
+				"timecycle_skyhorizonheight_scalar",
+				("Controls how much the horizon height timecycle variable influences 'rtx.volumetrics.atmosphereHeightMeters'."
+				"# Final value is also used to offset 'transmittanceMeasurementDistanceMeters' based on atmospheric height."),
+				1.2f
+			};
+
+			variable timecycle_skyhorizonheight_low_transmittance_offset = {
+				"timecycle_skyhorizonheight_low_transmittance_offset",
+				("Increase fog transmittance with higher skyhorizonheight values. Lowest offset that can be applied to 'transmittanceMeasurementDistanceMeters' based on atmospheric height."
+				"# Higher values result in less fog."),
+				0.0f
+			};
+
+			variable timecycle_skyhorizonheight_high_transmittance_offset = {
+				"timecycle_skyhorizonheight_high_transmittance_offset",
+				("Increase fog transmittance with higher skyhorizonheight values. Highest offset that can be applied to 'transmittanceMeasurementDistanceMeters' based on atmospheric height."
+				"# Higher values result in less fog."),
+				100.0f
+			};
+
+			// -----
+			variable timecycle_skylight_enabled = {
+				"timecycle_skylight_enabled",
+				("Enables automatic adjustment of 'rtx.skyBrightness' based on timecycle settings."),
+				true
+			};
+
+			variable timecycle_skylight_scalar = {
+				"timecycle_skylight_scalar",
+				("Controls how much the skylight timecycle variable influences 'rtx.skyBrightness'"),
+				0.08f
+			};
+
+			// -----
+			variable timecycle_colorcorrection_enabled = {
+				"timecycle_colorcorrection_enabled",
+				("Enables influence of color correction on 'rtx.tonemap.colorBalance' based on timecycle settings."
+				"# Disabling this also disables color temperature influence."),
+				true
+			};
+
+			variable timecycle_colortemp_enabled = {
+				"timecycle_colortemp_enabled",
+				("Enables influence of color temperature on 'rtx.tonemap.colorBalance' based on timecycle settings."),
+				true
+			};
+
+			variable timecycle_colortemp_influence = {
+				"timecycle_colortemp_influence",
+				("Controls how much the colortemp timecycle variable influences 'rtx.tonemap.colorBalance'"),
+				0.5f
+			};
+
+			// -----
+			variable timecycle_desaturation_enabled = {
+				"timecycle_desaturation_enabled",
+				("Enables automatic adjustment of 'rtx.tonemap.saturation' based on timecycle settings."),
+				true
+			};
+
+			variable timecycle_desaturation_influence = {
+				"timecycle_desaturation_influence",
+				("Controls how much the desaturation timecycle variable influences 'rtx.tonemap.saturation'"),
+				0.3f
+			};
+
+			variable timecycle_fardesaturation_influence = {
+				"timecycle_fardesaturation_influence",
+				("Controls how much the fardesaturation timecycle variable influences 'rtx.tonemap.saturation'."),
+				2.0f
+			};
+
+			// -----
+			variable timecycle_gamma_enabled = {
+				"timecycle_gamma_enabled",
+				("Enables automatic adjustment of 'rtx.tonemap.exposureBias' based on timecycle settings."),
+				true
+			};
+
+			variable timecycle_gamma_offset = {
+				"timecycle_gamma_offset",
+				("Controls the offset that's added to the gamma timecycle variable which influences 'rtx.tonemap.exposureBias'."),
+				0.3f
+			};
+
+			// -----
+			variable timecycle_bloom_enabled = {
+				"timecycle_bloomintensity_enabled",
+				("Enables automatic adjustment of 'rtx.bloom.burnIntensity' and 'rtx.bloom.luminanceThreshold' based on timecycle settings."),
+				true
+			};
+
+			variable timecycle_bloomintensity_scalar = {
+				"timecycle_bloomintensity_scalar",
+				("Scales the bloom intensity timecycle variable which influences 'rtx.tonemap.saturation'."),
+				1.0f
+			};
+
+			variable timecycle_bloomthreshold_scalar = {
+				"timecycle_bloomthreshold_scalar",
+				("Scales the bloom threshold timecycle variable which influences 'rtx.tonemap.luminanceThreshold'."),
+				1.0f
+			};
+
+
 		};
 	
 		static inline var_definitions vars = {};

@@ -42,18 +42,18 @@ namespace gta4
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;
 
-		float m_dbg_timecyc_fog_start_scalar = 1.0f;
-		float m_dbg_timecyc_fog_density_scalar = 1.0f;
+		//float m_dbg_timecyc_fogcolor_influence_scalar = 0.55f; //
+		//float m_dbg_timecyc_fog_density_scalar = 2.0f; //
 
-		float m_dbg_timecyc_debug01_scalar = 1.0f;
-		float m_dbg_timecyc_debug02_scalar = 1.0f;
-		float m_dbg_timecyc_debug03_scalar = 1.0f;
-		float m_dbg_timecyc_debug04_scalar = 1.0f;
+		//float m_dbg_timecyc_skylight_scalar = 0.08f; //
+		//float m_dbg_timecyc_skyhorizon_scalar = 1.2f; //
+		//float m_dbg_timecyc_desaturation_strength_scalar = 0.3f; //
+		//float m_dbg_timecyc_colortemp_influence_scalar = 0.5f; //
 
-		float m_dbg_timecyc_debug01_offset = 1.0f;
-		float m_dbg_timecyc_debug02_offset = 1.0f;
-		float m_dbg_timecyc_debug03_offset = 1.0f;
-		float m_dbg_timecyc_debug04_offset = 1.0f;
+		//float m_dbg_timecyc_fogcolor_base_strength = 0.3f; //
+		//float m_dbg_timecyc_fardesaturation_influence_scalar = 2.0f; //
+		//float m_dbg_timecyc_fogheight_low_transmittance_offset = 0.0f; //
+		//float m_dbg_timecyc_fogheight_high_transmittance_offset = 100.0f; //
 
 		bool m_dbg_enable_ignore_shader_logic = false;
 		bool m_dbg_ignore_all = false;

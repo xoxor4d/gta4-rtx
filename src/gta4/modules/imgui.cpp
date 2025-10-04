@@ -230,24 +230,24 @@ namespace gta4
 					ImGui::Checkbox("Visualize Api Lights", &cmd::show_api_lights);
 					TT("Visualize all spawned api lights");
 
-					ImGui::Spacing(0, 6);
+					/*ImGui::Spacing(0, 6);
 
-					ImGui::DragFloat("TimeCyc Fog Start Scalar", &im->m_dbg_timecyc_fog_start_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Fog Start Scalar", &im->m_dbg_timecyc_fogcolor_influence_scalar, 0.01f);
 					ImGui::DragFloat("TimeCyc Fog Density Scalar", &im->m_dbg_timecyc_fog_density_scalar, 0.01f);
 
 					ImGui::Spacing(0, 2);
 
-					ImGui::DragFloat("TimeCyc Debug01 Scalar", &im->m_dbg_timecyc_debug01_scalar, 0.01f);
-					ImGui::DragFloat("TimeCyc Debug02 Scalar", &im->m_dbg_timecyc_debug02_scalar, 0.01f);
-					ImGui::DragFloat("TimeCyc Debug03 Scalar", &im->m_dbg_timecyc_debug03_scalar, 0.01f);
-					ImGui::DragFloat("TimeCyc Debug04 Scalar", &im->m_dbg_timecyc_debug04_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug01 Scalar", &im->m_dbg_timecyc_skylight_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug02 Scalar", &im->m_dbg_timecyc_skyhorizon_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug03 Scalar", &im->m_dbg_timecyc_desaturation_strength_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug04 Scalar", &im->m_dbg_timecyc_colortemp_influence_scalar, 0.01f);
 
 					ImGui::Spacing(0, 2);
 
-					ImGui::DragFloat("TimeCyc Debug01 Offset", &im->m_dbg_timecyc_debug01_offset, 0.01f);
-					ImGui::DragFloat("TimeCyc Debug02 Offset", &im->m_dbg_timecyc_debug02_offset, 0.01f);
-					ImGui::DragFloat("TimeCyc Debug03 Offset", &im->m_dbg_timecyc_debug03_offset, 0.01f);
-					ImGui::DragFloat("TimeCyc Debug04 Offset", &im->m_dbg_timecyc_debug04_offset, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug01 Offset", &im->m_dbg_timecyc_fardesaturation_influence_scalar, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug02 Offset", &im->m_dbg_timecyc_fogcolor_base_strength, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug03 Offset", &im->m_dbg_timecyc_fogheight_low_transmittance_offset, 0.01f);
+					ImGui::DragFloat("TimeCyc Debug04 Offset", &im->m_dbg_timecyc_fogheight_high_transmittance_offset, 0.01f);*/
 
 					ImGui::Spacing(0, 6);
 

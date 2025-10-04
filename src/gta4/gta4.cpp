@@ -76,71 +76,117 @@ namespace gta4
 		{
 			static auto im = imgui::get();
 			static auto vars = remix_vars::get();
+			static auto gs = game_settings::get();
+			remix_vars::option_value val{};
+			
+
+			// TODO! Add defaults for used remix variables in case user disables the saving of ALL remix variables
+
 			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness");
-
-			if (rtxSkybrightness)
+			if (gs->timecycle_skylight_enabled.get_as<bool>() && rtxSkybrightness)
 			{
-				auto skylight = game::m_pCurrentTimeCycleParams->mSkyLightMultiplier * im->m_dbg_timecyc_debug01_scalar; // 0.08?
-				remix_vars::option_value val{ .value = skylight };
+				val.value = game::m_pCurrentTimeCycleParams->mSkyLightMultiplier * gs->timecycle_skylight_scalar.get_as<float>();
 				vars->set_option(rtxSkybrightness, val);
-
-
-				val.value = game::m_pCurrentTimeCycleParams->mBloomIntensity * 1.0f;
-				vars->set_option(vars->get_option("rtx.bloom.burnIntensity"), val);
-
-				val.value = game::m_pCurrentTimeCycleParams->mBloomThreshold * 1.0f;
-				vars->set_option(vars->get_option("rtx.bloom.luminanceThreshold"), val);
-
-
-				Vector4D colorCorrection;
-				U32ToFloat4(game::m_pCurrentTimeCycleParams->mColorCorrection, &colorCorrection.x);
-
-				val.vector[0] = colorCorrection.x;
-				val.vector[1] = colorCorrection.y;
-				val.vector[2] = colorCorrection.z;
-				vars->set_option(vars->get_option("rtx.tonemap.colorBalance"), val);
-
-				val.value = (1.0f - game::m_pCurrentTimeCycleParams->mDesaturation) * 0.5f;
-				vars->set_option(vars->get_option("rtx.tonemap.saturation"), val);
-
-				val.value = -(1.0f - game::m_pCurrentTimeCycleParams->mGamma);
-				vars->set_option(vars->get_option("rtx.tonemap.exposureBias"), val);
-
-				val.value = log2(game::m_pCurrentTimeCycleParams->mLumMin * 0.01f) + im->m_dbg_timecyc_debug01_offset; // +6?
-				vars->set_option(vars->get_option("rtx.autoExposure.evMinValue"), val);
-
-				val.value = log2(game::m_pCurrentTimeCycleParams->mLumMax * 0.01f) + im->m_dbg_timecyc_debug02_offset; // +6?
-				vars->set_option(vars->get_option("rtx.autoExposure.evMaxValue"), val);
-
-				Vector4D fogColorDensity;
-				U32ToFloat4(game::m_pCurrentTimeCycleParams->mSkyBottomColorFogDensity, &fogColorDensity.x); 
-
-				val.vector[0] = fogColorDensity.x * im->m_dbg_timecyc_fog_start_scalar;
-				val.vector[1] = fogColorDensity.y * im->m_dbg_timecyc_fog_start_scalar;
-				val.vector[2] = fogColorDensity.z * im->m_dbg_timecyc_fog_start_scalar;
-				vars->set_option(vars->get_option("rtx.volumetrics.singleScatteringAlbedo"), val);
-
-				const float atmosHeight = game::m_pCurrentTimeCycleParams->mSkyHorizonHeight * 100.0f * im->m_dbg_timecyc_debug02_scalar;
-				val.value = atmosHeight;
-				vars->set_option(vars->get_option("rtx.volumetrics.atmosphereHeightMeters"), val);
-
-				//im->m_dbg_timecyc_fog_start_scalar;
-				//val.value = (1.0f - fogColorDensity.w) /*game::m_pCurrentTimeCycleParams->mFogStart*/ * im->m_dbg_timecyc_fog_density_scalar;
-				val.value = mapRange(fogColorDensity.w, 0.0f, 1.0f, 20.0f, 200.0f) /*game::m_pCurrentTimeCycleParams->mFogStart*/ * im->m_dbg_timecyc_fog_density_scalar;
-				vars->set_option(vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters"), val);
-
-
-				
-				
-
-				int asd = 0;
 			}
 
-			int y = 0;
+
+			static auto rtxBloomBurnIntensity = vars->get_option("rtx.bloom.burnIntensity");
+			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold");
+			if (gs->timecycle_bloom_enabled.get_as<bool>() && rtxBloomBurnIntensity && rtxBloomLuminanceThreshold)
+			{
+				val.value = game::m_pCurrentTimeCycleParams->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
+				vars->set_option(rtxBloomBurnIntensity, val);
+
+				val.value = game::m_pCurrentTimeCycleParams->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
+				vars->set_option(rtxBloomLuminanceThreshold, val);
+			}
+
+
+			static auto rtxTonemapColorBalance = vars->get_option("rtx.tonemap.colorBalance");
+			if (gs->timecycle_colorcorrection_enabled.get_as<bool>() && rtxTonemapColorBalance)
+			{
+				Vector temp_color_offset;
+				if (gs->timecycle_colortemp_enabled.get_as<bool>())
+				{
+					const float nrml_temp = std::clamp(game::m_pCurrentTimeCycleParams->mTemperature / 15.0f, -1.0f, 1.0f);
+					temp_color_offset.x = nrml_temp * 0.3f;
+					temp_color_offset.y = 0.0f;
+					temp_color_offset.z = -nrml_temp * 0.3f;
+					temp_color_offset *= gs->timecycle_colortemp_influence.get_as<float>();
+				}
+
+				Vector4D color_correction;
+				U32ToFloat4(game::m_pCurrentTimeCycleParams->mColorCorrection, &color_correction.x);
+				val.vector[0] = color_correction.x + temp_color_offset.x;
+				val.vector[1] = color_correction.y + temp_color_offset.y;
+				val.vector[2] = color_correction.z + temp_color_offset.z;
+				vars->set_option(rtxTonemapColorBalance, val);
+			}
+
+
+			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation");
+			if (gs->timecycle_desaturation_enabled.get_as<bool>() && rtxTonemapSaturation)
+			{
+				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * mapRange(game::m_pCurrentTimeCycleParams->mDesaturationFar, 0.8f, 1.0f, 0.0f, 0.4f);
+				val.value = 1.0f - ((1.0f - game::m_pCurrentTimeCycleParams->mDesaturation) * gs->timecycle_desaturation_influence.get_as<float>());
+				val.value -= far_desaturation_influence;
+				vars->set_option(rtxTonemapSaturation, val);
+			}
+
+
+			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias");
+			if (gs->timecycle_gamma_enabled.get_as<bool>() && rtxTonemapExposureBias)
+			{
+				val.value = -(1.0f - game::m_pCurrentTimeCycleParams->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
+				vars->set_option(rtxTonemapExposureBias, val);
+			}
+
+
+			{
+				//val.value = log2(game::m_pCurrentTimeCycleParams->mLumMin * 0.01f) + 4.0f; // +6?m_dbg_timecyc_skylight_scalar
+				//vars->set_option(vars->get_option("rtx.autoExposure.evMinValue"), val);
+
+				//val.value = log2(game::m_pCurrentTimeCycleParams->mLumMax * 0.01f) + 4.0f; // +4?
+				//vars->set_option(vars->get_option("rtx.autoExposure.evMaxValue"), val);
+			}
+
+
+			Vector4D fog_color_density;
+			U32ToFloat4(game::m_pCurrentTimeCycleParams->mSkyBottomColorFogDensity, &fog_color_density.x);
+
+			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
+			if (gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
+			{
+				const auto& base_strength = gs->timecycle_fogcolor_base_strength.get_as<float>();
+				const auto& influence = gs->timecycle_fogcolor_influence_scalar.get_as<float>();
+				val.vector[0] = base_strength + fog_color_density.x * influence;
+				val.vector[1] = base_strength + fog_color_density.y * influence;
+				val.vector[2] = base_strength + fog_color_density.z * influence;
+				vars->set_option(rtxVolumetricsSingleScatteringAlbedo, val);
+			}
+
+			float atmos_height = 0.0f;
+			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters");
+			if (gs->timecycle_skyhorizonheight_enabled.get_as<bool>() && rtxVolumetricsAtmosphereHeightMeters)
+			{
+				atmos_height = game::m_pCurrentTimeCycleParams->mSkyHorizonHeight * 100.0f * gs->timecycle_skyhorizonheight_scalar.get_as<float>();
+				val.value = atmos_height;
+				vars->set_option(rtxVolumetricsAtmosphereHeightMeters, val);
+			}
+
+			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters");
+			if (gs->timecycle_fogdensity_enabled.get_as<bool>() && rtxVolumetricsTransmittanceMeasurementDistanceMeters)
+			{
+				val.value = mapRange(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.0f)
+							* gs->timecycle_fogdensity_influence_scalar.get_as<float>()
+							+ mapRange(atmos_height, 0.0f, 1000.0f, 
+								gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float>(), 
+								gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float>());
+
+				vars->set_option(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
+			}
 		}
 	}
-
-	
 
 	void post_vehicle_rendering()
 	{

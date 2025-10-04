@@ -147,6 +147,29 @@ namespace gta4
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 
+				ASSIGN(timecycle_fogcolor_enabled);
+				ASSIGN(timecycle_fogcolor_base_strength);
+				ASSIGN(timecycle_fogcolor_influence_scalar);
+				ASSIGN(timecycle_fogdensity_enabled);
+				ASSIGN(timecycle_fogdensity_influence_scalar);
+				ASSIGN(timecycle_skyhorizonheight_enabled);
+				ASSIGN(timecycle_skyhorizonheight_scalar);
+				ASSIGN(timecycle_skyhorizonheight_low_transmittance_offset);
+				ASSIGN(timecycle_skyhorizonheight_high_transmittance_offset);
+				ASSIGN(timecycle_skylight_enabled);
+				ASSIGN(timecycle_skylight_scalar);
+				ASSIGN(timecycle_colorcorrection_enabled);
+				ASSIGN(timecycle_colortemp_enabled);
+				ASSIGN(timecycle_colortemp_influence);
+				ASSIGN(timecycle_desaturation_enabled);
+				ASSIGN(timecycle_desaturation_influence);
+				ASSIGN(timecycle_fardesaturation_influence);
+				ASSIGN(timecycle_gamma_enabled);
+				ASSIGN(timecycle_gamma_offset);
+				ASSIGN(timecycle_bloom_enabled);
+				ASSIGN(timecycle_bloomintensity_scalar);
+				ASSIGN(timecycle_bloomthreshold_scalar);
+
 			#undef ASSIGN
 			}
 
