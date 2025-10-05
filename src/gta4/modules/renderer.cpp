@@ -679,13 +679,13 @@ namespace gta4
 		// fixes the skylight
 		dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
 
-		if (im->m_dbg_ignore_drawprimitive)
+		/*if (im->m_dbg_ignore_drawprimitive)
 		{
 			if (ctx.modifiers.do_not_render) 
 			{
 				int x = 1;
 			}
-		}
+		}*/
 
 		const auto viewport = game::pCurrentViewport;
 		if (viewport && viewport->wp)
@@ -698,7 +698,7 @@ namespace gta4
 			// + custom sky texture because sky and traffic lights share the same texture
 			if (g_is_sky_rendering)
 			{
-				set_remix_texture_categories(dev, InstanceCategories::Sky);
+				set_remix_texture_categories(dev, InstanceCategories::Sky); 
 
 				if (ctx.info.shader_name.ends_with("im.fxc"))
 				{
@@ -713,13 +713,14 @@ namespace gta4
 				set_remix_texture_categories(dev, InstanceCategories::Particle);
 				ctx.modifiers.is_fx = true;
 
+				//ctx.modifiers.do_not_render = true;
+
 				ctx.save_ps(dev);
 				dev->SetPixelShader(nullptr);
 
 				//shared::utils::lookat_vertex_decl(dev);
 
 				/*dev->SetTransform(D3DTS_WORLD, &viewport->wp->world); 
-
 				D3DMATRIX matrix = viewport->wp->proj;
 				matrix.m[0][0] += im->m_debug_mtx02.m[0][0]; 
 				matrix.m[0][1] += im->m_debug_mtx02.m[0][1];
@@ -740,9 +741,8 @@ namespace gta4
 				matrix.m[3][1] += im->m_debug_mtx02.m[3][1];
 				matrix.m[3][2] += im->m_debug_mtx02.m[3][2];
 				matrix.m[3][3] += im->m_debug_mtx02.m[3][3];
-
+			
 				render_with_ff = false;
-
 				dev->SetTransform(D3DTS_PROJECTION, &matrix);*/
 			} 
 
@@ -1049,7 +1049,7 @@ namespace gta4
 				{
 					set_remix_modifier(dev, RemixModifier::RoughnessScalar);
 
-					const float adjusted_wetness = std::clamp(wetness_value * gs->game_wetness_scalar.get_as<float>(), 0.0f, 1.0f);
+					const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_scalar.get_as<float>(), 0.0f, 1.0f);
 					float scalar = 1.0f - adjusted_wetness;
 					scalar = std::clamp(scalar * 0.8f, 0.0f, 1.0f);
 

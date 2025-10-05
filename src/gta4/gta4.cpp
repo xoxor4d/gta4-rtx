@@ -49,28 +49,22 @@ namespace gta4
 			}
 		}
 
+		translate_and_apply_timecycle_settings();
+	}
 
-
-		auto Float4ToU32 = [](const float* inColor, uint32_t& outColor)
+	void translate_and_apply_timecycle_settings()
+	{
+		auto unpack_uint32 = [](const uint32_t& in, float* out)
 			{
-				outColor = 0;
-				outColor |= static_cast<uint32_t>(inColor[0] * 255.0f + 0.5f) << 16;
-				outColor |= static_cast<uint32_t>(inColor[1] * 255.0f + 0.5f) << 8;
-				outColor |= static_cast<uint32_t>(inColor[2] * 255.0f + 0.5f) << 0;
-				outColor |= static_cast<uint32_t>(inColor[3] * 255.0f + 0.5f) << 24;
-			};
-
-		auto U32ToFloat4 = [](const uint32_t inColor, float* outColor)
-			{
-				outColor[0] = static_cast<float>(inColor >> 16 & 0xFF) / 255.0f;
-				outColor[1] = static_cast<float>(inColor >>  8 & 0xFF) / 255.0f;
-				outColor[2] = static_cast<float>(inColor >>  0 & 0xFF) / 255.0f;
-				outColor[3] = static_cast<float>(inColor >> 24 & 0xFF) / 255.0f;
+				out[0] = static_cast<float>(in >> 16 & 0xFF) / 255.0f;
+				out[1] = static_cast<float>(in >> 8  & 0xFF) / 255.0f;
+				out[2] = static_cast<float>(in >> 0  & 0xFF) / 255.0f;
+				out[3] = static_cast<float>(in >> 24 & 0xFF) / 255.0f;
 			};
 
 		auto mapRange = [](float input, float in_min, float in_max, float out_min, float out_max)
 			{
-			return out_min + (out_max - out_min) * ((input - in_min) / (in_max - in_min));
+				return out_min + (out_max - out_min) * ((input - in_min) / (in_max - in_min));
 			};
 
 		{
@@ -78,7 +72,7 @@ namespace gta4
 			static auto vars = remix_vars::get();
 			static auto gs = game_settings::get();
 			remix_vars::option_value val{};
-			
+
 
 			// TODO! Add defaults for used remix variables in case user disables the saving of ALL remix variables
 
@@ -116,7 +110,7 @@ namespace gta4
 				}
 
 				Vector4D color_correction;
-				U32ToFloat4(game::m_pCurrentTimeCycleParams->mColorCorrection, &color_correction.x);
+				unpack_uint32(game::m_pCurrentTimeCycleParams->mColorCorrection, &color_correction.x);
 				val.vector[0] = color_correction.x + temp_color_offset.x;
 				val.vector[1] = color_correction.y + temp_color_offset.y;
 				val.vector[2] = color_correction.z + temp_color_offset.z;
@@ -152,7 +146,7 @@ namespace gta4
 
 
 			Vector4D fog_color_density;
-			U32ToFloat4(game::m_pCurrentTimeCycleParams->mSkyBottomColorFogDensity, &fog_color_density.x);
+			unpack_uint32(game::m_pCurrentTimeCycleParams->mSkyBottomColorFogDensity, &fog_color_density.x);
 
 			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
 			if (gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
@@ -178,10 +172,10 @@ namespace gta4
 			if (gs->timecycle_fogdensity_enabled.get_as<bool>() && rtxVolumetricsTransmittanceMeasurementDistanceMeters)
 			{
 				val.value = mapRange(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.0f)
-							* gs->timecycle_fogdensity_influence_scalar.get_as<float>()
-							+ mapRange(atmos_height, 0.0f, 1000.0f, 
-								gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float>(), 
-								gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float>());
+					* gs->timecycle_fogdensity_influence_scalar.get_as<float>()
+					+ mapRange(atmos_height, 0.0f, 1000.0f,
+						gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float>(),
+						gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float>());
 
 				vars->set_option(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
 			}

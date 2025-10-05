@@ -400,14 +400,14 @@ namespace gta4
 			{
 				"translate_game_light_radius_scalar",
 				("Scale radius of translated game lights"),
-				0.2f
+				3.0f
 			};
 
 			variable translate_game_light_intensity_scalar =
 			{
 				"translate_game_light_intensity_scalar",
 				("Scale intensity of translated game lights"),
-				7000.0f
+				5.0f
 			};
 
 			variable translate_game_light_softness_offset =
@@ -445,16 +445,6 @@ namespace gta4
 				"# The remix-mod of the compatibility mod makes that surface translucent."),
 				true
 			};
-
-
-			// -----
-			variable game_wetness_scalar =
-			{
-				"game_wetness_scalar",
-				("Scales the weather wetness value (ranges from 0-1). Final value is clamped to 0-1. Increasing this will mostly affect damper weather states"),
-				1.8f
-			};
-
 
 			// -----
 			variable render_emissive_surfaces_using_shaders =
@@ -523,11 +513,18 @@ namespace gta4
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",
 				("Scale alpha of gta_rmptfx_litsprite"),
-				40.0f
+				5.0f
 			};
 
 
 			// -----
+			variable timecycle_wetness_scalar =
+			{
+				"timecycle_wetness_scalar",
+				("Scales the weather wetness value (ranges from 0-1). Final value is clamped to 0-1. Increasing this will mostly affect damper weather states"),
+				1.8f
+			};
+
 			variable timecycle_fogcolor_enabled = {
 				"timecycle_fogcolor_enabled",
 				("Enables automatic adjustment of 'rtx.volumetrics.singleScatteringAlbedo' based on timecycle settings."),
@@ -637,7 +634,7 @@ namespace gta4
 			variable timecycle_fardesaturation_influence = {
 				"timecycle_fardesaturation_influence",
 				("Controls how much the fardesaturation timecycle variable influences 'rtx.tonemap.saturation'."),
-				2.0f
+				0.7f
 			};
 
 			// -----

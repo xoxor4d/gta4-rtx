@@ -133,7 +133,7 @@ namespace gta4
 				ASSIGN(vehicle_lights_emissive_scalar);
 				ASSIGN(vehicle_lights_dual_render_proxy_texture);
 
-				ASSIGN(game_wetness_scalar);
+				ASSIGN(timecycle_wetness_scalar);
 
 				ASSIGN(render_emissive_surfaces_using_shaders);
 				ASSIGN(assign_decal_category_to_emissive_surfaces);

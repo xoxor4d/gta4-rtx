@@ -454,11 +454,11 @@ namespace gta4
 				ImGui::Spacing(0, 8);
 
 				{
-					auto gs_var_ptr = gs->game_wetness_scalar.get_as<float*>();
+					auto gs_var_ptr = gs->timecycle_wetness_scalar.get_as<float*>();
 					if (ImGui::DragFloat("Game Wetness Scalar", gs_var_ptr, 0.02f, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
 						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 					}
-					TT(gs->game_wetness_scalar.get_tooltip_string().c_str());
+					TT(gs->timecycle_wetness_scalar.get_tooltip_string().c_str());
 				}
 
 				ImGui::Spacing(0, 4);
@@ -570,6 +570,168 @@ namespace gta4
 				}
 
 			}, true, ICON_FA_LIGHTBULB, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+		}
+
+		// timecycle related
+		{
+			static float cont_gs_timecycle_height = 0.0f;
+			cont_gs_timecycle_height = ImGui::Widget_ContainerWithCollapsingTitle("Timecycle Related Settings", cont_gs_timecycle_height, [&]
+				{
+					ImGui::Spacing(0, 4);
+					ImGui::SeparatorText(" Fog ");
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable FogColor Logic", gs->timecycle_fogcolor_enabled.get_as<bool*>());
+						TT(gs->timecycle_fogcolor_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_fogcolor_enabled.get_as<bool>());
+						{
+							ImGui::DragFloat("FogColor Base Strength", gs->timecycle_fogcolor_base_strength.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_fogcolor_base_strength.get_tooltip_string().c_str());
+
+							ImGui::DragFloat("FogColor Influence Scalar", gs->timecycle_fogcolor_influence_scalar.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_fogcolor_influence_scalar.get_tooltip_string().c_str());
+
+							ImGui::EndDisabled();
+						}
+					}
+
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable FogDensity Logic", gs->timecycle_fogdensity_enabled.get_as<bool*>());
+						TT(gs->timecycle_fogdensity_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_fogdensity_enabled.get_as<bool>());
+						{
+							ImGui::DragFloat("FogDensity Influence Scalar", gs->timecycle_fogdensity_influence_scalar.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_fogdensity_influence_scalar.get_tooltip_string().c_str());
+
+							ImGui::EndDisabled();
+						}
+					}
+
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable SkyHorizonHeight Logic", gs->timecycle_skyhorizonheight_enabled.get_as<bool*>());
+						TT(gs->timecycle_skyhorizonheight_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_skyhorizonheight_enabled.get_as<bool>());
+						{
+							ImGui::DragFloat("SkyHorizonHeight Scalar", gs->timecycle_skyhorizonheight_scalar.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_skyhorizonheight_scalar.get_tooltip_string().c_str());
+
+							ImGui::DragFloat("SkyHorizonHeight Low - Transmittance Offset", gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float*>(), 0.01f);
+							TT(gs->timecycle_skyhorizonheight_low_transmittance_offset.get_tooltip_string().c_str());
+
+							ImGui::DragFloat("SkyHorizonHeight High - Transmittance Offset", gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float*>(), 0.01f);
+							TT(gs->timecycle_skyhorizonheight_high_transmittance_offset.get_tooltip_string().c_str());
+
+							ImGui::EndDisabled();
+						}
+					}
+
+					ImGui::Spacing(0, 4);
+					ImGui::SeparatorText(" Sky ");
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable SkyLight Logic", gs->timecycle_skylight_enabled.get_as<bool*>());
+						TT(gs->timecycle_skylight_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
+						{
+							ImGui::DragFloat("SkyLight Scalar", gs->timecycle_skylight_scalar.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_skylight_scalar.get_tooltip_string().c_str());
+
+							ImGui::EndDisabled();
+						}
+					}
+
+					ImGui::Spacing(0, 4);
+					ImGui::SeparatorText(" Color Correction ");
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable ColorCorrection Logic", gs->timecycle_colorcorrection_enabled.get_as<bool*>());
+						TT(gs->timecycle_colorcorrection_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
+						{
+							ImGui::Checkbox("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled.get_as<bool*>());
+							TT(gs->timecycle_colortemp_enabled.get_tooltip_string().c_str());
+
+							ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
+							{
+								ImGui::DragFloat("ColorTemperature Influence", gs->timecycle_colortemp_influence.get_as<float*>(), 0.005f);
+								TT(gs->timecycle_colortemp_influence.get_tooltip_string().c_str());
+
+								ImGui::EndDisabled();
+							}
+
+							ImGui::EndDisabled();
+						}
+					}
+
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable Desaturation Logic", gs->timecycle_desaturation_enabled.get_as<bool*>());
+						TT(gs->timecycle_desaturation_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_desaturation_enabled.get_as<bool>());
+						{
+							ImGui::DragFloat("Desaturation Influence", gs->timecycle_desaturation_influence.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_desaturation_influence.get_tooltip_string().c_str());
+
+							ImGui::DragFloat("Far Desaturation Influence", gs->timecycle_fardesaturation_influence.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_fardesaturation_influence.get_tooltip_string().c_str());
+
+							ImGui::EndDisabled();
+						}
+					}
+
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable Gamma Logic", gs->timecycle_gamma_enabled.get_as<bool*>());
+						TT(gs->timecycle_gamma_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_gamma_enabled.get_as<bool>());
+						{
+							ImGui::DragFloat("Gamma Offset", gs->timecycle_gamma_offset.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_gamma_offset.get_tooltip_string().c_str());
+
+							ImGui::EndDisabled();
+						}
+					}
+
+					ImGui::Spacing(0, 4);
+					ImGui::SeparatorText(" Bloom ");
+					ImGui::Spacing(0, 4);
+
+					{
+						ImGui::Checkbox("Enable Bloom Logic", gs->timecycle_bloom_enabled.get_as<bool*>());
+						TT(gs->timecycle_bloom_enabled.get_tooltip_string().c_str());
+
+						ImGui::BeginDisabled(!gs->timecycle_bloom_enabled.get_as<bool>());
+						{
+							ImGui::DragFloat("Bloom Intensity Scalar", gs->timecycle_bloomintensity_scalar.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_bloomintensity_scalar.get_tooltip_string().c_str());
+
+							ImGui::DragFloat("Bloom Threshold Scalar", gs->timecycle_bloomthreshold_scalar.get_as<float*>(), 0.005f);
+							TT(gs->timecycle_bloomthreshold_scalar.get_tooltip_string().c_str());
+
+							ImGui::EndDisabled();
+						}
+					}
+
+
+					
+
+				}, true, ICON_FA_CLOCK, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 	}
 

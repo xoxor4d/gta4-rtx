@@ -3,6 +3,7 @@
 namespace gta4
 {
 	void on_begin_scene_cb();
+	void translate_and_apply_timecycle_settings();
 	void main();
 
 	extern int g_is_rendering_static;
