@@ -518,11 +518,24 @@ namespace gta4
 
 
 			// -----
+			variable timecycle_wetness_enabled = {
+				"timecycle_wetness_enabled",
+				("Enables material roughness tweaks based on timecycle wetness settings."),
+				true
+			};
+
 			variable timecycle_wetness_scalar =
 			{
 				"timecycle_wetness_scalar",
 				("Scales the weather wetness value (ranges from 0-1). Final value is clamped to 0-1. Increasing this will mostly affect damper weather states"),
 				1.8f
+			};
+
+			variable timecycle_wetness_offset =
+			{
+				"timecycle_wetness_offset",
+				("Additional offset applied onto the final wetness value."),
+				0.0f
 			};
 
 			variable timecycle_fogcolor_enabled = {

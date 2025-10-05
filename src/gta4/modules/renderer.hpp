@@ -12,6 +12,7 @@ namespace gta4
 		extern LPDIRECT3DTEXTURE9 white01;
 		extern LPDIRECT3DTEXTURE9 white02;
 		extern LPDIRECT3DTEXTURE9 veh_light_ems_glass;
+		extern LPDIRECT3DTEXTURE9 berry;
 		extern void init_texture_addons(bool release = false);
 	}
 

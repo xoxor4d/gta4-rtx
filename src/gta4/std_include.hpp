@@ -1,5 +1,9 @@
 #pragma once
 
+constexpr auto COMP_MOD_VERSION_MAJOR = 0;
+constexpr auto COMP_MOD_VERSION_MINOR = 7;
+constexpr auto COMP_MOD_VERSION_PATCH = 0;
+
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
@@ -33,11 +37,6 @@
 
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
-
-//#define DIRECTINPUT_VERSION 0x0800
-//#include <dinput.h>
-//#pragma comment(lib, "Dinput8.lib")
-//#pragma comment(lib, "dxguid.lib")
 
 #define STRINGIZE_(x) #x
 #define STRINGIZE(x) STRINGIZE_(x)

@@ -201,9 +201,6 @@ namespace gta4::game
 			m_numRenderLights_addr = (DWORD*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		DWORD* m_renderLights_addr = nullptr;
-		DWORD* m_numRenderLights_addr = nullptr;
-
 
 		// 0x105C888
 		if (const auto offset = shared::utils::mem::find_pattern("0F 44 15 ? ? ? ? 66 0F 6E C2", 3, "systemMetrics_xRight", use_pattern, 0x422FF8); offset) {

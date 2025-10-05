@@ -93,6 +93,10 @@ namespace ImGui
 
 	float CalcWidgetWidthForChild(float label_width);
 	void CenterText(const char* text, bool disabled = false);
+	void AddUnterline(ImColor col);
+	void TextURL(const char* name, const char* url, bool use_are_you_sure_popup = false);
+	void SetCursorForCenteredText(const char* text);
+
 	bool TextUnformatted_ClippedByColumnTooltip(const char* str);
 
 	void Draw3DCircle(ImDrawList* draw_list, const Vector& world_pos, const Vector& normal, float radius, bool filled, const ImColor& color, const float& thickness, int num_points = 200);

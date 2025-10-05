@@ -18,6 +18,7 @@ namespace gta4
 		LPDIRECT3DTEXTURE9 white02 = nullptr;
 		LPDIRECT3DTEXTURE9 decal_dirt = nullptr;
 		LPDIRECT3DTEXTURE9 veh_light_ems_glass = nullptr;
+		LPDIRECT3DTEXTURE9 berry = nullptr;
 
 		void init_texture_addons(bool release)
 		{
@@ -27,6 +28,7 @@ namespace gta4
 				if (tex_addons::white01) tex_addons::white01->Release();
 				if (tex_addons::white02) tex_addons::white02->Release();
 				if (tex_addons::veh_light_ems_glass) tex_addons::veh_light_ems_glass->Release();
+				if (tex_addons::berry) tex_addons::berry->Release();
 				return;
 			}
 
@@ -35,6 +37,7 @@ namespace gta4
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white01.png", &tex_addons::white01); // marker meshes
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white02.png", &tex_addons::white02);
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
+			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\berry.png", &tex_addons::berry);
 
 			tex_addons::initialized = true;
 		}
@@ -162,7 +165,7 @@ namespace gta4
 		shared::globals::d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 	}
 
-	void on_constant_switchOn(IDirect3DDevice9* dev, const bool state)
+	void on_constant_switchOn([[maybe_unused]] IDirect3DDevice9* dev, const bool state)
 	{
 		auto& ctx = renderer::get()->dc_ctx;
 
@@ -1007,60 +1010,57 @@ namespace gta4
 				}
 			}
 
-
-			// check for stencil
-
-			DWORD stencil_ref = 0u, stencil_enabled = 0u;
-			dev->GetRenderState(D3DRS_STENCILREF, &stencil_ref);
-			dev->GetRenderState(D3DRS_STENCILENABLE, &stencil_enabled);
-
-			// surface can get wet if stencil = 0
-			if (   stencil_enabled && stencil_ref == 0 
-				|| (g_is_rendering_vehicle && !ctx.info.shader_name.ends_with("_interior.fxc"))
-				|| ctx.info.shader_name.ends_with("ped_reflect.fxc"))
+			if (gs->timecycle_wetness_enabled.get_as<bool>())
 			{
-				auto get_wetness = []()
-					{
-						const auto wetness_value = game::pTimeCycleWetnessChange; // normally timecycWetness but we use wetness change
-						const auto specularOffset = game::pTimeCycleSpecularOffset;
+				// check for stencil
+				DWORD stencil_ref = 0u, stencil_enabled = 0u;
+				dev->GetRenderState(D3DRS_STENCILREF, &stencil_ref);
+				dev->GetRenderState(D3DRS_STENCILENABLE, &stencil_enabled);
 
-						float w = *wetness_value;
-						if (*wetness_value >= 0.0f)
-						{
-							if (*wetness_value > 1.0f) {
-								w = 1.0f;
-							}
-						}
-						
-						const float s = *specularOffset * w;
-						if (*specularOffset * w < 0.0f) {
-							return 0.0f;
-						}
-
-						if (s <= 1.0f) {
-							return s;
-						}
-
-						return 1.0f;
-					};
-
-				const float wetness_value = get_wetness(); 
-				if (wetness_value > 0.0f)
+				// surface can get wet if stencil = 0
+				if (stencil_enabled && stencil_ref == 0
+					|| (g_is_rendering_vehicle && !ctx.info.shader_name.ends_with("_interior.fxc"))
+					|| ctx.info.shader_name.ends_with("ped_reflect.fxc"))
 				{
-					set_remix_modifier(dev, RemixModifier::RoughnessScalar);
+					auto get_wetness = []()
+						{
+							const auto wetness_value = game::pTimeCycleWetnessChange; // normally pTimeCycleWetness but we use wetness change
+							const auto specularOffset = game::pTimeCycleSpecularOffset;
 
-					const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_scalar.get_as<float>(), 0.0f, 1.0f);
-					float scalar = 1.0f - adjusted_wetness;
-					scalar = std::clamp(scalar * 0.8f, 0.0f, 1.0f);
+							float w = *wetness_value;
+							if (*wetness_value >= 0.0f)
+							{
+								if (*wetness_value > 1.0f) {
+									w = 1.0f;
+								}
+							}
 
-					scalar += im->m_debug_vector.x; 
+							const float s = *specularOffset * w;
+							if (*specularOffset * w < 0.0f) {
+								return 0.0f;
+							}
 
-					ctx.save_rs(dev, (D3DRENDERSTATETYPE)177);
-					dev->SetRenderState((D3DRENDERSTATETYPE)177, *reinterpret_cast<DWORD*>(&scalar));
-				}
+							if (s <= 1.0f) {
+								return s;
+							}
 
-				if (im->m_dbg_do_not_render_stencil_zero) {
-					ctx.modifiers.do_not_render = true;
+							return 1.0f;
+						};
+
+					const float wetness_value = get_wetness();
+					if (wetness_value > 0.0f)
+					{
+						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_scalar.get_as<float>(), 0.0f, 1.0f);
+						float scalar = 1.0f - adjusted_wetness;
+						scalar = std::clamp(scalar * 0.8f, 0.0f, 1.0f);
+						scalar += gs->timecycle_wetness_scalar.get_as<float>();
+
+						set_remix_roughness_scalar(dev, scalar);
+					}
+
+					if (im->m_dbg_do_not_render_stencil_zero) {
+						ctx.modifiers.do_not_render = true;
+					}
 				}
 			}
 
