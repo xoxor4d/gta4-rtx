@@ -111,6 +111,9 @@ namespace gta4::game
 
 	extern uint32_t nop_addr__disable_postfx_drawing;
 
+	extern uint32_t retn_addr__pre_draw_water;
+	extern uint32_t hk_addr__post_draw_water;
+
 	// ---
 
 	extern void init_game_addresses();

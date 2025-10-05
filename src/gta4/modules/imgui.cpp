@@ -911,8 +911,8 @@ namespace gta4
 						ImGui::DragFloat("Weather Wetness Scalar", gs->timecycle_wetness_scalar.get_as<float*>(), 0.005f);
 						TT(gs->timecycle_wetness_scalar.get_tooltip_string().c_str());
 
-						ImGui::DragFloat("Additional Wetness Offset", gs->timecycle_wetness_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_wetness_scalar.get_tooltip_string().c_str());
+						ImGui::DragFloat("Additional Wetness Offset", gs->timecycle_wetness_offset.get_as<float*>(), 0.005f);
+						TT(gs->timecycle_wetness_offset.get_tooltip_string().c_str());
 
 						ImGui::EndDisabled();
 					}

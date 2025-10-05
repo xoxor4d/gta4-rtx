@@ -345,8 +345,19 @@ namespace shared::utils
 		uint32_t resolve_relative_call_address(uint32_t call_instruction_addr)
 		{
 			const uint8_t* bytes = (uint8_t*)call_instruction_addr;
-			const int32_t offset = *(int32_t*)(bytes + 1); // read 4 bytes after E8
+			const uint32_t offset = *(uint32_t*)(bytes + 1); // read 4 bytes after E8
 			return call_instruction_addr + 5 + offset;
+		}
+
+		/// get final offset from opcode with relative addressing
+		/// @param instruction_addr				base address of the instruction
+		/// @param instruction_size				total size of instruction in bytes
+		/// @param bytes_until_relative_addr	bytes from base address until relative addr begins
+		uint32_t resolve_indirect_call_address(uint32_t instruction_addr, uint32_t instruction_size, uint32_t bytes_until_relative_addr)
+		{
+			const uint8_t* bytes = (uint8_t*)instruction_addr;
+			const uint32_t offset = *(uint32_t*)(bytes + bytes_until_relative_addr);
+			return instruction_addr + instruction_size + offset;
 		}
 	}
 

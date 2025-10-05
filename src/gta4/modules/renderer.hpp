@@ -383,11 +383,13 @@ namespace gta4
 		{
 			std::string_view shader_name;
 			IDirect3DDevice9* device_ptr = nullptr;
+			bool is_dirty = false; // true when context was not reset in drawprimitive
 
 			void reset()
 			{
 				shader_name = "";
 				device_ptr = nullptr;
+				is_dirty = false;
 			}
 		};
 

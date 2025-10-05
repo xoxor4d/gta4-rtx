@@ -68,4 +68,12 @@ namespace shared::common
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
 		}
 	}
+
+	inline void print_error(const char* msg)
+    {
+		console();
+		set_console_color_red(true);
+		std::cout << msg << "\n";
+		set_console_color_default();
+    }
 }

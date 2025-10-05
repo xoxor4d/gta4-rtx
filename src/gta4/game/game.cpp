@@ -96,6 +96,9 @@ namespace gta4::game
 
 	uint32_t nop_addr__disable_postfx_drawing = 0u;
 
+	uint32_t retn_addr__pre_draw_water = 0u;
+	uint32_t hk_addr__post_draw_water = 0u;
+
 	// --------------
 
 	// init any adresses here
@@ -360,11 +363,21 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
-
-
 		if (const auto offset = shared::utils::mem::find_pattern("A2 ? ? ? ? E8 ? ? ? ? 8B CE E8 ? ? ? ? 8B CE", 12, "nop_addr__disable_postfx_drawing", use_pattern, 0x92F547); offset) {
 			nop_addr__disable_postfx_drawing = offset; found_pattern_count++;
 		} total_pattern_count++;
+
+
+		if (const auto offset = shared::utils::mem::find_pattern("81 EC ? ? ? ? 56 57 E8 ? ? ? ? ? ? ? 0F 84", 0, "retn_addr__pre_draw_water", use_pattern, 0xAD7EF6); offset) {
+			retn_addr__pre_draw_water = offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		// can't create signature at the end of the function so we get the offset from a relative jump instruction
+		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? A1 ? ? ? ? 83 F8 ? 74 ? 83 F8 ? 75", 0, "hk_addr__post_draw_water", use_pattern, 0xAD7F06); offset) {
+			hk_addr__post_draw_water = shared::utils::mem::resolve_indirect_call_address(offset, 6u, 2u); found_pattern_count++;
+		} total_pattern_count++;
+
+
 
 		// end GAME_ASM_OFFSETS
 #pragma endregion

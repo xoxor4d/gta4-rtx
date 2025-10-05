@@ -407,7 +407,7 @@ namespace gta4
 			{
 				"translate_game_light_intensity_scalar",
 				("Scale intensity of translated game lights"),
-				5.0f
+				45.0f
 			};
 
 			variable translate_game_light_softness_offset =
@@ -509,6 +509,15 @@ namespace gta4
 
 
 			// -----
+			variable override_water_texture_hash =
+			{
+				"override_water_texture_hash",
+				("This assigns the same texture hash to all water surfaces. Aids with water replacements."),
+				true
+			};
+
+
+			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",
@@ -553,7 +562,7 @@ namespace gta4
 			variable timecycle_fogcolor_influence_scalar = {
 				"timecycle_fogcolor_influence_scalar",
 				("Controls how much the fogcolor timecycle variable influences 'rtx.volumetrics.singleScatteringAlbedo'"),
-				0.55f
+				4.60f
 			};
 
 

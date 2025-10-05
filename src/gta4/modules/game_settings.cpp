@@ -143,6 +143,8 @@ namespace gta4
 				ASSIGN(decal_dirt_shader_scalar);
 				ASSIGN(decal_dirt_shader_contrast);
 
+				ASSIGN(override_water_texture_hash);
+
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 
 				ASSIGN(timecycle_wetness_enabled);

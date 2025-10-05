@@ -9,6 +9,7 @@ namespace gta4
 {
 	int g_is_instance_rendering = 0;
 	int g_is_sky_rendering = 0;
+	int g_is_water_rendering = 0;
 
 	namespace tex_addons
 	{
@@ -672,9 +673,11 @@ namespace gta4
 
 	HRESULT renderer::on_draw_primitive(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const UINT& StartVertex, const UINT& PrimitiveCount)
 	{
+		static auto im = imgui::get();
+		static auto gs = game_settings::get();
+
 		auto& ctx = renderer::dc_ctx;
 		ctx.info.device_ptr = dev;
-		auto im = imgui::get();
 		// info.shader_name can be empty here -> TODO
 
 		bool render_with_ff = false;
@@ -689,6 +692,17 @@ namespace gta4
 				int x = 1;
 			}
 		}*/
+
+		//if (ctx.info.shader_name.ends_with("water.fxc"))
+		//{
+		//	set_remix_texture_hash(dev, shared::utils::string_hash32("water_distant"));
+		//	ctx.info.is_dirty = true;
+		//	//im->m_dbg_ignore_drawprimitive = true;
+		//}
+		//else if (!ctx.info.shader_name.empty())
+		//{
+		//	ctx.info.is_dirty = false;
+		//}
 
 		const auto viewport = game::pCurrentViewport;
 		if (viewport && viewport->wp)
@@ -715,12 +729,10 @@ namespace gta4
 			{
 				set_remix_texture_categories(dev, InstanceCategories::Particle);
 				ctx.modifiers.is_fx = true;
-
-				//ctx.modifiers.do_not_render = true;
-
 				ctx.save_ps(dev);
 				dev->SetPixelShader(nullptr);
 
+				//ctx.modifiers.do_not_render = true;
 				//shared::utils::lookat_vertex_decl(dev);
 
 				/*dev->SetTransform(D3DTS_WORLD, &viewport->wp->world); 
@@ -775,6 +787,10 @@ namespace gta4
 			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 		}
 
+		if (g_is_water_rendering && gs->override_water_texture_hash.get_as<bool>()) {
+			set_remix_texture_hash(dev, shared::utils::string_hash32("water"));
+		}
+
 
 		// ---------
 		// draw
@@ -790,7 +806,7 @@ namespace gta4
 		// ---------
 		// post draw
 
-		if (!im->m_dbg_ignore_drawprimitive)
+		if (!im->m_dbg_ignore_drawprimitive && !ctx.info.is_dirty)
 		{
 			ctx.restore_all(dev);
 			ctx.reset_context();
@@ -804,6 +820,11 @@ namespace gta4
 	HRESULT renderer::on_draw_indexed_prim(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const INT& BaseVertexIndex, const UINT& MinVertexIndex, const UINT& NumVertices, const UINT& startIndex, const UINT& primCount)
 	{
 		auto& ctx = renderer::dc_ctx;
+
+		if (ctx.info.is_dirty) {
+			ctx.reset_context();
+		}
+
 		ctx.info.device_ptr = dev; // for instanced rendering
 
 		static auto im = imgui::get();
@@ -814,6 +835,11 @@ namespace gta4
 			// shared::utils::lookat_vertex_decl(dev);
 
 			bool render_with_ff = g_is_rendering_static;
+
+			if (ctx.info.shader_name.ends_with("water.fxc"))
+			{
+				ctx.modifiers.do_not_render = true;
+			}
 
 			if (g_is_rendering_static)
 			{
@@ -1053,8 +1079,8 @@ namespace gta4
 						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_scalar.get_as<float>(), 0.0f, 1.0f);
 						float scalar = 1.0f - adjusted_wetness;
 						scalar = std::clamp(scalar * 0.8f, 0.0f, 1.0f);
-						scalar += gs->timecycle_wetness_scalar.get_as<float>();
-
+						scalar += gs->timecycle_wetness_offset.get_as<float>();
+						scalar = scalar < 0.0f ? 0.0f : scalar;
 						set_remix_roughness_scalar(dev, scalar);
 					}
 
@@ -1325,6 +1351,30 @@ namespace gta4
 		}
 	}
 
+	__declspec (naked) void pre_water_render_stub()
+	{
+		__asm
+		{
+			mov     ebp, esp;
+			and		esp, 0xFFFFFFF0;
+			mov		g_is_water_rendering, 1;
+			jmp		game::retn_addr__pre_draw_water;
+		}
+	}
+
+	__declspec (naked) void post_water_render_stub()
+	{
+		__asm
+		{
+			mov		g_is_water_rendering, 0;
+			pop     edi;
+			pop     esi;
+			mov     esp, ebp;
+			pop     ebp;
+			retn;
+		}
+	}
+
 	renderer::renderer()
 	{
 		p_this = this;
@@ -1344,6 +1394,10 @@ namespace gta4
 
 		// detect sky rendering
 		shared::utils::hook(game::retn_addr__on_sky_render_stub - 5u, on_sky_render_stub, HOOK_JUMP).install()->quick(); // C107C9
+
+		// detect water rendering
+		shared::utils::hook(game::retn_addr__pre_draw_water - 5u, pre_water_render_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::hk_addr__post_draw_water, post_water_render_stub, HOOK_JUMP).install()->quick();
 
 		// do not render postfx RT infront of the camera
 		shared::utils::hook::nop(game::nop_addr__disable_postfx_drawing, 5);

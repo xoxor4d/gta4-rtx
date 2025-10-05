@@ -54,12 +54,13 @@ and with [Ultimate ASI Loader v9.0.0](https://github.com/ThirteenAG/Ultimate-ASI
 - Static game objects rendered via fixed function which increases performance
 - Cascaded anti culling of static objects (__wip__ - not perfect yet)
 - All game lights are translated to remix light by the compatibility mod
-- Dynamic emissive surfaces work (vehicle headlights, building windows)
+- Dynamic emissive surfaces work (vehicle headlights, building-windows)
 - Working sun
 - Dynamic wetness that works similar to the original game (only outdoors and with falloff on angled surfaces)
+- Translation adjustment of remix runtime variables based on timecycle settings
 - Mobilephone works (but it is 3D and currently scales with the camera fov)
 - Modified vertex shaders (based on FusionFix) so that remix is able to capture surface normals
-- FusionFix compatible (to some degree)
+- FusionFix compatible (to some degree - still causes some conflicts)
 
 ###### The bad:
 - Mobilephone UI can look a little broken
@@ -67,7 +68,9 @@ and with [Ultimate ASI Loader v9.0.0](https://github.com/ThirteenAG/Ultimate-ASI
 - Bad performance in certain areas (__wip__ - still need to disable many of the game's rendering features, which are useless for remix) 
 - Effects can/will look bad until touched up via actual game mods
 - "Fake" ambient game lights still need to be removed via actual game mods
-- Timecycle settings don't really affect anything besides wetness just yet
+- Anti-Culling is not perfect yet
+- Particles do not render infront of the skybox (disble separate unordered approximations to fix this -> causes issues with emissives tho)
+- Car dirt is not supported
 
 <br>
 <br>
@@ -104,7 +107,7 @@ and paste them into `...\GTAIV\update\common\shaders\win32_30\` (overwrite)
 <br>
 
 ##  Credits
-- [Nvidia - RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix)
+- [NVIDIA - RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix)
 - [People of the showcase discord](https://discord.gg/j6sh7JD3v9) - especially the nvidia engineers ✌️
 - [dear-imgui](https://github.com/ocornut/imgui)
 - [imgui-blur-effect](https://github.com/3r4y/imgui-blur-effect)
@@ -113,7 +116,16 @@ and paste them into `...\GTAIV\update\common\shaders\win32_30\` (overwrite)
 - [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader)
 - [AssaultKifle47](https://github.com/akifle47)
 - [FusionFix](https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix)
+- [FusionShaders](https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders)
+- [Rage-Shader-Editor](https://github.com/ImpossibleEchoes/rage-shader-editor-cpp)
 - [IV-SDK](https://github.com/Zolika1351/iv-sdk/)
 - [IV-SDK-DotNet](https://github.com/ClonkAndre/IV-SDK-DotNet)
 - [DayL](https://www.gtainside.de/de/user/falcogray)
-- All of the 🍓
+
+
+<div align="center" markdown="1"> 
+
+And of course, all my fellow Ko-Fi and Patreon supporters 🍓  
+and all the people that helped along the way.
+
+</div>
