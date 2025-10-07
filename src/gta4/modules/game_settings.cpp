@@ -131,9 +131,16 @@ namespace gta4
 				ASSIGN(translate_game_light_radius_scalar);
 				ASSIGN(translate_game_light_intensity_scalar);
 				ASSIGN(translate_game_light_softness_offset);
+				ASSIGN(translate_game_light_spotlight_volumetric_radiance_scale);
+				ASSIGN(translate_game_light_spherelight_volumetric_radiance_scale);
 				ASSIGN(translate_game_light_angle_offset);
-				ASSIGN(translate_sunlight_intensity_scalar);
 
+				ASSIGN(translate_sunlight_intensity_scalar);
+				ASSIGN(translate_sunlight_angular_diameter_degrees);
+				ASSIGN(translate_sunlight_volumetric_radiance_base);
+				ASSIGN(translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled);
+				ASSIGN(translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar);
+	
 				ASSIGN(vehicle_lights_emissive_scalar);
 				ASSIGN(vehicle_lights_dual_render_proxy_texture);
 

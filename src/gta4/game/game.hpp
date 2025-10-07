@@ -7,6 +7,8 @@ namespace gta4::game
 	extern bool was_loadscreen_active;
 	extern bool is_in_game;
 
+	extern float helper_timecycle_current_fog_density;
+
 
 	// --------------
 	// game variables

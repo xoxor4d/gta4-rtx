@@ -43,6 +43,8 @@ namespace gta4
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;
 
+		bool m_dbg_visualize_api_lights = false;
+
 		bool m_dbg_enable_ignore_shader_logic = false;
 		bool m_dbg_ignore_all = false;
 		bool m_dbg_ignore_drawprimitive = false;

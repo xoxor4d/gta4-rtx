@@ -377,7 +377,7 @@ namespace gta4
 					const float treenode_spacing_inside = 6.0f;
 
 					ImGui::Spacing(0, treenode_spacing);
-					ImGui::Checkbox("Visualize Api Lights", &cmd::show_api_lights); TT("Visualize all spawned api lights");
+					ImGui::Checkbox("Visualize Api Lights", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
 					ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
 					ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
 					ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23);
@@ -661,18 +661,46 @@ namespace gta4
 			static float cont_gs_light_height = 0.0f;
 			cont_gs_light_height = ImGui::Widget_ContainerWithCollapsingTitle("Light Related Settings", cont_gs_light_height, [&]
 			{
+				const float inbetween_spacing = 8.0f;
+
+				ImGui::Spacing(0, 4);
+				ImGui::SeparatorText(" Sphere/Spot ");
+				ImGui::Spacing(0, 4);
+
 				ImGui::Checkbox("Translate Game Lights", gs->translate_game_lights.get_as<bool*>());
 				TT(gs->translate_game_lights.get_tooltip_string().c_str());
 
-				ImGui::DragFloat("Global Light Radius Scalar", gs->translate_game_light_radius_scalar.get_as<float*>(), 0.005f);
-				ImGui::DragFloat("Global Light Intensity Scalar", gs->translate_game_light_intensity_scalar.get_as<float*>(), 0.005f);
-				ImGui::DragFloat("Global Light Softness Offset", gs->translate_game_light_softness_offset.get_as<float*>(), 0.005f, -1.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT("Add or Subtract this value for the softness constant of all lights");
+				ImGui::DragFloat("Light Radius Scalar", gs->translate_game_light_radius_scalar.get_as<float*>(), 0.005f);
+				TT(gs->translate_game_light_radius_scalar.get_tooltip_string().c_str());
 
-				ImGui::DragFloat("Global Light Angle Offset", gs->translate_game_light_angle_offset.get_as<float*>(), 0.005f, -180.0f, 180.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT("Add or Subtract this value for the angle constant of all lights");
+				ImGui::DragFloat("Light Intensity Scalar", gs->translate_game_light_intensity_scalar.get_as<float*>(), 0.005f);
+				TT(gs->translate_game_light_intensity_scalar.get_tooltip_string().c_str());
 
-				ImGui::DragFloat("Global SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar.get_as<float*>(), 0.005f);
+				ImGui::DragFloat("Light Softness Offset", gs->translate_game_light_softness_offset.get_as<float*>(), 0.005f, -1.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				TT(gs->translate_game_light_softness_offset.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				TT(gs->translate_game_light_spotlight_volumetric_radiance_scale.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				TT(gs->translate_game_light_spherelight_volumetric_radiance_scale.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("Light Angle Offset", gs->translate_game_light_angle_offset.get_as<float*>(), 0.005f, -180.0f, 180.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				TT(gs->translate_game_light_angle_offset.get_tooltip_string().c_str());
+
+
+				ImGui::Spacing(0, inbetween_spacing);
+				ImGui::SeparatorText(" Distant ");
+				ImGui::Spacing(0, 4);
+
+				ImGui::DragFloat("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar.get_as<float*>(), 0.005f, 0, 0, "%.2f");
+				TT(gs->translate_sunlight_intensity_scalar.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees.get_as<float*>(), 0.005f, 0.0f, 45.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				TT(gs->translate_sunlight_angular_diameter_degrees.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				TT(gs->translate_sunlight_volumetric_radiance_base.get_tooltip_string().c_str());
 
 			}, false, ICON_FA_LIGHTBULB, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
@@ -805,7 +833,7 @@ namespace gta4
 				}
 
 				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Sky ");
+				ImGui::SeparatorText(" Sky/Sun ");
 				ImGui::Spacing(0, 4);
 
 				{
@@ -816,6 +844,21 @@ namespace gta4
 					{
 						ImGui::DragFloat("SkyLight Scalar", gs->timecycle_skylight_scalar.get_as<float*>(), 0.005f);
 						TT(gs->timecycle_skylight_scalar.get_tooltip_string().c_str());
+
+						ImGui::EndDisabled();
+					}
+
+
+					ImGui::Spacing(0, inbetween_spacing);
+
+
+					ImGui::Checkbox("Enable Fogdensity Influence on Volumetric Scale", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_as<bool*>());
+					TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_tooltip_string().c_str());
+
+					ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
+					{
+						ImGui::DragFloat("Fogdensity Volumetric Influence Scalar", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_as<float*>(), 0.005f);
+						TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_tooltip_string().c_str());
 
 						ImGui::EndDisabled();
 					}

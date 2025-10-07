@@ -8,6 +8,8 @@ namespace gta4::game
 	bool was_loadscreen_active = false;
 	bool is_in_game = false;
 
+	float helper_timecycle_current_fog_density = 0.0f;
+
 
 	// --------------
 	// game variables

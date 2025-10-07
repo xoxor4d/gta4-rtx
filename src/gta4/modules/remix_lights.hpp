@@ -2,11 +2,6 @@
 
 namespace gta4
 {
-	namespace cmd
-	{
-		extern bool show_api_lights;
-	}
-
 	class remix_lights final : public shared::common::loader::component_module
 	{
 	public:

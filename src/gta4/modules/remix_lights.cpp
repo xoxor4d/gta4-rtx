@@ -7,11 +7,6 @@
 
 namespace gta4
 {
-	namespace cmd
-	{
-		bool show_api_lights = false;
-	}
-
 	// ----
 
 	/**
@@ -48,7 +43,11 @@ namespace gta4
 		light.m_ext.shaping_value.coneAngleDegrees = outerConeDegrees + gs->translate_game_light_angle_offset.get_as<float>();
 		light.m_ext.shaping_value.coneSoftness = coneSoftness + gs->translate_game_light_softness_offset.get_as<float>();
 		light.m_ext.shaping_value.focusExponent = 0.0f;
-		light.m_ext.volumetricRadianceScale = def.mVolumeScale;
+
+		light.m_ext.volumetricRadianceScale = def.mVolumeScale *
+			(def.mType == game::LT_SPOT ? 
+				  gs->translate_game_light_spotlight_volumetric_radiance_scale.get_as<float>() 
+				: gs->translate_game_light_spherelight_volumetric_radiance_scale.get_as<float>());
 
 		light.m_info.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO;
 		light.m_info.pNext = &light.m_ext;
@@ -175,12 +174,17 @@ namespace gta4
 				l.m_ext.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_DISTANT_EXT;
 				l.m_ext.pNext = nullptr;
 
-				auto dir = def.mDirection;
-					 dir.Normalize();
+				auto dir = def.mDirection; dir.Normalize();
 				l.m_ext.direction = dir.ToRemixFloat3D();
 
-				l.m_ext.angularDiameterDegrees = 0.5f;
-				l.m_ext.volumetricRadianceScale = 1.0f;
+				l.m_ext.angularDiameterDegrees = gs->translate_sunlight_angular_diameter_degrees.get_as<float>();
+				l.m_ext.volumetricRadianceScale = gs->translate_sunlight_volumetric_radiance_base.get_as<float>();
+
+				if (gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_as<bool>()) 
+				{
+					l.m_ext.volumetricRadianceScale += 
+						game::helper_timecycle_current_fog_density * gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_as<float>();
+				}
 
 				l.m_info.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO;
 				l.m_info.pNext = &l.m_ext;
@@ -343,7 +347,8 @@ namespace gta4
 
 	void remix_lights::on_client_frame()
 	{
-		const auto rml = remix_lights::get();
+		static auto rml = remix_lights::get();
+		static auto im = imgui::get();
 
 		// check if paused
 		rml->m_is_paused = *game::CMenuManager__m_MenuActive; //shared::utils::float_equal(shared::globals::frame_time_ms, 0.0f);
@@ -359,7 +364,7 @@ namespace gta4
 		Vector player_pos;
 		player_pos = game::FindPlayerCentreOfWorld(&player_pos);
 
-		if (cmd::show_api_lights)
+		if (im->m_dbg_visualize_api_lights)
 		{
 			game::CLightSource* list = game::get_renderLights(); //reinterpret_cast<game::CLightSource*>(*(DWORD*)0x103EED0);
 			//int* count = reinterpret_cast<int*>(0x154DFD0);
@@ -371,8 +376,7 @@ namespace gta4
 			//for (const auto& l : m_active_lights)
 			//{
 
-				if (def.mDirection.LengthSqr() == 0.0f) 
-				{
+				if (def.mDirection.LengthSqr() == 0.0f) {
 					break;
 				}
 

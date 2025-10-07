@@ -422,6 +422,20 @@ namespace gta4
 				0.20f
 			};
 
+			variable translate_game_light_spotlight_volumetric_radiance_scale =
+			{
+				"translate_game_light_spotlight_volumetric_radiance_scale",
+				("Volumetric scale of translated game spotlights"),
+				1.0f
+			};
+
+			variable translate_game_light_spherelight_volumetric_radiance_scale =
+			{
+				"translate_game_light_spherelight_volumetric_radiance_scale",
+				("Volumetric scale of translated game sphere lights"),
+				1.0f
+			};
+
 			variable translate_game_light_angle_offset =
 			{
 				"translate_game_light_angle_offset",
@@ -435,6 +449,38 @@ namespace gta4
 				("Scale intensity of translated game sunlight"),
 				1.0f
 			};
+
+			variable translate_sunlight_angular_diameter_degrees =
+			{
+				"translate_sunlight_angular_diameter_degrees",
+				("Angular Diameter of sunlight (Static value, not influenced by the game)"),
+				0.5f
+			};
+
+			variable translate_sunlight_volumetric_radiance_base =
+			{
+				"translate_sunlight_volumetric_radiance_base",
+				("Base volumetric scale of sunlight (Static value, not influenced by the game)\n"
+				"The timecycle fogdensity setting can also influence the volumetric scale when enabled."),
+				1.0f
+			};
+
+			variable translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled =
+			{
+				"translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled",
+				("Enables influence of timecycle fogdensity setting on sunlight volumetric scale"),
+				true
+			};
+
+			variable translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar =
+			{
+				"translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar",
+				("Scale influence of fogdensity timecycle setting on volumetric scale of sunlight.\n"
+				"( < translate_sunlight_volumetric_radiance_base >  +  < timecycle fogdensity (0-1) >  *  < this scalar >"),
+				10.0f
+			};
+
+			//
 
 			variable vehicle_lights_emissive_scalar =
 			{

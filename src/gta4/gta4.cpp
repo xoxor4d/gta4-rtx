@@ -147,6 +147,7 @@ namespace gta4
 
 			Vector4D fog_color_density;
 			unpack_uint32(game::m_pCurrentTimeCycleParams->mSkyBottomColorFogDensity, &fog_color_density.x);
+			game::helper_timecycle_current_fog_density = fog_color_density.w; // global
 
 			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
 			if (gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
