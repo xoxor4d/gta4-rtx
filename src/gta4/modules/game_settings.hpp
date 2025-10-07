@@ -150,7 +150,12 @@ namespace gta4
 			std::string get_tooltip_string() const
 			{
 				std::string out;
-				out += "# " + std::string(this->m_desc) + "\n";
+
+				const auto desc_lines = shared::utils::split(std::string(this->m_desc), '\n');
+				for (const auto& line : desc_lines) {
+					out += "# " + line + "\n";
+				}
+
 				out += "# Type: " + std::string(this->get_str_type()) + " || Default: " + std::string(this->get_str_value(true));
 				return out;
 			}
@@ -382,8 +387,8 @@ namespace gta4
 			variable nocull_height_far_static =
 			{
 				"nocull_height_far_static",
-				("The minimum height an object has to have to not get culled within the distance set by 'nocull_dist_far_static'"
-				"# Setting this to 0 disables the condition."),
+				("The minimum height an object has to have to not get culled within the distance set by 'nocull_dist_far_static'\n"
+				"Setting this to 0 disables the condition."),
 				13.0f
 			};
 
@@ -434,15 +439,16 @@ namespace gta4
 			variable vehicle_lights_emissive_scalar =
 			{
 				"vehicle_lights_emissive_scalar",
-				("Scale emissive strength of vehicle lights (< gta4 emissiveMultiplier shader constant >  *  < this scalar >  *  < remix material setting >  *  < global remix emissive setting >)"),
+				("Scale emissive strength of vehicle lights\n"
+				"(< gta4 emissiveMultiplier shader constant >  *  < this scalar >  *  < remix material setting >  *  < global remix emissive setting >)"),
 				13.0f
 			};
 
 			variable vehicle_lights_dual_render_proxy_texture =
 			{
 				"vehicle_lights_dual_render_proxy_texture",
-				("This renders surfaces using the 'gta_vehicle_lightsemissive' shader a second time using a proxy texture (veh_light_ems_glass.png)."
-				"# The remix-mod of the compatibility mod makes that surface translucent."),
+				("This renders surfaces using the 'gta_vehicle_lightsemissive' shader a second time using a proxy texture (veh_light_ems_glass.png).\n"
+				"The remix-mod of the compatibility mod makes that surface translucent."),
 				true
 			};
 
@@ -458,7 +464,7 @@ namespace gta4
 			{
 				"assign_decal_category_to_emissive_surfaces",
 				("This automatically assigns the 'Decal' texture category (remix) to every surface using a shader ending on 'emissivenight/emissive/strong'\n"
-				 "# This reduces flickering and z-fighting."),
+				 "This reduces flickering and z-fighting."),
 				true
 			};
 
@@ -488,8 +494,8 @@ namespace gta4
 			variable decal_dirt_shader_usage =
 			{
 				"handle_decal_dirt_shader",
-				("Enable decal_dirt shader logic. Runtime will use 'rtx_comp/textures/decal_dirt.png' in texture slot 0 and the games intensity/alpha mask in slot 1."
-				"# This allows remixing the dirt texture while the game is handling the blending."),
+				("Enable decal_dirt shader logic. Runtime will use 'rtx_comp/textures/decal_dirt.png' in texture slot 0 and the games intensity/alpha mask in slot 1.\n"
+				"This allows remixing the dirt texture while the game is handling the blending."),
 				true
 			};
 
@@ -581,29 +587,29 @@ namespace gta4
 
 			variable timecycle_skyhorizonheight_enabled = {
 				"timecycle_skyhorizonheight_enabled",
-				("Enables automatic adjustment of 'rtx.volumetrics.atmosphereHeightMeters' based on timecycle settings."
-				"# Also influences 'rtx.volumetrics.transmittanceMeasurementDistanceMeters' based on low/high transmittance offsets."),
+				("Enables automatic adjustment of 'rtx.volumetrics.atmosphereHeightMeters' based on timecycle settings.\n"
+				"Also influences 'rtx.volumetrics.transmittanceMeasurementDistanceMeters' based on low/high transmittance offsets."),
 				true
 			};
 
 			variable timecycle_skyhorizonheight_scalar = {
 				"timecycle_skyhorizonheight_scalar",
-				("Controls how much the horizon height timecycle variable influences 'rtx.volumetrics.atmosphereHeightMeters'."
-				"# Final value is also used to offset 'transmittanceMeasurementDistanceMeters' based on atmospheric height."),
+				("Controls how much the horizon height timecycle variable influences 'rtx.volumetrics.atmosphereHeightMeters'.\n"
+				"Final value is also used to offset 'transmittanceMeasurementDistanceMeters' based on atmospheric height."),
 				1.2f
 			};
 
 			variable timecycle_skyhorizonheight_low_transmittance_offset = {
 				"timecycle_skyhorizonheight_low_transmittance_offset",
-				("Increase fog transmittance with higher skyhorizonheight values. Lowest offset that can be applied to 'transmittanceMeasurementDistanceMeters' based on atmospheric height."
-				"# Higher values result in less fog."),
+				("Increase fog transmittance with higher skyhorizonheight values. Lowest offset that can be applied to 'transmittanceMeasurementDistanceMeters' based on atmospheric height.\n"
+				"Higher values result in less fog."),
 				0.0f
 			};
 
 			variable timecycle_skyhorizonheight_high_transmittance_offset = {
 				"timecycle_skyhorizonheight_high_transmittance_offset",
-				("Increase fog transmittance with higher skyhorizonheight values. Highest offset that can be applied to 'transmittanceMeasurementDistanceMeters' based on atmospheric height."
-				"# Higher values result in less fog."),
+				("Increase fog transmittance with higher skyhorizonheight values. Highest offset that can be applied to 'transmittanceMeasurementDistanceMeters' based on atmospheric height.\n"
+				"Higher values result in less fog."),
 				100.0f
 			};
 
@@ -623,8 +629,8 @@ namespace gta4
 			// -----
 			variable timecycle_colorcorrection_enabled = {
 				"timecycle_colorcorrection_enabled",
-				("Enables influence of color correction on 'rtx.tonemap.colorBalance' based on timecycle settings."
-				"# Disabling this also disables color temperature influence."),
+				("Enables influence of color correction on 'rtx.tonemap.colorBalance' based on timecycle settings.\n"
+				"Disabling this also disables color temperature influence."),
 				true
 			};
 
@@ -690,8 +696,6 @@ namespace gta4
 				("Scales the bloom threshold timecycle variable which influences 'rtx.tonemap.luminanceThreshold'."),
 				1.0f
 			};
-
-
 		};
 	
 		static inline var_definitions vars = {};

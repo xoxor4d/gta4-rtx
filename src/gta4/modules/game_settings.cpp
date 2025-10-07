@@ -19,7 +19,11 @@ namespace gta4
 		{
 			auto var = reinterpret_cast<variable*>(reinterpret_cast<char*>(&vars) + s * sizeof(variable));
 
-			file << "# " << var->m_desc << std::endl;
+			const auto desc_lines = shared::utils::split(std::string(var->m_desc), '\n');
+			for (const auto& line : desc_lines) {
+				file << "# " + line << std::endl;
+			}
+
 			file << "# Type: " << var->get_str_type() << " || Default: " << var->get_str_value(true) << std::endl;
 			file << var->m_name << " = " << var->get_str_value() << std::endl << std::endl;
 		}
