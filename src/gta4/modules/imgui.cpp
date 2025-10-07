@@ -368,10 +368,10 @@ namespace gta4
 				}, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
-#if DEBUG
+//#if DEBUG
 		{
 			static float cont_debug_height = 0.0f;
-			cont_debug_height = ImGui::Widget_ContainerWithCollapsingTitle("DEBUG Build Section", cont_debug_height, [&]
+			cont_debug_height = ImGui::Widget_ContainerWithCollapsingTitle("DEBUG Section", cont_debug_height, [&]
 				{
 					const float treenode_spacing = 6.0f;
 					const float treenode_spacing_inside = 6.0f;
@@ -392,6 +392,7 @@ namespace gta4
 						ImGui::Checkbox("Do not render Stencil 0", &im->m_dbg_do_not_render_stencil_zero);
 						ImGui::Checkbox("Do not render Tree Foliage", &im->m_dbg_do_not_render_tree_foliage);
 						ImGui::Checkbox("Do not render FF", &im->m_dbg_do_not_render_ff);
+						ImGui::Checkbox("Do not render Water", &im->m_dbg_do_not_render_water);
 
 						ImGui::TreePop();
 					}
@@ -452,9 +453,9 @@ namespace gta4
 						ImGui::TreePop();
 					}
 
-				}, true, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+				}, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
-#endif
+//#endif
 	}
 
 	void cont_gamesettings_quick_cmd()

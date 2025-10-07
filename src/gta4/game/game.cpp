@@ -99,6 +99,9 @@ namespace gta4::game
 	uint32_t retn_addr__pre_draw_water = 0u;
 	uint32_t hk_addr__post_draw_water = 0u;
 
+	uint32_t retn_addr__pre_draw_statics = 0;
+	uint32_t hk_addr__post_draw_statics = 0;
+
 	// --------------
 
 	// init any adresses here
@@ -378,6 +381,15 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
+
+		if (const auto offset = shared::utils::mem::find_pattern("75 ? 83 3D ? ? ? ? ? A1 ? ? ? ? 0F 45 05 ? ? ? ? ? ? ? 8B 43 ? ? ? ? ? 85 C9", 0, "retn_addr__pre_draw_statics", use_pattern, 0x42EBEC); offset) {
+			retn_addr__pre_draw_statics = offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		// can't create signature at the end of the function so we get the offset from a relative jump instruction
+		if (const auto offset = shared::utils::mem::find_pattern("EB ? 5F 5D 5E C7 05", 16, "hk_addr__post_draw_statics", use_pattern, 0x42ECA7); offset) {
+			hk_addr__post_draw_statics = offset; found_pattern_count++;
+		} total_pattern_count++;
 
 		// end GAME_ASM_OFFSETS
 #pragma endregion

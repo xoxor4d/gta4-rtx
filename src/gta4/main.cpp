@@ -172,6 +172,7 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		shared::globals::setup_exe_module();
 		shared::globals::setup_homepath();
 
+		std::cout << "Launching GTAIV RTX Remix Compatiblity Mod Version [" << COMP_MOD_VERSION_MAJOR << "." << COMP_MOD_VERSION_MINOR << "." << COMP_MOD_VERSION_PATCH << "]\n";
 		gta4::game::init_game_addresses();
 
 		if (const auto MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)

@@ -38,6 +38,7 @@ namespace gta4
 		bool m_dbg_do_not_render_stencil_zero = false;
 		bool m_dbg_do_not_render_tree_foliage = false;
 		bool m_dbg_do_not_render_ff = false;
+		bool m_dbg_do_not_render_water = false;
 		bool m_dbg_toggle_ff = false;
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;

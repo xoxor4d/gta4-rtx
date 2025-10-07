@@ -360,8 +360,14 @@ namespace gta4
 		ctx.modifiers.do_not_render = debug_ignore_shader_logic(ctx.info.shader_name);
 
 #if DEBUG
-		if (ctx.modifiers.do_not_render) {
+		if (ctx.modifiers.do_not_render) 
+		{
 			int break_me = 1; // can be used to break on ignored shaders
+
+			if (!g_is_rendering_static)
+			{
+				int break_me2 = 1;
+			}
 		}
 #endif
 
@@ -725,6 +731,20 @@ namespace gta4
 				}
 			}
 
+			// rendering water via FF is fine and safes a ton of performance
+			if (g_is_water_rendering)
+			{
+				dev->SetTransform(D3DTS_WORLD, &viewport->wp->world);
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, 0);
+				render_with_ff = true;
+
+				// override texture hash so that it never changes
+				if (gs->override_water_texture_hash.get_as<bool>()) {
+					set_remix_texture_hash(dev, shared::utils::string_hash32("water"));
+				}
+			}
+
 			if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))  
 			{
 				set_remix_texture_categories(dev, InstanceCategories::Particle);
@@ -766,10 +786,8 @@ namespace gta4
 			}
 		}
 
-		if (render_with_ff)
-		{
-			ctx.save_vs(dev);
-			dev->SetVertexShader(nullptr);
+		if (g_is_water_rendering && im->m_dbg_do_not_render_water) {
+			ctx.modifiers.do_not_render = true;
 		}
 
 		if (ctx.modifiers.is_fx)
@@ -787,8 +805,10 @@ namespace gta4
 			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 		}
 
-		if (g_is_water_rendering && gs->override_water_texture_hash.get_as<bool>()) {
-			set_remix_texture_hash(dev, shared::utils::string_hash32("water"));
+		if (render_with_ff)
+		{
+			ctx.save_vs(dev);
+			dev->SetVertexShader(nullptr);
 		}
 
 
@@ -1375,6 +1395,26 @@ namespace gta4
 		}
 	}
 
+	__declspec (naked) void pre_static_render_stub()
+	{
+		__asm
+		{
+			mov     ebx, ecx;
+			cmp     eax, 0xFFFFFFFF;
+			mov		g_is_rendering_static, 1;
+			jmp		game::retn_addr__pre_draw_statics;
+		}
+	}
+
+	__declspec (naked) void post_static_render_stub()
+	{
+		__asm
+		{
+			mov		g_is_rendering_static, 0;
+			retn    0x10;
+		}
+	}
+
 	renderer::renderer()
 	{
 		p_this = this;
@@ -1398,6 +1438,11 @@ namespace gta4
 		// detect water rendering
 		shared::utils::hook(game::retn_addr__pre_draw_water - 5u, pre_water_render_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_draw_water, post_water_render_stub, HOOK_JUMP).install()->quick();
+
+		// detect vehicle rendering 0x8DCDA0
+
+		shared::utils::hook(game::retn_addr__pre_draw_statics - 5u, pre_static_render_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::hk_addr__post_draw_statics, post_static_render_stub, HOOK_JUMP).install()->quick();
 
 		// do not render postfx RT infront of the camera
 		shared::utils::hook::nop(game::nop_addr__disable_postfx_drawing, 5);

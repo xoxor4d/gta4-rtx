@@ -63,13 +63,14 @@ and with [Ultimate ASI Loader v9.0.0](https://github.com/ThirteenAG/Ultimate-ASI
 - FusionFix compatible (to some degree - still causes some conflicts)
 
 ###### The bad:
+- Texture Streaming can cause issues after some time (incorrect textures)
+- Bad performance in certain areas (__wip__ - still need to disable many of the game's rendering features, which are useless for remix) 
+- Particles do not render infront of the skybox (disble separate unordered approximations to fix this -> causes issues with emissives tho)
+- "Fake" ambient game lights still need to be removed via actual game mods
 - Mobilephone UI can look a little broken
 - Dynamic game lights can look noisy (__wip__)
-- Bad performance in certain areas (__wip__ - still need to disable many of the game's rendering features, which are useless for remix) 
 - Effects can/will look bad until touched up via actual game mods
-- "Fake" ambient game lights still need to be removed via actual game mods
 - Anti-Culling is not perfect yet
-- Particles do not render infront of the skybox (disble separate unordered approximations to fix this -> causes issues with emissives tho)
 - Car dirt is not supported
 
 <br>
