@@ -2,6 +2,7 @@
 #include "imgui.hpp"
 
 #include "game_settings.hpp"
+#include "imgui_internal.h"
 #include "map_settings.hpp"
 #include "natives.hpp"
 #include "remix_lights.hpp"
@@ -162,7 +163,7 @@ namespace gta4
 
 	void imgui::tab_dev()
 	{
-		const auto& im = imgui::get();
+		static const auto& im = imgui::get();
 
 		{
 			static float cont_cull_height = 0.0f;
@@ -377,7 +378,7 @@ namespace gta4
 					const float treenode_spacing_inside = 6.0f;
 
 					ImGui::Spacing(0, treenode_spacing);
-					ImGui::Checkbox("Visualize Api Lights", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
+					ImGui::Checkbox("Visualize Api Lights 3D", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
 					ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
 					ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
 					ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23);
@@ -1369,6 +1370,140 @@ namespace gta4
 		ImGui::Spacing();
 	}
 
+	void cont_mapsettings_ignore_lights()
+	{
+		static const auto& im = imgui::get();
+
+		auto& ignore_lights = map_settings::get_map_settings().ignored_lights;
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (ImGui::Button("Copy Ignored to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
+		{
+			ImGui::LogToClipboard();
+			ImGui::LogText("%s", shared::common::toml_ext::build_ignore_lights_array(ignore_lights).c_str());
+			ImGui::LogFinish();
+		} ImGui::PopFont();
+
+		ImGui::SameLine();
+		reload_mapsettings_button_with_popup("IgnoreLights");
+
+		ImGui::Spacing(0, 8.0f);
+		ImGui::Checkbox("Visualize Api Light Hashes", &im->m_dbg_visualize_api_light_hashes); TT("Visualize all spawned api light hashes closeby");
+
+		ImGui::SameLine(0, 20.0f);
+		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
+		{
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("  Draw Distance  ").x);
+			ImGui::DragFloat("  Draw Distance  ", &im->m_dbg_visualize_api_light_hashes_distance, 0.005f, 0.0f, 30.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing(0, 8.0f);
+		if (!im->m_dbg_visualize_api_light_hashes)
+		{
+			ImGui::SeparatorText("Nearby lights (Double-Click to Ignore) ~ Enable 'Visualize Api Light Hashes' to enable this feature.");
+		}
+		else
+		{
+			ImGui::SeparatorText("Nearby lights (Double-Click to Ignore)");
+		}
+		
+		ImGui::Spacing(0.0f, 8.0f);
+
+		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
+		{
+			static ImGuiTextFilter filter;
+			if (ImGui::BeginListBox("##lights", ImVec2(ImGui::GetContentRegionAvail().x, 200)))
+			{
+				for (size_t i = 0; i < im->visualized_api_lights.size(); ++i)
+				{
+					const auto& light = im->visualized_api_lights[i];
+					const bool is_ignored = light.ignored;
+
+					// only add lights that are alive for more than 5 frames
+					if (light.m_frames_since_addition > 5u)
+					{
+						char hash_str[17];
+						std::snprintf(hash_str, sizeof(hash_str), "%llx", static_cast<unsigned long long>(light.hash));
+						if (!filter.PassFilter(hash_str)) {
+							continue;
+						}
+
+						if (is_ignored)
+						{
+							ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+						}
+
+						if (ImGui::Selectable(shared::utils::va("%llx", light.hash), false, ImGuiSelectableFlags_AllowDoubleClick))
+						{
+							if (ImGui::IsMouseDoubleClicked(0))
+							{
+								if (ignore_lights.contains(light.hash))
+								{
+									auto it = std::find(ignore_lights.begin(), ignore_lights.end(), light.hash);
+									if (it != ignore_lights.end()) {
+										ignore_lights.erase(it);
+									}
+								}
+								else {
+									ignore_lights.insert(light.hash);
+								}
+							}
+						}
+
+						if (is_ignored)
+						{
+							ImGui::PopStyleColor();
+							ImGui::PopFont();
+						}
+					}
+				}
+				ImGui::EndListBox();
+			}
+
+			filter.Draw("##Filter", ImGui::GetContentRegionAvail().x
+				- ImGui::GetFrameHeight()
+				//- ImGui::CalcTextSize("Filter").x 
+				- ImGui::GetStyle().FramePadding.x + 3.0f
+				/*- (ImGui::GetStyle().ItemSpacing.x)*/);
+
+			ImGui::SameLine();
+			if (ImGui::Button("X", ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
+				filter.Clear();
+			}
+
+			
+
+			/*ImGui::SameLine();
+			ImGui::TextUnformatted("  Filter");*/
+
+			ImGui::Spacing(0.0f, 8.0f);
+			ImGui::Separator();
+			ImGui::Spacing(0.0f, 8.0f);
+
+			ImGui::EndDisabled();
+		}
+
+
+		//std::string new_light_hash_buffer;
+		//uint64_t temp_new_light_hash;
+		//if (ImGui::InputText("##IgnLightHash", &new_light_hash_buffer, ImGuiInputTextFlags_CallbackCharFilter | ImGuiInputTextFlags_EnterReturnsTrue,
+		//	[](ImGuiInputTextCallbackData* data)
+		//	{
+		//		const auto c = static_cast<char>(data->EventChar);
+		//		if (std::isxdigit(c) || c == 'x' || c == 'X') {
+		//			return 0; // allow input
+		//		}
+		//		return 1; // block input
+		//	}))
+		//{
+		//	temp_new_light_hash = static_cast<uint32_t>(std::strtoul(new_light_hash_buffer.c_str(), nullptr, 16));
+		//	new_light_hash_buffer = std::format("0x{:X}", temp_new_light_hash);
+		//} TT( "Add hash of a light to not translate it to a remix light");
+
+
+	}
+
 	void imgui::tab_map_settings()
 	{
 		// general settings
@@ -1387,9 +1522,101 @@ namespace gta4
 		{
 			static float cont_marker_manip_height = 0.0f;
 			cont_marker_manip_height = ImGui::Widget_ContainerWithCollapsingTitle("Marker Manipulation", cont_marker_manip_height, cont_mapsettings_marker_manipulation,
-				true, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+				false, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// ignore game lights
+		{
+			static float cont_ignore_lights_height = 0.0f;
+			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Ignore Game Lights", cont_ignore_lights_height, cont_mapsettings_ignore_lights,
+				true, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
+
+	void imgui::draw_debug()
+	{
+		if (m_dbg_visualize_api_light_hashes)
+		{
+			static auto im = imgui::get();
+			static auto rml = remix_lights::get();
+
+			const auto vp = game::pViewports;
+			if (vp->sceneviewport)
+			{
+				const float draw_dist = im->m_dbg_visualize_api_light_hashes_distance;
+
+				ImVec2 viewport_pos = {};
+				const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
+
+				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+
+				if (rml->get_active_light_count())
+				{
+					for (auto& l : *rml->get_active_lights())
+					{
+						if (l.m_hash && fabs(cam_org.DistToSqr(l.m_def.mPosition) < draw_dist * draw_dist))
+						{
+							shared::imgui::world_to_screen(l.m_def.mPosition, viewport_pos);
+
+							bool is_light_hash_stable = false;
+							bool is_light_in_vis_list = false;
+							for (auto& ign : visualized_api_lights)
+							{
+								if (ign.hash == l.m_hash)
+								{
+									is_light_in_vis_list = true;
+									ign.ignored = l.m_is_ignored; // ignored state might have changed
+									ign.m_updateframe++;
+									is_light_hash_stable = ign.m_frames_since_addition > 5u;
+									break;
+								}
+							}
+
+							if (!is_light_in_vis_list)
+							{
+								visualized_api_lights.emplace_back(
+									l.m_hash, l.m_def.mPosition, l.m_is_ignored, 0u, 0u
+								);
+							}
+
+							if (is_light_hash_stable)
+							{
+								if (l.m_is_ignored)
+								{
+									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+										ImColor(1.0f, 0.0f, 0.0f, 1.0f), shared::utils::va("[LIGHT-HASH] %llx\n~ IGNORED ~", l.m_hash));
+								}
+								else
+								{
+									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx", l.m_hash));
+								}
+							}
+						}
+					}
+				}
+
+				// clean vis list
+				for (auto it = visualized_api_lights.begin(); it != visualized_api_lights.end(); )
+				{
+					auto& elem = *it;
+
+					if (elem.m_frames_since_addition != elem.m_updateframe || fabs(cam_org.DistToSqr(elem.pos) > draw_dist * draw_dist)) {
+						it = visualized_api_lights.erase(it);
+					}
+					else 
+					{
+						// used to detect unstable hashes
+						elem.m_frames_since_addition++;
+						++it;
+					}
+				}
+
+				ImGui::PopFont();
+			}
+		}
+	}
+
 
 	void imgui::devgui()
 	{
@@ -1516,10 +1743,11 @@ namespace gta4
 						io.MouseDrawCursor = true;
 						im->devgui();
 					}
-					else 
-					{
+					else {
 						io.MouseDrawCursor = false;
 					}
+
+					im->draw_debug();
 
 					shared::globals::imgui_is_rendering = true;
 					ImGui::EndFrame();
@@ -1572,7 +1800,7 @@ namespace gta4
 		colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.96f);
 		colors[ImGuiCol_ChildBg] = ImVec4(0.21f, 0.21f, 0.21f, 0.80f);
 		colors[ImGuiCol_PopupBg] = ImVec4(0.28f, 0.28f, 0.28f, 1.00f);
-		colors[ImGuiCol_Border] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
+		colors[ImGuiCol_Border] = ImVec4(0.15f, 0.15f, 0.15f, 0.00f);
 		colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.23f);
 		colors[ImGuiCol_FrameBg] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
 		colors[ImGuiCol_FrameBgHovered] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);

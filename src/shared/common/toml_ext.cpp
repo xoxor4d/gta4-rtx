@@ -30,4 +30,35 @@ namespace shared::common::toml_ext
 		toml_str += "]";
 		return toml_str;
 	}
+
+	/// Builds a string containing all ignore game light hashes
+	/// @return the final string in toml format
+	std::string build_ignore_lights_array(const std::unordered_set<uint64_t>& hashes)
+	{
+		auto hash_count = 0u;
+
+		std::string toml_str = "IGNORE_LIGHTS = [\n    "s;
+		bool first_hash = true;
+
+		for (auto& hash : hashes)
+		{
+			if (!first_hash) {
+				toml_str += ", ";
+			}
+			else {
+				first_hash = false;
+			}
+			
+			hash_count++;
+
+			if (!(hash_count % 10)) {
+				toml_str += "\n    ";
+			}
+
+			toml_str += std::format("0x{:X}", hash);
+		}
+
+		toml_str += "\n]";
+		return toml_str;
+	}
 }

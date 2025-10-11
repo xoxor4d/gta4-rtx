@@ -4,7 +4,7 @@
 # :: Can be used as anchor mesh (same one can be spawned multiple times)
 #    > They can be spawned and adjusted in-game via the imgui menu
 #
-# ~~ Parameters:
+# ~~ Parameters
 #   {          
 #       #                   comment         
 #       marker_num =        num of marker                                                           [int 0-inf]
@@ -14,10 +14,29 @@
 #       cull_distance =     disable drawing of marker mesh after this distance from the player      [Float]
 #   }, 
 #   { ... },
-# ]
 
 MARKER = [
 
     # first safehouse test
     { marker_num = 170, position = [895.40, -495.05, 18.91], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 15.00 },
+]
+
+
+
+# ##########################################################################################################################################
+# >> Ignore Game Lights
+# 
+# :: Can be used to disable the translation of specified game lights to remix lights 
+# :: Requires light hash to be stable (not moving)
+# 
+# :: How to retrieve hashes:
+#    > Visualize hashes in 3D Space (GUI -> Map Settings -> Ignore Game Lights -> Draw Hash Visualization)
+#    > DoubleClick hashes in list to ignore lights and export to clipboard when done -> override IGNORE_LIGHTS with clipboard data
+#
+# ~~ IGNORE_LIGHTS = [
+#     0x0, 0x1, 0x2, ...            [uint array - hex format]
+# ]                                                                                              
+
+IGNORE_LIGHTS = [
+    0x45515B7
 ]

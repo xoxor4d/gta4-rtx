@@ -12,6 +12,7 @@ namespace gta4
 
 		static void on_present();
 
+		void draw_debug();
 		void devgui();
 		bool input_message(UINT message_type, WPARAM wparam, LPARAM lparam);
 
@@ -43,7 +44,25 @@ namespace gta4
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;
 
+		// --
+
 		bool m_dbg_visualize_api_lights = false;
+		bool m_dbg_visualize_api_light_hashes = false;
+		bool m_dbg_disable_ignore_light_hash_logic = false; // disables the map_settings logic that ignores light translation based on a list of hashes
+		float m_dbg_visualize_api_light_hashes_distance = 8.0f;
+
+		struct visualized_api_light_s
+		{
+			uint64_t hash = 0u;
+			Vector pos;
+			bool ignored = false;
+			std::uint32_t m_updateframe = 0u; // increases when light hash was found in the current frame
+			std::uint32_t m_frames_since_addition = 0u; // increases on each frame
+		};
+
+		std::vector<visualized_api_light_s> visualized_api_lights;
+
+		// --
 
 		bool m_dbg_enable_ignore_shader_logic = false;
 		bool m_dbg_ignore_all = false;

@@ -33,6 +33,7 @@ namespace gta4
 			uint64_t m_hash;
 			std::uint32_t m_light_num = 0u;
 			std::uint32_t m_updateframe = 0u;
+			bool m_is_ignored = false;
 		};
 
 		struct remix_distant_light_def
@@ -47,7 +48,7 @@ namespace gta4
 
 		bool spawn_or_update_remix_sphere_light(remix_light_def& light);
 
-		void add_light(const game::CLightSource& def, const uint64_t& hash);
+		void add_light(const game::CLightSource& def, const uint64_t& hash, bool add_but_do_not_draw = false);
 		void destroy_light(remix_light_def& light);
 
 		void destroy_all_lights();
@@ -57,6 +58,14 @@ namespace gta4
 
 		size_t get_active_light_count() { return m_active_lights.size(); }
 		remix_light_def* get_first_active_light() { return !m_active_lights.empty() ? &m_active_lights.front() : nullptr; }
+
+		std::vector<remix_light_def>* get_active_lights() {
+			return &m_active_lights;
+		}
+
+		remix_distant_light_def* get_distant_light() {
+			return &m_distant_light;
+		}
 
 	private:
 		static inline std::uint32_t m_active_light_spawn_tracker = 0u;

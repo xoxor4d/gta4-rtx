@@ -183,11 +183,11 @@ namespace gta4::game
 	{
 		char pad_0x0000[0x10]; //0x0000
 		D3DXMATRIX N0000044C; //0x0010 
-		D3DXMATRIX N00000462; //0x0050 
+		D3DXMATRIX cameraInv; //0x0050 
 		D3DXMATRIX identity; //0x0090 
-		D3DXMATRIX also_view; //0x00D0 
-		D3DXMATRIX N00000472; //0x0110 
-		D3DXMATRIX N00000476; //0x0150 
+		D3DXMATRIX wv; //0x00D0 
+		D3DXMATRIX wvp; //0x0110 
+		D3DXMATRIX viewInv; //0x0150 
 		D3DXMATRIX view; //0x0190 
 		D3DXMATRIX proj; //0x01D0 
 		char pad_0x0210[0x5F4]; //0x0210

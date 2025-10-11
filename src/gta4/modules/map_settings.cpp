@@ -104,6 +104,18 @@ namespace gta4
 					}
 				}
 			} // end 'MARKER'
+
+
+			// ####################
+			// parse 'IGNORE_LIGHTS' table
+			if (config.contains("IGNORE_LIGHTS"))
+			{
+				if (const auto ignore_lights = config.at("IGNORE_LIGHTS");
+					!ignore_lights.is_empty() && !ignore_lights.as_array().empty())
+				{
+					m_map_settings.ignored_lights = toml::get<std::unordered_set<uint64_t>>(ignore_lights);
+				}
+			} // end 'IGNORE_LIGHTS'
 		}
 
 		catch (const toml::syntax_error& err)
@@ -121,6 +133,7 @@ namespace gta4
 	void map_settings::clear_map_settings()
 	{
 		m_map_settings.map_markers.clear();
+		m_map_settings.ignored_lights.clear();
 		m_map_settings = {};
 		m_loaded = false;
 	}

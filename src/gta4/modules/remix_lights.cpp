@@ -3,6 +3,7 @@
 
 #include "game_settings.hpp"
 #include "imgui.hpp"
+#include "map_settings.hpp"
 #include "shared/common/remix_api.hpp"
 
 namespace gta4
@@ -77,7 +78,7 @@ namespace gta4
 	 * Adds and immediately spawns a single light
 	 * @param def	The game light definition
 	 */
-	void remix_lights::add_light(const game::CLightSource& def, const uint64_t& hash)
+	void remix_lights::add_light(const game::CLightSource& def, const uint64_t& hash, const bool add_but_do_not_draw)
 	{
 		if (def.mType == game::LT_POINT || def.mType == game::LT_SPOT)
 		{
@@ -86,8 +87,18 @@ namespace gta4
 				{
 					.m_def = def,
 					.m_hash = hash,
-					.m_light_num = m_active_light_spawn_tracker++
+					.m_light_num = m_active_light_spawn_tracker++,
 				});
+
+			// add light with 0 intensity (eg. for debug vizualizations)
+			if (add_but_do_not_draw)
+			{
+				if (auto* light = &m_active_lights.back(); light) 
+				{
+					light->m_def.mIntensity = 0.0f;
+					light->m_is_ignored = true;
+				}
+			}
 
 			// spawn light
 			if (auto* light = &m_active_lights.back(); light) {
@@ -150,18 +161,18 @@ namespace gta4
 	 */
 	void remix_lights::iterate_all_game_lights()
 	{
+		static auto im = imgui::get();
+		static auto gs = game_settings::get();
+		static auto& api = shared::common::remix_api::get();
+
 		destroy_and_clear_all_active_lights();
 
-		if (true)
+		//if (true)
 		{
 			if (game::g_directionalLights)
 			{
 				auto& def = game::g_directionalLights[0];
 				auto& l = m_distant_light;
-
-				static auto im = imgui::get();
-				static auto gs = game_settings::get();
-				auto& api = shared::common::remix_api::get();
 
 				if (l.m_handle)
 				{
@@ -202,55 +213,35 @@ namespace gta4
 
 		if (game_settings::get()->translate_game_lights.get_as<bool>() && light_count && light_list)
 		{
-			//game::CLightSource* list = game::g_lightList; //reinterpret_cast<game::CLightSource*>(*(DWORD*)0x103EED0);
-			//int* count = reinterpret_cast<int*>(0x154DFD0);
-
-			for (auto i = 0u; i < light_count /**count*/ /**game::g_lightCount*/; i++)
+			for (auto i = 0u; i < light_count; i++)
 			{
-				//auto& def = game::g_lightListSrc[i]; 
 				auto& def = light_list[i];
 				const auto hash = calculate_light_hash(def);
-				//auto hash = shared::utils::hash32_combine(0, "tlight"); 
-				//hash = shared::utils::hash32_combine(hash, (int)i);
 
-				bool found_light = false;
-				/*for (auto& l : m_active_lights)
+				bool add_zero_intensity_light = false;
+
+				// debug setting to disable ignore logic (to test performance impact)
+				if (!im->m_dbg_disable_ignore_light_hash_logic)
 				{
-					if (l.m_updateframe != m_updateframe && l.m_info.hash == hash)
+					const auto& ignored_lights = map_settings::get()->get_map_settings().ignored_lights;
+					if (ignored_lights.contains(hash))
 					{
-						found_light = true;
-						if (memcmp(&l.m_def, &def, sizeof(game::CLightSource)) != 0)
-						{
-							l.m_def = def;
-							spawn_or_update_remix_light(l);
+						// we need this light in the active list to visualize it
+						if (im->m_dbg_visualize_api_light_hashes) {
+							add_zero_intensity_light = true;
 						}
-						break;
+						else {
+							continue;
+						}
 					}
-				}*/
-
-				/*if (def.mFlags & 0x100000)
-				{
-					int x = 1;
-				}*/
-
-				if (!found_light) {
-					add_light(def, hash);
 				}
+
+				add_light(def, hash, add_zero_intensity_light);
 			}
 		}
 
-		// iterate all active lights and delete untouched ones
-		/*for (auto it = m_active_lights.begin(); it != m_active_lights.end();)
-		{
-			if (it->m_updateframe + 100 < m_updateframe)
-			{
-				destroy_light(*it);
-				it = m_active_lights.erase(it);
-			}
-			else { ++it; }
-		}*/
 #else
-		// d3d9 lights test - they also lag
+		// d3d9 lights test
 
 		if (game::g_lightList && game::g_lightCount && *game::g_lightCount)
 		{
@@ -366,16 +357,12 @@ namespace gta4
 
 		if (im->m_dbg_visualize_api_lights)
 		{
-			game::CLightSource* list = game::get_renderLights(); //reinterpret_cast<game::CLightSource*>(*(DWORD*)0x103EED0);
-			//int* count = reinterpret_cast<int*>(0x154DFD0);
+			game::CLightSource* list = game::get_renderLights();
 			const auto count = game::get_renderLightsCount();
-			for (auto i = 0u; count /**game::g_lightListSrcCount*/ /**game::g_lightCount*/; i++)
-			{
-				auto& def = list[i]; //game::g_lightListSrc[i];
-				//auto& def2 = game::g_lightList[i];
-			//for (const auto& l : m_active_lights)
-			//{
 
+			for (auto i = 0u; count; i++)
+			{
+				auto& def = list[i];
 				if (def.mDirection.LengthSqr() == 0.0f) {
 					break;
 				}
@@ -396,10 +383,6 @@ namespace gta4
 				//remixapi.add_debug_circle_based_on_previous(circle_pos, Vector(90, 0, 90), Vector(1.0f, 1.0f, 1.0f));
 			}
 		}
-
-		
-		//player_pos.z += 1;
-		//shared::common::remix_api::get().add_debug_circle(player_pos, Vector(0.0f, 0.0f, 1.0f), 0.5f, 0.2f, {1.0f, 1.0f, 0.0f}, true);
 	}
 
 	// called before map_settings
@@ -408,26 +391,6 @@ namespace gta4
 		// reset spawn tracker
 		m_active_light_spawn_tracker = 0u;
 	}
-
-
-	//void on_update_light_list_hk()
-	//{
-	//	//remix_lights::on_client_frame();
-	//}
-
-	//void __declspec(naked) on_update_light_list_stub()
-	//{
-	//	__asm
-	//	{
-	//		pop     esi;
-
-	//		pushad;
-	//		call	on_update_light_list_hk;
-	//		popad;
-
-	//		retn;
-	//	}
-	//}
 
 
 	void on_render_light_list_hk()
@@ -454,9 +417,7 @@ namespace gta4
 	{
 		p_this = this;
 
-		//shared::utils::hook(game::hk_addr__on_update_light_list_stub, on_update_light_list_stub, HOOK_JUMP).install()->quick(); // 0xABED26
 		shared::utils::hook(game::retn_addr__on_render_light_list_stub - 5u, on_render_light_list_stub, HOOK_JUMP).install()->quick(); // 0xAC1031
-
 
 		// -----
 		m_initialized = true;
