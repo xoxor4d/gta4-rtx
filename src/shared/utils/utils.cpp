@@ -7,6 +7,36 @@
 
 namespace shared::utils
 {
+	// we want to focus and lock the mouse cursor to the game window on init or we get mouse decoupling in windowed mode
+	DWORD focus_and_lock_cursor_on_init()
+	{
+		HWND hwnd = shared::globals::main_window;
+		if (!IsWindow(hwnd)) {
+			return 1;
+		}
+
+		BringWindowToTop(hwnd);
+		SetActiveWindow(hwnd);
+		SetForegroundWindow(hwnd);
+		SetFocus(hwnd);
+
+		// lock cursor to client rect
+		RECT rect;
+		GetClientRect(hwnd, &rect);
+		POINT topLeft = { 0, 0 };
+		ClientToScreen(hwnd, &topLeft);
+		OffsetRect(&rect, topLeft.x, topLeft.y);
+		ClipCursor(&rect);
+
+		// center cursor
+		const int centerX = topLeft.x + (rect.right - rect.left) / 2;
+		const int centerY = topLeft.y + (rect.bottom - rect.top) / 2;
+		SetCursorPos(centerX, centerY);
+		ShowCursor(FALSE);
+
+		return 0;
+	}
+
 	float rad_to_deg(const float radians) {
 		return radians * (180.0f / M_PI);
 	}

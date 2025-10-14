@@ -106,20 +106,9 @@ namespace gta4
 		return hr;
 	}
 
+	// not in use?
 	HRESULT d3d9ex::D3D9Device::Present(CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion)
 	{
-		const auto current_time = std::chrono::high_resolution_clock::now();
-		if (shared::globals::last_frame_time.time_since_epoch().count() != 0) 
-		{
-			const auto delta = std::chrono::duration_cast<std::chrono::microseconds>(current_time - shared::globals::last_frame_time).count();
-			shared::globals::frame_time_ms = delta / 1000.0f; // microseconds to ms
-		}
-
-		shared::globals::last_frame_time = current_time;
-		remix_vars::on_client_frame();
-
-		renderer::get()->m_modified_draw_prim = false;
-
 		return m_pIDirect3DDevice9->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 	}
 
@@ -264,6 +253,18 @@ namespace gta4
 		if (imgui::is_initialized()) {
 			imgui::get()->on_present();
 		}
+
+		const auto current_time = std::chrono::high_resolution_clock::now();
+		if (shared::globals::last_frame_time.time_since_epoch().count() != 0)
+		{
+			const auto delta = std::chrono::duration_cast<std::chrono::microseconds>(current_time - shared::globals::last_frame_time).count();
+			shared::globals::frame_time_ms = delta / 1000.0f; // microseconds to ms
+		}
+
+		shared::globals::last_frame_time = current_time;
+		remix_vars::on_client_frame();
+
+		//renderer::get()->m_modified_draw_prim = false;
 
 		return m_pIDirect3DDevice9->EndScene();
 	}

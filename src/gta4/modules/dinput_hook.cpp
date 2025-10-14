@@ -99,12 +99,48 @@ namespace gta4
 		wm.wParam += ((s_KS[DIK_LCONTROL] & 0x80) || (s_KS[DIK_RCONTROL] & 0x80)) ? MK_CONTROL : 0;
 		wm.wParam += ((s_KS[DIK_LSHIFT] & 0x80) || (s_KS[DIK_RSHIFT] & 0x80)) ? MK_SHIFT : 0;
 
+		if (game::CMenuManager__m_MenuActive && game::CMenuManager__m_LoadscreenActive &&
+			!*game::CMenuManager__m_MenuActive && !*game::CMenuManager__m_LoadscreenActive &&
+			!shared::globals::imgui_is_rendering &&
+			GetForegroundWindow() == shared::globals::main_window)
+		{
+			// Check if cursor visible
+			CURSORINFO ci = { sizeof(ci) };
+			GetCursorInfo(&ci);
+			if (ci.flags & CURSOR_SHOWING)
+			{
+				uint32_t counter = 0u;
+				while (::ShowCursor(FALSE) >= 0 && ++counter < 4) {
+					SetCursor(nullptr); // Force hide by decrementing count
+				}
+			}
+
+			// Lock to window
+			RECT rect;
+			GetClientRect(shared::globals::main_window, &rect);
+
+			POINT topLeft = { rect.left, rect.top };  // {0, 0}
+			POINT bottomRight = { rect.right, rect.bottom };  // {width, height}
+
+			ClientToScreen(shared::globals::main_window, &topLeft);
+			ClientToScreen(shared::globals::main_window, &bottomRight);
+
+			RECT screenRect = { topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
+
+			if (state->lX || state->lY) {
+				ClipCursor(&screenRect);
+			}
+		}
+		else {
+			ClipCursor(NULL);  // release if not focused
+		}
+
 		// always forward if menu is open
-		if (shared::globals::imgui_menu_open || 0 != memcmp(&wm, &s_mouseMove, sizeof(wm)))
+		/*if (shared::globals::imgui_menu_open || 0 != memcmp(&wm, &s_mouseMove, sizeof(wm)))
 		{
 			forwardMessage(wm);
 			s_mouseMove = wm;
-		}
+		}*/
 
 
 		if (s_mouseButtons[0] != state->rgbButtons[0]) 

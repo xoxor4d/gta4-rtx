@@ -10,6 +10,8 @@ namespace shared::utils
 	#define DotProduct(x,y)			((x)[0]*(y)[0]+(x)[1]*(y)[1]+(x)[2]*(y)[2])
 	#define fsel(c,x,y)				( (c) >= 0 ? (x) : (y) )
 
+	DWORD focus_and_lock_cursor_on_init();
+
 	float rad_to_deg(float radians);
 	float deg_to_rad(float degrees);
 
