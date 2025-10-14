@@ -10,6 +10,7 @@ namespace gta4
 	int g_is_instance_rendering = 0;
 	int g_is_sky_rendering = 0;
 	int g_is_water_rendering = 0;
+	int g_is_rendering_mirror = 0;
 
 	namespace tex_addons
 	{
@@ -20,6 +21,7 @@ namespace gta4
 		LPDIRECT3DTEXTURE9 decal_dirt = nullptr;
 		LPDIRECT3DTEXTURE9 veh_light_ems_glass = nullptr;
 		LPDIRECT3DTEXTURE9 berry = nullptr;
+		LPDIRECT3DTEXTURE9 mirror = nullptr;
 
 		void init_texture_addons(bool release)
 		{
@@ -30,6 +32,7 @@ namespace gta4
 				if (tex_addons::white02) tex_addons::white02->Release();
 				if (tex_addons::veh_light_ems_glass) tex_addons::veh_light_ems_glass->Release();
 				if (tex_addons::berry) tex_addons::berry->Release();
+				if (tex_addons::mirror) tex_addons::mirror->Release();
 				return;
 			}
 
@@ -39,7 +42,7 @@ namespace gta4
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white02.png", &tex_addons::white02);
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
 			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\berry.png", &tex_addons::berry);
-
+			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\mirror.png", &tex_addons::mirror);
 			tex_addons::initialized = true;
 		}
 	}
@@ -710,6 +713,14 @@ namespace gta4
 		//	ctx.info.is_dirty = false;
 		//}
 
+		if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
+		{
+			static auto mirror_hash = shared::utils::string_hash32("mirror");
+			set_remix_texture_hash(dev, mirror_hash);
+			ctx.save_texture(dev, 0);
+			dev->SetTexture(0, tex_addons::mirror);
+		}
+
 		const auto viewport = game::pCurrentViewport;
 		if (viewport && viewport->wp)
 		{
@@ -726,7 +737,7 @@ namespace gta4
 				if (ctx.info.shader_name.ends_with("im.fxc"))
 				{
 					dev->SetTexture(0, tex_addons::sky);
-					m_modified_draw_prim = true;
+					//m_modified_draw_prim = true;
 					//render_with_ff = true;
 				}
 			}
@@ -852,13 +863,31 @@ namespace gta4
 
 		if (!shared::globals::imgui_is_rendering)
 		{
+			if (im->m_dbg_skip_draw_indexed_checks)
+			{
+				const auto viewport = game::pCurrentViewport;
+				if (viewport && viewport->wp)
+				{
+					dev->SetTransform(D3DTS_VIEW, &viewport->wp->view);
+					dev->SetTransform(D3DTS_PROJECTION, &viewport->wp->proj);
+				}
+
+				return dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+			}
+
 			// shared::utils::lookat_vertex_decl(dev);
 
 			bool render_with_ff = g_is_rendering_static;
 
-			if (ctx.info.shader_name.ends_with("water.fxc"))
-			{
+			if (ctx.info.shader_name.ends_with("water.fxc")) {
 				ctx.modifiers.do_not_render = true;
+			}
+
+			if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
+			{
+				//static auto mirror_hash = shared::utils::string_hash32("mirror");
+				//set_remix_texture_hash(dev, mirror_hash);
+				int x = 1;
 			}
 
 			if (g_is_rendering_static)
@@ -936,6 +965,9 @@ namespace gta4
 
 			if (g_is_rendering_phone)
 			{
+				ctx.restore_vs(dev);
+				render_with_ff = false;
+
 				D3DMATRIX matrix = {};
 				matrix.m[0][0] = 300.0f + im->m_dbg_phone_projection_matrix_offset.m[0][0];
 				matrix.m[0][1] = 12.0f + im->m_dbg_phone_projection_matrix_offset.m[0][1];
@@ -1353,7 +1385,7 @@ namespace gta4
 
 	void post_render_sky()
 	{
-		renderer::get()->m_modified_draw_prim = false;
+		//renderer::get()->m_modified_draw_prim = false;
 		remix_markers::get()->draw_nocull_markers();
 	}
 
@@ -1415,6 +1447,30 @@ namespace gta4
 		}
 	}
 
+	// ---
+
+	__declspec (naked) void pre_draw_mirror_stub()
+	{
+		__asm
+		{
+			mov     ebp, esp;
+			and		esp, 0xFFFFFFF0;
+			mov		g_is_rendering_mirror, 1;
+			jmp		game::retn_addr__pre_draw_mirror;
+		}
+	}
+
+	__declspec (naked) void post_draw_mirror_stub()
+	{
+		__asm
+		{
+			mov		g_is_rendering_mirror, 0;
+			mov     esp, ebp;
+			pop     ebp;
+			retn;
+		}
+	}
+
 	renderer::renderer()
 	{
 		p_this = this;
@@ -1439,13 +1495,17 @@ namespace gta4
 		shared::utils::hook(game::retn_addr__pre_draw_water - 5u, pre_water_render_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_draw_water, post_water_render_stub, HOOK_JUMP).install()->quick();
 
-		// detect vehicle rendering 0x8DCDA0
-
+		// detect vehicle rendering
 		shared::utils::hook(game::retn_addr__pre_draw_statics - 5u, pre_static_render_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_draw_statics, post_static_render_stub, HOOK_JUMP).install()->quick();
 
+		// detect mirror rendering
+		shared::utils::hook(game::retn_addr__pre_draw_mirror - 5u, pre_draw_mirror_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::hk_addr__post_draw_mirror, post_draw_mirror_stub, HOOK_JUMP).install()->quick();
+
 		// do not render postfx RT infront of the camera
 		shared::utils::hook::nop(game::nop_addr__disable_postfx_drawing, 5);
+
 
 		// -----
 		m_initialized = true;

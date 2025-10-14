@@ -1,0 +1,17 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_EC05074A7D0BC611" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+        }
+    }
+}
+

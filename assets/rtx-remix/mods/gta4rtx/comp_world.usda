@@ -1,0 +1,56 @@
+#usda 1.0
+(
+    subLayers = [
+        @./comp_world_roads.usda@
+    ]
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_19A72398CB962F56"
+        {
+            over "Shader"
+            {
+                custom bool inputs:blend_enabled = 0
+                custom int inputs:blend_type = 0
+                custom color3f inputs:diffuse_color_constant = (0.10424709, 0.099553876, 0.09619712)
+                custom bool inputs:inverted_blend = 0
+                custom asset inputs:normalmap_texture = @./assets/world_textures/dirt_decal/decal_roof_dirt_normal_dx_OTH_Normal.n.rtex.dds@
+                custom float inputs:reflection_roughness_constant = 1
+                custom bool inputs:use_legacy_alpha_state = 1
+            }
+        }
+
+        over "mat_E8B560FBA6991BD0" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.1
+                custom float inputs:thin_wall_thickness = 1.5
+                custom bool inputs:thin_walled = 0
+            }
+        }
+
+        over "mat_733EBD28536F7FB6"
+        {
+            over "Shader"
+            {
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_D9DBFC7A7209FA27"
+        {
+            over "Shader"
+            {
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+    }
+}
+

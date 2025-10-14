@@ -1,0 +1,51 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_C0AC00923B4B3996"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.97499996
+            }
+        }
+
+        over "mat_2D570E6F191B1EF0"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.65999997
+            }
+        }
+
+        over "mat_561F46F3E151F5EB"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.765
+            }
+        }
+
+        over "mat_20AC3E374E816D9A"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.79999995
+            }
+        }
+
+        over "mat_670AFD5EEA859579"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.435
+            }
+        }
+    }
+}
+

@@ -1,0 +1,71 @@
+#usda 1.0
+(
+    customLayerData = {
+        string lightspeed_game_name = "GTAIV"
+        string lightspeed_layer_type = "replacement"
+        dictionary lightspeed_mod_dependencies = {
+        }
+        string lightspeed_mod_name = "gta4rtx"
+        string lightspeed_mod_notes = "early access"
+        string lightspeed_mod_version = "0.7.1"
+    }
+    subLayers = [
+        @./comp_world.usda@,
+        @./comp_water.usda@,
+        @./comp_cars.usda@,
+        @./comp_peds.usda@,
+        @./comp_vehicle.usda@
+    ]
+    timeCodesPerSecond = 24
+    upAxis = "Y"
+)
+
+over "RootNode"
+{
+    over "meshes"
+    {
+        over "mesh_B122F3811481DD2E"
+        {
+            def SphereLight "SphereLight" (
+                prepend apiSchemas = ["ShapingAPI"]
+            )
+            {
+                float3[] extent = [(-5, -5, -5), (5, 5, 5)]
+                float inputs:intensity = 100
+                float inputs:radius = 0.5
+                float inputs:shaping:cone:angle = 180
+                float inputs:shaping:cone:softness
+                float inputs:shaping:focus
+                color3f inputs:shaping:focusTint
+                asset inputs:shaping:ies:file
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (-5.963623324515312, -2.8694775609097296, -3.061292648315429)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+        }
+
+        over "mesh_7ED9577286D13767"
+        {
+            def SphereLight "SphereLight" (
+                prepend apiSchemas = ["ShapingAPI"]
+            )
+            {
+                float3[] extent = [(-5, -5, -5), (5, 5, 5)]
+                color3f inputs:color = (1, 0, 0)
+                float inputs:intensity = 50
+                float inputs:radius = 0.5
+                float inputs:shaping:cone:angle = 180
+                float inputs:shaping:cone:softness
+                float inputs:shaping:focus
+                color3f inputs:shaping:focusTint
+                asset inputs:shaping:ies:file
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (2.9794330376748808, -10.133759303078252, -1.9494247436523442)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+        }
+    }
+}
+

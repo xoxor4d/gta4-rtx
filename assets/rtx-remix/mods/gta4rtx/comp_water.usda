@@ -1,0 +1,81 @@
+#usda 1.0
+(
+    upAxis = "Y"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_11977C53F1771548" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.25
+                custom asset inputs:normalmap_texture = @./assets/water/normal01_3xless_OTH_Normal.n.rtex.dds@
+                custom bool inputs:thin_walled = 0
+                custom color3f inputs:transmittance_color = (0.9276844, 0.941927, 0.9459459)
+                custom float inputs:transmittance_measurement_distance = 0.5
+            }
+        }
+
+        over "mat_DB2CA9A6405FFF11" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.25
+                custom asset inputs:normalmap_texture = @./assets/water/normal01_3xless_OTH_Normal.n.rtex.dds@
+                custom int inputs:sprite_sheet_cols = 1
+                custom int inputs:sprite_sheet_fps = 0
+                custom int inputs:sprite_sheet_rows = 1
+                custom color3f inputs:transmittance_color = (0.9276844, 0.941927, 0.9459459)
+                custom float inputs:transmittance_measurement_distance = 0.5
+            }
+        }
+
+        over "mat_8D341C9EA23E041A" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.25
+                custom asset inputs:normalmap_texture = @./assets/water/normal01_3xless_OTH_Normal.n.rtex.dds@
+                custom color3f inputs:transmittance_color = (0.9276844, 0.941927, 0.9459459)
+                custom float inputs:transmittance_measurement_distance = 0.5
+            }
+        }
+
+        over "mat_90B2CFAB66CA26FA" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom asset inputs:normalmap_texture = @@
+                custom int inputs:sprite_sheet_cols = 1
+                custom int inputs:sprite_sheet_fps = 1
+                custom int inputs:sprite_sheet_rows = 1
+                custom bool inputs:thin_walled = 0
+                custom color3f inputs:transmittance_color = (0.96138996, 0.94690883, 0.9316945)
+                custom float inputs:transmittance_measurement_distance = 2
+            }
+        }
+
+        over "mat_0000000049C69A10" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom color3f inputs:transmittance_color = (0.96138996, 0.94690883, 0.9316945)
+                custom float inputs:transmittance_measurement_distance = 0.1
+            }
+        }
+    }
+}
+

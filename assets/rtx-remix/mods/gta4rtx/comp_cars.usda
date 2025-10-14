@@ -1,0 +1,89 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_3F6C008F32FE3D33"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.36499998
+                custom float inputs:reflection_roughness_constant = 0.044999998
+            }
+        }
+
+        over "mat_4B5CFDBCCE15411F"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.325
+                custom float inputs:reflection_roughness_constant = 0.125
+            }
+        }
+
+        over "mat_7226ED786097336A"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.79499996
+            }
+        }
+
+        over "mat_2C890F4B7E13EB61"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.415
+            }
+        }
+
+        over "mat_D37BCCF25245F07A"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.04
+            }
+        }
+
+        over "mat_92FA55393302B251"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.285
+                custom float inputs:reflection_roughness_constant = 0.024999999
+            }
+        }
+
+        over "mat_319F79650928D261" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom bool inputs:thin_walled = 1
+            }
+        }
+
+        over "mat_6528F9AFAD4FFA6D"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.085
+            }
+        }
+
+        over "mat_AE9EFFCBBBB6252C"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.04
+                custom float inputs:reflection_roughness_constant = 0.055
+            }
+        }
+    }
+}
+
