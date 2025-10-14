@@ -142,16 +142,25 @@ namespace gta4
 	uint64_t calculate_light_hash(const game::CLightSource& def)
 	{
 		std::uint32_t hash = 0u;
-		hash = shared::utils::hash32_combine(hash, def.mFlags);
-		hash = shared::utils::hash32_combine(hash, def.mRoomIndex);
-		hash = shared::utils::hash32_combine(hash, def.mInteriorIndex);
-		hash = shared::utils::hash32_combine(hash, def.mTxdHash);
-		//hash = shared::utils::hash32_combine(hash, def.mVolumeSize);
-		//hash = shared::utils::hash32_combine(hash, def.mVolumeScale);
-		//hash = shared::utils::hash32_combine(hash, def.mIntensity);
+
 		hash = shared::utils::hash32_combine(hash, def.mPosition.x);
 		hash = shared::utils::hash32_combine(hash, def.mPosition.y);
 		hash = shared::utils::hash32_combine(hash, def.mPosition.z);
+
+		/*if (shared::utils::float_equal(def.mPosition.x, 890.579651f))
+		{
+			int x = 1;
+		}*/
+
+		hash = shared::utils::hash32_combine(hash, def.mFlags);
+		hash = shared::utils::hash32_combine(hash, def.mRoomIndex);
+		//hash = shared::utils::hash32_combine(hash, def.mInteriorIndex); // this changes when starting a new game from an old save
+		hash = shared::utils::hash32_combine(hash, def.mTxdHash);
+
+		//hash = shared::utils::hash32_combine(hash, def.mVolumeSize);
+		//hash = shared::utils::hash32_combine(hash, def.mVolumeScale);
+		//hash = shared::utils::hash32_combine(hash, def.mIntensity);
+		
 		return hash;
 	}
 
