@@ -55,7 +55,9 @@ namespace gta4::game
 	uint32_t** ms_pNatives = nullptr;
 
 	uint8_t* m_CodePause = nullptr;
-	TimeCycleParams* m_pCurrentTimeCycleParams = nullptr;
+	TimeCycleParams* m_pCurrentTimeCycleParams_01 = nullptr;
+	TimeCycleParams* m_pCurrentTimeCycleParams_02 = nullptr;
+	TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene = nullptr;
 
 	// --------------
 	// game functions
@@ -103,6 +105,9 @@ namespace gta4::game
 
 	uint32_t retn_addr__pre_draw_statics = 0;
 	uint32_t hk_addr__post_draw_statics = 0;
+
+	uint32_t retn_addr__pre_draw_mirror = 0;
+	uint32_t hk_addr__post_draw_mirror = 0;
 
 	// --------------
 
@@ -237,9 +242,16 @@ namespace gta4::game
 
 
 
+		if (const auto offset = shared::utils::mem::find_pattern("B9 ? ? ? ? ? ? ? ? ? ? ? 56 E8 ? ? ? ? B9", 1, "m_pCurrentTimeCycleParams_01", use_pattern, 0x5B9498); offset) {
+			m_pCurrentTimeCycleParams_01 = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("68 ? ? ? ? E8 ? ? ? ? 0F B6 05 ? ? ? ? 8B 0D", 1, "m_pCurrentTimeCycleParams", use_pattern, 0xAF4306); offset) {
-			m_pCurrentTimeCycleParams = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		if (const auto offset = shared::utils::mem::find_pattern("B9 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 6A ? 51", 1, "m_pCurrentTimeCycleParams_02", use_pattern, 0x5B94AA); offset) {
+			m_pCurrentTimeCycleParams_02 = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("68 ? ? ? ? E8 ? ? ? ? 0F B6 05 ? ? ? ? 8B 0D", 1, "m_pCurrentTimeCycleParams_Cutscene", use_pattern, 0xAF4306); offset) {
+			m_pCurrentTimeCycleParams_Cutscene = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
 		// end GAME_VARIABLES
@@ -383,14 +395,22 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
-
 		if (const auto offset = shared::utils::mem::find_pattern("75 ? 83 3D ? ? ? ? ? A1 ? ? ? ? 0F 45 05 ? ? ? ? ? ? ? 8B 43 ? ? ? ? ? 85 C9", 0, "retn_addr__pre_draw_statics", use_pattern, 0x42EBEC); offset) {
 			retn_addr__pre_draw_statics = offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		// can't create signature at the end of the function so we get the offset from a relative jump instruction
 		if (const auto offset = shared::utils::mem::find_pattern("EB ? 5F 5D 5E C7 05", 16, "hk_addr__post_draw_statics", use_pattern, 0x42ECA7); offset) {
 			hk_addr__post_draw_statics = offset; found_pattern_count++;
+		} total_pattern_count++;
+
+
+		if (const auto offset = shared::utils::mem::find_pattern("83 EC ? E8 ? ? ? ? ? ? ? 0F 84", 0, "retn_addr__pre_draw_mirror", use_pattern, 0xB59906); offset) {
+			retn_addr__pre_draw_mirror = offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		// can't create signature at the end of the function so we get the offset from a relative jump instruction
+		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? 80 3D ? ? ? ? ? 0F 84 ? ? ? ? FF 35", 0, "hk_addr__post_draw_mirror", use_pattern, 0xB59911); offset) {
+			hk_addr__post_draw_mirror = shared::utils::mem::resolve_indirect_call_address(offset, 6u, 2u); found_pattern_count++;
 		} total_pattern_count++;
 
 		// end GAME_ASM_OFFSETS

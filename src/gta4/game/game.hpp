@@ -67,7 +67,9 @@ namespace gta4::game
 
 	extern uint8_t* m_CodePause;
 
-	extern TimeCycleParams* m_pCurrentTimeCycleParams;
+	extern TimeCycleParams* m_pCurrentTimeCycleParams_01;
+	extern TimeCycleParams* m_pCurrentTimeCycleParams_02;
+	extern TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene;
 
 	// --------------
 	// game functions
@@ -118,6 +120,9 @@ namespace gta4::game
 
 	extern uint32_t retn_addr__pre_draw_statics;
 	extern uint32_t hk_addr__post_draw_statics;
+
+	extern uint32_t retn_addr__pre_draw_mirror;
+	extern uint32_t hk_addr__post_draw_mirror;
 
 	// ---
 

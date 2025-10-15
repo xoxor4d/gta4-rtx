@@ -44,6 +44,10 @@ namespace gta4
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;
 
+		bool m_dbg_skip_draw_indexed_checks = false;
+
+		int m_dbg_used_timecycle = -1;
+
 		// --
 
 		bool m_dbg_visualize_api_lights = false;
@@ -62,6 +66,33 @@ namespace gta4
 
 		std::vector<visualized_api_light_s> visualized_api_lights;
 
+		// --
+
+		float m_timecyc_curr_mSkyLightMultiplier = 0.0f;
+		float m_timecyc_curr_mSkyLightMultiplier_final = 0.0f;
+		float m_timecyc_curr_mBloomIntensity = 0.0f;
+		float m_timecyc_curr_mBloomIntensity_final = 0.0f;
+		float m_timecyc_curr_mBloomThreshold = 0.0f;
+		float m_timecyc_curr_mBloomThreshold_final = 0.0f;
+		float m_timecyc_curr_mTemperature = 0.0f;
+		Vector m_timecyc_curr_mTemperature_offset;
+
+		Vector4D m_timecyc_curr_mColorCorrection;
+		Vector4D m_timecyc_curr_mColorCorrection_final;
+		float m_timecyc_curr_mDesaturation = 0.0f;
+		float m_timecyc_curr_mDesaturation_final = 0.0f;
+		float m_timecyc_curr_mDesaturationFar = 0.0f;
+		float m_timecyc_curr_mDesaturationFar_offset = 0.0f;
+
+		float m_timecyc_curr_mGamma = 0.0f;
+		float m_timecyc_curr_mGamma_final = 0.0f;
+		Vector4D m_timecyc_curr_mSkyBottomColorFogDensity;
+
+		Vector m_timecyc_curr_singleScatteringAlbedo;
+		float m_timecyc_curr_mSkyHorizonHeight = 0.0f;
+		float m_timecyc_curr_mSkyHorizonHeight_final = 0.0f;
+		float m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters = 0.0f;
+		
 		// --
 
 		bool m_dbg_enable_ignore_shader_logic = false;

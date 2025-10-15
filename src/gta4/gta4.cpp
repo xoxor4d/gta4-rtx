@@ -49,8 +49,30 @@ namespace gta4
 			}
 		}
 
-		translate_and_apply_timecycle_settings();
+		if (game::is_in_game) {
+			translate_and_apply_timecycle_settings();
+		}
 	}
+
+
+	// for visualization of values in gui
+#define ASSIGN_IMGUI_VIS_FLOAT(name) \
+		im->m_timecyc_curr_##name = timecycle->##name; \
+		im->m_timecyc_curr_##name##_final = val.value;
+
+			// for visualization of values in gui
+#define ASSIGN_IMGUI_VIS_VEC3(tc_name) \
+		im->m_timecyc_curr_##tc_name##.x = val.vector[0]; \
+		im->m_timecyc_curr_##tc_name##.y = val.vector[1]; \
+		im->m_timecyc_curr_##tc_name##.z = val.vector[2];
+
+		// for visualization of values in gui
+#define ASSIGN_IMGUI_VIS_UNPACKED_COLOR(tc_name, temp_vec) \
+		im->m_timecyc_curr_##tc_name = ##temp_vec; \
+		im->m_timecyc_curr_##tc_name##_final.x = val.vector[0]; \
+		im->m_timecyc_curr_##tc_name##_final.y = val.vector[1]; \
+		im->m_timecyc_curr_##tc_name##_final.z = val.vector[2]; \
+		im->m_timecyc_curr_##tc_name##_final.w = val.vector[3];
 
 	void translate_and_apply_timecycle_settings()
 	{
@@ -76,11 +98,32 @@ namespace gta4
 
 			// TODO! Add defaults for used remix variables in case user disables the saving of ALL remix variables
 
+			//auto first_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8910);
+			//auto third_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8B20);
+
+			game::TimeCycleParams* timecycle = nullptr;
+			switch (im->m_dbg_used_timecycle)
+			{
+			default:
+			case 0:
+				timecycle = game::m_pCurrentTimeCycleParams_01;
+				break;
+
+			case 1:
+				timecycle = game::m_pCurrentTimeCycleParams_02;
+				break;
+
+			case 2:
+				timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
+				break;
+			}
+
 			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness");
 			if (gs->timecycle_skylight_enabled.get_as<bool>() && rtxSkybrightness)
 			{
-				val.value = game::m_pCurrentTimeCycleParams->mSkyLightMultiplier * gs->timecycle_skylight_scalar.get_as<float>();
+				val.value = timecycle->mSkyLightMultiplier * gs->timecycle_skylight_scalar.get_as<float>();
 				vars->set_option(rtxSkybrightness, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mSkyLightMultiplier);
 			}
 
 
@@ -88,11 +131,13 @@ namespace gta4
 			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold");
 			if (gs->timecycle_bloom_enabled.get_as<bool>() && rtxBloomBurnIntensity && rtxBloomLuminanceThreshold)
 			{
-				val.value = game::m_pCurrentTimeCycleParams->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
+				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
 				vars->set_option(rtxBloomBurnIntensity, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mBloomIntensity);
 
-				val.value = game::m_pCurrentTimeCycleParams->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
+				val.value = timecycle->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
 				vars->set_option(rtxBloomLuminanceThreshold, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mBloomThreshold);
 			}
 
 
@@ -102,37 +147,44 @@ namespace gta4
 				Vector temp_color_offset;
 				if (gs->timecycle_colortemp_enabled.get_as<bool>())
 				{
-					const float nrml_temp = std::clamp(game::m_pCurrentTimeCycleParams->mTemperature / 15.0f, -1.0f, 1.0f);
+					const float nrml_temp = std::clamp(timecycle->mTemperature / 15.0f, -1.0f, 1.0f);
 					temp_color_offset.x = nrml_temp * 0.3f;
 					temp_color_offset.y = 0.0f;
 					temp_color_offset.z = -nrml_temp * 0.3f;
 					temp_color_offset *= gs->timecycle_colortemp_influence.get_as<float>();
+					im->m_timecyc_curr_mTemperature = timecycle->mTemperature;
+					im->m_timecyc_curr_mTemperature_offset = temp_color_offset;
 				}
 
 				Vector4D color_correction;
-				unpack_uint32(game::m_pCurrentTimeCycleParams->mColorCorrection, &color_correction.x);
+				unpack_uint32(timecycle->mColorCorrection, &color_correction.x);
 				val.vector[0] = color_correction.x + temp_color_offset.x;
 				val.vector[1] = color_correction.y + temp_color_offset.y;
 				val.vector[2] = color_correction.z + temp_color_offset.z;
 				vars->set_option(rtxTonemapColorBalance, val);
+				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction);
 			}
 
 
 			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation");
 			if (gs->timecycle_desaturation_enabled.get_as<bool>() && rtxTonemapSaturation)
 			{
-				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * mapRange(game::m_pCurrentTimeCycleParams->mDesaturationFar, 0.8f, 1.0f, 0.0f, 0.4f);
-				val.value = 1.0f - ((1.0f - game::m_pCurrentTimeCycleParams->mDesaturation) * gs->timecycle_desaturation_influence.get_as<float>());
+				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * mapRange(timecycle->mDesaturationFar, 0.8f, 1.0f, 0.0f, 0.4f);
+				val.value = 1.0f - ((1.0f - timecycle->mDesaturation) * gs->timecycle_desaturation_influence.get_as<float>());
 				val.value -= far_desaturation_influence;
 				vars->set_option(rtxTonemapSaturation, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mDesaturation);
+				im->m_timecyc_curr_mDesaturationFar = timecycle->mDesaturationFar;
+				im->m_timecyc_curr_mDesaturationFar_offset = far_desaturation_influence;
 			}
 
 
 			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias");
 			if (gs->timecycle_gamma_enabled.get_as<bool>() && rtxTonemapExposureBias)
 			{
-				val.value = -(1.0f - game::m_pCurrentTimeCycleParams->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
+				val.value = -(1.0f - timecycle->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
 				vars->set_option(rtxTonemapExposureBias, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mGamma);
 			}
 
 
@@ -146,8 +198,14 @@ namespace gta4
 
 
 			Vector4D fog_color_density;
-			unpack_uint32(game::m_pCurrentTimeCycleParams->mSkyBottomColorFogDensity, &fog_color_density.x);
+			unpack_uint32(timecycle->mSkyBottomColorFogDensity, &fog_color_density.x);
 			game::helper_timecycle_current_fog_density = fog_color_density.w; // global
+
+			// vis.
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.x = val.vector[0];
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.y = val.vector[1];
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.z = val.vector[2];
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.w = val.vector[3];
 
 			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
 			if (gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
@@ -158,15 +216,17 @@ namespace gta4
 				val.vector[1] = base_strength + fog_color_density.y * influence;
 				val.vector[2] = base_strength + fog_color_density.z * influence;
 				vars->set_option(rtxVolumetricsSingleScatteringAlbedo, val);
+				ASSIGN_IMGUI_VIS_VEC3(singleScatteringAlbedo);
 			}
 
 			float atmos_height = 0.0f;
 			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters");
 			if (gs->timecycle_skyhorizonheight_enabled.get_as<bool>() && rtxVolumetricsAtmosphereHeightMeters)
 			{
-				atmos_height = game::m_pCurrentTimeCycleParams->mSkyHorizonHeight * 100.0f * gs->timecycle_skyhorizonheight_scalar.get_as<float>();
+				atmos_height = timecycle->mSkyHorizonHeight * 100.0f * gs->timecycle_skyhorizonheight_scalar.get_as<float>();
 				val.value = atmos_height;
 				vars->set_option(rtxVolumetricsAtmosphereHeightMeters, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mSkyHorizonHeight);
 			}
 
 			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters");
@@ -179,9 +239,12 @@ namespace gta4
 						gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float>());
 
 				vars->set_option(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
+				im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters = val.value;
 			}
 		}
 	}
+
+#undef ASSIGN_IMGUI_VIS_FLOAT
 
 	void post_vehicle_rendering()
 	{

@@ -379,9 +379,21 @@ namespace gta4
 
 					ImGui::Spacing(0, treenode_spacing);
 					ImGui::Checkbox("Visualize Api Lights 3D", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
+
+					ImGui::Spacing(0, 4);
+
 					ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
 					ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
-					ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23);
+					ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
+
+					ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
+					TT( "Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
+						"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
+
+					ImGui::Spacing(0, 4);
+
+					ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
+					ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
 
 					ImGui::Spacing(0, treenode_spacing);
 					if (ImGui::TreeNode("Do not render ..."))
@@ -793,6 +805,19 @@ namespace gta4
 						ImGui::DragFloat("FogColor Influence Scalar", gs->timecycle_fogcolor_influence_scalar.get_as<float*>(), 0.005f);
 						TT(gs->timecycle_fogcolor_influence_scalar.get_tooltip_string().c_str());
 
+						ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.y,
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.z,
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.w);
+
+						ImGui::PushFont(shared::imgui::font::BOLD);
+						ImGui::TextDisabled("Out rtxVolumetricsSingleScatteringAlbedo: [ %.2f, %.2f, %.2f ]",
+							im->m_timecyc_curr_singleScatteringAlbedo.x,
+							im->m_timecyc_curr_singleScatteringAlbedo.y,
+							im->m_timecyc_curr_singleScatteringAlbedo.z);
+						ImGui::PopFont();
+
 						ImGui::EndDisabled();
 					}
 				}
@@ -807,6 +832,17 @@ namespace gta4
 					{
 						ImGui::DragFloat("FogDensity Influence Scalar", gs->timecycle_fogdensity_influence_scalar.get_as<float*>(), 0.005f);
 						TT(gs->timecycle_fogdensity_influence_scalar.get_tooltip_string().c_str());
+
+						ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.y,
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.z,
+							im->m_timecyc_curr_mSkyBottomColorFogDensity.w);
+
+						ImGui::PushFont(shared::imgui::font::BOLD);
+						ImGui::TextDisabled("Out rtxVolumetricsTransmittanceMeasurementDistanceMeters: [ %.2f ]",
+							im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters);
+						ImGui::PopFont();
 
 						ImGui::EndDisabled();
 					}
@@ -829,6 +865,14 @@ namespace gta4
 						ImGui::DragFloat("SkyHorizonHeight High - Transmittance Offset", gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float*>(), 0.01f);
 						TT(gs->timecycle_skyhorizonheight_high_transmittance_offset.get_tooltip_string().c_str());
 
+						ImGui::TextDisabled("Timecycle mSkyHorizonHeight: [ %.2f ]",
+							im->m_timecyc_curr_mSkyHorizonHeight);
+
+						ImGui::PushFont(shared::imgui::font::BOLD);
+						ImGui::TextDisabled("Out rtxVolumetricsAtmosphereHeightMeters: [ %.2f ]",
+							im->m_timecyc_curr_mSkyHorizonHeight_final);
+						ImGui::PopFont();
+
 						ImGui::EndDisabled();
 					}
 				}
@@ -845,6 +889,14 @@ namespace gta4
 					{
 						ImGui::DragFloat("SkyLight Scalar", gs->timecycle_skylight_scalar.get_as<float*>(), 0.005f);
 						TT(gs->timecycle_skylight_scalar.get_tooltip_string().c_str());
+
+						ImGui::TextDisabled("Timecycle mSkyLightMultiplier: [ %.2f ]",
+							im->m_timecyc_curr_mSkyLightMultiplier);
+
+						ImGui::PushFont(shared::imgui::font::BOLD);
+						ImGui::TextDisabled("Out rtxSkyBrightness: [ %.2f ]",
+							im->m_timecyc_curr_mSkyLightMultiplier_final);
+						ImGui::PopFont();
 
 						ImGui::EndDisabled();
 					}
@@ -878,10 +930,29 @@ namespace gta4
 						ImGui::Checkbox("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled.get_as<bool*>());
 						TT(gs->timecycle_colortemp_enabled.get_tooltip_string().c_str());
 
+						ImGui::TextDisabled("Timecycle mColorCorrection: [ %.2f, %.2f, %.2f ]",
+							im->m_timecyc_curr_mColorCorrection.x,
+							im->m_timecyc_curr_mColorCorrection.y,
+							im->m_timecyc_curr_mColorCorrection.z);
+
+						ImGui::PushFont(shared::imgui::font::BOLD);
+						ImGui::TextDisabled("Out rtxTonemapColorBalance: [ %.2f, %.2f, %.2f ]",
+							im->m_timecyc_curr_mColorCorrection_final.x,
+							im->m_timecyc_curr_mColorCorrection_final.y,
+							im->m_timecyc_curr_mColorCorrection_final.z);
+						ImGui::PopFont();
+
 						ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
 						{
 							ImGui::DragFloat("ColorTemperature Influence", gs->timecycle_colortemp_influence.get_as<float*>(), 0.005f);
 							TT(gs->timecycle_colortemp_influence.get_tooltip_string().c_str());
+
+							ImGui::TextDisabled("Timecycle mTemperature: [ %.2f ]",
+								im->m_timecyc_curr_mTemperature);
+							ImGui::TextDisabled("ColorTemp Offset applied to rtxTonemapColorBalance: [ %.2f, %.2f, %.2f ]",
+								im->m_timecyc_curr_mTemperature_offset.x,
+								im->m_timecyc_curr_mTemperature_offset.y, 
+								im->m_timecyc_curr_mTemperature_offset.z );
 
 							ImGui::EndDisabled();
 						}
@@ -904,6 +975,20 @@ namespace gta4
 						ImGui::DragFloat("Far Desaturation Influence", gs->timecycle_fardesaturation_influence.get_as<float*>(), 0.005f);
 						TT(gs->timecycle_fardesaturation_influence.get_tooltip_string().c_str());
 
+						ImGui::TextDisabled("Timecycle mDesaturation: [ %.2f ]",
+							im->m_timecyc_curr_mDesaturation);
+
+						ImGui::TextDisabled("Timecycle mDesaturationFar: [ %.2f ]",
+							im->m_timecyc_curr_mDesaturationFar);
+
+						ImGui::TextDisabled("mDesaturationFar influence on rtxTonemapSaturation: [ %.2f ]",
+							im->m_timecyc_curr_mDesaturationFar_offset);
+
+						ImGui::PushFont(shared::imgui::font::BOLD);
+						ImGui::TextDisabled("Out rtxTonemapSaturation: [ %.2f ]",
+							im->m_timecyc_curr_mDesaturation_final);
+						ImGui::PopFont();
+
 						ImGui::EndDisabled();
 					}
 				}
@@ -918,6 +1003,14 @@ namespace gta4
 					{
 						ImGui::DragFloat("Gamma Offset", gs->timecycle_gamma_offset.get_as<float*>(), 0.005f);
 						TT(gs->timecycle_gamma_offset.get_tooltip_string().c_str());
+
+						ImGui::TextDisabled("Timecycle mGamma: [ %.2f ]",
+							im->m_timecyc_curr_mGamma);
+
+						ImGui::PushFont(shared::imgui::font::BOLD);
+						ImGui::TextDisabled("Out rtxTonemapExposureBias: [ %.2f ]",
+							im->m_timecyc_curr_mGamma_final);
+						ImGui::PopFont();
 
 						ImGui::EndDisabled();
 					}
@@ -1472,15 +1565,7 @@ namespace gta4
 				filter.Clear();
 			}
 
-			
-
-			/*ImGui::SameLine();
-			ImGui::TextUnformatted("  Filter");*/
-
-			ImGui::Spacing(0.0f, 8.0f);
-			ImGui::Separator();
-			ImGui::Spacing(0.0f, 8.0f);
-
+			//ImGui::Spacing(0.0f, 8.0f);
 			ImGui::EndDisabled();
 		}
 

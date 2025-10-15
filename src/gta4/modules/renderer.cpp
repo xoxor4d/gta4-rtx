@@ -883,12 +883,12 @@ namespace gta4
 				ctx.modifiers.do_not_render = true;
 			}
 
-			if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
-			{
-				//static auto mirror_hash = shared::utils::string_hash32("mirror");
-				//set_remix_texture_hash(dev, mirror_hash);
-				int x = 1;
-			}
+			//if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
+			//{
+			//	//static auto mirror_hash = shared::utils::string_hash32("mirror");
+			//	//set_remix_texture_hash(dev, mirror_hash);
+			//	int x = 1;
+			//}
 
 			if (g_is_rendering_static)
 			{
