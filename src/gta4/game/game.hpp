@@ -46,6 +46,10 @@ namespace gta4::game
 	extern float* pTimeCycleWetness;
 	extern float* pTimeCycleSpecularOffset;
 
+	extern TimeCycleParams* m_pCurrentTimeCycleParams_01;
+	extern TimeCycleParams* m_pCurrentTimeCycleParams_02;
+	extern TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene;
+
 	//extern CLightSource* m_renderLights;
 	//extern std::uint32_t* m_numRenderLights;
 	extern DWORD* m_renderLights_addr;
@@ -66,10 +70,7 @@ namespace gta4::game
 	extern uint32_t** ms_pNatives;
 
 	extern uint8_t* m_CodePause;
-
-	extern TimeCycleParams* m_pCurrentTimeCycleParams_01;
-	extern TimeCycleParams* m_pCurrentTimeCycleParams_02;
-	extern TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene;
+	extern int* m_dwCutsceneState;
 
 	// --------------
 	// game functions

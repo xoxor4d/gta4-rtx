@@ -411,6 +411,26 @@ namespace gta4
 					}
 
 					ImGui::Spacing(0, treenode_spacing);
+					if (ImGui::TreeNode("Directional Light Info"))
+					{
+						ImGui::Spacing(0, treenode_spacing_inside);
+
+						for (auto i = 0u; i < 2; i++)
+						{
+							auto& def = game::g_directionalLights[i];
+							ImGui::Text("Directional Light #%d", i);
+							ImGui::Text("mDirection: [%.2f, %.2f, %.2f]", def.mDirection.x, def.mDirection.y, def.mDirection.z);
+							ImGui::Text("mColor: [%.2f, %.2f, %.2f, %.2f]", def.mColor.x, def.mColor.y, def.mColor.z, def.mColor.w);
+							ImGui::Text("mIntensity: [%.2f]", def.mIntensity);
+							ImGui::Spacing(0, 4);
+							ImGui::Separator();
+							ImGui::Spacing(0, 4);
+						}
+
+						ImGui::TreePop();
+					}
+
+					ImGui::Spacing(0, treenode_spacing);
 					if (ImGui::TreeNode("Temp Debug Values"))
 					{
 						ImGui::Spacing(0, treenode_spacing_inside);

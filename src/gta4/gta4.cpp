@@ -101,21 +101,30 @@ namespace gta4
 			//auto first_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8910);
 			//auto third_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8B20);
 
-			game::TimeCycleParams* timecycle = nullptr;
-			switch (im->m_dbg_used_timecycle)
-			{
-			default:
-			case 0:
-				timecycle = game::m_pCurrentTimeCycleParams_01;
-				break;
+			game::TimeCycleParams* timecycle = game::m_pCurrentTimeCycleParams_01;
 
-			case 1:
-				timecycle = game::m_pCurrentTimeCycleParams_02;
-				break;
-
-			case 2:
+			if (game::m_dwCutsceneState && *game::m_dwCutsceneState > 0) {
 				timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
-				break;
+			}
+
+			// manual override
+			if (im->m_dbg_used_timecycle >= 0)
+			{
+				switch (im->m_dbg_used_timecycle)
+				{
+				default:
+				case 0:
+					timecycle = game::m_pCurrentTimeCycleParams_01;
+					break;
+
+				case 1:
+					timecycle = game::m_pCurrentTimeCycleParams_02;
+					break;
+
+				case 2:
+					timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
+					break;
+				}
 			}
 
 			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness");

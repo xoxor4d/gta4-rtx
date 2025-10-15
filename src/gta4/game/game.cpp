@@ -43,6 +43,10 @@ namespace gta4::game
 	float* pTimeCycleWetness = nullptr;
 	float* pTimeCycleSpecularOffset = nullptr;
 
+	TimeCycleParams* m_pCurrentTimeCycleParams_01 = nullptr;
+	TimeCycleParams* m_pCurrentTimeCycleParams_02 = nullptr;
+	TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene = nullptr;
+
 	//CLightSource* m_renderLights = nullptr;
 	//std::uint32_t* m_numRenderLights = nullptr;
 	DWORD* m_renderLights_addr = nullptr;
@@ -55,9 +59,7 @@ namespace gta4::game
 	uint32_t** ms_pNatives = nullptr;
 
 	uint8_t* m_CodePause = nullptr;
-	TimeCycleParams* m_pCurrentTimeCycleParams_01 = nullptr;
-	TimeCycleParams* m_pCurrentTimeCycleParams_02 = nullptr;
-	TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene = nullptr;
+	int* m_dwCutsceneState = nullptr;
 
 	// --------------
 	// game functions
@@ -192,6 +194,7 @@ namespace gta4::game
 			pCurrentWorldTransform = (D3DXMATRIX*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
+		//
 		if (const auto offset = shared::utils::mem::find_pattern("F3 0F 10 05 ? ? ? ? 56 57 ? ? ? C1 E7", 4, "pTimeCycleCurrentWetness", use_pattern, 0x986CBC); offset) {
 			pTimeCycleWetnessChange = (float*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
@@ -203,6 +206,20 @@ namespace gta4::game
 		if (const auto offset = shared::utils::mem::find_pattern("F3 0F 10 0D ? ? ? ? F3 0F 59 C8 0F 2F D9", 4, "pTimeCycleSpecularOffset", use_pattern, 0xAEFC16); offset) {
 			pTimeCycleSpecularOffset = (float*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
+
+
+		if (const auto offset = shared::utils::mem::find_pattern("B9 ? ? ? ? ? ? ? ? ? ? ? 56 E8 ? ? ? ? B9", 1, "m_pCurrentTimeCycleParams_01", use_pattern, 0x5B9498); offset) {
+			m_pCurrentTimeCycleParams_01 = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("B9 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 6A ? 51", 1, "m_pCurrentTimeCycleParams_02", use_pattern, 0x5B94AA); offset) {
+			m_pCurrentTimeCycleParams_02 = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("68 ? ? ? ? E8 ? ? ? ? 0F B6 05 ? ? ? ? 8B 0D", 1, "m_pCurrentTimeCycleParams_Cutscene", use_pattern, 0xAF4306); offset) {
+			m_pCurrentTimeCycleParams_Cutscene = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 
 		// 0x103EED0
 		if (const auto offset = shared::utils::mem::find_pattern("89 35 ? ? ? ? 8B 49", 2, "m_renderLights_addr", use_pattern, 0xABECED); offset) {
@@ -241,18 +258,10 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
-
-		if (const auto offset = shared::utils::mem::find_pattern("B9 ? ? ? ? ? ? ? ? ? ? ? 56 E8 ? ? ? ? B9", 1, "m_pCurrentTimeCycleParams_01", use_pattern, 0x5B9498); offset) {
-			m_pCurrentTimeCycleParams_01 = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
+		if (const auto offset = shared::utils::mem::find_pattern("A1 ? ? ? ? 83 EC ? 85 C0 74 ? 83 F8", 1, "m_dwCutsceneState", use_pattern, 0xAF42D6); offset) {
+			m_dwCutsceneState = (int*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("B9 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 6A ? 51", 1, "m_pCurrentTimeCycleParams_02", use_pattern, 0x5B94AA); offset) {
-			m_pCurrentTimeCycleParams_02 = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
-		} total_pattern_count++;
-
-		if (const auto offset = shared::utils::mem::find_pattern("68 ? ? ? ? E8 ? ? ? ? 0F B6 05 ? ? ? ? 8B 0D", 1, "m_pCurrentTimeCycleParams_Cutscene", use_pattern, 0xAF4306); offset) {
-			m_pCurrentTimeCycleParams_Cutscene = (TimeCycleParams*)*(DWORD*)offset; found_pattern_count++;
-		} total_pattern_count++;
 
 		// end GAME_VARIABLES
 #pragma endregion
