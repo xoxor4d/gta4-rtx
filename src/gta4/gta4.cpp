@@ -410,6 +410,66 @@ namespace gta4
 		return static_world_culling_check_og(this_ptr, unk);
 	}
 
+	// A general culling function used by lights, npc's and other? things ..
+	int __fastcall FrustumPlanesCheck(game::grcViewport* vp, [[maybe_unused]] void* fastcall_arg, float orgX, float orgY, float orgZ, float distanceToObject, float* outAdjustedNearDistance)
+	{
+		// do not cull if near enough
+		if (const auto vpscene = game::pViewports; vpscene->sceneviewport)
+		{
+			const float anti_cull_dist = game_settings::get()->nocull_dist_lights.get_as<float>();
+
+			const Vector cam_org = &vpscene->sceneviewport->cameraInv.m[3][0];
+			const float dist_sqr = fabs(cam_org.DistToSqr(Vector(orgX, orgY, orgZ)));
+
+			// do not cull if near
+			if (dist_sqr < anti_cull_dist * anti_cull_dist) {
+				return 2;
+			}
+		}
+
+		// original code
+		if (outAdjustedNearDistance)
+		{
+			*outAdjustedNearDistance = vp->frustumClipPlane0[0] * orgX + vp->frustumClipPlane0[1] * orgY + vp->frustumClipPlane0[2] * orgZ + vp->frustumClipPlane0[3] + distanceToObject;
+			if (*outAdjustedNearDistance >= 0.0f)
+			{
+				int v8 = 1; // returning 0 stops rendering of player
+				for (float* i = &vp->frustumClipPlane1[2]; *(i - 2) * orgX + *(i - 1) * orgY + *i * orgZ + i[1] + distanceToObject >= 0.0f; i += 4)
+				{
+					if (++v8 > 5) {
+						return 1;
+					}
+				}
+			}
+		}
+		else
+		{
+			int result = 2; 
+			auto plane = &vp->frustumClipPlane0[2];
+			int plane_index = 0;
+			while (true)
+			{
+				const float signed_dist = ((((*(plane - 2) * orgX) + (*(plane - 1) * orgY)) + (*plane * orgZ)) + plane[1]) + distanceToObject;
+				if (signed_dist < 0.0f) {
+					break;
+				}
+
+				if (distanceToObject > signed_dist) {
+					result = 1;
+				}
+
+				++plane_index;
+				plane += 4;
+
+				if (plane_index >= 6) {
+					return result;
+				}
+			}
+		}
+
+		return 0;
+	}
+
 	void main()
 	{
 		// init remix api
@@ -450,6 +510,9 @@ namespace gta4
 		shared::utils::hook::detour(game::hk_addr__static_world_culling_check_hk, &static_world_culling_check_hk, DETOUR_CAST(static_world_culling_check_og));
 		shared::utils::hook::nop(game::nop_addr__static_world_frustum_patch01, 6); // disable secondary frustum based check for static objects by "returning 2"
 		shared::utils::hook::nop(game::nop_addr__static_world_frustum_patch02, 2); // ^
+
+		// light culling check 0xABD093 - detour frustum check function
+		shared::utils::hook::detour(game::hk_addr__frustum_check, &FrustumPlanesCheck, nullptr);
 
 		MH_EnableHook(MH_ALL_HOOKS);
 	}

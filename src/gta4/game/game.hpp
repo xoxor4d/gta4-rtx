@@ -125,6 +125,7 @@ namespace gta4::game
 	extern uint32_t retn_addr__pre_draw_mirror;
 	extern uint32_t hk_addr__post_draw_mirror;
 
+	extern uint32_t hk_addr__frustum_check;
 	// ---
 
 	extern void init_game_addresses();

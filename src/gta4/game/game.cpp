@@ -105,11 +105,13 @@ namespace gta4::game
 	uint32_t retn_addr__pre_draw_water = 0u;
 	uint32_t hk_addr__post_draw_water = 0u;
 
-	uint32_t retn_addr__pre_draw_statics = 0;
-	uint32_t hk_addr__post_draw_statics = 0;
+	uint32_t retn_addr__pre_draw_statics = 0u;
+	uint32_t hk_addr__post_draw_statics = 0u;
 
-	uint32_t retn_addr__pre_draw_mirror = 0;
-	uint32_t hk_addr__post_draw_mirror = 0;
+	uint32_t retn_addr__pre_draw_mirror = 0u;
+	uint32_t hk_addr__post_draw_mirror = 0u;
+
+	uint32_t hk_addr__frustum_check = 0u;
 
 	// --------------
 
@@ -420,6 +422,10 @@ namespace gta4::game
 		// can't create signature at the end of the function so we get the offset from a relative jump instruction
 		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? 80 3D ? ? ? ? ? 0F 84 ? ? ? ? FF 35", 0, "hk_addr__post_draw_mirror", use_pattern, 0xB59911); offset) {
 			hk_addr__post_draw_mirror = shared::utils::mem::resolve_indirect_call_address(offset, 6u, 2u); found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, "hk_addr__frustum_check", use_pattern, 0x431E40); offset) {
+			hk_addr__frustum_check = offset; found_pattern_count++;
 		} total_pattern_count++;
 
 		// end GAME_ASM_OFFSETS

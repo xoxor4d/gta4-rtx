@@ -735,6 +735,21 @@ namespace gta4
 				ImGui::DragFloat("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 				TT(gs->translate_sunlight_volumetric_radiance_base.get_tooltip_string().c_str());
 
+				ImGui::Spacing(0, inbetween_spacing);
+				ImGui::Separator();
+
+				ImGui::Spacing(0, inbetween_spacing);
+				ImGui::SeparatorText(" Anti Culling of Lights ");
+				ImGui::Spacing(0, 4);
+
+				{
+					auto gs_var_ptr = gs->nocull_dist_lights.get_as<float*>();
+					if (ImGui::DragFloat("No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, 500.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+					}
+					TT(gs->nocull_dist_lights.get_tooltip_string().c_str());
+				}
+
 			}, false, ICON_FA_LIGHTBULB, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 

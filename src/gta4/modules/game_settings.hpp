@@ -392,6 +392,13 @@ namespace gta4
 				13.0f
 			};
 
+			variable nocull_dist_lights =
+			{
+				"nocull_dist_lights",
+				("Distance (radius around player) where culling of game lights is disabled."),
+				40.0f
+			};
+
 
 			// -----
 			variable translate_game_lights =
