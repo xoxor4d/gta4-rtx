@@ -229,7 +229,7 @@ namespace gta4
 
 				bool add_zero_intensity_light = false;
 
-				// debug setting to disable ignore logic (to test performance impact)
+				// debug setting to disable ignore logic (performance impact test)
 				if (!im->m_dbg_disable_ignore_light_hash_logic)
 				{
 					const auto& ignored_lights = map_settings::get()->get_map_settings().ignored_lights;
@@ -242,6 +242,32 @@ namespace gta4
 						else {
 							continue;
 						}
+					}
+				}
+
+				// dev setting to test light flags
+				if (im->m_dbg_ignore_lights_with_flag_logic)
+				{
+					if (im->m_dbg_ignore_lights_with_flag_add_second_flag)
+					{
+						if (   def.mFlags & (1u << im->m_dbg_ignore_lights_with_flag_01)
+							&& def.mFlags & (1u << im->m_dbg_ignore_lights_with_flag_02) ) {
+							continue;
+						}
+					}
+					else
+					{
+						if (def.mFlags & (1u << im->m_dbg_ignore_lights_with_flag_01)) {
+							continue;
+						}
+					}
+				}
+
+				// ignore filler light game setting
+				else if (gs->translate_game_lights_ignore_filler_lights.get_as<bool>())
+				{
+					if (def.mFlags & 0x10) {
+						continue;
 					}
 				}
 

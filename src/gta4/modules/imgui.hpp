@@ -33,6 +33,9 @@ namespace gta4
 		D3DXMATRIX m_debug_mtx02;
 		D3DXMATRIX m_debug_mtx03;
 
+		bool m_dbg_debug_bool01 = false;
+		int m_dbg_int_01 = 0;
+
 		bool m_dbg_do_not_render_static = false;
 		bool m_dbg_do_not_render_vehicle = false;
 		bool m_dbg_do_not_render_instances = false;
@@ -54,6 +57,11 @@ namespace gta4
 		bool m_dbg_visualize_api_light_hashes = false;
 		bool m_dbg_disable_ignore_light_hash_logic = false; // disables the map_settings logic that ignores light translation based on a list of hashes
 		float m_dbg_visualize_api_light_hashes_distance = 8.0f;
+
+		bool m_dbg_ignore_lights_with_flag_logic = false;
+		int m_dbg_ignore_lights_with_flag_01 = 0;
+		bool m_dbg_ignore_lights_with_flag_add_second_flag = false;
+		int m_dbg_ignore_lights_with_flag_02 = 0;
 
 		struct visualized_api_light_s
 		{

@@ -28,6 +28,9 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 	ImGui::SetCursorForCenteredText((text));	\
 	ImGui::TextURL((text), (link), true);
 
+constexpr float TREENODE_SPACING = 6.0f;
+constexpr float TREENODE_SPACING_INSIDE = 6.0f;
+
 namespace gta4
 {
 	WNDPROC g_game_wndproc = nullptr;
@@ -161,332 +164,423 @@ namespace gta4
 		ImGui::PopFont();
 	}
 
+	void dev_shader_container()
+	{
+		static const auto& im = imgui::get();
+
+		ImGui::Checkbox("Enable Ignore Shader Logic", &im->m_dbg_enable_ignore_shader_logic);
+		ImGui::BeginDisabled(!im->m_dbg_enable_ignore_shader_logic);
+		{
+			ImGui::Checkbox("Also Ignore on DrawPrimitive calls", &im->m_dbg_ignore_drawprimitive);
+			ImGui::Checkbox("Ignore ALL", &im->m_dbg_ignore_all);
+
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("Uncategorized ..."))
+			{
+				ImGui::Checkbox("cascade.fxc", &im->m_dbg_ignore_cascade);
+				ImGui::Checkbox("deferred_lighting.fxc", &im->m_dbg_ignore_deferred_lighting);
+				ImGui::Checkbox("gpuptfx_simplerender.fxc", &im->m_dbg_ignore_gpuptfx_simplerender);
+				ImGui::Checkbox("gta_atmoscatt_clouds.fxc", &im->m_dbg_ignore_gta_atmoscatt_clouds);
+				ImGui::Checkbox("gta_cubemap_reflect.fxc", &im->m_dbg_ignore_gta_cubemap_reflect);
+				ImGui::Checkbox("gta_cutout_fence.fxc", &im->m_dbg_ignore_gta_cutout_fence);
+				ImGui::Checkbox("gta_default.fxc", &im->m_dbg_ignore_gta_default);
+				ImGui::Checkbox("gta_diffuse_instance.fxc", &im->m_dbg_ignore_gta_diffuse_instance);
+				ImGui::Checkbox("gta_grass.fxc", &im->m_dbg_ignore_gta_grass);
+				ImGui::Checkbox("gta_hair_sorted_alpha.fxc", &im->m_dbg_ignore_gta_hair_sorted_alpha);
+				ImGui::Checkbox("gta_hair_sorted_alpha_exp.fxc", &im->m_dbg_ignore_gta_hair_sorted_alpha_exp);
+				ImGui::Checkbox("gta_im.fxc", &im->m_dbg_ignore_gta_im);
+				ImGui::Checkbox("gta_projtex.fxc", &im->m_dbg_ignore_gta_projtex);
+				ImGui::Checkbox("gta_projtex_steep.fxc", &im->m_dbg_ignore_gta_projtex_steep);
+				ImGui::Checkbox("gta_radar.fxc", &im->m_dbg_ignore_gta_radar);
+				ImGui::Checkbox("gta_reflect.fxc", &im->m_dbg_ignore_gta_reflect);
+				ImGui::Checkbox("gta_reflect_decal.fxc", &im->m_dbg_ignore_gta_reflect_decal);
+				ImGui::Checkbox("gta_terrain.fxc", &im->m_dbg_ignore_gta_terrain);
+				ImGui::Checkbox("gta_trees.fxc", &im->m_dbg_ignore_gta_trees);
+				ImGui::Checkbox("gta_wire.fxc", &im->m_dbg_ignore_gta_wire);
+				ImGui::Checkbox("mirror.fxc", &im->m_dbg_ignore_mirror);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_DECAL ..."))
+			{
+				ImGui::Checkbox("gta_decal.fxc", &im->m_dbg_ignore_gta_decal);
+				ImGui::Checkbox("gta_decal_amb_only.fxc", &im->m_dbg_ignore_gta_decal_amb_only);
+				ImGui::Checkbox("gta_decal_dirt.fxc", &im->m_dbg_ignore_gta_decal_dirt);
+				ImGui::Checkbox("gta_decal_glue.fxc", &im->m_dbg_ignore_gta_decal_glue);
+				ImGui::Checkbox("gta_decal_normal_only.fxc", &im->m_dbg_ignore_gta_decal_normal_only);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_EMISSIVE ..."))
+			{
+				ImGui::Checkbox("gta_emissive.fxc", &im->m_dbg_ignore_gta_emissive);
+				ImGui::Checkbox("gta_emissivenight.fxc", &im->m_dbg_ignore_gta_emissivenight);
+				ImGui::Checkbox("gta_emissivestrong.fxc", &im->m_dbg_ignore_gta_emissivestrong);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_GLASS ..."))
+			{
+				ImGui::Checkbox("gta_glass.fxc", &im->m_dbg_ignore_gta_glass);
+				ImGui::Checkbox("gta_glass_emissive.fxc", &im->m_dbg_ignore_gta_glass_emissive);
+				ImGui::Checkbox("gta_glass_emissivenight.fxc", &im->m_dbg_ignore_gta_glass_emissivenight);
+				ImGui::Checkbox("gta_glass_normal_spec_reflect.fxc", &im->m_dbg_ignore_gta_glass_normal_spec_reflect);
+				ImGui::Checkbox("gta_glass_reflect.fxc", &im->m_dbg_ignore_gta_glass_reflect);
+				ImGui::Checkbox("gta_glass_spec.fxc", &im->m_dbg_ignore_gta_glass_spec);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_NORMAL ..."))
+			{
+				ImGui::Checkbox("gta_normal.fxc", &im->m_dbg_ignore_gta_normal);
+				ImGui::Checkbox("gta_normal_cubemap_reflect.fxc", &im->m_dbg_ignore_gta_normal_cubemap_reflect);
+				ImGui::Checkbox("gta_normal_decal.fxc", &im->m_dbg_ignore_gta_normal_decal);
+				ImGui::Checkbox("gta_normal_reflect.fxc", &im->m_dbg_ignore_gta_normal_reflect);
+				ImGui::Checkbox("gta_normal_reflect_alpha.fxc", &im->m_dbg_ignore_gta_normal_reflect_alpha);
+				ImGui::Checkbox("gta_normal_reflect_decal.fxc", &im->m_dbg_ignore_gta_normal_reflect_decal);
+				ImGui::Checkbox("gta_normal_spec.fxc", &im->m_dbg_ignore_gta_normal_spec);
+				ImGui::Checkbox("gta_normal_spec_cubemap_reflect.fxc", &im->m_dbg_ignore_gta_normal_spec_cubemap_reflect);
+				ImGui::Checkbox("gta_normal_spec_decal.fxc", &im->m_dbg_ignore_gta_normal_spec_decal);
+				ImGui::Checkbox("gta_normal_spec_reflect.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect);
+				ImGui::Checkbox("gta_normal_spec_reflect_decal.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect_decal);
+				ImGui::Checkbox("gta_normal_spec_reflect_emissive.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect_emissive);
+				ImGui::Checkbox("gta_normal_spec_reflect_emissivenight.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect_emissivenight);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_PARALLAX ..."))
+			{
+				ImGui::Checkbox("gta_parallax.fxc", &im->m_dbg_ignore_gta_parallax);
+				ImGui::Checkbox("gta_parallax_specmap.fxc", &im->m_dbg_ignore_gta_parallax_specmap);
+				ImGui::Checkbox("gta_parallax_steep.fxc", &im->m_dbg_ignore_gta_parallax_steep);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_PED ..."))
+			{
+				ImGui::Checkbox("gta_ped.fxc", &im->m_dbg_ignore_gta_ped);
+				ImGui::Checkbox("gta_ped_face.fxc", &im->m_dbg_ignore_gta_ped_face);
+				ImGui::Checkbox("gta_ped_reflect.fxc", &im->m_dbg_ignore_gta_ped_reflect);
+				ImGui::Checkbox("gta_ped_skin.fxc", &im->m_dbg_ignore_gta_ped_skin);
+				ImGui::Checkbox("gta_ped_skin_blendshape.fxc", &im->m_dbg_ignore_gta_ped_skin_blendshape);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_RMPTFX ..."))
+			{
+				ImGui::Checkbox("gta_rmptfx_gpurender.fxc", &im->m_dbg_ignore_gta_rmptfx_gpurender);
+				ImGui::Checkbox("gta_rmptfx_litsprite.fxc", &im->m_dbg_ignore_gta_rmptfx_litsprite);
+				ImGui::Checkbox("gta_rmptfx_mesh.fxc", &im->m_dbg_ignore_gta_rmptfx_mesh);
+				ImGui::Checkbox("gta_rmptfx_raindrops.fxc", &im->m_dbg_ignore_gta_rmptfx_raindrops);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_SPEC ..."))
+			{
+				ImGui::Checkbox("gta_spec.fxc", &im->m_dbg_ignore_gta_spec);
+				ImGui::Checkbox("gta_spec_decal.fxc", &im->m_dbg_ignore_gta_spec_decal);
+				ImGui::Checkbox("gta_spec_reflect.fxc", &im->m_dbg_ignore_gta_spec_reflect);
+				ImGui::Checkbox("gta_spec_reflect_decal.fxc", &im->m_dbg_ignore_gta_spec_reflect_decal);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("GTA_VEHICLE ..."))
+			{
+				ImGui::Checkbox("gta_vehicle_badges.fxc", &im->m_dbg_ignore_gta_vehicle_badges);
+				ImGui::Checkbox("gta_vehicle_basic.fxc", &im->m_dbg_ignore_gta_vehicle_basic);
+				ImGui::Checkbox("gta_vehicle_chrome.fxc", &im->m_dbg_ignore_gta_vehicle_chrome);
+				ImGui::Checkbox("gta_vehicle_disc.fxc", &im->m_dbg_ignore_gta_vehicle_disc);
+				ImGui::Checkbox("gta_vehicle_generic.fxc", &im->m_dbg_ignore_gta_vehicle_generic);
+				ImGui::Checkbox("gta_vehicle_interior.fxc", &im->m_dbg_ignore_gta_vehicle_interior);
+				ImGui::Checkbox("gta_vehicle_interior2.fxc", &im->m_dbg_ignore_gta_vehicle_interior2);
+				ImGui::Checkbox("gta_vehicle_lightsemissive.fxc", &im->m_dbg_ignore_gta_vehicle_lightsemissive);
+				ImGui::Checkbox("gta_vehicle_mesh.fxc", &im->m_dbg_ignore_gta_vehicle_mesh);
+				ImGui::Checkbox("gta_vehicle_paint1.fxc", &im->m_dbg_ignore_gta_vehicle_paint1);
+				ImGui::Checkbox("gta_vehicle_paint2.fxc", &im->m_dbg_ignore_gta_vehicle_paint2);
+				ImGui::Checkbox("gta_vehicle_paint3.fxc", &im->m_dbg_ignore_gta_vehicle_paint3);
+				ImGui::Checkbox("gta_vehicle_rims1.fxc", &im->m_dbg_ignore_gta_vehicle_rims1);
+				ImGui::Checkbox("gta_vehicle_rims2.fxc", &im->m_dbg_ignore_gta_vehicle_rims2);
+				ImGui::Checkbox("gta_vehicle_rims3.fxc", &im->m_dbg_ignore_gta_vehicle_rims3);
+				ImGui::Checkbox("gta_vehicle_rubber.fxc", &im->m_dbg_ignore_gta_vehicle_rubber);
+				ImGui::Checkbox("gta_vehicle_shuts.fxc", &im->m_dbg_ignore_gta_vehicle_shuts);
+				ImGui::Checkbox("gta_vehicle_tire.fxc", &im->m_dbg_ignore_gta_vehicle_tire);
+				ImGui::Checkbox("gta_vehicle_vehglass.fxc", &im->m_dbg_ignore_gta_vehicle_vehglass);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("RAGE ..."))
+			{
+				ImGui::Checkbox("rage_atmoscatt_clouds.fxc", &im->m_dbg_ignore_rage_atmoscatt_clouds);
+				ImGui::Checkbox("rage_billboard_nobump.fxc", &im->m_dbg_ignore_rage_billboard_nobump);
+				ImGui::Checkbox("rage_bink.fxc", &im->m_dbg_ignore_rage_bink);
+				ImGui::Checkbox("rage_default.fxc", &im->m_dbg_ignore_rage_default);
+				ImGui::Checkbox("rage_fastmipmap.fxc", &im->m_dbg_ignore_rage_fastmipmap);
+				ImGui::Checkbox("rage_im.fxc", &im->m_dbg_ignore_rage_im);
+				ImGui::Checkbox("rage_perlinnoise.fxc", &im->m_dbg_ignore_rage_perlinnoise);
+				ImGui::Checkbox("rage_postfx.fxc", &im->m_dbg_ignore_rage_postfx);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("RMPTFX ..."))
+			{
+				ImGui::Checkbox("rmptfx_collision.fxc", &im->m_dbg_ignore_rmptfx_collision);
+				ImGui::Checkbox("rmptfx_default.fxc", &im->m_dbg_ignore_rmptfx_default);
+				ImGui::Checkbox("rmptfx_litsprite.fxc", &im->m_dbg_ignore_rmptfx_litsprite);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("SHADOW ..."))
+			{
+				ImGui::Checkbox("shadowSmartBlit.fxc", &im->m_dbg_ignore_shadowSmartBlit);
+				ImGui::Checkbox("shadowZ.fxc", &im->m_dbg_ignore_shadowZ);
+				ImGui::Checkbox("shadowZDir.fxc", &im->m_dbg_ignore_shadowZDir);
+				ImGui::TreePop();
+			}
+
+			ImGui::Spacing(0, TREENODE_SPACING);
+			if (ImGui::TreeNode("WATER ..."))
+			{
+				ImGui::Checkbox("water.fxc", &im->m_dbg_ignore_water);
+				ImGui::Checkbox("waterTex.fxc", &im->m_dbg_ignore_waterTex);
+				ImGui::TreePop();
+			}
+			ImGui::EndDisabled();
+		}
+	}
+
+	void dev_debug_container()
+	{
+		static const auto& im = imgui::get();
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		ImGui::Checkbox("Visualize Api Lights 3D", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
+
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
+		ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
+		ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
+
+		ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
+		TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
+			"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
+
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
+		ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Do not render ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::Checkbox("Do not render Static", &im->m_dbg_do_not_render_static);
+			ImGui::Checkbox("Do not render Vehicle", &im->m_dbg_do_not_render_vehicle);
+			ImGui::Checkbox("Do not render Instances", &im->m_dbg_do_not_render_instances);
+			ImGui::Checkbox("Do not render Stencil 0", &im->m_dbg_do_not_render_stencil_zero);
+			ImGui::Checkbox("Do not render Tree Foliage", &im->m_dbg_do_not_render_tree_foliage);
+			ImGui::Checkbox("Do not render FF", &im->m_dbg_do_not_render_ff);
+			ImGui::Checkbox("Do not render Water", &im->m_dbg_do_not_render_water);
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Directional Light Info"))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+
+			for (auto i = 0u; i < 2; i++)
+			{
+				auto& def = game::g_directionalLights[i];
+				ImGui::Text("Directional Light #%d", i);
+				ImGui::Text("mDirection: [%.2f, %.2f, %.2f]", def.mDirection.x, def.mDirection.y, def.mDirection.z);
+				ImGui::Text("mColor: [%.2f, %.2f, %.2f, %.2f]", def.mColor.x, def.mColor.y, def.mColor.z, def.mColor.w);
+				ImGui::Text("mIntensity: [%.2f]", def.mIntensity);
+				ImGui::Spacing(0, 4);
+				ImGui::Separator();
+				ImGui::Spacing(0, 4);
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Ignore Lights with Certain Flags"))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::Checkbox("Enable Logic", &im->m_dbg_ignore_lights_with_flag_logic);
+
+			ImGui::BeginDisabled(!im->m_dbg_ignore_lights_with_flag_logic);
+			{
+				static const char* bit_list[] = {
+					"Bit 0:  0x1",
+					"Bit 1:  0x2",
+					"Bit 2:  0x4",
+					"Bit 3:  0x8",
+					"Bit 4:  0x10",
+					"Bit 5:  0x20",
+					"Bit 6:  0x40",
+					"Bit 7:  0x80",
+					"Bit 8:  0x100",
+					"Bit 9:  0x200",
+					"Bit 10: 0x400",
+					"Bit 11: 0x800",
+					"Bit 12: 0x1000",
+					"Bit 13: 0x2000",
+					"Bit 14: 0x4000",
+					"Bit 15: 0x8000",
+					"Bit 16: 0x10000"
+				};
+				static const int num_bit_list = std::size(bit_list);
+
+				uint32_t current_selection_flag1 = im->m_dbg_ignore_lights_with_flag_01;
+				if (ImGui::BeginCombo("Ignore Lights with Flag:", bit_list[current_selection_flag1])) 
+				{
+					for (auto i = 0u; i < num_bit_list; ++i)
+					{
+						const bool is_selected = (current_selection_flag1 == i);
+						if (ImGui::Selectable(bit_list[i], is_selected)) {
+							current_selection_flag1 = i;
+						}
+
+						if (is_selected) {
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+
+				if (current_selection_flag1 != im->m_dbg_ignore_lights_with_flag_01) {
+					im->m_dbg_ignore_lights_with_flag_01 = static_cast<int>(current_selection_flag1);
+				}
+
+				ImGui::Checkbox("ADD Second Flag", &im->m_dbg_ignore_lights_with_flag_add_second_flag);
+				TT( "This will add a second flag the light has to have to ignore it.\n"
+					"In short, both flags have to be set for a light to be ignored.")
+
+				ImGui::BeginDisabled(!im->m_dbg_ignore_lights_with_flag_add_second_flag);
+				{
+					uint32_t current_selection_flag2 = im->m_dbg_ignore_lights_with_flag_02;
+					if (ImGui::BeginCombo("Additional Flag:", bit_list[current_selection_flag2]))
+					{
+						for (auto i = 0u; i < num_bit_list; ++i)
+						{
+							const bool is_selected = (current_selection_flag2 == i);
+							if (ImGui::Selectable(bit_list[i], is_selected)) {
+								current_selection_flag2 = i;
+							}
+
+							if (is_selected) {
+								ImGui::SetItemDefaultFocus();
+							}
+						}
+						ImGui::EndCombo();
+					}
+
+					if (current_selection_flag2 != im->m_dbg_ignore_lights_with_flag_02) {
+						im->m_dbg_ignore_lights_with_flag_02 = static_cast<int>(current_selection_flag2);
+					}
+
+					ImGui::EndDisabled();
+				}
+
+				ImGui::EndDisabled();
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Temp Debug Values"))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::DragFloat3("Debug Vector", &im->m_debug_vector.x, 0.01f);
+			ImGui::DragFloat3("Debug Vector 2", &im->m_debug_vector2.x, 0.1f);
+			ImGui::Checkbox("Debug Bool 1", &im->m_dbg_debug_bool01);
+			ImGui::DragInt("Debug Int 1", &im->m_dbg_int_01, 0.005f);
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Phone Projection Offset Matrix"))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::DragFloat4("##Phone Proj Offset Row0", im->m_dbg_phone_projection_matrix_offset.m[0], 0.01f);
+			ImGui::DragFloat4("##Phone Proj Offset Row1", im->m_dbg_phone_projection_matrix_offset.m[1], 0.01f);
+			ImGui::DragFloat4("##Phone Proj Offset Row2", im->m_dbg_phone_projection_matrix_offset.m[2], 0.01f);
+			ImGui::DragFloat4("##Phone Proj Offset Row3", im->m_dbg_phone_projection_matrix_offset.m[3], 0.01f);
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Debug Offset Matrix 2"))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::DragFloat4("##Debug Mtx02 Row0", im->m_debug_mtx02.m[0], 0.01f);
+			ImGui::DragFloat4("##Debug Mtx02 Row1", im->m_debug_mtx02.m[1], 0.01f);
+			ImGui::DragFloat4("##Debug Mtx02 Row2", im->m_debug_mtx02.m[2], 0.01f);
+			ImGui::DragFloat4("##Debug Mtx02 Row3", im->m_debug_mtx02.m[3], 0.01f);
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Debug Offset Matrix 3"))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::DragFloat4("##Debug Mtx03 Row0", im->m_debug_mtx02.m[0], 0.01f);
+			ImGui::DragFloat4("##Debug Mtx03 Row1", im->m_debug_mtx02.m[1], 0.01f);
+			ImGui::DragFloat4("##Debug Mtx03 Row2", im->m_debug_mtx02.m[2], 0.01f);
+			ImGui::DragFloat4("##Debug Mtx03 Row3", im->m_debug_mtx02.m[3], 0.01f);
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Custom ImGui Colors"))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			const auto coloredit_flags = ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_Float;
+
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ContainerBg", &im->ImGuiCol_ContainerBackground.x, coloredit_flags);
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ContainerBorder", &im->ImGuiCol_ContainerBorder.x, coloredit_flags);
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonGreen", &im->ImGuiCol_ButtonGreen.x, coloredit_flags);
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonYellow", &im->ImGuiCol_ButtonYellow.x, coloredit_flags);
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonRed", &im->ImGuiCol_ButtonRed.x, coloredit_flags);
+			ImGui::TreePop();
+		}
+	}
+
 	void imgui::tab_dev()
 	{
 		static const auto& im = imgui::get();
 
 		{
 			static float cont_cull_height = 0.0f;
-			cont_cull_height = ImGui::Widget_ContainerWithCollapsingTitle("Shaders", cont_cull_height, [&]
-				{
-					const float treenode_spacing = 6.0f;
-
-					ImGui::Checkbox("Enable Ignore Shader Logic", &im->m_dbg_enable_ignore_shader_logic);
-					ImGui::BeginDisabled(!im->m_dbg_enable_ignore_shader_logic);
-					{
-						ImGui::Checkbox("Also Ignore on DrawPrimitive calls", &im->m_dbg_ignore_drawprimitive);
-						ImGui::Checkbox("Ignore ALL", &im->m_dbg_ignore_all);
-
-						ImGui::Spacing();
-						ImGui::Separator();
-						ImGui::Spacing();
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("Uncategorized ..."))
-						{
-							ImGui::Checkbox("cascade.fxc", &im->m_dbg_ignore_cascade);
-							ImGui::Checkbox("deferred_lighting.fxc", &im->m_dbg_ignore_deferred_lighting);
-							ImGui::Checkbox("gpuptfx_simplerender.fxc", &im->m_dbg_ignore_gpuptfx_simplerender);
-							ImGui::Checkbox("gta_atmoscatt_clouds.fxc", &im->m_dbg_ignore_gta_atmoscatt_clouds);
-							ImGui::Checkbox("gta_cubemap_reflect.fxc", &im->m_dbg_ignore_gta_cubemap_reflect);
-							ImGui::Checkbox("gta_cutout_fence.fxc", &im->m_dbg_ignore_gta_cutout_fence);
-							ImGui::Checkbox("gta_default.fxc", &im->m_dbg_ignore_gta_default);
-							ImGui::Checkbox("gta_diffuse_instance.fxc", &im->m_dbg_ignore_gta_diffuse_instance);
-							ImGui::Checkbox("gta_grass.fxc", &im->m_dbg_ignore_gta_grass);
-							ImGui::Checkbox("gta_hair_sorted_alpha.fxc", &im->m_dbg_ignore_gta_hair_sorted_alpha);
-							ImGui::Checkbox("gta_hair_sorted_alpha_exp.fxc", &im->m_dbg_ignore_gta_hair_sorted_alpha_exp);
-							ImGui::Checkbox("gta_im.fxc", &im->m_dbg_ignore_gta_im);
-							ImGui::Checkbox("gta_projtex.fxc", &im->m_dbg_ignore_gta_projtex);
-							ImGui::Checkbox("gta_projtex_steep.fxc", &im->m_dbg_ignore_gta_projtex_steep);
-							ImGui::Checkbox("gta_radar.fxc", &im->m_dbg_ignore_gta_radar);
-							ImGui::Checkbox("gta_reflect.fxc", &im->m_dbg_ignore_gta_reflect);
-							ImGui::Checkbox("gta_reflect_decal.fxc", &im->m_dbg_ignore_gta_reflect_decal);
-							ImGui::Checkbox("gta_terrain.fxc", &im->m_dbg_ignore_gta_terrain);
-							ImGui::Checkbox("gta_trees.fxc", &im->m_dbg_ignore_gta_trees);
-							ImGui::Checkbox("gta_wire.fxc", &im->m_dbg_ignore_gta_wire);
-							ImGui::Checkbox("mirror.fxc", &im->m_dbg_ignore_mirror);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_DECAL ..."))
-						{
-							ImGui::Checkbox("gta_decal.fxc", &im->m_dbg_ignore_gta_decal);
-							ImGui::Checkbox("gta_decal_amb_only.fxc", &im->m_dbg_ignore_gta_decal_amb_only);
-							ImGui::Checkbox("gta_decal_dirt.fxc", &im->m_dbg_ignore_gta_decal_dirt);
-							ImGui::Checkbox("gta_decal_glue.fxc", &im->m_dbg_ignore_gta_decal_glue);
-							ImGui::Checkbox("gta_decal_normal_only.fxc", &im->m_dbg_ignore_gta_decal_normal_only);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_EMISSIVE ..."))
-						{
-							ImGui::Checkbox("gta_emissive.fxc", &im->m_dbg_ignore_gta_emissive);
-							ImGui::Checkbox("gta_emissivenight.fxc", &im->m_dbg_ignore_gta_emissivenight);
-							ImGui::Checkbox("gta_emissivestrong.fxc", &im->m_dbg_ignore_gta_emissivestrong);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_GLASS ..."))
-						{
-							ImGui::Checkbox("gta_glass.fxc", &im->m_dbg_ignore_gta_glass);
-							ImGui::Checkbox("gta_glass_emissive.fxc", &im->m_dbg_ignore_gta_glass_emissive);
-							ImGui::Checkbox("gta_glass_emissivenight.fxc", &im->m_dbg_ignore_gta_glass_emissivenight);
-							ImGui::Checkbox("gta_glass_normal_spec_reflect.fxc", &im->m_dbg_ignore_gta_glass_normal_spec_reflect);
-							ImGui::Checkbox("gta_glass_reflect.fxc", &im->m_dbg_ignore_gta_glass_reflect);
-							ImGui::Checkbox("gta_glass_spec.fxc", &im->m_dbg_ignore_gta_glass_spec);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_NORMAL ..."))
-						{
-							ImGui::Checkbox("gta_normal.fxc", &im->m_dbg_ignore_gta_normal);
-							ImGui::Checkbox("gta_normal_cubemap_reflect.fxc", &im->m_dbg_ignore_gta_normal_cubemap_reflect);
-							ImGui::Checkbox("gta_normal_decal.fxc", &im->m_dbg_ignore_gta_normal_decal);
-							ImGui::Checkbox("gta_normal_reflect.fxc", &im->m_dbg_ignore_gta_normal_reflect);
-							ImGui::Checkbox("gta_normal_reflect_alpha.fxc", &im->m_dbg_ignore_gta_normal_reflect_alpha);
-							ImGui::Checkbox("gta_normal_reflect_decal.fxc", &im->m_dbg_ignore_gta_normal_reflect_decal);
-							ImGui::Checkbox("gta_normal_spec.fxc", &im->m_dbg_ignore_gta_normal_spec);
-							ImGui::Checkbox("gta_normal_spec_cubemap_reflect.fxc", &im->m_dbg_ignore_gta_normal_spec_cubemap_reflect);
-							ImGui::Checkbox("gta_normal_spec_decal.fxc", &im->m_dbg_ignore_gta_normal_spec_decal);
-							ImGui::Checkbox("gta_normal_spec_reflect.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect);
-							ImGui::Checkbox("gta_normal_spec_reflect_decal.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect_decal);
-							ImGui::Checkbox("gta_normal_spec_reflect_emissive.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect_emissive);
-							ImGui::Checkbox("gta_normal_spec_reflect_emissivenight.fxc", &im->m_dbg_ignore_gta_normal_spec_reflect_emissivenight);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_PARALLAX ..."))
-						{
-							ImGui::Checkbox("gta_parallax.fxc", &im->m_dbg_ignore_gta_parallax);
-							ImGui::Checkbox("gta_parallax_specmap.fxc", &im->m_dbg_ignore_gta_parallax_specmap);
-							ImGui::Checkbox("gta_parallax_steep.fxc", &im->m_dbg_ignore_gta_parallax_steep);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_PED ..."))
-						{
-							ImGui::Checkbox("gta_ped.fxc", &im->m_dbg_ignore_gta_ped);
-							ImGui::Checkbox("gta_ped_face.fxc", &im->m_dbg_ignore_gta_ped_face);
-							ImGui::Checkbox("gta_ped_reflect.fxc", &im->m_dbg_ignore_gta_ped_reflect);
-							ImGui::Checkbox("gta_ped_skin.fxc", &im->m_dbg_ignore_gta_ped_skin);
-							ImGui::Checkbox("gta_ped_skin_blendshape.fxc", &im->m_dbg_ignore_gta_ped_skin_blendshape);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_RMPTFX ..."))
-						{
-							ImGui::Checkbox("gta_rmptfx_gpurender.fxc", &im->m_dbg_ignore_gta_rmptfx_gpurender);
-							ImGui::Checkbox("gta_rmptfx_litsprite.fxc", &im->m_dbg_ignore_gta_rmptfx_litsprite);
-							ImGui::Checkbox("gta_rmptfx_mesh.fxc", &im->m_dbg_ignore_gta_rmptfx_mesh);
-							ImGui::Checkbox("gta_rmptfx_raindrops.fxc", &im->m_dbg_ignore_gta_rmptfx_raindrops);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_SPEC ..."))
-						{
-							ImGui::Checkbox("gta_spec.fxc", &im->m_dbg_ignore_gta_spec);
-							ImGui::Checkbox("gta_spec_decal.fxc", &im->m_dbg_ignore_gta_spec_decal);
-							ImGui::Checkbox("gta_spec_reflect.fxc", &im->m_dbg_ignore_gta_spec_reflect);
-							ImGui::Checkbox("gta_spec_reflect_decal.fxc", &im->m_dbg_ignore_gta_spec_reflect_decal);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("GTA_VEHICLE ..."))
-						{
-							ImGui::Checkbox("gta_vehicle_badges.fxc", &im->m_dbg_ignore_gta_vehicle_badges);
-							ImGui::Checkbox("gta_vehicle_basic.fxc", &im->m_dbg_ignore_gta_vehicle_basic);
-							ImGui::Checkbox("gta_vehicle_chrome.fxc", &im->m_dbg_ignore_gta_vehicle_chrome);
-							ImGui::Checkbox("gta_vehicle_disc.fxc", &im->m_dbg_ignore_gta_vehicle_disc);
-							ImGui::Checkbox("gta_vehicle_generic.fxc", &im->m_dbg_ignore_gta_vehicle_generic);
-							ImGui::Checkbox("gta_vehicle_interior.fxc", &im->m_dbg_ignore_gta_vehicle_interior);
-							ImGui::Checkbox("gta_vehicle_interior2.fxc", &im->m_dbg_ignore_gta_vehicle_interior2);
-							ImGui::Checkbox("gta_vehicle_lightsemissive.fxc", &im->m_dbg_ignore_gta_vehicle_lightsemissive);
-							ImGui::Checkbox("gta_vehicle_mesh.fxc", &im->m_dbg_ignore_gta_vehicle_mesh);
-							ImGui::Checkbox("gta_vehicle_paint1.fxc", &im->m_dbg_ignore_gta_vehicle_paint1);
-							ImGui::Checkbox("gta_vehicle_paint2.fxc", &im->m_dbg_ignore_gta_vehicle_paint2);
-							ImGui::Checkbox("gta_vehicle_paint3.fxc", &im->m_dbg_ignore_gta_vehicle_paint3);
-							ImGui::Checkbox("gta_vehicle_rims1.fxc", &im->m_dbg_ignore_gta_vehicle_rims1);
-							ImGui::Checkbox("gta_vehicle_rims2.fxc", &im->m_dbg_ignore_gta_vehicle_rims2);
-							ImGui::Checkbox("gta_vehicle_rims3.fxc", &im->m_dbg_ignore_gta_vehicle_rims3);
-							ImGui::Checkbox("gta_vehicle_rubber.fxc", &im->m_dbg_ignore_gta_vehicle_rubber);
-							ImGui::Checkbox("gta_vehicle_shuts.fxc", &im->m_dbg_ignore_gta_vehicle_shuts);
-							ImGui::Checkbox("gta_vehicle_tire.fxc", &im->m_dbg_ignore_gta_vehicle_tire);
-							ImGui::Checkbox("gta_vehicle_vehglass.fxc", &im->m_dbg_ignore_gta_vehicle_vehglass);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("RAGE ..."))
-						{
-							ImGui::Checkbox("rage_atmoscatt_clouds.fxc", &im->m_dbg_ignore_rage_atmoscatt_clouds);
-							ImGui::Checkbox("rage_billboard_nobump.fxc", &im->m_dbg_ignore_rage_billboard_nobump);
-							ImGui::Checkbox("rage_bink.fxc", &im->m_dbg_ignore_rage_bink);
-							ImGui::Checkbox("rage_default.fxc", &im->m_dbg_ignore_rage_default);
-							ImGui::Checkbox("rage_fastmipmap.fxc", &im->m_dbg_ignore_rage_fastmipmap);
-							ImGui::Checkbox("rage_im.fxc", &im->m_dbg_ignore_rage_im);
-							ImGui::Checkbox("rage_perlinnoise.fxc", &im->m_dbg_ignore_rage_perlinnoise);
-							ImGui::Checkbox("rage_postfx.fxc", &im->m_dbg_ignore_rage_postfx);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("RMPTFX ..."))
-						{
-							ImGui::Checkbox("rmptfx_collision.fxc", &im->m_dbg_ignore_rmptfx_collision);
-							ImGui::Checkbox("rmptfx_default.fxc", &im->m_dbg_ignore_rmptfx_default);
-							ImGui::Checkbox("rmptfx_litsprite.fxc", &im->m_dbg_ignore_rmptfx_litsprite);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("SHADOW ..."))
-						{
-							ImGui::Checkbox("shadowSmartBlit.fxc", &im->m_dbg_ignore_shadowSmartBlit);
-							ImGui::Checkbox("shadowZ.fxc", &im->m_dbg_ignore_shadowZ);
-							ImGui::Checkbox("shadowZDir.fxc", &im->m_dbg_ignore_shadowZDir);
-							ImGui::TreePop();
-						}
-
-						ImGui::Spacing(0, treenode_spacing);
-						if (ImGui::TreeNode("WATER ..."))
-						{
-							ImGui::Checkbox("water.fxc", &im->m_dbg_ignore_water);
-							ImGui::Checkbox("waterTex.fxc", &im->m_dbg_ignore_waterTex);
-							ImGui::TreePop();
-						}
-						ImGui::EndDisabled();
-					}
-
-				}, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+			cont_cull_height = ImGui::Widget_ContainerWithCollapsingTitle("Shaders", cont_cull_height, 
+				dev_shader_container, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 //#if DEBUG
 		{
 			static float cont_debug_height = 0.0f;
-			cont_debug_height = ImGui::Widget_ContainerWithCollapsingTitle("DEBUG Section", cont_debug_height, [&]
-				{
-					const float treenode_spacing = 6.0f;
-					const float treenode_spacing_inside = 6.0f;
-
-					ImGui::Spacing(0, treenode_spacing);
-					ImGui::Checkbox("Visualize Api Lights 3D", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
-
-					ImGui::Spacing(0, 4);
-
-					ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
-					ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
-					ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
-
-					ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
-					TT( "Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
-						"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
-
-					ImGui::Spacing(0, 4);
-
-					ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
-					ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
-
-					ImGui::Spacing(0, treenode_spacing);
-					if (ImGui::TreeNode("Do not render ..."))
-					{
-						ImGui::Spacing(0, treenode_spacing_inside);
-						ImGui::Checkbox("Do not render Static", &im->m_dbg_do_not_render_static);
-						ImGui::Checkbox("Do not render Vehicle", &im->m_dbg_do_not_render_vehicle);
-						ImGui::Checkbox("Do not render Instances", &im->m_dbg_do_not_render_instances);
-						ImGui::Checkbox("Do not render Stencil 0", &im->m_dbg_do_not_render_stencil_zero);
-						ImGui::Checkbox("Do not render Tree Foliage", &im->m_dbg_do_not_render_tree_foliage);
-						ImGui::Checkbox("Do not render FF", &im->m_dbg_do_not_render_ff);
-						ImGui::Checkbox("Do not render Water", &im->m_dbg_do_not_render_water);
-
-						ImGui::TreePop();
-					}
-
-					ImGui::Spacing(0, treenode_spacing);
-					if (ImGui::TreeNode("Directional Light Info"))
-					{
-						ImGui::Spacing(0, treenode_spacing_inside);
-
-						for (auto i = 0u; i < 2; i++)
-						{
-							auto& def = game::g_directionalLights[i];
-							ImGui::Text("Directional Light #%d", i);
-							ImGui::Text("mDirection: [%.2f, %.2f, %.2f]", def.mDirection.x, def.mDirection.y, def.mDirection.z);
-							ImGui::Text("mColor: [%.2f, %.2f, %.2f, %.2f]", def.mColor.x, def.mColor.y, def.mColor.z, def.mColor.w);
-							ImGui::Text("mIntensity: [%.2f]", def.mIntensity);
-							ImGui::Spacing(0, 4);
-							ImGui::Separator();
-							ImGui::Spacing(0, 4);
-						}
-
-						ImGui::TreePop();
-					}
-
-					ImGui::Spacing(0, treenode_spacing);
-					if (ImGui::TreeNode("Temp Debug Values"))
-					{
-						ImGui::Spacing(0, treenode_spacing_inside);
-						ImGui::DragFloat3("Debug Vector", &im->m_debug_vector.x, 0.01f);
-						ImGui::DragFloat3("Debug Vector 2", &im->m_debug_vector2.x, 0.1f);
-						ImGui::TreePop();
-					}
-
-					ImGui::Spacing(0, treenode_spacing);
-					if (ImGui::TreeNode("Phone Projection Offset Matrix"))
-					{
-						ImGui::Spacing(0, treenode_spacing_inside);
-						ImGui::DragFloat4("##Phone Proj Offset Row0", im->m_dbg_phone_projection_matrix_offset.m[0], 0.01f);
-						ImGui::DragFloat4("##Phone Proj Offset Row1", im->m_dbg_phone_projection_matrix_offset.m[1], 0.01f);
-						ImGui::DragFloat4("##Phone Proj Offset Row2", im->m_dbg_phone_projection_matrix_offset.m[2], 0.01f);
-						ImGui::DragFloat4("##Phone Proj Offset Row3", im->m_dbg_phone_projection_matrix_offset.m[3], 0.01f);
-						ImGui::TreePop();
-					}
-
-					ImGui::Spacing(0, treenode_spacing);
-					if (ImGui::TreeNode("Debug Offset Matrix 2"))
-					{
-						ImGui::Spacing(0, treenode_spacing_inside);
-						ImGui::DragFloat4("##Debug Mtx02 Row0", im->m_debug_mtx02.m[0], 0.01f);
-						ImGui::DragFloat4("##Debug Mtx02 Row1", im->m_debug_mtx02.m[1], 0.01f);
-						ImGui::DragFloat4("##Debug Mtx02 Row2", im->m_debug_mtx02.m[2], 0.01f);
-						ImGui::DragFloat4("##Debug Mtx02 Row3", im->m_debug_mtx02.m[3], 0.01f);
-						ImGui::TreePop();
-					}
-					
-					ImGui::Spacing(0, treenode_spacing);
-					if (ImGui::TreeNode("Debug Offset Matrix 3"))
-					{
-						ImGui::Spacing(0, treenode_spacing_inside);
-						ImGui::DragFloat4("##Debug Mtx03 Row0", im->m_debug_mtx02.m[0], 0.01f);
-						ImGui::DragFloat4("##Debug Mtx03 Row1", im->m_debug_mtx02.m[1], 0.01f);
-						ImGui::DragFloat4("##Debug Mtx03 Row2", im->m_debug_mtx02.m[2], 0.01f);
-						ImGui::DragFloat4("##Debug Mtx03 Row3", im->m_debug_mtx02.m[3], 0.01f);
-						ImGui::TreePop();
-					}
-
-					ImGui::Spacing(0, treenode_spacing);
-					if (ImGui::TreeNode("Custom ImGui Colors"))
-					{
-						ImGui::Spacing(0, treenode_spacing_inside);
-						const auto coloredit_flags = ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_Float;
-
-						SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ContainerBg", &im->ImGuiCol_ContainerBackground.x, coloredit_flags);
-						SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ContainerBorder", &im->ImGuiCol_ContainerBorder.x, coloredit_flags);
-						SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonGreen", &im->ImGuiCol_ButtonGreen.x, coloredit_flags);
-						SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonYellow", &im->ImGuiCol_ButtonYellow.x, coloredit_flags);
-						SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonRed", &im->ImGuiCol_ButtonRed.x, coloredit_flags);
-						ImGui::TreePop();
-					}
-
-				}, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+			cont_debug_height = ImGui::Widget_ContainerWithCollapsingTitle("DEBUG Section", cont_debug_height, 
+				dev_debug_container, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 //#endif
 	}
@@ -702,6 +796,9 @@ namespace gta4
 
 				ImGui::Checkbox("Translate Game Lights", gs->translate_game_lights.get_as<bool*>());
 				TT(gs->translate_game_lights.get_tooltip_string().c_str());
+
+				ImGui::Checkbox("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights.get_as<bool*>());
+				TT(gs->translate_game_lights_ignore_filler_lights.get_tooltip_string().c_str());
 
 				ImGui::DragFloat("Light Radius Scalar", gs->translate_game_light_radius_scalar.get_as<float*>(), 0.005f);
 				TT(gs->translate_game_light_radius_scalar.get_tooltip_string().c_str());

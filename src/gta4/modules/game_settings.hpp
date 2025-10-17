@@ -408,6 +408,14 @@ namespace gta4
 				true
 			};
 
+			variable translate_game_lights_ignore_filler_lights =
+			{
+				"translate_game_lights_ignore_filler_lights",
+				("This prevents translation of game-lights when they have a certain FLAG set.\n"
+				 "Ignores a lot of filler lights but also disables emergency lights. It's recommended to mod the actual game files to remove unwanted lights."),
+				false
+			};
+
 			variable translate_game_light_radius_scalar =
 			{
 				"translate_game_light_radius_scalar",
