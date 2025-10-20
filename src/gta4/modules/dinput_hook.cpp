@@ -50,7 +50,7 @@ namespace gta4
 	static void forwardMessage(const dinput::WndMsg& wm)
 	{
 		// forward directly to imgui msg handler
-		imgui::get()->input_message(wm.msg, wm.wParam, wm.lParam, true);
+		imgui::get()->input_message(wm.msg, wm.wParam, wm.lParam);
 	}
 
 	void dinput::updateWindowSize()
@@ -98,11 +98,6 @@ namespace gta4
 		wm.wParam += (state->rgbButtons[1] & 0x80) ? MK_RBUTTON : 0;
 		wm.wParam += ((s_KS[DIK_LCONTROL] & 0x80) || (s_KS[DIK_RCONTROL] & 0x80)) ? MK_CONTROL : 0;
 		wm.wParam += ((s_KS[DIK_LSHIFT] & 0x80) || (s_KS[DIK_RSHIFT] & 0x80)) ? MK_SHIFT : 0;
-
-		if (state->rgbButtons[0])
-		{
-			int x = 1;
-		}
 
 		bool clipped_cursor = false;
 
@@ -236,24 +231,17 @@ namespace gta4
 
 	HRESULT __stdcall dinput8_device_get_device_state_hk(IDirectInputDevice8* device, DWORD cbData, LPVOID lpvData)
 	{
-		HRESULT hr = S_OK;
-
-		//if (!shared::globals::imgui_menu_open) {
-			hr = g_dinput8_device_get_device_state_original(device, cbData, lpvData);
-		//}
-			
+		HRESULT hr = g_dinput8_device_get_device_state_original(device, cbData, lpvData);
 		const auto di = dinput::get();
 
 		switch (cbData)
 		{
 			case sizeof(DIMOUSESTATE) :
 				di->updateMouseState(static_cast<DIMOUSESTATE*>(lpvData), di->MouseAxisMode == DIPROPAXISMODE_ABS);
-				//MouseDeviceStateUsed = true;
 				break;
 
 			case sizeof(DIMOUSESTATE2) :
 				di->updateMouseState(static_cast<DIMOUSESTATE2*>(lpvData), di->MouseAxisMode == DIPROPAXISMODE_ABS);
-				//MouseDeviceStateUsed = true;
 				break;
 
 			case 256:

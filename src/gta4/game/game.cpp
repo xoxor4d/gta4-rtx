@@ -60,6 +60,9 @@ namespace gta4::game
 
 	uint8_t* m_CodePause = nullptr;
 	int* m_dwCutsceneState = nullptr;
+	bool* ms_bNoBlockOnLostFocus = nullptr;
+	bool* ms_bFocusLost = nullptr;
+	bool* ms_bWindowed = nullptr;
 
 	// --------------
 	// game functions
@@ -112,6 +115,8 @@ namespace gta4::game
 	uint32_t hk_addr__post_draw_mirror = 0u;
 
 	uint32_t hk_addr__frustum_check = 0u;
+
+	uint32_t hk_addr__prevent_game_input_func = 0u;
 
 	uint32_t nop_addr__disable_unused_rendering_01 = 0u;
 	uint32_t nop_addr__disable_unused_rendering_02 = 0u;
@@ -292,6 +297,17 @@ namespace gta4::game
 			m_dwCutsceneState = (int*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
+		if (const auto offset = shared::utils::mem::find_pattern("0F 94 05 ? ? ? ? FF 15", 3, "ms_bNoBlockOnLostFocus", use_pattern, 0x4241BC); offset) {
+			ms_bNoBlockOnLostFocus = (bool*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("C6 05 ? ? ? ? ? 85 C0 74 ? FF D0 E8", 2, "ms_bFocusLost", use_pattern, 0x420A90); offset) {
+			ms_bFocusLost = (bool*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("38 05 ? ? ? ? 74 ? B8 ? ? ? ? A3", 2, "ms_bWindowed ", use_pattern, 0x4208B1); offset) {
+			ms_bWindowed = (bool*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
 
 		// end GAME_VARIABLES
 #pragma endregion
@@ -455,6 +471,8 @@ namespace gta4::game
 		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, "hk_addr__frustum_check", use_pattern, 0x431E40); offset) {
 			hk_addr__frustum_check = offset; found_pattern_count++;
 		} total_pattern_count++;
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__prevent_game_input_func, "53 8A 5C 24 ? 8A CB", 0, 0x69F0C0);
 
 		// --
 

@@ -20,6 +20,7 @@ namespace gta4
 
 	void on_begin_scene_cb()
 	{
+		static auto im = imgui::get();
 		renderer::get()->m_triggered_remix_injection = false;
 
 		if (!tex_addons::initialized) {
@@ -36,6 +37,17 @@ namespace gta4
 			&& game::CMenuManager__m_LoadscreenActive && !*game::CMenuManager__m_LoadscreenActive)
 		{
 			game::is_in_game = true;
+		}
+
+		// do not pause if enabled
+		if (im->m_do_not_pause_on_lost_focus) {
+			*game::ms_bNoBlockOnLostFocus = false;
+		}
+
+		if (im->m_do_not_pause_on_lost_focus_changed && !im->m_do_not_pause_on_lost_focus) 
+		{
+			*game::ms_bNoBlockOnLostFocus = true;
+			im->m_do_not_pause_on_lost_focus_changed = false;
 		}
 
 		{
@@ -470,6 +482,21 @@ namespace gta4
 		return 0;
 	}
 
+	typedef void(__cdecl ProcessGameInput_t)(bool);
+	ProcessGameInput_t* ProcessGameInput_og = nullptr;
+
+	// https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix/blob/ea06ae1b55bca037800e6fe74e6ab9925a298f72/source/windowed.ixx#L100
+	void process_game_input(bool arg)
+	{
+		if (*game::ms_bWindowed && *game::ms_bFocusLost) 
+		{
+			::ShowCursor(TRUE);
+			return;
+		}
+
+		ProcessGameInput_og(arg);
+	}
+
 	void main()
 	{
 		// init remix api
@@ -549,6 +576,9 @@ namespace gta4
 
 		// cascaded shadow
 		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_11); //0x928AE5
+
+		// hk_addr__prevent_game_input_func
+		shared::utils::hook::detour(game::hk_addr__prevent_game_input_func, process_game_input, (LPVOID*)&ProcessGameInput_og);
 
 		MH_EnableHook(MH_ALL_HOOKS);
 	}

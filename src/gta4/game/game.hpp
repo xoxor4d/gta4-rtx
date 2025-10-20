@@ -71,6 +71,9 @@ namespace gta4::game
 
 	extern uint8_t* m_CodePause;
 	extern int* m_dwCutsceneState;
+	extern bool* ms_bNoBlockOnLostFocus;
+	extern bool* ms_bFocusLost;
+	extern bool* ms_bWindowed;
 
 	// --------------
 	// game functions
@@ -126,6 +129,8 @@ namespace gta4::game
 	extern uint32_t hk_addr__post_draw_mirror;
 
 	extern uint32_t hk_addr__frustum_check;
+
+	extern uint32_t hk_addr__prevent_game_input_func;
 
 	extern uint32_t nop_addr__disable_unused_rendering_01;
 	extern uint32_t nop_addr__disable_unused_rendering_02;

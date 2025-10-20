@@ -40,7 +40,7 @@ namespace gta4
 		if (message_type != WM_MOUSEMOVE && message_type != WM_NCMOUSEMOVE
 			/*&& message_type != WM_KEYDOWN && message_type != WM_KEYUP*/)
 		{
-			if (imgui::get()->input_message(message_type, wparam, lparam, false)) {
+			if (imgui::get()->input_message(message_type, wparam, lparam)) {
 			//	return true;
 			}
 		}
@@ -49,20 +49,16 @@ namespace gta4
 		return CallWindowProc(g_game_wndproc, window, message_type, wparam, lparam);
 	}
 
-	bool imgui::input_message(const UINT message_type, const WPARAM wparam, const LPARAM lparam, bool manual)
+	bool imgui::input_message(const UINT message_type, const WPARAM wparam, const LPARAM lparam)
 	{
-		/*if (message_type == WM_KEYUP && wparam == VK_F6) {
-			imgui::get()->m_dbg_use_fake_camera = !imgui::get()->m_dbg_use_fake_camera;
-		}*/
-
 		if (message_type == WM_KEYUP && wparam == VK_F4) 
 		{
 			const auto& io = ImGui::GetIO();
-			//if (!io.MouseDown[1]) {
+			if (!io.MouseDown[1]) {
 				shared::globals::imgui_menu_open = !shared::globals::imgui_menu_open;
-			//} else {
-			//	ImGui_ImplWin32_WndProcHandler(shared::globals::main_window, message_type, wparam, lparam);
-			//}
+			} else {
+				ImGui_ImplWin32_WndProcHandler(shared::globals::main_window, message_type, wparam, lparam);
+			}
 		}
 
 		if (shared::globals::imgui_menu_open)
@@ -70,20 +66,20 @@ namespace gta4
 			auto& io = ImGui::GetIO();
 			ImGui_ImplWin32_WndProcHandler(shared::globals::main_window, message_type, wparam, lparam);
 
-			//// enable game input if no imgui window is hovered and right mouse is held
-			//if (!m_im_window_hovered && io.MouseDown[1])
-			//{
-			//	ImGui::SetWindowFocus(); // unfocus input text
-			//	shared::globals::imgui_allow_input_bypass = true;
-			//	return false;
-			//}
+			// enable game input if no imgui window is hovered and right mouse is held
+			if (!m_im_window_hovered && io.MouseDown[1])
+			{
+				ImGui::SetWindowFocus(); // unfocus input text
+				shared::globals::imgui_allow_input_bypass = true;
+				return false;
+			}
 
-			//// ^ wait until mouse is up and call set_cursor_always_visible once
-			//if (shared::globals::imgui_allow_input_bypass && !io.MouseDown[1])
-			//{
-			//	shared::globals::imgui_allow_input_bypass = false;
-			//	return false;
-			//}
+			// ^ wait until mouse is up and call set_cursor_always_visible once
+			if (shared::globals::imgui_allow_input_bypass && !io.MouseDown[1])
+			{
+				shared::globals::imgui_allow_input_bypass = false;
+				return false;
+			}
 		}
 		else {
 			shared::globals::imgui_allow_input_bypass = false; // always reset if there is no imgui window open
@@ -567,6 +563,16 @@ namespace gta4
 		}
 	}
 
+	void dev_other_container()
+	{
+		static const auto& im = imgui::get();
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::Checkbox("Do not Pause on Lost Focus", &im->m_do_not_pause_on_lost_focus)) {
+			im->m_do_not_pause_on_lost_focus_changed = true;
+		}
+	}
+
 	void imgui::tab_dev()
 	{
 		static const auto& im = imgui::get();
@@ -584,6 +590,12 @@ namespace gta4
 				dev_debug_container, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 //#endif
+
+		{
+			static float cont_other_height = 0.0f;
+			cont_other_height = ImGui::Widget_ContainerWithCollapsingTitle("Other Settings", cont_other_height,
+				dev_other_container, false, ICON_FA_MEMORY, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+		}
 	}
 
 	void cont_gamesettings_quick_cmd()

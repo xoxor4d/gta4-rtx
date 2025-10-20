@@ -14,7 +14,7 @@ namespace gta4
 
 		void draw_debug();
 		void devgui();
-		bool input_message(UINT message_type, WPARAM wparam, LPARAM lparam, bool manual = false);
+		bool input_message(UINT message_type, WPARAM wparam, LPARAM lparam);
 
 		bool m_initialized_device = false;
 
@@ -25,6 +25,9 @@ namespace gta4
 		ImVec4 ImGuiCol_ButtonRed = ImVec4(0.48f, 0.15f, 0.15f, 1.00f);
 		ImVec4 ImGuiCol_ContainerBackground = ImVec4(0.220f, 0.220f, 0.220f, 0.863f);
 		ImVec4 ImGuiCol_ContainerBorder = ImVec4(0.099f, 0.099f, 0.099f, 0.901f);
+
+		bool m_do_not_pause_on_lost_focus = false;
+		bool m_do_not_pause_on_lost_focus_changed = false;
 
 		Vector m_debug_vector = { 0.0f, 0.0f, 0.0f };
 		Vector m_debug_vector2 = { 0.0f, 0.0f, 0.0f };
