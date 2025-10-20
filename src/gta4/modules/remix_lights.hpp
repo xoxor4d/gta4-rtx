@@ -57,9 +57,9 @@ namespace gta4
 		void draw_all_active_lights();
 
 		size_t get_active_light_count() { return m_active_lights.size(); }
-		remix_light_def* get_first_active_light() { return !m_active_lights.empty() ? &m_active_lights.front() : nullptr; }
+		//remix_light_def* get_first_active_light() { return !m_active_lights.empty() ? &m_active_lights.front() : nullptr; }
 
-		std::vector<remix_light_def>* get_active_lights() {
+		std::unordered_map<std::uint64_t, remix_light_def>* get_active_lights() {
 			return &m_active_lights;
 		}
 
@@ -69,7 +69,7 @@ namespace gta4
 
 	private:
 		static inline std::uint32_t m_active_light_spawn_tracker = 0u;
-		static inline std::vector<remix_light_def> m_active_lights = {};
+		static inline std::unordered_map<std::uint64_t, remix_light_def> m_active_lights = {};
 		static inline remix_distant_light_def m_distant_light = {};
 		std::uint32_t m_updateframe = 0u;
 		bool m_is_paused = false;

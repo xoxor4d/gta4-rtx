@@ -82,28 +82,36 @@ namespace gta4
 	{
 		if (def.mType == game::LT_POINT || def.mType == game::LT_SPOT)
 		{
-			m_active_lights.emplace_back(
+			auto& l = m_active_lights[hash];
+			l.m_def = def;
+			l.m_hash = hash;
+			l.m_light_num = m_active_light_spawn_tracker++;
+			/*m_active_lights.emplace_back(
 				remix_light_def
 				{
 					.m_def = def,
 					.m_hash = hash,
 					.m_light_num = m_active_light_spawn_tracker++,
-				});
+				});*/
 
 			// add light with 0 intensity (eg. for debug vizualizations)
 			if (add_but_do_not_draw)
 			{
-				if (auto* light = &m_active_lights.back(); light) 
+				/*if (auto* light = &m_active_lights.back(); light) 
 				{
 					light->m_def.mIntensity = 0.0f;
 					light->m_is_ignored = true;
-				}
+				}*/
+
+				l.m_def.mIntensity = 0.0f;
+				l.m_is_ignored = true;
 			}
 
 			// spawn light
-			if (auto* light = &m_active_lights.back(); light) {
-				get()->spawn_or_update_remix_sphere_light(*light);
-			}
+			//if (auto* light = &m_active_lights.back(); light) {
+
+				get()->spawn_or_update_remix_sphere_light(l);
+			//}
 		}
 	}
 
@@ -126,7 +134,7 @@ namespace gta4
 	void remix_lights::destroy_all_lights()
 	{
 		for (auto& l : m_active_lights) {
-			destroy_light(l);
+			destroy_light(l.second);
 		}
 	}
 
@@ -164,6 +172,19 @@ namespace gta4
 		return hash;
 	}
 
+	bool compare_dynamic_light_without_position(const game::CLightSource& l1, const game::CLightSource& l2, float eps = 1.e-6f)
+	{
+		if (shared::utils::float_equal(l1.mIntensity, l2.mIntensity, eps)) {
+			if (shared::utils::float_equal(l1.mInnerConeAngle, l2.mInnerConeAngle, eps)) {
+				if (shared::utils::float_equal(l1.mRadius, l2.mRadius, eps)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
 	/**
 	 * Updates all lights in 'm_map_lights'
 	 * Handles Destroying, choreo trigger spawning, tick advancing and updating of remixApi lights
@@ -174,7 +195,7 @@ namespace gta4
 		static auto gs = game_settings::get();
 		static auto& api = shared::common::remix_api::get();
 
-		destroy_and_clear_all_active_lights();
+		//destroy_and_clear_all_active_lights();
 
 		//if (true)
 		{
@@ -271,8 +292,61 @@ namespace gta4
 					}
 				}
 
-				add_light(def, hash, add_zero_intensity_light);
+				bool touched_light = false;
+				if (auto it = m_active_lights.find(hash); it != m_active_lights.end()) 
+				{
+					bool should_update = im->m_dbg_visualize_api_light_hashes; // always update if in vis mode
+					if (compare_dynamic_light_without_position(def, it->second.m_def)) {
+						it->second.m_updateframe = m_updateframe; // no need to touch this light
+					}
+					else {
+						it->second.m_def = def;
+						should_update = true; // radius/intensity or something else has changed, update
+					}
+
+					if (should_update || add_zero_intensity_light)
+					{
+						if (add_zero_intensity_light)
+						{
+							it->second.m_def.mIntensity = 0.0f;
+							it->second.m_is_ignored = true;
+						} else {
+							it->second.m_is_ignored = false;
+						}
+
+						spawn_or_update_remix_sphere_light(it->second);
+					}
+
+					touched_light = true;
+				}
+				else
+				{
+					// search for light with very very similar settings, then check if within a certain distance comp. to last state
+					for (auto& l : m_active_lights) 
+					{
+						if (compare_dynamic_light_without_position(def, l.second.m_def, 0.05f))
+						{
+							if (def.mPosition.DistToSqr(l.second.m_def.mPosition) < im->m_debug_vector2.y)
+							{
+								l.second.m_def = def;
+								l.second.m_hash = hash; // can be used to check if a light changed its position
+								spawn_or_update_remix_sphere_light(l.second);
+								touched_light = true;
+								break;
+							}
+						}
+					}
+				}
+
+				// this is a new light
+				if (!touched_light) {
+					add_light(def, hash, add_zero_intensity_light);
+				}
 			}
+		}
+		else
+		{
+			destroy_and_clear_all_active_lights();
 		}
 
 #else
@@ -360,10 +434,20 @@ namespace gta4
 	// Draw all active map lights
 	void remix_lights::draw_all_active_lights()
 	{
+
+		// erase all untouched lights
+		for (auto it = m_active_lights.begin(); it != m_active_lights.end(); ) 
+		{
+			if (it->second.m_updateframe != m_updateframe) {
+				it = m_active_lights.erase(it);
+			}
+			else { ++it; }
+		}
+
 		for (auto& l : m_active_lights)
 		{
-			if (l.m_handle) {
-				shared::common::remix_api::get().m_bridge.DrawLightInstance(l.m_handle);
+			if (l.second.m_handle) {
+				shared::common::remix_api::get().m_bridge.DrawLightInstance(l.second.m_handle);
 			}
 		}
 	}

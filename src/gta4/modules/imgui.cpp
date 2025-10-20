@@ -1664,12 +1664,10 @@ namespace gta4
 		}
 
 		ImGui::Spacing(0, 8.0f);
-		if (!im->m_dbg_visualize_api_light_hashes)
-		{
+		if (!im->m_dbg_visualize_api_light_hashes) {
 			ImGui::SeparatorText("Nearby lights (Double-Click to Ignore) ~ Enable 'Visualize Api Light Hashes' to enable this feature.");
 		}
-		else
-		{
+		else {
 			ImGui::SeparatorText("Nearby lights (Double-Click to Ignore)");
 		}
 		
@@ -1812,18 +1810,18 @@ namespace gta4
 				{
 					for (auto& l : *rml->get_active_lights())
 					{
-						if (l.m_hash && fabs(cam_org.DistToSqr(l.m_def.mPosition) < draw_dist * draw_dist))
+						if (fabs(cam_org.DistToSqr(l.second.m_def.mPosition) < draw_dist * draw_dist))
 						{
-							shared::imgui::world_to_screen(l.m_def.mPosition, viewport_pos);
+							shared::imgui::world_to_screen(l.second.m_def.mPosition, viewport_pos);
 
 							bool is_light_hash_stable = false;
 							bool is_light_in_vis_list = false;
 							for (auto& ign : visualized_api_lights)
 							{
-								if (ign.hash == l.m_hash)
+								if (ign.hash == l.second.m_hash) 
 								{
 									is_light_in_vis_list = true;
-									ign.ignored = l.m_is_ignored; // ignored state might have changed
+									ign.ignored = l.second.m_is_ignored; // ignored state might have changed
 									ign.m_updateframe++;
 									is_light_hash_stable = ign.m_frames_since_addition > 5u;
 									break;
@@ -1833,21 +1831,21 @@ namespace gta4
 							if (!is_light_in_vis_list)
 							{
 								visualized_api_lights.emplace_back(
-									l.m_hash, l.m_def.mPosition, l.m_is_ignored, 0u, 0u
+									l.second.m_hash, l.second.m_def.mPosition, l.second.m_is_ignored, 0u, 0u
 								);
 							}
 
 							if (is_light_hash_stable)
 							{
-								if (l.m_is_ignored)
+								if (l.second.m_is_ignored)
 								{
 									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-										ImColor(1.0f, 0.0f, 0.0f, 1.0f), shared::utils::va("[LIGHT-HASH] %llx\n~ IGNORED ~", l.m_hash));
+										ImColor(1.0f, 0.0f, 0.0f, 1.0f), shared::utils::va("[LIGHT-HASH] %llx\n~ IGNORED ~", l.second.m_hash));
 								}
 								else
 								{
 									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx", l.m_hash));
+										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx", l.second.m_hash));
 								}
 							}
 						}
