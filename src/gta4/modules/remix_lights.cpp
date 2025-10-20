@@ -326,7 +326,7 @@ namespace gta4
 					{
 						if (compare_dynamic_light_without_position(def, l.second.m_def, 0.05f))
 						{
-							if (def.mPosition.DistToSqr(l.second.m_def.mPosition) < im->m_debug_vector2.y)
+							if (def.mPosition.DistToSqr(l.second.m_def.mPosition) < 1.0f) // TODO: expose this distance?
 							{
 								l.second.m_def = def;
 								l.second.m_hash = hash; // can be used to check if a light changed its position
