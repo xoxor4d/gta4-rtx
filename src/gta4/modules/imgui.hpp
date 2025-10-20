@@ -14,7 +14,7 @@ namespace gta4
 
 		void draw_debug();
 		void devgui();
-		bool input_message(UINT message_type, WPARAM wparam, LPARAM lparam);
+		bool input_message(UINT message_type, WPARAM wparam, LPARAM lparam, bool manual = false);
 
 		bool m_initialized_device = false;
 

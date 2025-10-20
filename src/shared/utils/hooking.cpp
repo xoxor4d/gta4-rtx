@@ -698,15 +698,15 @@ namespace shared::utils
 			return false;
 		}
 
-		if (debug_prints)
-		{
-			// log old bytes
-			std::cout << "[HOOK][cond_jump_to_jmp] Old bytes at 0x" << std::hex << place << ": ";
-			for (size_t i = 0; i < instruction_size; i++) {
-				std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)code[i] << " ";
-			}
-			std::cout << std::dec << std::endl;
-		}
+		//if (debug_prints)
+		//{
+		//	// log old bytes
+		//	std::cout << "[HOOK][cond_jump_to_jmp] Old bytes at 0x" << std::hex << place << ": ";
+		//	for (size_t i = 0; i < instruction_size; i++) {
+		//		std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)code[i] << " ";
+		//	}
+		//	std::cout << std::dec << std::endl;
+		//}
 
 		// change memory protection
 		DWORD old_protect;

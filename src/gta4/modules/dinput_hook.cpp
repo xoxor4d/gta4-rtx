@@ -50,7 +50,7 @@ namespace gta4
 	static void forwardMessage(const dinput::WndMsg& wm)
 	{
 		// forward directly to imgui msg handler
-		imgui::get()->input_message(wm.msg, wm.wParam, wm.lParam);
+		imgui::get()->input_message(wm.msg, wm.wParam, wm.lParam, true);
 	}
 
 	void dinput::updateWindowSize()
@@ -99,10 +99,17 @@ namespace gta4
 		wm.wParam += ((s_KS[DIK_LCONTROL] & 0x80) || (s_KS[DIK_RCONTROL] & 0x80)) ? MK_CONTROL : 0;
 		wm.wParam += ((s_KS[DIK_LSHIFT] & 0x80) || (s_KS[DIK_RSHIFT] & 0x80)) ? MK_SHIFT : 0;
 
-		if (game::CMenuManager__m_MenuActive && game::CMenuManager__m_LoadscreenActive &&
-			!*game::CMenuManager__m_MenuActive && !*game::CMenuManager__m_LoadscreenActive &&
-			!shared::globals::imgui_is_rendering &&
-			GetForegroundWindow() == shared::globals::main_window)
+		if (state->rgbButtons[0])
+		{
+			int x = 1;
+		}
+
+		bool clipped_cursor = false;
+
+		if (/*game::CMenuManager__m_MenuActive && game::CMenuManager__m_LoadscreenActive &&
+			!*game::CMenuManager__m_MenuActive && !*game::CMenuManager__m_LoadscreenActive &&*/
+			!shared::globals::imgui_is_rendering /*&&
+			GetForegroundWindow() == shared::globals::main_window*/)
 		{
 			// Check if cursor visible
 			CURSORINFO ci = { sizeof(ci) };
@@ -127,8 +134,10 @@ namespace gta4
 
 			RECT screenRect = { topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
 
-			if (state->lX || state->lY) {
+			if (state->lX || state->lY) 
+			{
 				ClipCursor(&screenRect);
+				clipped_cursor = true;
 			}
 		}
 		else {
@@ -136,11 +145,11 @@ namespace gta4
 		}
 
 		// always forward if menu is open
-		if (shared::globals::imgui_menu_open && (state->lX || state->lY)/*|| 0 != memcmp(&wm, &s_mouseMove, sizeof(wm))*/)
-		{
-			forwardMessage(wm);
-			s_mouseMove = wm;
-		}
+		//if (shared::globals::imgui_menu_open && !clipped_cursor && (state->lX || state->lY)/*|| 0 != memcmp(&wm, &s_mouseMove, sizeof(wm))*/)
+		//{
+		//	forwardMessage(wm);
+		//	s_mouseMove = wm;
+		//}
 
 
 		if (s_mouseButtons[0] != state->rgbButtons[0]) 
@@ -227,7 +236,12 @@ namespace gta4
 
 	HRESULT __stdcall dinput8_device_get_device_state_hk(IDirectInputDevice8* device, DWORD cbData, LPVOID lpvData)
 	{
-		const auto hr = g_dinput8_device_get_device_state_original(device, cbData, lpvData);
+		HRESULT hr = S_OK;
+
+		//if (!shared::globals::imgui_menu_open) {
+			hr = g_dinput8_device_get_device_state_original(device, cbData, lpvData);
+		//}
+			
 		const auto di = dinput::get();
 
 		switch (cbData)
@@ -318,6 +332,7 @@ namespace gta4
 		return hr;
 	}
 
+
 	// hook dinput8 to block input for imgui
 	// not the shared dinput module because acquire / unaquire is problematic toghether with remix -> needs a rewrite and test all dinput games
 	dinput::dinput()
@@ -333,7 +348,7 @@ namespace gta4
 			}
 
 			IDirectInputDevice8W* dev = nullptr;
-			if (dinput8->CreateDevice(GUID_SysKeyboard, &dev, nullptr) != DI_OK)
+			if (dinput8->CreateDevice(GUID_SysMouse, &dev, nullptr) != DI_OK)
 			{
 				dinput8->Release();
 				return;
@@ -349,8 +364,8 @@ namespace gta4
 			if (!g_dinput8_device_acquire_original && !g_dinput8_device_get_device_data_original && !g_dinput8_device_get_device_state_original)
 			{
 				MH_CreateHook(vtable[9], dinput8_device_get_device_state_hk, (LPVOID*)&g_dinput8_device_get_device_state_original);
-				MH_CreateHook(vtable[10], dinput8_device_get_device_data_hk, (LPVOID*)&g_dinput8_device_get_device_data_original);
-				//MH_CreateHook(vtable[7], dinput8_device_acquire_hk, (LPVOID*)&g_dinput8_device_acquire_original);
+				//MH_CreateHook(vtable[10], dinput8_device_get_device_data_hk, (LPVOID*)&g_dinput8_device_get_device_data_original);
+				MH_CreateHook(vtable[7], dinput8_device_acquire_hk, (LPVOID*)&g_dinput8_device_acquire_original);
 				//MH_CreateHook(vtable[6], dinput8_set_property_hk, (LPVOID*)&g_dinput8_set_property_original);
 				//MH_CreateHook(dinput8_vtable[3], dinput8_create_device_hk, (LPVOID*)&g_dinput8_create_device_original);
 				MH_EnableHook(MH_ALL_HOOKS);
