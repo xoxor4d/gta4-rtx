@@ -878,9 +878,44 @@ namespace gta4
 			// shared::utils::lookat_vertex_decl(dev);
 
 			bool render_with_ff = g_is_rendering_static;
+			bool allow_vertex_colors = false;
 
 			if (ctx.info.shader_name.ends_with("water.fxc")) {
 				ctx.modifiers.do_not_render = true;
+			}
+
+			else if (ctx.info.shader_name.ends_with("glue.fxc")) 
+			{
+				//set_remix_modifier(dev, RemixModifier::EnableVertexColor);
+				allow_vertex_colors = true;
+
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+
+				ctx.save_rs(dev, D3DRS_SRCBLEND);
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+				ctx.save_tss(dev, D3DTSS_COLOROP);
+				ctx.save_tss(dev, D3DTSS_COLORARG1);
+				ctx.save_tss(dev, D3DTSS_COLORARG2);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+
+				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+			}
+
+			else if (ctx.info.shader_name.ends_with("_decal.fxc")) {
+				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
 			}
 
 			//if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
@@ -1071,7 +1106,9 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 			}
 
-			set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
+			if (!allow_vertex_colors){
+				set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
+			}
 
 			if (g_is_rendering_static)
 			{
