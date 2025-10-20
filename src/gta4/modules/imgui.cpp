@@ -642,6 +642,556 @@ namespace gta4
 		}
 	}
 
+
+	// --------------------
+
+	void gamesettings_rendering_container()
+	{
+		//static const auto& im = imgui::get();
+		static const auto& gs = game_settings::get();
+
+		const float inbetween_spacing = 8.0f;
+
+		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" Foliage ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Fixed function Trees", gs->fixed_function_trees.get_as<bool*>()); TT(gs->fixed_function_trees.get_tooltip_string().c_str());
+
+		{
+			auto gs_var_ptr = gs->tree_foliage_alpha_cutout_value.get_as<float*>();
+			if (ImGui::DragFloat("Tree Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->tree_foliage_alpha_cutout_value.get_tooltip_string().c_str());
+		}
+
+		{
+			auto gs_var_ptr = gs->grass_foliage_alpha_cutout_value.get_as<float*>();
+			if (ImGui::DragFloat("Grass Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->grass_foliage_alpha_cutout_value.get_tooltip_string().c_str());
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Anti Culling of Static Objects ");
+		ImGui::Spacing(0, 4);
+
+		{
+			auto gs_var_ptr = gs->nocull_dist_near_static.get_as<float*>();
+			if (ImGui::DragFloat("Near: No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->nocull_dist_near_static.get_tooltip_string().c_str());
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		// ----
+
+		{
+			auto gs_var_ptr = gs->nocull_dist_medium_static.get_as<float*>();
+			//const auto& near_dist = gs->nocull_dist_near_static.get_as<float>();
+			if (ImGui::DragFloat("Near to Medium Cascade: Medium Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->nocull_dist_medium_static.get_tooltip_string().c_str());
+		}
+
+		{
+			auto gs_var_ptr = gs->nocull_radius_medium_static.get_as<float*>();
+			if (ImGui::DragFloat("Near to Medium Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->nocull_radius_medium_static.get_tooltip_string().c_str());
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		// ----
+
+		{
+			auto gs_var_ptr = gs->nocull_dist_far_static.get_as<float*>();
+			//const auto& med_dist = gs->nocull_dist_medium_static.get_as<float>();
+			if (ImGui::DragFloat("Medium to Far Cascade: Far Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->nocull_dist_far_static.get_tooltip_string().c_str());
+		}
+
+		{
+			auto gs_var_ptr = gs->nocull_radius_far_static.get_as<float*>();
+			if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->nocull_radius_far_static.get_tooltip_string().c_str());
+		}
+
+		{
+			auto gs_var_ptr = gs->nocull_height_far_static.get_as<float*>();
+			if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Height", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->nocull_height_far_static.get_tooltip_string().c_str());
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Dirt ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Decal Dirt Shader Usage", gs->decal_dirt_shader_usage.get_as<bool*>());
+		TT(gs->decal_dirt_shader_usage.get_tooltip_string().c_str());
+
+		{
+			auto gs_var_ptr = gs->decal_dirt_shader_scalar.get_as<float*>();
+			if (ImGui::DragFloat("Dirt Decal Shader Scalar", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->decal_dirt_shader_scalar.get_tooltip_string().c_str());
+		}
+
+		{
+			auto gs_var_ptr = gs->decal_dirt_shader_contrast.get_as<float*>();
+			if (ImGui::DragFloat("Dirt Decal Shader Contrast", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->decal_dirt_shader_contrast.get_tooltip_string().c_str());
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Effects ");
+		ImGui::Spacing(0, 4);
+
+		{
+			auto gs_var_ptr = gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float*>();
+			if (ImGui::DragFloat("gta_rmptfx_litsprite Alpha Scalar", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->gta_rmptfx_litsprite_alpha_scalar.get_tooltip_string().c_str());
+		}
+	}
+
+	void gamesettings_light_container()
+	{
+		//static const auto& im = imgui::get();
+		static const auto& gs = game_settings::get();
+
+		const float inbetween_spacing = 8.0f;
+
+		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" Sphere/Spot ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Translate Game Lights", gs->translate_game_lights.get_as<bool*>());
+		TT(gs->translate_game_lights.get_tooltip_string().c_str());
+
+		ImGui::Checkbox("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights.get_as<bool*>());
+		TT(gs->translate_game_lights_ignore_filler_lights.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("Light Radius Scalar", gs->translate_game_light_radius_scalar.get_as<float*>(), 0.005f);
+		TT(gs->translate_game_light_radius_scalar.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("Light Intensity Scalar", gs->translate_game_light_intensity_scalar.get_as<float*>(), 0.005f);
+		TT(gs->translate_game_light_intensity_scalar.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("Light Softness Offset", gs->translate_game_light_softness_offset.get_as<float*>(), 0.005f, -1.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		TT(gs->translate_game_light_softness_offset.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		TT(gs->translate_game_light_spotlight_volumetric_radiance_scale.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		TT(gs->translate_game_light_spherelight_volumetric_radiance_scale.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("Light Angle Offset", gs->translate_game_light_angle_offset.get_as<float*>(), 0.005f, -180.0f, 180.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		TT(gs->translate_game_light_angle_offset.get_tooltip_string().c_str());
+
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Distant ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::DragFloat("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar.get_as<float*>(), 0.005f, 0, 0, "%.2f");
+		TT(gs->translate_sunlight_intensity_scalar.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees.get_as<float*>(), 0.005f, 0.0f, 45.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		TT(gs->translate_sunlight_angular_diameter_degrees.get_tooltip_string().c_str());
+
+		ImGui::DragFloat("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		TT(gs->translate_sunlight_volumetric_radiance_base.get_tooltip_string().c_str());
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::Separator();
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Anti Culling of Lights ");
+		ImGui::Spacing(0, 4);
+
+		{
+			auto gs_var_ptr = gs->nocull_dist_lights.get_as<float*>();
+			if (ImGui::DragFloat("No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, 500.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->nocull_dist_lights.get_tooltip_string().c_str());
+		}
+	}
+
+	void gamesettings_emissive_container()
+	{
+		//static const auto& im = imgui::get();
+		static const auto& gs = game_settings::get();
+
+		const float inbetween_spacing = 8.0f;
+
+		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" Vehicle ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::DragFloat("Vehicle Light Emissive Scalar", gs->vehicle_lights_emissive_scalar.get_as<float*>(), 0.005f);
+		TT(gs->vehicle_lights_emissive_scalar.get_tooltip_string().c_str());
+
+		ImGui::Checkbox("Render Surfs a Second Time with Proxy Texture", gs->vehicle_lights_dual_render_proxy_texture.get_as<bool*>());
+		TT(gs->vehicle_lights_dual_render_proxy_texture.get_tooltip_string().c_str());
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" World ");
+		ImGui::Spacing(0, 8);
+
+		ImGui::Checkbox("Render Emissive Surfaces using Shaders", gs->render_emissive_surfaces_using_shaders.get_as<bool*>());
+		TT(gs->render_emissive_surfaces_using_shaders.get_tooltip_string().c_str());
+
+		ImGui::Checkbox("Assign Decal Texture Category to Emissive Surfaces", gs->assign_decal_category_to_emissive_surfaces.get_as<bool*>());
+		TT(gs->assign_decal_category_to_emissive_surfaces.get_tooltip_string().c_str());
+
+		{
+			auto gs_var_ptr = gs->emissive_night_surfaces_emissive_scalar.get_as<float*>();
+			if (ImGui::DragFloat("EmissiveNight Surfaces Scalar", gs_var_ptr, 0.02f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->emissive_night_surfaces_emissive_scalar.get_tooltip_string().c_str());
+		}
+
+		{
+			auto gs_var_ptr = gs->emissive_surfaces_emissive_scalar.get_as<float*>();
+			if (ImGui::DragFloat("Emissive Surfaces Scalar", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->emissive_surfaces_emissive_scalar.get_tooltip_string().c_str());
+		}
+
+		{
+			auto gs_var_ptr = gs->emissive_strong_surfaces_emissive_scalar.get_as<float*>();
+			if (ImGui::DragFloat("EmissiveStrong Surfaces Scalar", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->emissive_strong_surfaces_emissive_scalar.get_tooltip_string().c_str());
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Phone ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Phone Emissive Override", gs->phone_emissive_override.get_as<bool*>());
+		TT(gs->phone_emissive_override.get_tooltip_string().c_str());
+
+		ImGui::BeginDisabled(!gs->phone_emissive_override.get_as<bool>());
+		{
+			auto gs_var_ptr = gs->phone_emissive_scalar.get_as<float*>();
+			if (ImGui::DragFloat("Phone Emissive Scalar", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->phone_emissive_scalar.get_tooltip_string().c_str());
+
+			ImGui::EndDisabled();
+		}
+	}
+
+	void gamesettings_timecycle_container()
+	{
+		static const auto& im = imgui::get();
+		static const auto& gs = game_settings::get();
+
+		const float inbetween_spacing = 8.0f;
+
+		ImGui::Spacing(0, 4);
+		ImGui::Indent(4);
+		ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+		ImGui::TextUnformatted("Note:");
+		ImGui::PopFont();
+		ImGui::TextWrapped(
+			"Remix' Tonemapper has to be set to 'global' for some of these settings to work.\n"
+			"You can make global adjustments using 'Tuning Mode'");
+		ImGui::Unindent(4);
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Fog ");
+		ImGui::Spacing(0, 4);
+
+		{
+			ImGui::Checkbox("Enable FogColor Logic", gs->timecycle_fogcolor_enabled.get_as<bool*>());
+			TT(gs->timecycle_fogcolor_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_fogcolor_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("FogColor Base Strength", gs->timecycle_fogcolor_base_strength.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_fogcolor_base_strength.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("FogColor Influence Scalar", gs->timecycle_fogcolor_influence_scalar.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_fogcolor_influence_scalar.get_tooltip_string().c_str());
+
+				ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.y,
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.z,
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.w);
+
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextDisabled("Out rtxVolumetricsSingleScatteringAlbedo: [ %.2f, %.2f, %.2f ]",
+					im->m_timecyc_curr_singleScatteringAlbedo.x,
+					im->m_timecyc_curr_singleScatteringAlbedo.y,
+					im->m_timecyc_curr_singleScatteringAlbedo.z);
+				ImGui::PopFont();
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		{
+			ImGui::Checkbox("Enable FogDensity Logic", gs->timecycle_fogdensity_enabled.get_as<bool*>());
+			TT(gs->timecycle_fogdensity_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_fogdensity_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("FogDensity Influence Scalar", gs->timecycle_fogdensity_influence_scalar.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_fogdensity_influence_scalar.get_tooltip_string().c_str());
+
+				ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.y,
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.z,
+					im->m_timecyc_curr_mSkyBottomColorFogDensity.w);
+
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextDisabled("Out rtxVolumetricsTransmittanceMeasurementDistanceMeters: [ %.2f ]",
+					im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters);
+				ImGui::PopFont();
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		{
+			ImGui::Checkbox("Enable SkyHorizonHeight Logic", gs->timecycle_skyhorizonheight_enabled.get_as<bool*>());
+			TT(gs->timecycle_skyhorizonheight_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_skyhorizonheight_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("SkyHorizonHeight Scalar", gs->timecycle_skyhorizonheight_scalar.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_skyhorizonheight_scalar.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("SkyHorizonHeight Low - Transmittance Offset", gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float*>(), 0.01f);
+				TT(gs->timecycle_skyhorizonheight_low_transmittance_offset.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("SkyHorizonHeight High - Transmittance Offset", gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float*>(), 0.01f);
+				TT(gs->timecycle_skyhorizonheight_high_transmittance_offset.get_tooltip_string().c_str());
+
+				ImGui::TextDisabled("Timecycle mSkyHorizonHeight: [ %.2f ]",
+					im->m_timecyc_curr_mSkyHorizonHeight);
+
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextDisabled("Out rtxVolumetricsAtmosphereHeightMeters: [ %.2f ]",
+					im->m_timecyc_curr_mSkyHorizonHeight_final);
+				ImGui::PopFont();
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Sky/Sun ");
+		ImGui::Spacing(0, 4);
+
+		{
+			ImGui::Checkbox("Enable SkyLight Logic", gs->timecycle_skylight_enabled.get_as<bool*>());
+			TT(gs->timecycle_skylight_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("SkyLight Scalar", gs->timecycle_skylight_scalar.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_skylight_scalar.get_tooltip_string().c_str());
+
+				ImGui::TextDisabled("Timecycle mSkyLightMultiplier: [ %.2f ]",
+					im->m_timecyc_curr_mSkyLightMultiplier);
+
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextDisabled("Out rtxSkyBrightness: [ %.2f ]",
+					im->m_timecyc_curr_mSkyLightMultiplier_final);
+				ImGui::PopFont();
+
+				ImGui::EndDisabled();
+			}
+
+
+			ImGui::Spacing(0, inbetween_spacing);
+
+
+			ImGui::Checkbox("Enable Fogdensity Influence on Volumetric Scale", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_as<bool*>());
+			TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("Fogdensity Volumetric Influence Scalar", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_as<float*>(), 0.005f);
+				TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_tooltip_string().c_str());
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Color Correction ");
+		ImGui::Spacing(0, 4);
+
+		{
+			ImGui::Checkbox("Enable ColorCorrection Logic", gs->timecycle_colorcorrection_enabled.get_as<bool*>());
+			TT(gs->timecycle_colorcorrection_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
+			{
+				ImGui::Checkbox("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled.get_as<bool*>());
+				TT(gs->timecycle_colortemp_enabled.get_tooltip_string().c_str());
+
+				ImGui::TextDisabled("Timecycle mColorCorrection: [ %.2f, %.2f, %.2f ]",
+					im->m_timecyc_curr_mColorCorrection.x,
+					im->m_timecyc_curr_mColorCorrection.y,
+					im->m_timecyc_curr_mColorCorrection.z);
+
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextDisabled("Out rtxTonemapColorBalance: [ %.2f, %.2f, %.2f ]",
+					im->m_timecyc_curr_mColorCorrection_final.x,
+					im->m_timecyc_curr_mColorCorrection_final.y,
+					im->m_timecyc_curr_mColorCorrection_final.z);
+				ImGui::PopFont();
+
+				ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
+				{
+					ImGui::DragFloat("ColorTemperature Influence", gs->timecycle_colortemp_influence.get_as<float*>(), 0.005f);
+					TT(gs->timecycle_colortemp_influence.get_tooltip_string().c_str());
+
+					ImGui::TextDisabled("Timecycle mTemperature: [ %.2f ]",
+						im->m_timecyc_curr_mTemperature);
+					ImGui::TextDisabled("ColorTemp Offset applied to rtxTonemapColorBalance: [ %.2f, %.2f, %.2f ]",
+						im->m_timecyc_curr_mTemperature_offset.x,
+						im->m_timecyc_curr_mTemperature_offset.y,
+						im->m_timecyc_curr_mTemperature_offset.z);
+
+					ImGui::EndDisabled();
+				}
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		{
+			ImGui::Checkbox("Enable Desaturation Logic", gs->timecycle_desaturation_enabled.get_as<bool*>());
+			TT(gs->timecycle_desaturation_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_desaturation_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("Desaturation Influence", gs->timecycle_desaturation_influence.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_desaturation_influence.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("Far Desaturation Influence", gs->timecycle_fardesaturation_influence.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_fardesaturation_influence.get_tooltip_string().c_str());
+
+				ImGui::TextDisabled("Timecycle mDesaturation: [ %.2f ]",
+					im->m_timecyc_curr_mDesaturation);
+
+				ImGui::TextDisabled("Timecycle mDesaturationFar: [ %.2f ]",
+					im->m_timecyc_curr_mDesaturationFar);
+
+				ImGui::TextDisabled("mDesaturationFar influence on rtxTonemapSaturation: [ %.2f ]",
+					im->m_timecyc_curr_mDesaturationFar_offset);
+
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextDisabled("Out rtxTonemapSaturation: [ %.2f ]",
+					im->m_timecyc_curr_mDesaturation_final);
+				ImGui::PopFont();
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		{
+			ImGui::Checkbox("Enable Gamma Logic", gs->timecycle_gamma_enabled.get_as<bool*>());
+			TT(gs->timecycle_gamma_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_gamma_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("Gamma Offset", gs->timecycle_gamma_offset.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_gamma_offset.get_tooltip_string().c_str());
+
+				ImGui::TextDisabled("Timecycle mGamma: [ %.2f ]",
+					im->m_timecyc_curr_mGamma);
+
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextDisabled("Out rtxTonemapExposureBias: [ %.2f ]",
+					im->m_timecyc_curr_mGamma_final);
+				ImGui::PopFont();
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Bloom ");
+		ImGui::Spacing(0, 4);
+
+		{
+			ImGui::Checkbox("Enable Bloom Logic", gs->timecycle_bloom_enabled.get_as<bool*>());
+			TT(gs->timecycle_bloom_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_bloom_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("Bloom Intensity Scalar", gs->timecycle_bloomintensity_scalar.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_bloomintensity_scalar.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("Bloom Threshold Scalar", gs->timecycle_bloomthreshold_scalar.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_bloomthreshold_scalar.get_tooltip_string().c_str());
+
+				ImGui::EndDisabled();
+			}
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Weather ");
+		ImGui::Spacing(0, 4);
+
+		{
+			ImGui::Checkbox("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled.get_as<bool*>());
+			TT(gs->timecycle_wetness_enabled.get_tooltip_string().c_str());
+
+			ImGui::BeginDisabled(!gs->timecycle_wetness_enabled.get_as<bool>());
+			{
+				ImGui::DragFloat("Weather Wetness Scalar", gs->timecycle_wetness_scalar.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_wetness_scalar.get_tooltip_string().c_str());
+
+				ImGui::DragFloat("Additional Wetness Offset", gs->timecycle_wetness_offset.get_as<float*>(), 0.005f);
+				TT(gs->timecycle_wetness_offset.get_tooltip_string().c_str());
+
+				ImGui::EndDisabled();
+			}
+		}
+	}
+
 	void imgui::tab_gamesettings()
 	{
 		const auto& im = imgui::get();
@@ -657,538 +1207,29 @@ namespace gta4
 		// rendering related
 		{
 			static float cont_gs_renderer_height = 0.0f;
-			cont_gs_renderer_height = ImGui::Widget_ContainerWithCollapsingTitle("Rendering Related Settings", cont_gs_renderer_height, [&]
-			{
-				const float inbetween_spacing = 8.0f;
-
-				ImGui::Spacing(0, 4);
-				ImGui::SeparatorText(" Foliage ");
-				ImGui::Spacing(0, 4);
-
-				ImGui::Checkbox("Fixed function Trees", gs->fixed_function_trees.get_as<bool*>()); TT(gs->fixed_function_trees.get_tooltip_string().c_str());
-
-				{
-					auto gs_var_ptr = gs->tree_foliage_alpha_cutout_value.get_as<float*>();
-					if (ImGui::DragFloat("Tree Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->tree_foliage_alpha_cutout_value.get_tooltip_string().c_str());
-				}
-
-				{
-					auto gs_var_ptr = gs->grass_foliage_alpha_cutout_value.get_as<float*>();
-					if (ImGui::DragFloat("Grass Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->grass_foliage_alpha_cutout_value.get_tooltip_string().c_str());
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Anti Culling of Static Objects ");
-				ImGui::Spacing(0, 4);
-
-				{
-					auto gs_var_ptr = gs->nocull_dist_near_static.get_as<float*>();
-					if (ImGui::DragFloat("Near: No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->nocull_dist_near_static.get_tooltip_string().c_str());
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-
-				// ----
-
-				{
-					auto gs_var_ptr = gs->nocull_dist_medium_static.get_as<float*>();
-					//const auto& near_dist = gs->nocull_dist_near_static.get_as<float>();
-					if (ImGui::DragFloat("Near to Medium Cascade: Medium Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->nocull_dist_medium_static.get_tooltip_string().c_str());
-				}
-
-				{
-					auto gs_var_ptr = gs->nocull_radius_medium_static.get_as<float*>();
-					if (ImGui::DragFloat("Near to Medium Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->nocull_radius_medium_static.get_tooltip_string().c_str());
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-
-				// ----
-
-				{
-					auto gs_var_ptr = gs->nocull_dist_far_static.get_as<float*>();
-					//const auto& med_dist = gs->nocull_dist_medium_static.get_as<float>();
-					if (ImGui::DragFloat("Medium to Far Cascade: Far Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->nocull_dist_far_static.get_tooltip_string().c_str());
-				}
-
-				{
-					auto gs_var_ptr = gs->nocull_radius_far_static.get_as<float*>();
-					if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->nocull_radius_far_static.get_tooltip_string().c_str());
-				}
-
-				{
-					auto gs_var_ptr = gs->nocull_height_far_static.get_as<float*>();
-					if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Height", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->nocull_height_far_static.get_tooltip_string().c_str());
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Dirt ");
-				ImGui::Spacing(0, 4);
-
-				ImGui::Checkbox("Decal Dirt Shader Usage", gs->decal_dirt_shader_usage.get_as<bool*>());
-				TT(gs->decal_dirt_shader_usage.get_tooltip_string().c_str());
-
-				{
-					auto gs_var_ptr = gs->decal_dirt_shader_scalar.get_as<float*>();
-					if (ImGui::DragFloat("Dirt Decal Shader Scalar", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->decal_dirt_shader_scalar.get_tooltip_string().c_str());
-				}
-
-				{
-					auto gs_var_ptr = gs->decal_dirt_shader_contrast.get_as<float*>();
-					if (ImGui::DragFloat("Dirt Decal Shader Contrast", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->decal_dirt_shader_contrast.get_tooltip_string().c_str());
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Effects ");
-				ImGui::Spacing(0, 4);
-
-				{
-					auto gs_var_ptr = gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float*>();
-					if (ImGui::DragFloat("gta_rmptfx_litsprite Alpha Scalar", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->gta_rmptfx_litsprite_alpha_scalar.get_tooltip_string().c_str());
-				}
-
-			}, false, ICON_FA_CAMERA, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+			cont_gs_renderer_height = ImGui::Widget_ContainerWithCollapsingTitle("Rendering Related Settings", cont_gs_renderer_height, 
+				gamesettings_rendering_container, false, ICON_FA_CAMERA, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// light related
 		{
 			static float cont_gs_light_height = 0.0f;
-			cont_gs_light_height = ImGui::Widget_ContainerWithCollapsingTitle("Light Related Settings", cont_gs_light_height, [&]
-			{
-				const float inbetween_spacing = 8.0f;
-
-				ImGui::Spacing(0, 4);
-				ImGui::SeparatorText(" Sphere/Spot ");
-				ImGui::Spacing(0, 4);
-
-				ImGui::Checkbox("Translate Game Lights", gs->translate_game_lights.get_as<bool*>());
-				TT(gs->translate_game_lights.get_tooltip_string().c_str());
-
-				ImGui::Checkbox("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights.get_as<bool*>());
-				TT(gs->translate_game_lights_ignore_filler_lights.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("Light Radius Scalar", gs->translate_game_light_radius_scalar.get_as<float*>(), 0.005f);
-				TT(gs->translate_game_light_radius_scalar.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("Light Intensity Scalar", gs->translate_game_light_intensity_scalar.get_as<float*>(), 0.005f);
-				TT(gs->translate_game_light_intensity_scalar.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("Light Softness Offset", gs->translate_game_light_softness_offset.get_as<float*>(), 0.005f, -1.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT(gs->translate_game_light_softness_offset.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT(gs->translate_game_light_spotlight_volumetric_radiance_scale.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT(gs->translate_game_light_spherelight_volumetric_radiance_scale.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("Light Angle Offset", gs->translate_game_light_angle_offset.get_as<float*>(), 0.005f, -180.0f, 180.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT(gs->translate_game_light_angle_offset.get_tooltip_string().c_str());
-
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Distant ");
-				ImGui::Spacing(0, 4);
-
-				ImGui::DragFloat("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar.get_as<float*>(), 0.005f, 0, 0, "%.2f");
-				TT(gs->translate_sunlight_intensity_scalar.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees.get_as<float*>(), 0.005f, 0.0f, 45.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT(gs->translate_sunlight_angular_diameter_degrees.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				TT(gs->translate_sunlight_volumetric_radiance_base.get_tooltip_string().c_str());
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::Separator();
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Anti Culling of Lights ");
-				ImGui::Spacing(0, 4);
-
-				{
-					auto gs_var_ptr = gs->nocull_dist_lights.get_as<float*>();
-					if (ImGui::DragFloat("No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, 500.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->nocull_dist_lights.get_tooltip_string().c_str());
-				}
-
-			}, false, ICON_FA_LIGHTBULB, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+			cont_gs_light_height = ImGui::Widget_ContainerWithCollapsingTitle("Light Related Settings", cont_gs_light_height, 
+				gamesettings_light_container, false, ICON_FA_LIGHTBULB, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// emissive related
 		{
 			static float cont_gs_emissive_height = 0.0f;
-			cont_gs_emissive_height = ImGui::Widget_ContainerWithCollapsingTitle("Emissive Related Settings", cont_gs_emissive_height, [&]
-			{
-				const float inbetween_spacing = 8.0f;
-
-				ImGui::Spacing(0, 4);
-				ImGui::SeparatorText(" Vehicle ");
-				ImGui::Spacing(0, 4);
-
-				ImGui::DragFloat("Vehicle Light Emissive Scalar", gs->vehicle_lights_emissive_scalar.get_as<float*>(), 0.005f);
-				TT(gs->vehicle_lights_emissive_scalar.get_tooltip_string().c_str());
-
-				ImGui::Checkbox("Render Surfs a Second Time with Proxy Texture", gs->vehicle_lights_dual_render_proxy_texture.get_as<bool*>());
-				TT(gs->vehicle_lights_dual_render_proxy_texture.get_tooltip_string().c_str());
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" World ");
-				ImGui::Spacing(0, 8);
-
-				ImGui::Checkbox("Render Emissive Surfaces using Shaders", gs->render_emissive_surfaces_using_shaders.get_as<bool*>());
-				TT(gs->render_emissive_surfaces_using_shaders.get_tooltip_string().c_str());
-
-				ImGui::Checkbox("Assign Decal Texture Category to Emissive Surfaces", gs->assign_decal_category_to_emissive_surfaces.get_as<bool*>());
-				TT(gs->assign_decal_category_to_emissive_surfaces.get_tooltip_string().c_str());
-
-				{
-					auto gs_var_ptr = gs->emissive_night_surfaces_emissive_scalar.get_as<float*>();
-					if (ImGui::DragFloat("EmissiveNight Surfaces Scalar", gs_var_ptr, 0.02f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->emissive_night_surfaces_emissive_scalar.get_tooltip_string().c_str());
-				}
-
-				{
-					auto gs_var_ptr = gs->emissive_surfaces_emissive_scalar.get_as<float*>();
-					if (ImGui::DragFloat("Emissive Surfaces Scalar", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->emissive_surfaces_emissive_scalar.get_tooltip_string().c_str());
-				}
-
-				{
-					auto gs_var_ptr = gs->emissive_strong_surfaces_emissive_scalar.get_as<float*>();
-					if (ImGui::DragFloat("EmissiveStrong Surfaces Scalar", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
-						*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-					}
-					TT(gs->emissive_strong_surfaces_emissive_scalar.get_tooltip_string().c_str());
-				}
-
-			}, false, ICON_FA_RSS, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+			cont_gs_emissive_height = ImGui::Widget_ContainerWithCollapsingTitle("Emissive Related Settings", cont_gs_emissive_height, 
+				gamesettings_emissive_container, false, ICON_FA_RSS, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// timecycle related
 		{
 			static float cont_gs_timecycle_height = 0.0f;
-			cont_gs_timecycle_height = ImGui::Widget_ContainerWithCollapsingTitle("Timecycle Related Settings", cont_gs_timecycle_height, [&]
-			{
-				const float inbetween_spacing = 8.0f;
-
-				ImGui::Spacing(0, 4);
-				ImGui::Indent(4);
-				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-				ImGui::TextUnformatted("Note:");
-				ImGui::PopFont();
-				ImGui::TextWrapped(
-					"Remix' Tonemapper has to be set to 'global' for some of these settings to work.\n"
-						"You can make global adjustments using 'Tuning Mode'");
-				ImGui::Unindent(4);
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Fog ");
-				ImGui::Spacing(0, 4);
-
-				{
-					ImGui::Checkbox("Enable FogColor Logic", gs->timecycle_fogcolor_enabled.get_as<bool*>());
-					TT(gs->timecycle_fogcolor_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_fogcolor_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("FogColor Base Strength", gs->timecycle_fogcolor_base_strength.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_fogcolor_base_strength.get_tooltip_string().c_str());
-
-						ImGui::DragFloat("FogColor Influence Scalar", gs->timecycle_fogcolor_influence_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_fogcolor_influence_scalar.get_tooltip_string().c_str());
-
-						ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.y,
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.z,
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.w);
-
-						ImGui::PushFont(shared::imgui::font::BOLD);
-						ImGui::TextDisabled("Out rtxVolumetricsSingleScatteringAlbedo: [ %.2f, %.2f, %.2f ]",
-							im->m_timecyc_curr_singleScatteringAlbedo.x,
-							im->m_timecyc_curr_singleScatteringAlbedo.y,
-							im->m_timecyc_curr_singleScatteringAlbedo.z);
-						ImGui::PopFont();
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-
-				{
-					ImGui::Checkbox("Enable FogDensity Logic", gs->timecycle_fogdensity_enabled.get_as<bool*>());
-					TT(gs->timecycle_fogdensity_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_fogdensity_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("FogDensity Influence Scalar", gs->timecycle_fogdensity_influence_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_fogdensity_influence_scalar.get_tooltip_string().c_str());
-
-						ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.y,
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.z,
-							im->m_timecyc_curr_mSkyBottomColorFogDensity.w);
-
-						ImGui::PushFont(shared::imgui::font::BOLD);
-						ImGui::TextDisabled("Out rtxVolumetricsTransmittanceMeasurementDistanceMeters: [ %.2f ]",
-							im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters);
-						ImGui::PopFont();
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-
-				{
-					ImGui::Checkbox("Enable SkyHorizonHeight Logic", gs->timecycle_skyhorizonheight_enabled.get_as<bool*>());
-					TT(gs->timecycle_skyhorizonheight_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_skyhorizonheight_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("SkyHorizonHeight Scalar", gs->timecycle_skyhorizonheight_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_skyhorizonheight_scalar.get_tooltip_string().c_str());
-
-						ImGui::DragFloat("SkyHorizonHeight Low - Transmittance Offset", gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float*>(), 0.01f);
-						TT(gs->timecycle_skyhorizonheight_low_transmittance_offset.get_tooltip_string().c_str());
-
-						ImGui::DragFloat("SkyHorizonHeight High - Transmittance Offset", gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float*>(), 0.01f);
-						TT(gs->timecycle_skyhorizonheight_high_transmittance_offset.get_tooltip_string().c_str());
-
-						ImGui::TextDisabled("Timecycle mSkyHorizonHeight: [ %.2f ]",
-							im->m_timecyc_curr_mSkyHorizonHeight);
-
-						ImGui::PushFont(shared::imgui::font::BOLD);
-						ImGui::TextDisabled("Out rtxVolumetricsAtmosphereHeightMeters: [ %.2f ]",
-							im->m_timecyc_curr_mSkyHorizonHeight_final);
-						ImGui::PopFont();
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Sky/Sun ");
-				ImGui::Spacing(0, 4);
-
-				{
-					ImGui::Checkbox("Enable SkyLight Logic", gs->timecycle_skylight_enabled.get_as<bool*>());
-					TT(gs->timecycle_skylight_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("SkyLight Scalar", gs->timecycle_skylight_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_skylight_scalar.get_tooltip_string().c_str());
-
-						ImGui::TextDisabled("Timecycle mSkyLightMultiplier: [ %.2f ]",
-							im->m_timecyc_curr_mSkyLightMultiplier);
-
-						ImGui::PushFont(shared::imgui::font::BOLD);
-						ImGui::TextDisabled("Out rtxSkyBrightness: [ %.2f ]",
-							im->m_timecyc_curr_mSkyLightMultiplier_final);
-						ImGui::PopFont();
-
-						ImGui::EndDisabled();
-					}
-
-
-					ImGui::Spacing(0, inbetween_spacing);
-
-
-					ImGui::Checkbox("Enable Fogdensity Influence on Volumetric Scale", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_as<bool*>());
-					TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("Fogdensity Volumetric Influence Scalar", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_as<float*>(), 0.005f);
-						TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_tooltip_string().c_str());
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Color Correction ");
-				ImGui::Spacing(0, 4);
-
-				{
-					ImGui::Checkbox("Enable ColorCorrection Logic", gs->timecycle_colorcorrection_enabled.get_as<bool*>());
-					TT(gs->timecycle_colorcorrection_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
-					{
-						ImGui::Checkbox("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled.get_as<bool*>());
-						TT(gs->timecycle_colortemp_enabled.get_tooltip_string().c_str());
-
-						ImGui::TextDisabled("Timecycle mColorCorrection: [ %.2f, %.2f, %.2f ]",
-							im->m_timecyc_curr_mColorCorrection.x,
-							im->m_timecyc_curr_mColorCorrection.y,
-							im->m_timecyc_curr_mColorCorrection.z);
-
-						ImGui::PushFont(shared::imgui::font::BOLD);
-						ImGui::TextDisabled("Out rtxTonemapColorBalance: [ %.2f, %.2f, %.2f ]",
-							im->m_timecyc_curr_mColorCorrection_final.x,
-							im->m_timecyc_curr_mColorCorrection_final.y,
-							im->m_timecyc_curr_mColorCorrection_final.z);
-						ImGui::PopFont();
-
-						ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
-						{
-							ImGui::DragFloat("ColorTemperature Influence", gs->timecycle_colortemp_influence.get_as<float*>(), 0.005f);
-							TT(gs->timecycle_colortemp_influence.get_tooltip_string().c_str());
-
-							ImGui::TextDisabled("Timecycle mTemperature: [ %.2f ]",
-								im->m_timecyc_curr_mTemperature);
-							ImGui::TextDisabled("ColorTemp Offset applied to rtxTonemapColorBalance: [ %.2f, %.2f, %.2f ]",
-								im->m_timecyc_curr_mTemperature_offset.x,
-								im->m_timecyc_curr_mTemperature_offset.y, 
-								im->m_timecyc_curr_mTemperature_offset.z );
-
-							ImGui::EndDisabled();
-						}
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-
-				{
-					ImGui::Checkbox("Enable Desaturation Logic", gs->timecycle_desaturation_enabled.get_as<bool*>());
-					TT(gs->timecycle_desaturation_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_desaturation_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("Desaturation Influence", gs->timecycle_desaturation_influence.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_desaturation_influence.get_tooltip_string().c_str());
-
-						ImGui::DragFloat("Far Desaturation Influence", gs->timecycle_fardesaturation_influence.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_fardesaturation_influence.get_tooltip_string().c_str());
-
-						ImGui::TextDisabled("Timecycle mDesaturation: [ %.2f ]",
-							im->m_timecyc_curr_mDesaturation);
-
-						ImGui::TextDisabled("Timecycle mDesaturationFar: [ %.2f ]",
-							im->m_timecyc_curr_mDesaturationFar);
-
-						ImGui::TextDisabled("mDesaturationFar influence on rtxTonemapSaturation: [ %.2f ]",
-							im->m_timecyc_curr_mDesaturationFar_offset);
-
-						ImGui::PushFont(shared::imgui::font::BOLD);
-						ImGui::TextDisabled("Out rtxTonemapSaturation: [ %.2f ]",
-							im->m_timecyc_curr_mDesaturation_final);
-						ImGui::PopFont();
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-
-				{
-					ImGui::Checkbox("Enable Gamma Logic", gs->timecycle_gamma_enabled.get_as<bool*>());
-					TT(gs->timecycle_gamma_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_gamma_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("Gamma Offset", gs->timecycle_gamma_offset.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_gamma_offset.get_tooltip_string().c_str());
-
-						ImGui::TextDisabled("Timecycle mGamma: [ %.2f ]",
-							im->m_timecyc_curr_mGamma);
-
-						ImGui::PushFont(shared::imgui::font::BOLD);
-						ImGui::TextDisabled("Out rtxTonemapExposureBias: [ %.2f ]",
-							im->m_timecyc_curr_mGamma_final);
-						ImGui::PopFont();
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Bloom ");
-				ImGui::Spacing(0, 4);
-
-				{
-					ImGui::Checkbox("Enable Bloom Logic", gs->timecycle_bloom_enabled.get_as<bool*>());
-					TT(gs->timecycle_bloom_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_bloom_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("Bloom Intensity Scalar", gs->timecycle_bloomintensity_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_bloomintensity_scalar.get_tooltip_string().c_str());
-
-						ImGui::DragFloat("Bloom Threshold Scalar", gs->timecycle_bloomthreshold_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_bloomthreshold_scalar.get_tooltip_string().c_str());
-
-						ImGui::EndDisabled();
-					}
-				}
-
-				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::SeparatorText(" Weather ");
-				ImGui::Spacing(0, 4);
-
-				{
-					ImGui::Checkbox("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled.get_as<bool*>());
-					TT(gs->timecycle_wetness_enabled.get_tooltip_string().c_str());
-
-					ImGui::BeginDisabled(!gs->timecycle_wetness_enabled.get_as<bool>());
-					{
-						ImGui::DragFloat("Weather Wetness Scalar", gs->timecycle_wetness_scalar.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_wetness_scalar.get_tooltip_string().c_str());
-
-						ImGui::DragFloat("Additional Wetness Offset", gs->timecycle_wetness_offset.get_as<float*>(), 0.005f);
-						TT(gs->timecycle_wetness_offset.get_tooltip_string().c_str());
-
-						ImGui::EndDisabled();
-					}
-				}
-
-			}, false, ICON_FA_CLOCK, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+			cont_gs_timecycle_height = ImGui::Widget_ContainerWithCollapsingTitle("Timecycle Related Settings", cont_gs_timecycle_height, 
+				gamesettings_timecycle_container, false, ICON_FA_CLOCK, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 	}
 

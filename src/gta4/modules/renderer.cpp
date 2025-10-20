@@ -990,6 +990,13 @@ namespace gta4
 				matrix.m[3][3] = 0.01f + im->m_dbg_phone_projection_matrix_offset.m[3][3];
 
 				dev->SetTransform(D3DTS_PROJECTION, &matrix);
+
+				if (gs->phone_emissive_override.get_as<bool>())
+				{
+					set_remix_texture_categories(dev, InstanceCategories::WorldUI | InstanceCategories::IgnoreAlphaChannel);
+					set_remix_modifier(dev, RemixModifier::EmissiveScalar);
+					set_remix_emissive_intensity(dev, gs->phone_emissive_scalar.get_as<float>(), false);
+				}
 			}
 
 			if (g_is_rendering_vehicle) 
@@ -1001,8 +1008,7 @@ namespace gta4
 
 				if (ctx.modifiers.is_vehicle_using_switch_on_state)
 				{
-					if (!ctx.modifiers.is_vehicle_on)
-					{
+					if (!ctx.modifiers.is_vehicle_on) {
 						on_constant_emissiveMultiplier(shared::globals::d3d_device, 0.0f);
 					}
 				}

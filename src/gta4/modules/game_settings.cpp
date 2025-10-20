@@ -219,7 +219,8 @@ namespace gta4
 				ASSIGN(timecycle_bloomintensity_scalar);
 				ASSIGN(timecycle_bloomthreshold_scalar);
 				
-
+				ASSIGN(phone_emissive_override);
+				ASSIGN(phone_emissive_scalar);
 
 			#undef ASSIGN
 			}

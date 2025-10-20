@@ -757,6 +757,20 @@ namespace gta4
 				("Scales the bloom threshold timecycle variable which influences 'rtx.tonemap.luminanceThreshold'."),
 				1.0f
 			};
+
+			// -----
+			variable phone_emissive_override = {
+				"phone_emissive_override",
+				("Automatically tags phone related meshes as world-ui and adjusts the emissive scale.\n"
+				 "Emissive intensity can be tweaked via 'phone_emissive_scalar'"),
+				true
+			};
+
+			variable phone_emissive_scalar = {
+				"phone_emissive_scalar",
+				("Scales the emissive intensity of phone meshes. Needs 'phone_emissive_override'"),
+				2.5f
+			};
 		};
 	
 		static inline var_definitions vars = {};
