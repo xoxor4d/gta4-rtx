@@ -99,9 +99,10 @@ namespace gta4
 	HRESULT d3d9ex::D3D9Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
 	{
 		shared::common::g_shader_cache.clear_cache();
-
+		tex_addons::init_texture_addons(true);
 		ImGui_ImplDX9_InvalidateDeviceObjects();
 		const auto hr = m_pIDirect3DDevice9->Reset(pPresentationParameters);
+		tex_addons::init_texture_addons();
 		ImGui_ImplDX9_CreateDeviceObjects();
 		return hr;
 	}
