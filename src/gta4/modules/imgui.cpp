@@ -33,6 +33,10 @@ constexpr float TREENODE_SPACING_INSIDE = 6.0f;
 
 namespace gta4
 {
+	namespace tex {
+		GLuint berry = 0;  // Your texture ID
+	}
+
 	WNDPROC g_game_wndproc = nullptr;
 	
 	LRESULT __stdcall wnd_proc_hk(HWND window, UINT message_type, WPARAM wparam, LPARAM lparam)
@@ -95,11 +99,17 @@ namespace gta4
 
 	void imgui::tab_about()
 	{
-		if (tex_addons::berry)
+		if (tex::berry)
 		{
 			const float cursor_y = ImGui::GetCursorPosY();
 			ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() * 0.85f, 24));
-			ImGui::Image((ImTextureID)tex_addons::berry, ImVec2(48.0f, 48.0f), ImVec2(0.03f, 0.03f), ImVec2(0.96f, 0.96f));
+
+			//glActiveTexture(0x84C0);  // Slot 0 for ImGui sampler
+			glBindTexture(GL_TEXTURE_2D, tex::berry);
+			ImVec2 size = ImVec2(128, 128);
+			ImGui::Image((ImTextureID)(intptr_t)tex_addons::berry, size);
+
+			//ImGui::Image((ImTextureID)(intptr_t)tex::berry, ImVec2(48.0f, 48.0f), ImVec2(0.03f, 0.03f), ImVec2(0.96f, 0.96f));
 			ImGui::SetCursorPosY(cursor_y);
 		}
 
@@ -1839,7 +1849,7 @@ namespace gta4
 	{
 		ImGui::SetNextWindowSize(ImVec2(900, 800), ImGuiCond_FirstUseEver);
 
-		if (!ImGui::Begin("Devgui", &shared::globals::imgui_menu_open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollWithMouse, &shared::imgui::draw_window_blur_callback))
+		if (!ImGui::Begin("Devgui", &shared::globals::imgui_menu_open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollWithMouse/*, &shared::imgui::draw_window_blur_callback*/))
 		{
 			ImGui::End();
 			return;
@@ -2014,7 +2024,7 @@ namespace gta4
 		auto& colors = style.Colors;
 		colors[ImGuiCol_Text] = ImVec4(0.92f, 0.92f, 0.92f, 1.00f);
 		colors[ImGuiCol_TextDisabled] = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
-		colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.96f);
+		colors[ImGuiCol_WindowBg] = ImVec4(0.1f, 0.1f, 0.1f, 0.96f);
 		colors[ImGuiCol_ChildBg] = ImVec4(0.21f, 0.21f, 0.21f, 0.80f);
 		colors[ImGuiCol_PopupBg] = ImVec4(0.28f, 0.28f, 0.28f, 1.00f);
 		colors[ImGuiCol_Border] = ImVec4(0.15f, 0.15f, 0.15f, 0.00f);
@@ -2077,7 +2087,7 @@ namespace gta4
 		ImGuiCol_ContainerBorder = ImVec4(0.477f, 0.39f, 0.25f, 0.90f);
 	}
 
-	void init_fonts()
+	void imgui::init_fonts()
 	{
 		using namespace shared::imgui::font;
 
@@ -2119,20 +2129,20 @@ namespace gta4
 		memset(&m_debug_mtx02, 0, sizeof(D3DXMATRIX));
 		memset(&m_debug_mtx03, 0, sizeof(D3DXMATRIX));
 
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		init_fonts();
+		//IMGUI_CHECKVERSION();
+		//ImGui::CreateContext();
+		//init_fonts();
 
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
-		//io.MouseDrawCursor = true;
+		//ImGuiIO& io = ImGui::GetIO(); (void)io;
+		////io.MouseDrawCursor = true;
 
-		//io.ConfigFlags |= ImGuiConfigFlags_IsSRGB;
-		//io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+		////io.ConfigFlags |= ImGuiConfigFlags_IsSRGB;
+		////io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 
-		style_xo();
+		//style_xo();
 
-		ImGui_ImplWin32_Init(shared::globals::main_window);
-		g_game_wndproc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(shared::globals::main_window, GWLP_WNDPROC, LONG_PTR(wnd_proc_hk)));
+		//ImGui_ImplWin32_Init(shared::globals::main_window);
+		////g_game_wndproc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(shared::globals::main_window, GWLP_WNDPROC, LONG_PTR(wnd_proc_hk)));
 
 		// ---
 		m_initialized = true;

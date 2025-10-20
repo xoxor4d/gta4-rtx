@@ -2,6 +2,10 @@
 
 namespace gta4
 {
+	namespace tex {
+		extern GLuint berry;  // Your texture ID
+	}
+
 	class imgui final : public shared::common::loader::component_module
 	{
 	public:
@@ -18,6 +22,7 @@ namespace gta4
 
 		bool m_initialized_device = false;
 
+		void init_fonts();
 		void style_xo();
 
 		ImVec4 ImGuiCol_ButtonGreen = ImVec4(0.3f, 0.4f, 0.05f, 0.7f);

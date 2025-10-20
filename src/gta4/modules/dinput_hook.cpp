@@ -136,11 +136,11 @@ namespace gta4
 		}
 
 		// always forward if menu is open
-		/*if (shared::globals::imgui_menu_open || 0 != memcmp(&wm, &s_mouseMove, sizeof(wm)))
+		if (shared::globals::imgui_menu_open || 0 != memcmp(&wm, &s_mouseMove, sizeof(wm)))
 		{
 			forwardMessage(wm);
 			s_mouseMove = wm;
-		}*/
+		}
 
 
 		if (s_mouseButtons[0] != state->rgbButtons[0]) 

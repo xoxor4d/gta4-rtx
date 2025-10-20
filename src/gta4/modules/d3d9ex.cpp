@@ -8,6 +8,8 @@
 
 namespace gta4
 {
+	HANDLE g_hRenderEvent = CreateEvent(NULL, FALSE, FALSE, NULL);  // For sync
+
 #pragma region D3D9Device
 
 	HRESULT d3d9ex::D3D9Device::QueryInterface(REFIID riid, void** ppvObj)
@@ -100,9 +102,9 @@ namespace gta4
 	{
 		shared::common::g_shader_cache.clear_cache();
 
-		ImGui_ImplDX9_InvalidateDeviceObjects();
+		//ImGui_ImplDX9_InvalidateDeviceObjects();
 		const auto hr = m_pIDirect3DDevice9->Reset(pPresentationParameters);
-		ImGui_ImplDX9_CreateDeviceObjects();
+		//ImGui_ImplDX9_CreateDeviceObjects();
 		return hr;
 	}
 
@@ -250,9 +252,10 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::EndScene()
 	{
-		if (imgui::is_initialized()) {
+		//SetEvent(g_hRenderEvent);
+		/*if (imgui::is_initialized()) {
 			imgui::get()->on_present();
-		}
+		}*/
 
 		const auto current_time = std::chrono::high_resolution_clock::now();
 		if (shared::globals::last_frame_time.time_since_epoch().count() != 0)

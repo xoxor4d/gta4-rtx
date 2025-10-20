@@ -475,9 +475,9 @@ namespace gta4
 		// init remix api
 		shared::common::remix_api::initialize(nullptr, nullptr, nullptr, false);
 
-		shared::common::loader::module_loader::register_module(std::make_unique<imgui>());
+		//shared::common::loader::module_loader::register_module(std::make_unique<imgui>());
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer>());
-		shared::common::loader::module_loader::register_module(std::make_unique<dinput>());
+		//shared::common::loader::module_loader::register_module(std::make_unique<dinput>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<map_settings>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_markers>());

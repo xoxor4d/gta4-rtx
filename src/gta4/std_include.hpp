@@ -49,6 +49,11 @@ constexpr auto COMP_MOD_VERSION_PATCH = 2;
 #include "toml.hpp"
 #include "bridge_remix_api.h"
 
+
+#pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "gdi32.lib")
+#include <GL/gl.h>
+
 #pragma warning(push)
 #pragma warning(disable: 6011)
 #pragma warning(disable: 28182)
@@ -56,6 +61,7 @@ constexpr auto COMP_MOD_VERSION_PATCH = 2;
 #include "imgui.h"
 #include <backends/imgui_impl_dx9.h>
 #include <backends/imgui_impl_win32.h>
+#include <backends/imgui_impl_opengl3.h>
 #include <misc/cpp/imgui_stdlib.h>
 #pragma warning(pop)
 

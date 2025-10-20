@@ -2,6 +2,8 @@
 
 namespace gta4
 {
+	extern HANDLE g_hRenderEvent;
+
 	class d3d9ex final : public shared::common::loader::component_module
 	{
 	public:
