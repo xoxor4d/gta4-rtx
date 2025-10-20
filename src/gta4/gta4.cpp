@@ -490,7 +490,8 @@ namespace gta4
 	{
 		if (*game::ms_bWindowed && *game::ms_bFocusLost) 
 		{
-			::ShowCursor(TRUE);
+			uint32_t counter = 0u;
+			while (::ShowCursor(TRUE) < 0 && ++counter < 3) {}
 			return;
 		}
 

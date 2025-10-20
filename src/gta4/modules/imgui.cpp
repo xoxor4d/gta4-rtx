@@ -45,7 +45,13 @@ namespace gta4
 			}
 		}
 
-		printf("MSG 0x%x -- w: 0x%x -- l: 0x%x\n", message_type, wparam, lparam);
+		if (message_type == WM_KILLFOCUS)
+		{
+			uint32_t counter = 0u;
+			while (::ShowCursor(TRUE) < 0 && ++counter < 3) {}
+		}
+
+		//printf("MSG 0x%x -- w: 0x%x -- l: 0x%x\n", message_type, wparam, lparam);
 		return CallWindowProc(g_game_wndproc, window, message_type, wparam, lparam);
 	}
 
