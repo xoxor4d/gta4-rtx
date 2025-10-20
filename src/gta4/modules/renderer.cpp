@@ -889,8 +889,8 @@ namespace gta4
 				//set_remix_modifier(dev, RemixModifier::EnableVertexColor);
 				allow_vertex_colors = true;
 
-				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+				//ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				//dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
 
 				ctx.save_rs(dev, D3DRS_SRCBLEND);
 				ctx.save_rs(dev, D3DRS_DESTBLEND);
@@ -911,7 +911,12 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 
-				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+				DWORD alpha_blending = 0;
+				dev->GetRenderState(D3DRS_ALPHABLENDENABLE, &alpha_blending);
+
+				if (alpha_blending) {
+					set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+				}
 			}
 
 			else if (ctx.info.shader_name.ends_with("_decal.fxc")) {
