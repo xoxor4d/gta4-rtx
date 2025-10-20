@@ -126,6 +126,29 @@ namespace gta4::game
 	extern uint32_t hk_addr__post_draw_mirror;
 
 	extern uint32_t hk_addr__frustum_check;
+
+	extern uint32_t nop_addr__disable_unused_rendering_01;
+	extern uint32_t nop_addr__disable_unused_rendering_02;
+	extern uint32_t nop_addr__disable_unused_rendering_03;
+	extern uint32_t nop_addr__disable_unused_rendering_04;
+	extern uint32_t nop_addr__disable_unused_rendering_05;
+	extern uint32_t nop_addr__disable_unused_rendering_06;
+	extern uint32_t nop_addr__disable_unused_rendering_07;
+	extern uint32_t nop_addr__disable_unused_rendering_08;
+	extern uint32_t nop_addr__disable_unused_rendering_09;
+	extern uint32_t nop_addr__disable_unused_rendering_10;
+
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_01;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_02;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_03;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_04;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_05;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_06;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_07;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_08;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_09;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_10;
+	extern uint32_t cond_jmp_addr__disable_unused_rendering_11;
 	// ---
 
 	extern void init_game_addresses();

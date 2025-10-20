@@ -467,7 +467,7 @@ namespace gta4
 					ImGui::EndCombo();
 				}
 
-				if (current_selection_flag1 != im->m_dbg_ignore_lights_with_flag_01) {
+				if (current_selection_flag1 != (uint32_t)im->m_dbg_ignore_lights_with_flag_01) {
 					im->m_dbg_ignore_lights_with_flag_01 = static_cast<int>(current_selection_flag1);
 				}
 
@@ -494,7 +494,7 @@ namespace gta4
 						ImGui::EndCombo();
 					}
 
-					if (current_selection_flag2 != im->m_dbg_ignore_lights_with_flag_02) {
+					if (current_selection_flag2 != (uint32_t)im->m_dbg_ignore_lights_with_flag_02) {
 						im->m_dbg_ignore_lights_with_flag_02 = static_cast<int>(current_selection_flag2);
 					}
 
@@ -1195,7 +1195,7 @@ namespace gta4
 	void imgui::tab_gamesettings()
 	{
 		const auto& im = imgui::get();
-		const auto gs = game_settings::get();
+		//const auto gs = game_settings::get();
 
 		// quick commands
 		{

@@ -113,7 +113,35 @@ namespace gta4::game
 
 	uint32_t hk_addr__frustum_check = 0u;
 
+	uint32_t nop_addr__disable_unused_rendering_01 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_02 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_03 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_04 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_05 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_06 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_07 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_08 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_09 = 0u;
+	uint32_t nop_addr__disable_unused_rendering_10 = 0u;
+
+	uint32_t cond_jmp_addr__disable_unused_rendering_01 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_02 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_03 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_04 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_05 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_06 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_07 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_08 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_09 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_10 = 0u;
+	uint32_t cond_jmp_addr__disable_unused_rendering_11 = 0u;
+
 	// --------------
+
+#define PATTERN_OFFSET_SIMPLE(var, pattern, byte_offset, static_addr) \
+		if (const auto offset = shared::utils::mem::find_pattern(##pattern, byte_offset, #var, use_pattern, static_addr); offset) { \
+			(var) = offset; found_pattern_count++; \
+		} total_pattern_count++;
 
 	// init any adresses here
 	void init_game_addresses()
@@ -428,6 +456,31 @@ namespace gta4::game
 			hk_addr__frustum_check = offset; found_pattern_count++;
 		} total_pattern_count++;
 
+		// --
+
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_01, "25 ? ? ? ? ? ? ? ? ? ? 50 68 ? ? ? ? E8", 17, 0xABD861);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_02, "E8 ? ? ? ? 6A ? E8 ? ? ? ? 6A ? 6A ? E8 ? ? ? ? 8B D0 83 C4 ? 85 D2 74 ? 8B 4A ? ? ? ? ? ? ? 33 0D ? ? ? ? 81 E1 ? ? ? ? 31 4A ? FF 05 ? ? ? ? ? ? ? ? ? ? C7 42 ? ? ? ? ? 8B 87 ? ? ? ? 89 42 ? EB ? 33 D2 52 E8 ? ? ? ? E8", 0, 0xADD8E1);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_03, "E8 ? ? ? ? E8 ? ? ? ? 6A ? 6A ? E8 ? ? ? ? 83 C4 ? 85 C0 74 ? 8B 48 ? ? ? ? ? ? ? 33 0D ? ? ? ? 81 E1 ? ? ? ? 31 48 ? FF 05 ? ? ? ? ? ? ? ? ? ? C7 40", 0, 0xADD938);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_04, "E8 ? ? ? ? 83 C4 ? 6A ? 6A ? FF B7 ? ? ? ? E8 ? ? ? ? 83 C4 ? 50 E8 ? ? ? ? 6A", 0, 0xADD9C7);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_05, "E8 ? ? ? ? 83 C4 ? F7 87 ? ? ? ? ? ? ? ? 0F 84 ? ? ? ? 8B 35", 0, 0xADDA4D);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_06, "E8 ? ? ? ? 6A ? 6A ? E8 ? ? ? ? 83 C4 ? 85 C0 74 ? 8B 48 ? ? ? ? ? ? ? 33 0D ? ? ? ? 81 E1 ? ? ? ? 31 48 ? FF 05 ? ? ? ? ? ? ? ? ? ? C7 40 ? ? ? ? ? EB ? 33 C0 50 E8 ? ? ? ? 6A ? 6A ? E8 ? ? ? ? 83 C4 ? 85 C0 74 ? 8B 0D", 0, 0xADDAD2);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_07, "E8 ? ? ? ? 6A ? 6A ? E8 ? ? ? ? 83 C4 ? 85 C0 74 ? 8B 0D ? ? ? ? 85 C9 74 ? 8A 89 ? ? ? ? EB ? 32 C9 88 4C 24 ? 8D 4C 24 ? 51 68 ? ? ? ? 8B C8 E8 ? ? ? ? EB", 0, 0xADDB17);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_08, "E8 ? ? ? ? 6A ? 68 ? ? ? ? E8 ? ? ? ? 83 C4 ? 85 C0 74 ? 8D 8F ? ? ? ? 51 8B C8 E8 ? ? ? ? EB ? 33 C0 50 E8 ? ? ? ? 83 C4 ? F7 87", 0, 0xADDB5A);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_09, "75 ? 80 3D ? ? ? ? ? 0F 85 ? ? ? ? E8 ? ? ? ? 84 C0 0F 84", 0, 0xD781EA);
+		PATTERN_OFFSET_SIMPLE(nop_addr__disable_unused_rendering_10, "75 ? 80 3D ? ? ? ? ? 0F 85 ? ? ? ? E8 ? ? ? ? 84 C0 75", 0, 0xD518DD);
+
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_01, "0F 85 ? ? ? ? E8 ? ? ? ? 84 C0 0F 84 ? ? ? ? 57 6A", 0, 0xD781F3);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_02, "0F 84 ? ? ? ? E8 ? ? ? ? 84 C0 0F 84 ? ? ? ? 8B 86 ? ? ? ? 83 F8", 0, 0xD77A0D);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_03, "0F 84 ? ? ? ? 80 3D ? ? ? ? ? 74 ? 8B 0D", 0, 0xD76C23);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_04, "0F 84 ? ? ? ? 80 3D ? ? ? ? ? 0F 85 ? ? ? ? 83 BF", 0, 0xD76964);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_05, "0F 84 ? ? ? ? 80 BE ? ? ? ? ? 0F 84 ? ? ? ? 57", 0, 0xD61CFA);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_06, "0F 84 ? ? ? ? 6A ? 6A ? C6 86", 0, 0xD61BAB);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_07, "0F 85 ? ? ? ? E8 ? ? ? ? 84 C0 75 ? 8B CF", 0, 0xD518E6);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_08, "0F 84 ? ? ? ? 57 E8 ? ? ? ? 83 EC", 0, 0xD5116B);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_09, "0F 84 ? ? ? ? 53 55 56 6A", 0, 0xD514FD);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_10, "0F 84 ? ? ? ? 57 83 EC", 0, 0xD50F8B);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_11, "0F 84 ? ? ? ? 80 3D ? ? ? ? ? 0F 84 ? ? ? ? 8B 0D ? ? ? ? 64 A1", 0, 0x928AE5);
+
 		// end GAME_ASM_OFFSETS
 #pragma endregion
 
@@ -446,6 +499,9 @@ namespace gta4::game
 			shared::common::set_console_color_default();
 		}
 	}
+
+#undef PATTERN_OFFSET_SIMPLE
+
 
 	grmShaderInfo_Parameter* getGlobalShaderInfoParam(const char* name)
 	{

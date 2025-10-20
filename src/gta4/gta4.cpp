@@ -514,6 +514,42 @@ namespace gta4
 		// light culling check 0xABD093 - detour frustum check function
 		shared::utils::hook::detour(game::hk_addr__frustum_check, &FrustumPlanesCheck, nullptr);
 
+		// -----
+		// disable unused rendering
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_01, 5); //0xABD872
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_02, 5); //0xADD8E1
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_03, 5); //0xADD938
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_04, 5); //0xADD9C7
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_05, 5); //0xADDA4D
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_06, 5); //0xADDAD2
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_07, 5); //0xADDB17
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_08, 5); //0xADDB5A
+
+		// warp shadow phase
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_09, 2); //0xD781EA
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_01); //0xD781F3
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_02); //0xD77A0D
+
+		// water and mirror reflection phase
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_03); //0xD76C23
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_04); //0xD76964
+
+		// height phase
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_05); //0xD61CFA
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_06); //0xD61BAB
+
+		// reflection phase
+		shared::utils::hook::nop(game::nop_addr__disable_unused_rendering_10, 2); //0xD518DD
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_07); //0xD518E6
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_08); //0xD5116B
+
+		// interior reflection phase
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_09); //0xD514FD
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_10); //0xD50F8B
+
+		// cascaded shadow
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__disable_unused_rendering_11); //0x928AE5
+
 		MH_EnableHook(MH_ALL_HOOKS);
 	}
 }
