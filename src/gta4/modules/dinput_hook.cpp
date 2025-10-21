@@ -103,8 +103,8 @@ namespace gta4
 
 		if (/*game::CMenuManager__m_MenuActive && game::CMenuManager__m_LoadscreenActive &&
 			!*game::CMenuManager__m_MenuActive && !*game::CMenuManager__m_LoadscreenActive &&*/
-			!shared::globals::imgui_is_rendering /*&&
-			GetForegroundWindow() == shared::globals::main_window*/)
+			!shared::globals::imgui_is_rendering &&
+			GetForegroundWindow() == shared::globals::main_window)
 		{
 			// Check if cursor visible
 			CURSORINFO ci = { sizeof(ci) };
