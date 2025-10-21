@@ -253,11 +253,15 @@ namespace gta4
 			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters");
 			if (gs->timecycle_fogdensity_enabled.get_as<bool>() && rtxVolumetricsTransmittanceMeasurementDistanceMeters)
 			{
-				val.value = mapRange(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.0f)
+				val.value = mapRange(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.6f)
 					* gs->timecycle_fogdensity_influence_scalar.get_as<float>()
 					+ mapRange(atmos_height, 0.0f, 1000.0f,
 						gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float>(),
 						gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float>());
+
+				if (val.value < 0.6f) {
+					val.value = 0.6f;
+				}
 
 				vars->set_option(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
 				im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters = val.value;
