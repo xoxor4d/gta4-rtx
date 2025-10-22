@@ -380,6 +380,24 @@ namespace gta4
 
 		if (info->num_vs_constants > 0)
 		{
+			bool is_gta_atmoscatt_clouds_shader = false;
+			bool is_lightsemissive_shader = false;
+			bool is_gta_rmptfx_litsprite_shader = false;
+			bool modified_world_matrix = false;
+
+			if (g_is_sky_rendering)
+			{
+				//if (ctx.info.shader_name.ends_with("_clouds.fxc")) {
+					is_gta_atmoscatt_clouds_shader = true;
+				//}
+			}
+			else if (ctx.info.shader_name.ends_with("lightsemissive.fxc")) {
+				is_lightsemissive_shader = true;
+			}
+			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) {
+				is_gta_rmptfx_litsprite_shader = true;
+			}
+
 			int i = 0;
 			do
 			{
@@ -400,7 +418,7 @@ namespace gta4
 					{
 						if (g_is_rendering_vehicle)
 						{
-							if (register_num == 8u && ctx.info.shader_name.ends_with("lightsemissive.fxc")) {
+							if (register_num == 8u && is_lightsemissive_shader) {
 								on_constant_switchOn(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].bool_ptr);
 							}
 						}
@@ -427,7 +445,59 @@ namespace gta4
 							}
 						}*/
 
-						if ((register_num == 69u || register_num == 70u) && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
+						/* // can be used to modify sky shader looks 
+						if (is_gta_atmoscatt_clouds_shader && !modified_world_matrix)
+						{
+							auto im = imgui::get();
+							D3DXMATRIX mtx;
+							game_device->GetVertexShaderConstantF(0, mtx, 4);
+
+							//mtx.m[0][0] *= 1.0f + imgui::get()->m_debug_vector2.x;
+							//mtx.m[1][1] *= 1.0f + imgui::get()->m_debug_vector2.y;
+							//mtx.m[2][2] *= 1.0f + imgui::get()->m_debug_vector2.z;
+
+							//mtx.m[1][3] = imgui::get()->m_debug_vector2.x;
+							//mtx.m[2][3] = imgui::get()->m_debug_vector2.y;
+							//mtx.m[3][3] = 1.0f + imgui::get()->m_debug_vector2.z;
+
+							D3DXMATRIX rX, rY, rZ, combined;
+							D3DXMatrixRotationX(&rX, D3DXToRadian(im->m_debug_vector2.x));
+							D3DXMatrixRotationY(&rY, D3DXToRadian(im->m_debug_vector2.y));
+							D3DXMatrixRotationZ(&rZ, D3DXToRadian(im->m_debug_vector2.z));
+
+							// combine rotations
+							D3DXMatrixMultiply(&combined, &rZ, &rY);
+							D3DXMatrixMultiply(&combined, &combined, &rX);
+
+							// local rotation after scale/translate
+							D3DXMATRIX newWorld;
+							D3DXMatrixMultiply(&newWorld, &mtx, &combined);
+
+
+							newWorld.m[0][0] = im->m_debug_mtx02.m[0][0];
+							newWorld.m[0][1] += im->m_debug_mtx02.m[0][1];
+							newWorld.m[0][2] += im->m_debug_mtx02.m[0][2];
+							newWorld.m[0][3] += im->m_debug_mtx02.m[0][3];
+
+							newWorld.m[1][0] += im->m_debug_mtx02.m[1][0];
+							newWorld.m[1][1] = im->m_debug_mtx02.m[1][1];
+							newWorld.m[1][2] += im->m_debug_mtx02.m[1][2];
+							newWorld.m[1][3] += im->m_debug_mtx02.m[1][3];
+
+							newWorld.m[2][0] += im->m_debug_mtx02.m[2][0];
+							newWorld.m[2][1] += im->m_debug_mtx02.m[2][1];
+							newWorld.m[2][2] = im->m_debug_mtx02.m[2][2];
+							newWorld.m[2][3] += im->m_debug_mtx02.m[2][3];
+
+							newWorld.m[3][0] += im->m_debug_mtx02.m[3][0];
+							newWorld.m[3][1] += im->m_debug_mtx02.m[3][1];
+							newWorld.m[3][2] += im->m_debug_mtx02.m[3][2];
+							newWorld.m[3][3] += im->m_debug_mtx02.m[3][3];
+
+							game_device->SetVertexShaderConstantF(0, newWorld, 4);
+							modified_world_matrix = true;
+						}
+						else*/ if ((register_num == 69u || register_num == 70u) && is_gta_rmptfx_litsprite_shader)
 						{
 							// gSuperAlpha constant
 							float constant[4] = { *constant_data_struct->constants[dataPoolIndex].float_arr + gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float>(), 0.0f, 0.0f, 0.0f };
@@ -494,6 +564,32 @@ namespace gta4
 
 		if (info->num_ps_constants > 0)
 		{
+			bool is_lightsemissive_shader = false;
+			bool is_gta_rmptfx_litsprite_shader = false;
+			bool is_gta_vehicle_shader = false;
+			bool is_gta_radar_shader = false;
+			bool is_gta_decal_dirt_shader = false;
+			bool is_emissive_shader = false;
+
+			if (ctx.info.shader_name.ends_with("lightsemissive.fxc")) {
+				is_lightsemissive_shader = true;
+			}
+			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) {
+				is_gta_rmptfx_litsprite_shader = true;
+			}
+			else if (ctx.info.shader_name.contains("gta_vehicle_")) {
+				is_gta_vehicle_shader = true;
+			}
+			else if (ctx.info.shader_name.ends_with("gta_radar.fxc")) {
+				is_gta_radar_shader = true;
+			}
+			else if (ctx.info.shader_name.ends_with("gta_decal_dirt.fxc")) {
+				is_gta_decal_dirt_shader = true;
+			}
+			else if (ctx.info.shader_name.contains("emissive")) {
+				is_emissive_shader = true;
+			}
+
 			int i = 0;
 			do
 			{
@@ -514,7 +610,7 @@ namespace gta4
 					{
 						if (g_is_rendering_vehicle)
 						{
-							if (register_num == 8u && ctx.info.shader_name.ends_with("lightsemissive.fxc")) {
+							if (register_num == 8u && is_lightsemissive_shader) {
 								on_constant_switchOn(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].bool_ptr);
 							}
 						}
@@ -525,10 +621,10 @@ namespace gta4
 					{
 						if (g_is_rendering_vehicle)
 						{
-							if (register_num == 66u && ctx.info.shader_name.contains("gta_vehicle_") && !ctx.info.shader_name.ends_with("sive.fxc")) {
+							if (register_num == 66u && is_gta_vehicle_shader && !ctx.info.shader_name.ends_with("sive.fxc")) {
 								on_constant_matDiffuseColor(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].float_arr);
 							}
-							else if (register_num == 72u && ctx.info.shader_name.ends_with("lightsemissive.fxc")) // gta_vehicle_lightsemissive
+							else if (register_num == 72u && is_lightsemissive_shader) // gta_vehicle_lightsemissive
 							{
 								const float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->vehicle_lights_emissive_scalar.get_as<float>();
 								{
@@ -546,13 +642,13 @@ namespace gta4
 							}
 						}
 
-						else if (register_num == 66u && ctx.info.shader_name.ends_with("gta_radar.fxc")) {
+						else if (register_num == 66u && is_gta_radar_shader) {
 							on_constant_diffuseCol(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].float_arr);
 						}
 
 						else
 						{
-							if (register_num == 66u && ctx.info.shader_name.contains("emissive"))
+							if (register_num == 66u && is_emissive_shader)
 							{
 								const auto stype = get_emissive_shader_type(ctx.info.shader_name);
 								if (stype != EmissiveShaderType::None)
@@ -589,7 +685,7 @@ namespace gta4
 								const float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>();
 								on_constant_emissiveMultiplier(shared::globals::d3d_device, intensity);
 							}
-							else*/ if (gs->decal_dirt_shader_usage.get_as<bool>() && register_num == 66u && ctx.info.shader_name.ends_with("gta_decal_dirt.fxc"))
+							else*/ if (gs->decal_dirt_shader_usage.get_as<bool>() && register_num == 66u && is_gta_decal_dirt_shader)
 							{
 								float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->decal_dirt_shader_scalar.get_as<float>();
 								renderer::set_remix_temp_float01(shared::globals::d3d_device, intensity);
@@ -715,8 +811,7 @@ namespace gta4
 
 		if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
 		{
-			static auto mirror_hash = shared::utils::string_hash32("mirror");
-			set_remix_texture_hash(dev, mirror_hash);
+			set_remix_texture_hash(dev, shared::utils::string_hash32("mirror"));
 			ctx.save_texture(dev, 0);
 			dev->SetTexture(0, tex_addons::mirror);
 		}
@@ -732,13 +827,55 @@ namespace gta4
 			// + custom sky texture because sky and traffic lights share the same texture
 			if (g_is_sky_rendering)
 			{
+				// we need to rotate the sky by 90 degrees to fix half of the sky being black - does not influence the primary view
+				{
+					D3DXMATRIX mtx;
+					memset(&mtx, 0, sizeof(D3DXMATRIX));
+					mtx.m[0][0] = 1.0f /*+ imgui::get()->m_debug_vector2.x*/;
+					mtx.m[1][1] = 1.0f /*+ imgui::get()->m_debug_vector2.y*/;
+					mtx.m[2][2] = 1.0f /*+ imgui::get()->m_debug_vector2.z*/;
+					mtx.m[3][3] = 1.0f;
+
+					D3DXMATRIX rX /*, rY, rZ, combined*/;
+					D3DXMatrixRotationX(&rX, D3DXToRadian(-90.0f/*im->m_debug_vector.x*/)); // set to -90 .. thats all thats needed here
+					//D3DXMatrixRotationY(&rY, D3DXToRadian(im->m_debug_vector.y));
+					//D3DXMatrixRotationZ(&rZ, D3DXToRadian(im->m_debug_vector.z));
+
+					// Combine as Z * Y * X (common Euler order; adjust if needed)
+					//D3DXMatrixMultiply(&combined, &rZ, &rY);
+					//D3DXMatrixMultiply(&combined, &combined, &rX);
+
+					// Multiply: new_world = world * rot (local rotation after scale/translate)
+					D3DXMATRIX newWorld;
+					D3DXMatrixMultiply(&newWorld, &mtx, &rX /*&combined*/);
+
+					/*newWorld.m[0][0] += im->m_debug_mtx02.m[0][0];
+					newWorld.m[0][1] += im->m_debug_mtx02.m[0][1];
+					newWorld.m[0][2] += im->m_debug_mtx02.m[0][2];
+					newWorld.m[0][3] += im->m_debug_mtx02.m[0][3];
+
+					newWorld.m[1][0] += im->m_debug_mtx02.m[1][0];
+					newWorld.m[1][1] += im->m_debug_mtx02.m[1][1];
+					newWorld.m[1][2] += im->m_debug_mtx02.m[1][2];
+					newWorld.m[1][3] += im->m_debug_mtx02.m[1][3];
+
+					newWorld.m[2][0] += im->m_debug_mtx02.m[2][0];
+					newWorld.m[2][1] += im->m_debug_mtx02.m[2][1];
+					newWorld.m[2][2] += im->m_debug_mtx02.m[2][2];
+					newWorld.m[2][3] += im->m_debug_mtx02.m[2][3];
+
+					newWorld.m[3][0] += im->m_debug_mtx02.m[3][0];
+					newWorld.m[3][1] += im->m_debug_mtx02.m[3][1];
+					newWorld.m[3][2] += im->m_debug_mtx02.m[3][2];
+					newWorld.m[3][3] += im->m_debug_mtx02.m[3][3];*/
+
+					dev->SetTransform(D3DTS_WORLD, &newWorld);
+				}
+
 				set_remix_texture_categories(dev, InstanceCategories::Sky); 
 
-				if (ctx.info.shader_name.ends_with("im.fxc"))
-				{
+				if (ctx.info.shader_name.ends_with("im.fxc")) {
 					dev->SetTexture(0, tex_addons::sky);
-					//m_modified_draw_prim = true;
-					//render_with_ff = true;
 				}
 			}
 
@@ -860,7 +997,7 @@ namespace gta4
 
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
-
+		 
 		if (!shared::globals::imgui_is_rendering)
 		{
 			if (im->m_dbg_skip_draw_indexed_checks)
