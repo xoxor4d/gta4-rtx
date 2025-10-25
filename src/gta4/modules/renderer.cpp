@@ -337,6 +337,27 @@ namespace gta4
 		return EmissiveShaderType::None;
 	}
 
+	drawcall_mod_context& setup_context(IDirect3DDevice9* dev)
+	{
+		auto& ctx = renderer::dc_ctx;
+
+		if (ctx.info.is_dirty) {
+			ctx.reset_context();
+		}
+
+		ctx.info.device_ptr = dev;
+
+		dev->GetRenderState(D3DRS_ALPHABLENDENABLE, &ctx.info.rs_alphablendenable);
+		dev->GetRenderState(D3DRS_BLENDOP, &ctx.info.rs_blendop);
+		dev->GetRenderState(D3DRS_SRCBLEND, &ctx.info.rs_srcblend);
+		dev->GetRenderState(D3DRS_DESTBLEND, &ctx.info.rs_destblend);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &ctx.info.tss_alphaop);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAARG1, &ctx.info.tss_alphaarg1);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ctx.info.tss_alphaarg2);
+
+		return ctx;
+	}
+
 	// every mesh goes through here (besides in-game ui and particles)
 	void SetupVertexShaderAndConstants(game::vs_info_s* info, game::vs_data_s* data, game::shader_info_sub_s* constant_data_struct, game::shader_data_sub_s* sampler_data)
 	{
@@ -383,7 +404,8 @@ namespace gta4
 			bool is_gta_atmoscatt_clouds_shader = false;
 			bool is_lightsemissive_shader = false;
 			bool is_gta_rmptfx_litsprite_shader = false;
-			bool modified_world_matrix = false;
+			bool is_gta_normal_spec_decal_shader = false;
+			//bool modified_world_matrix = false;
 
 			if (g_is_sky_rendering)
 			{
@@ -396,6 +418,9 @@ namespace gta4
 			}
 			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) {
 				is_gta_rmptfx_litsprite_shader = true;
+			}
+			else if (ctx.info.shader_name.ends_with("gta_normal_spec_decal.fxc")) {
+				is_gta_normal_spec_decal_shader = true;
 			}
 
 			int i = 0;
@@ -564,30 +589,30 @@ namespace gta4
 
 		if (info->num_ps_constants > 0)
 		{
-			bool is_lightsemissive_shader = false;
 			bool is_gta_rmptfx_litsprite_shader = false;
 			bool is_gta_vehicle_shader = false;
-			bool is_gta_radar_shader = false;
-			bool is_gta_decal_dirt_shader = false;
 			bool is_emissive_shader = false;
+			bool is_projtex_shader = false;
+			bool modified_projtex_shader = false;
 
-			if (ctx.info.shader_name.ends_with("lightsemissive.fxc")) {
-				is_lightsemissive_shader = true;
+			const auto& pidx = ctx.info.preset_index;
+
+			// shader_name.contains("gta_vehicle_")
+			if (  pidx == GTA_VEHICLE_BADGES || pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2 || pidx == GTA_VEHICLE_LIGHTS
+					|| pidx == GTA_VEHICLE_MESH || pidx == GTA_VEHICLE_NOSPLASH || pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2 || pidx == GTA_VEHICLE_PAINT3
+					|| pidx == GTA_VEHICLE_SHUTS || pidx == GTA_VEHICLE_TIRE || pidx == GTA_VEHICLE_VEHGLASS) {
+				is_gta_vehicle_shader = true; 
 			}
+
 			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) {
 				is_gta_rmptfx_litsprite_shader = true;
 			}
-			else if (ctx.info.shader_name.contains("gta_vehicle_")) {
-				is_gta_vehicle_shader = true;
-			}
-			else if (ctx.info.shader_name.ends_with("gta_radar.fxc")) {
-				is_gta_radar_shader = true;
-			}
-			else if (ctx.info.shader_name.ends_with("gta_decal_dirt.fxc")) {
-				is_gta_decal_dirt_shader = true;
-			}
+
 			else if (ctx.info.shader_name.contains("emissive")) {
 				is_emissive_shader = true;
+			}
+			else if (ctx.info.shader_name.ends_with("projtex.fxc")) {
+				is_projtex_shader = true;
 			}
 
 			int i = 0;
@@ -610,7 +635,7 @@ namespace gta4
 					{
 						if (g_is_rendering_vehicle)
 						{
-							if (register_num == 8u && is_lightsemissive_shader) {
+							if (register_num == 8u && pidx == GTA_VEHICLE_LIGHTSEMISSIVE) {
 								on_constant_switchOn(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].bool_ptr);
 							}
 						}
@@ -621,29 +646,57 @@ namespace gta4
 					{
 						if (g_is_rendering_vehicle)
 						{
-							if (register_num == 66u && is_gta_vehicle_shader && !ctx.info.shader_name.ends_with("sive.fxc")) {
-								on_constant_matDiffuseColor(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].float_arr);
+							if (register_num == 66u && is_gta_vehicle_shader /*&& !ctx.info.shader_name.ends_with("sive.fxc")*/) {
+								on_constant_matDiffuseColor(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].float_arr); 
 							}
-							else if (register_num == 72u && is_lightsemissive_shader) // gta_vehicle_lightsemissive
+							else if (register_num == 72u && pidx == GTA_VEHICLE_LIGHTSEMISSIVE)
 							{
 								const float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->vehicle_lights_emissive_scalar.get_as<float>();
 								{
-									on_constant_emissiveMultiplier(shared::globals::d3d_device, intensity);
+									on_constant_emissiveMultiplier(shared::globals::d3d_device, intensity); 
+									//renderer::set_remix_modifier(shared::globals::d3d_device, RemixModifier::RemoveVertexColorKeepAlpha);
 									//set_remix_modifier(shared::globals::d3d_device, ctx, RemixModifier::EnableVertexColor); // required when 'isVertexColorBakedLighting' is turned on
 
-									if (gs->vehicle_lights_dual_render_proxy_texture.get_as<bool>())
+									/*if (gs->vehicle_lights_dual_render_proxy_texture.get_as<bool>())
 									{
 										ctx.modifiers.dual_render_with_specified_texture = true;
 										ctx.modifiers.dual_render_texture = tex_addons::veh_light_ems_glass;
 										ctx.modifiers.dual_render_reset_remix_modifiers = true;
 										ctx.modifiers.dual_render_mode_blend_diffuse = true;
-									}
+									}*/
 								}
 							}
 						}
 
-						else if (register_num == 66u && is_gta_radar_shader) {
+						else if (register_num == 66u && pidx == GTA_RADAR) {
 							on_constant_diffuseCol(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].float_arr);
+						}
+
+						else if (is_projtex_shader && register_num == 66u)
+						{
+							modified_projtex_shader = true;
+
+							//ctx.save_vs(shared::globals::d3d_device);
+							//shared::globals::d3d_device->SetVertexShader(nullptr);
+
+							//float dat[4] = {};
+							//game_device->GetVertexShaderConstantF(66u, dat, 1);  
+
+							D3DXMATRIX texMatrix;
+							D3DXMatrixIdentity(&texMatrix);  // Start with identity
+							D3DXMatrixScaling(&texMatrix, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, 1.0f);
+
+							ctx.set_texture_transform(shared::globals::d3d_device, &texMatrix);
+
+							/*D3DXMATRIX mtx;
+							game_device->GetVertexShaderConstantF(0, mtx, 4);
+
+							mtx.m[0][0] *= dat[0] + imgui::get()->m_debug_vector2.x;
+							mtx.m[1][1] *= dat[0] + imgui::get()->m_debug_vector2.y;
+							mtx.m[2][2] *= dat[0] + imgui::get()->m_debug_vector2.z;
+							mtx.m[3][3] *= dat[0] + imgui::get()->m_debug_vector2.z;
+
+							game_device->SetVertexShaderConstantF(0, mtx, 4);*/
 						}
 
 						else
@@ -671,21 +724,13 @@ namespace gta4
 										break;
 									}
 								}
-
-								//const float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>();
-								//on_constant_emissiveMultiplier(shared::globals::d3d_device, intensity);
 							}
 						}
 
 
 						if (g_is_rendering_static)
 						{
-							/*if (register_num == 66u && ctx.info.shader_name.contains("emissive"))
-							{ 
-								const float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>();
-								on_constant_emissiveMultiplier(shared::globals::d3d_device, intensity);
-							}
-							else*/ if (gs->decal_dirt_shader_usage.get_as<bool>() && register_num == 66u && is_gta_decal_dirt_shader)
+							if (gs->decal_dirt_shader_usage.get_as<bool>() && register_num == 66u && pidx == GTA_DECAL_DIRT)
 							{
 								float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->decal_dirt_shader_scalar.get_as<float>();
 								renderer::set_remix_temp_float01(shared::globals::d3d_device, intensity);
@@ -714,17 +759,6 @@ namespace gta4
 							continue;
 						}
 					}
-//#if DEBUG
-//					if (ctx.info.shader_name.ends_with("deferred_lighting.fxc") && arg2 && (arg2->N00000096 == 2 || arg2->N00000096 == 0)) {
-//						int break_me = 1; 
-//					}
-//
-//					if (ctx.info.shader_name.ends_with("deferred_lighting.fxc") && arg2 && (arg2->N00000096 == 2 || arg2->N00000096 == 0)
-//						&& std::string_view(arg2->texture_name_no_ext).contains("carposter")) 
-//					{
-//						int break_me = 1;
-//					}
-//#endif
 
 					__asm
 					{
@@ -756,6 +790,15 @@ namespace gta4
 		const auto game_device = game::get_d3d_device();
 		int n_renderstates = pass->num_renderstates;
 
+		auto& ctx = renderer::get()->dc_ctx;
+		ctx.info.shader_name = data->data->sub.shader_name;
+
+		ctx.info.preset_index = data->preset_index;
+
+		if (ctx.info.preset_index >= 0 && data->preset_name) {
+			ctx.info.preset_name = data->preset_name;
+		}
+
 		for (int i = 0; i < n_renderstates; ++i)
 		{
 			const auto rs_data = &pass->renderstate_value_stack[i];
@@ -783,15 +826,12 @@ namespace gta4
 
 	// ----
 
-
-
 	HRESULT renderer::on_draw_primitive(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const UINT& StartVertex, const UINT& PrimitiveCount)
 	{
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
 
-		auto& ctx = renderer::dc_ctx;
-		ctx.info.device_ptr = dev;
+		auto& ctx = setup_context(dev);
 		// info.shader_name can be empty here -> TODO
 
 		bool render_with_ff = false;
@@ -936,7 +976,7 @@ namespace gta4
 			
 				render_with_ff = false;
 				dev->SetTransform(D3DTS_PROJECTION, &matrix);*/
-			} 
+			}
 
 			if (viewport->wp->proj.m[3][3] == 1.0f && !g_is_rendering_phone) {
 				manually_trigger_remix_injection(dev);
@@ -992,18 +1032,9 @@ namespace gta4
 		return hr;
 	}
 
-
-
 	HRESULT renderer::on_draw_indexed_prim(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const INT& BaseVertexIndex, const UINT& MinVertexIndex, const UINT& NumVertices, const UINT& startIndex, const UINT& primCount)
 	{
-		auto& ctx = renderer::dc_ctx;
-
-		if (ctx.info.is_dirty) {
-			ctx.reset_context();
-		}
-
-		ctx.info.device_ptr = dev; // for instanced rendering
-
+		auto& ctx = setup_context(dev);
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
 		 
@@ -1026,55 +1057,308 @@ namespace gta4
 			bool render_with_ff = g_is_rendering_static;
 			bool allow_vertex_colors = false;
 
-			if (ctx.info.shader_name.ends_with("water.fxc")) {
-				ctx.modifiers.do_not_render = true;
+#ifdef LOG_SHADERPRESETS
+			auto it = im->preset_list.find(ctx.info.preset_index);
+			if (it == im->preset_list.end() || it->second != ctx.info.preset_name) {
+				im->preset_list[ctx.info.preset_index] = ctx.info.preset_name;
+			}
+#endif
+
+			const auto& pidx = ctx.info.preset_index;
+
+			if ( (  pidx == GTA_ALPHA || pidx == GTA_DECAL || pidx == GTA_DECAL_GLUE || pidx == GTA_NORMAL_ALPHA || pidx == GTA_NORMAL_DECAL 
+				 || pidx == GTA_NORMAL_SPEC_ALPHA || pidx == GTA_NORMAL_SPEC_DECAL || pidx == GTA_SPEC_ALPHA || pidx == GTA_SPEC_DECAL ) 
+				&& ctx.info.rs_alphablendenable && ctx.info.tss_alphaarg2 == D3DTA_CURRENT && ctx.info.tss_alphaop == D3DTOP_SELECTARG1)
+			{
+				if (im->m_dbg_visualize_decal_renderstates) 
+				{
+					imgui::visualized_decal_rs_s vis = {};
+					vis.pos.x = game::pCurrentWorldTransform->m[3][0];
+					vis.pos.y = game::pCurrentWorldTransform->m[3][1];
+					vis.pos.z = game::pCurrentWorldTransform->m[3][2];
+
+					vis.rs_alpha_blending = ctx.info.rs_alphablendenable;
+
+					switch (ctx.info.rs_blendop)
+					{
+					case D3DBLENDOP_ADD:
+						vis.rs_blendop = "D3DBLENDOP_ADD";
+						break;
+					case D3DBLENDOP_SUBTRACT:
+						vis.rs_blendop = "D3DBLENDOP_SUBTRACT";
+						break;
+					case D3DBLENDOP_REVSUBTRACT:
+						vis.rs_blendop = "D3DBLENDOP_REVSUBTRACT";
+						break;
+					case D3DBLENDOP_MIN:
+						vis.rs_blendop = "D3DBLENDOP_MIN";
+						break;
+					case D3DBLENDOP_MAX:
+						vis.rs_blendop = "D3DBLENDOP_MAX";
+						break;
+					default:
+						vis.rs_blendop = "INVALID";
+						break;
+					}
+
+					switch (ctx.info.rs_srcblend)
+					{
+					case D3DBLEND_ZERO:
+						vis.rs_srcblend = "D3DBLEND_ZERO";
+						break;
+					case D3DBLEND_ONE:
+						vis.rs_srcblend = "D3DBLEND_ONE";
+						break;
+					case D3DBLEND_SRCCOLOR:
+						vis.rs_srcblend = "D3DBLEND_SRCCOLOR";
+						break;
+					case D3DBLEND_INVSRCCOLOR:
+						vis.rs_srcblend = "D3DBLEND_INVSRCCOLOR";
+						break;
+					case D3DBLEND_SRCALPHA:
+						vis.rs_srcblend = "D3DBLEND_SRCALPHA";
+						break;
+					case D3DBLEND_INVSRCALPHA:
+						vis.rs_srcblend = "D3DBLEND_INVSRCALPHA";
+						break;
+					case D3DBLEND_DESTALPHA:
+						vis.rs_srcblend = "D3DBLEND_DESTALPHA";
+						break;
+					case D3DBLEND_INVDESTALPHA:
+						vis.rs_srcblend = "D3DBLEND_INVDESTALPHA";
+						break;
+					case D3DBLEND_DESTCOLOR:
+						vis.rs_srcblend = "D3DBLEND_DESTCOLOR";
+						break;
+					case D3DBLEND_INVDESTCOLOR:
+						vis.rs_srcblend = "D3DBLEND_INVDESTCOLOR";
+						break;
+					case D3DBLEND_SRCALPHASAT:
+						vis.rs_srcblend = "D3DBLEND_SRCALPHASAT";
+						break;
+					case D3DBLEND_BOTHSRCALPHA:
+						vis.rs_srcblend = "D3DBLEND_BOTHSRCALPHA";
+						break;
+					case D3DBLEND_BOTHINVSRCALPHA:
+						vis.rs_srcblend = "D3DBLEND_BOTHINVSRCALPHA";
+						break;
+					case D3DBLEND_BLENDFACTOR:
+						vis.rs_srcblend = "D3DBLEND_BLENDFACTOR";
+						break;
+					case D3DBLEND_INVBLENDFACTOR:
+						vis.rs_srcblend = "D3DBLEND_INVBLENDFACTOR";
+						break;
+					default:
+						vis.rs_srcblend = "INVALID";
+						break;
+					}
+
+					switch (ctx.info.rs_destblend)
+					{
+					case D3DBLEND_ZERO:
+						vis.rs_destblend = "D3DBLEND_ZERO";
+						break;
+					case D3DBLEND_ONE:
+						vis.rs_destblend = "D3DBLEND_ONE";
+						break;
+					case D3DBLEND_SRCCOLOR:
+						vis.rs_destblend = "D3DBLEND_SRCCOLOR";
+						break;
+					case D3DBLEND_INVSRCCOLOR:
+						vis.rs_destblend = "D3DBLEND_INVSRCCOLOR";
+						break;
+					case D3DBLEND_SRCALPHA:
+						vis.rs_destblend = "D3DBLEND_SRCALPHA";
+						break;
+					case D3DBLEND_INVSRCALPHA:
+						vis.rs_destblend = "D3DBLEND_INVSRCALPHA";
+						break;
+					case D3DBLEND_DESTALPHA:
+						vis.rs_destblend = "D3DBLEND_DESTALPHA";
+						break;
+					case D3DBLEND_INVDESTALPHA:
+						vis.rs_destblend = "D3DBLEND_INVDESTALPHA";
+						break;
+					case D3DBLEND_DESTCOLOR:
+						vis.rs_destblend = "D3DBLEND_DESTCOLOR";
+						break;
+					case D3DBLEND_INVDESTCOLOR:
+						vis.rs_destblend = "D3DBLEND_INVDESTCOLOR";
+						break;
+					case D3DBLEND_SRCALPHASAT:
+						vis.rs_destblend = "D3DBLEND_SRCALPHASAT";
+						break;
+					case D3DBLEND_BOTHSRCALPHA:
+						vis.rs_destblend = "D3DBLEND_BOTHSRCALPHA";
+						break;
+					case D3DBLEND_BOTHINVSRCALPHA:
+						vis.rs_destblend = "D3DBLEND_BOTHINVSRCALPHA";
+						break;
+					case D3DBLEND_BLENDFACTOR:
+						vis.rs_destblend = "D3DBLEND_BLENDFACTOR";
+						break;
+					case D3DBLEND_INVBLENDFACTOR:
+						vis.rs_destblend = "D3DBLEND_INVBLENDFACTOR";
+						break;
+					default:
+						vis.rs_destblend = "INVALID";
+						break;
+					}
+
+					switch (ctx.info.tss_alphaop)
+					{
+					case D3DTOP_DISABLE:
+						vis.tss_alphaop = "D3DTOP_DISABLE";
+						break;
+					case D3DTOP_SELECTARG1:
+						vis.tss_alphaop = "D3DTOP_SELECTARG1";
+						break;
+					case D3DTOP_SELECTARG2:
+						vis.tss_alphaop = "D3DTOP_SELECTARG2";
+						break;
+					case D3DTOP_MODULATE:
+						vis.tss_alphaop = "D3DTOP_MODULATE";
+						break;
+					case D3DTOP_MODULATE2X:
+						vis.tss_alphaop = "D3DTOP_MODULATE2X";
+						break;
+					case D3DTOP_MODULATE4X:
+						vis.tss_alphaop = "D3DTOP_MODULATE4X";
+						break;
+					case D3DTOP_ADD:
+						vis.tss_alphaop = "D3DTOP_ADD";
+						break;
+					case D3DTOP_ADDSIGNED:
+						vis.tss_alphaop = "D3DTOP_ADDSIGNED";
+						break;
+					case D3DTOP_ADDSIGNED2X:
+						vis.tss_alphaop = "D3DTOP_ADDSIGNED2X";
+						break;
+					case D3DTOP_SUBTRACT:
+						vis.tss_alphaop = "D3DTOP_SUBTRACT";
+						break;
+					case D3DTOP_ADDSMOOTH:
+						vis.tss_alphaop = "D3DTOP_ADDSMOOTH";
+						break;
+					default:
+						vis.tss_alphaop = "UNMAPPED or UNKOWN";
+						break;
+					}
+
+					switch (ctx.info.tss_alphaarg1)
+					{
+					case 0x00000000:
+						vis.tss_alphaarg1 = "D3DTA_DIFFUSE";
+						break;
+					case 0x00000001:
+						vis.tss_alphaarg1 = "D3DTA_CURRENT";
+						break;
+					case 0x00000002:
+						vis.tss_alphaarg1 = "D3DTA_TEXTURE";
+						break;
+					case 0x00000003:
+						vis.tss_alphaarg1 = "D3DTA_TFACTOR";
+						break;
+					case 0x00000004:
+						vis.tss_alphaarg1 = "D3DTA_SPECULAR";
+						break;
+					case 0x00000005:
+						vis.tss_alphaarg1 = "D3DTA_TEMP";
+						break;
+					case 0x00000006:
+						vis.tss_alphaarg1 = "D3DTA_CONSTANT";
+						break;
+					default:
+						vis.tss_alphaarg1 = "UNMAPPED or UNKOWN";
+						break;
+					}
+
+					switch (ctx.info.tss_alphaarg2)
+					{
+					case 0x00000000:
+						vis.tss_alphaarg2 = "D3DTA_DIFFUSE";
+						break;
+					case 0x00000001:
+						vis.tss_alphaarg2 = "D3DTA_CURRENT";
+						break;
+					case 0x00000002:
+						vis.tss_alphaarg2 = "D3DTA_TEXTURE";
+						break;
+					case 0x00000003:
+						vis.tss_alphaarg2 = "D3DTA_TFACTOR";
+						break;
+					case 0x00000004:
+						vis.tss_alphaarg2 = "D3DTA_SPECULAR";
+						break;
+					case 0x00000005:
+						vis.tss_alphaarg2 = "D3DTA_TEMP";
+						break;
+					case 0x00000006:
+						vis.tss_alphaarg2 = "D3DTA_CONSTANT";
+						break;
+					default:
+						vis.tss_alphaarg2 = "UNMAPPED or UNKOWN";
+						break;
+					}
+
+					im->visualized_decal_renderstates.emplace_back(std::move(vis));
+				}
+
+				//allow_vertex_colors = true;
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);  
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2); 
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+				set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
 			}
 
-			else if (ctx.info.shader_name.ends_with("glue.fxc")) 
+			if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE)
 			{
-				//set_remix_modifier(dev, RemixModifier::EnableVertexColor);
-				allow_vertex_colors = true;
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
 
-				//ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-				//dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+				ctx.save_rs(dev, D3DRS_BLENDOP);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD); 
 
 				ctx.save_rs(dev, D3DRS_SRCBLEND);
-				ctx.save_rs(dev, D3DRS_DESTBLEND);
 				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
 				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 
 				ctx.save_tss(dev, D3DTSS_COLOROP);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+
 				ctx.save_tss(dev, D3DTSS_COLORARG1);
-				ctx.save_tss(dev, D3DTSS_COLORARG2);
-				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
 
 				ctx.save_tss(dev, D3DTSS_ALPHAOP);
-				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
-				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 
-				DWORD alpha_blending = 0;
-				dev->GetRenderState(D3DRS_ALPHABLENDENABLE, &alpha_blending);
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 
-				if (alpha_blending) {
-					set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
-				}
+				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0, 0, 0, 1.0f)); 
+
+				D3DXMATRIX mat = *game::pCurrentWorldTransform;
+				mat.m[0][0] *= 0.99f;
+				mat.m[1][1] *= 0.99f;
+				mat.m[2][2] *= 0.99f;
+
+				ctx.modifiers.dual_render = true;
+				ctx.modifiers.dual_render_mode_emissive = true;
+
+				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap); 
 			}
 
-			else if (ctx.info.shader_name.ends_with("_decal.fxc")) {
-				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+			if (ctx.info.shader_name.ends_with("water.fxc")) {
+				ctx.modifiers.do_not_render = true;
 			}
-
-			//if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
-			//{
-			//	//static auto mirror_hash = shared::utils::string_hash32("mirror");
-			//	//set_remix_texture_hash(dev, mirror_hash);
-			//	int x = 1;
-			//}
 
 			if (g_is_rendering_static)
 			{
@@ -1444,8 +1728,105 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 			}
 
+			// BLEND emissive mode
+			if (ctx.modifiers.dual_render_mode_emissive)
+			{
+				ctx.restore_render_state(dev, (D3DRENDERSTATETYPE)42); // instancecategories
+
+				ctx.restore_texture_stage_state(dev, D3DTSS_COLOROP);
+				ctx.restore_texture_stage_state(dev, D3DTSS_COLORARG1);
+
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE); 
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);  
+
+				D3DXMATRIX mat = *game::pCurrentWorldTransform;
+				mat.m[0][0] *= 1.005f;
+				mat.m[1][1] *= 1.005f;
+				mat.m[2][2] *= 1.005f;
+
+				dev->SetTransform(D3DTS_WORLD, &mat);
+				//dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
+
+				ctx.save_rs(dev, D3DRS_BLENDOP);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+				ctx.save_rs(dev, D3DRS_SRCBLEND);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+
+				ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
+				dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+
+				ctx.save_rs(dev, D3DRS_ZENABLE);
+				dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+
+				ctx.save_tss(dev, D3DTSS_COLOROP);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+				ctx.save_tss(dev, D3DTSS_COLORARG1); 
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+			}
+
 			// re-draw surface
 			dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+
+			// re-drawing proxy but remix makes it emissive ...
+			if (ctx.modifiers.dual_render_mode_emissive)
+			{
+				if (gs->vehicle_lights_dual_render_proxy_texture.get_as<bool>())
+				{
+					//dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
+
+					D3DXMATRIX mat = *game::pCurrentWorldTransform;
+					mat.m[0][0] *= 1.01f;
+					mat.m[1][1] *= 1.01f;
+					mat.m[2][2] *= 1.01f;
+
+					dev->SetTransform(D3DTS_WORLD, &mat);
+
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::veh_light_ems_glass); 
+
+					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE); 
+
+					ctx.save_rs(dev, D3DRS_BLENDOP);
+					dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+					ctx.save_rs(dev, D3DRS_SRCBLEND);
+					dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+
+					ctx.save_rs(dev, D3DRS_DESTBLEND);
+					dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+					ctx.save_tss(dev, D3DTSS_COLOROP);
+					dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+
+					ctx.save_tss(dev, D3DTSS_COLORARG1);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+					ctx.save_tss(dev, D3DTSS_COLORARG2);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_CURRENT);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAOP);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_CURRENT); 
+
+					renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap | InstanceCategories::Terrain | InstanceCategories::IgnoreBakedLighting);
+					renderer::set_remix_emissive_intensity(dev, 0); 
+
+					// re-draw surface
+					dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+				}
+			}
+			
 
 			if (ctx.modifiers.dual_render_with_specified_texture) {
 				ctx.restore_texture(dev, 0);

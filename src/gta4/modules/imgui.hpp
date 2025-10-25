@@ -57,10 +57,29 @@ namespace gta4
 
 		// --
 
+		std::unordered_map<int, std::string> preset_list;
+
 		bool m_dbg_visualize_api_lights = false;
 		bool m_dbg_visualize_api_light_hashes = false;
 		bool m_dbg_disable_ignore_light_hash_logic = false; // disables the map_settings logic that ignores light translation based on a list of hashes
 		float m_dbg_visualize_api_light_hashes_distance = 8.0f;
+
+		bool m_dbg_visualize_decal_renderstates = false;
+
+		struct visualized_decal_rs_s
+		{
+			Vector pos;
+			bool rs_alpha_blending = false;
+			std::string_view rs_blendop;
+			std::string_view rs_srcblend;
+			std::string_view rs_destblend;
+			std::string_view tss_alphaop;
+			std::string_view tss_alphaarg1;
+			std::string_view tss_alphaarg2;
+		};
+		std::vector<visualized_decal_rs_s> visualized_decal_renderstates;
+
+		// --
 
 		bool m_dbg_ignore_lights_with_flag_logic = false;
 		int m_dbg_ignore_lights_with_flag_01 = 0;

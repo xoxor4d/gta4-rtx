@@ -431,11 +431,15 @@ namespace gta4::game
 	{
 		shader_constant_s* constants;
 		shader_data_s* data;
-		__int16 unk1;
-		__int16 unk2;
-		__int16 unk3;
-		__int16 unk4;
+		int N0000076E;
+		int N0000076F;
 		__int8* constant_float_count_array;
+		char pad_0x0014[0x1C];
+		const char* shader_name;
+		const char* preset_name;
+		int pad4;
+		int pad5;
+		int preset_index;
 	};
 
 	struct sampler_data_s

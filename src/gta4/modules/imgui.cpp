@@ -388,7 +388,28 @@ namespace gta4
 
 		ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
 		ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
+
 		ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement); TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
+
+		ImGui::Checkbox("Visualize Decal Renderstates", &im->m_dbg_visualize_decal_renderstates); TT("Visualize renderstates of nearby decal surfaces.");
+
+#ifdef LOG_SHADERPRESETS
+		if (ImGui::Button("Copy Shader PresetLog to Clipboard"))
+		{
+			auto log_str = [&]()
+				{
+					std::string out;
+					for (auto& p : im->preset_list) {
+						out += p.second + " = " + std::to_string(p.first) + ",\n";
+					}
+					return out;
+				};
+
+			ImGui::LogToClipboard();
+			ImGui::LogText("%s", log_str().c_str());
+			ImGui::LogFinish();
+		}
+#endif
 
 		ImGui::Spacing(0, TREENODE_SPACING);
 		if (ImGui::TreeNode("Do not render ..."))
@@ -1817,9 +1838,10 @@ namespace gta4
 
 	void imgui::draw_debug()
 	{
+		static auto im = imgui::get();
+		
 		if (m_dbg_visualize_api_light_hashes)
 		{
-			static auto im = imgui::get();
 			static auto rml = remix_lights::get();
 
 			const auto vp = game::pViewports;
@@ -1895,6 +1917,41 @@ namespace gta4
 				}
 
 				ImGui::PopFont();
+			}
+		}
+
+		if (m_dbg_visualize_decal_renderstates)
+		{
+			const auto vp = game::pViewports;
+			if (vp->sceneviewport)
+			{
+				const float draw_dist = 20.0f;
+
+				ImVec2 viewport_pos = {};
+				const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
+
+				for (auto& l : visualized_decal_renderstates)
+				{
+					if (fabs(cam_org.DistToSqr(l.pos) < draw_dist * draw_dist))
+					{
+						shared::imgui::world_to_screen(l.pos, viewport_pos);
+
+						std::ostringstream oss;
+						oss << "[ALPHABLEND] " << (l.rs_alpha_blending ? "true" : "false") << "\n"
+							<< "[BLEND_OP] " << l.rs_blendop << "\n"
+							<< "[SRC_BLEND] " << l.rs_srcblend << "\n"
+							<< "[DEST_BLEND] " << l.rs_destblend << "\n"
+							<< "[ALPHA_OP] " << l.tss_alphaop << "\n"
+							<< "[ALPHA_ARG1] " << l.tss_alphaarg1 << "\n"
+							<< "[ALPHA_ARG2] " << l.tss_alphaarg2;
+
+						ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+							ImGui::GetColorU32(ImGuiCol_Text), 
+							oss.str().c_str());
+					}
+				}
+
+				visualized_decal_renderstates.clear();
 			}
 		}
 	}

@@ -518,7 +518,7 @@ namespace gta4
 				"vehicle_lights_dual_render_proxy_texture",
 				("This renders surfaces using the 'gta_vehicle_lightsemissive' shader a second time using a proxy texture (veh_light_ems_glass.png).\n"
 				"The remix-mod of the compatibility mod makes that surface translucent."),
-				true
+				false
 			};
 
 			// -----

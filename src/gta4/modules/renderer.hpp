@@ -24,6 +24,7 @@ namespace gta4
 		RoughnessScalar = 1 << 1,
 		EnableVertexColor = 1 << 2,
 		DecalDirt = 1 << 3,
+		RemoveVertexColorKeepAlpha = 1 << 4,
 	};
 
 	constexpr RemixModifier operator|(RemixModifier lhs, RemixModifier rhs) {
@@ -73,6 +74,71 @@ namespace gta4
 		ParticleEmitter = 1 << 23,
 		DisableBackfaceCulling = 1 << 24,
 		None = 0u
+	};
+
+	enum ShaderPreset
+	{
+		GTA_ALPHA = 0,
+		GTA_CUTOUT = 2,
+		GTA_CUTOUT_FENCE = 3,
+		GTA_DECAL = 4,
+		GTA_DECAL_DIRT = 6,
+		GTA_DECAL_GLUE = 7,
+		GTA_DEFAULT = 9,
+		GTA_EMISSIVE = 11,
+		GTA_EMISSIVENIGHT = 12,
+		GTA_EMISSIVENIGHT_ALPHA = 13,
+		GTA_EMISSIVESTRONG = 14,
+		GTA_EMISSIVESTRONG_ALPHA = 15,
+		GTA_EMISSIVE_ALPHA = 16,
+		GTA_GLASS = 17,
+		GTA_GLASS_EMISSIVE = 18,
+		GTA_GLASS_EMISSIVENIGHT = 19,
+		GTA_GLASS_REFLECT = 23,
+		GTA_GLASS_SPEC = 24,
+		GTA_HAIR_SORTED_ALPHA_EXPENSIVE = 26,
+		GTA_NORMAL = 29,
+		GTA_NORMAL_ALPHA = 30,
+		GTA_NORMAL_CUTOUT = 32,
+		GTA_NORMAL_DECAL = 33,
+		GTA_NORMAL_REFLECT = 34,
+		GTA_NORMAL_SPEC = 39,
+		GTA_NORMAL_SPEC_ALPHA = 40,
+		GTA_NORMAL_SPEC_DECAL = 42,
+		GTA_NORMAL_SPEC_REFLECT = 43,
+		GTA_PED = 54,
+		GTA_PED_ALPHA = 55,
+		GTA_PED_REFLECT = 56,
+		GTA_PED_SKIN = 58,
+		GTA_PED_SKIN_BLENDSHAPE = 59,
+		GTA_RADAR = 62,
+		GTA_REFLECT = 63,
+		GTA_REFLECT_ALPHA = 64,
+		GTA_RMPTFX_MESH = 66,
+		GTA_SPEC = 67,
+		GTA_SPEC_ALPHA = 68,
+		GTA_SPEC_CONST = 69,
+		GTA_SPEC_DECAL = 70,
+		GTA_SPEC_REFLECT = 71,
+		GTA_SPEC_REFLECT_ALPHA = 72,
+		GTA_TERRAIN_VA_2LYR = 76,
+		GTA_TERRAIN_VA_3LYR = 77,
+		GTA_TERRAIN_VA_4LYR = 78,
+		GTA_TREES = 79,
+		GTA_VEHICLE_BADGES = 81,
+		GTA_VEHICLE_INTERIOR = 93,
+		GTA_VEHICLE_INTERIOR2 = 94,
+		GTA_VEHICLE_LIGHTS = 95,
+		GTA_VEHICLE_LIGHTSEMISSIVE = 96,
+		GTA_VEHICLE_MESH = 97,
+		GTA_VEHICLE_NOSPLASH = 98,
+		GTA_VEHICLE_PAINT1 = 100,
+		GTA_VEHICLE_PAINT2 = 101,
+		GTA_VEHICLE_PAINT3 = 102,
+		GTA_VEHICLE_SHUTS = 107,
+		GTA_VEHICLE_TIRE = 129,
+		GTA_VEHICLE_VEHGLASS = 130,
+		GTA_WIRE = 131,
 	};
 
 	constexpr InstanceCategories operator|(InstanceCategories lhs, InstanceCategories rhs) {
@@ -349,6 +415,7 @@ namespace gta4
 			bool dual_render_with_specified_texture = false; // render prim a second time with tex defined in 'dual_render_texture'
 			bool dual_render_mode_blend_add = false; // renders second prim using blend mode ADD
 			bool dual_render_mode_blend_diffuse = false; // renders second prim using blend mode ADD
+			bool dual_render_mode_emissive = false; // renders second prim emissive
 			bool dual_render_reset_remix_modifiers = false; // reset all active remix modifiers
 			IDirect3DBaseTexture9* dual_render_texture = nullptr; // texture to be used when 'dual_render_with_specified_texture' is set
 
@@ -370,6 +437,7 @@ namespace gta4
 				dual_render_with_specified_texture = false;
 				dual_render_mode_blend_add = false;
 				dual_render_mode_blend_diffuse = false;
+				dual_render_mode_emissive = false;
 				dual_render_reset_remix_modifiers = false;
 				dual_render_texture = nullptr;
 
@@ -384,14 +452,34 @@ namespace gta4
 		struct info_s
 		{
 			std::string_view shader_name;
+			std::string_view preset_name;
+			int preset_index = 0;
 			IDirect3DDevice9* device_ptr = nullptr;
 			bool is_dirty = false; // true when context was not reset in drawprimitive
+
+			DWORD rs_alphablendenable = 0u;
+			DWORD rs_blendop = 0u;
+			DWORD rs_srcblend = 0u;
+			DWORD rs_destblend = 0u;
+			DWORD tss_alphaop = 0u;
+			DWORD tss_alphaarg1 = 0u;
+			DWORD tss_alphaarg2 = 0u;
 
 			void reset()
 			{
 				shader_name = "";
+				preset_name = "";
+				preset_index = 0;
 				device_ptr = nullptr;
 				is_dirty = false;
+
+				rs_alphablendenable = 0u;
+				rs_blendop = 0u;
+				rs_srcblend = 0u;
+				rs_destblend = 0u;
+				tss_alphaop = 0u;
+				tss_alphaarg1 = 0u;
+				tss_alphaarg2 = 0u;
 			}
 		};
 
