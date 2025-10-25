@@ -324,6 +324,14 @@ namespace gta4
 				1920, 1080
 			};
 
+			// -----
+			variable load_colormaps_only = {
+				"load_colormaps_only",
+				("This setting will prevent loading and usage all non-colormap textures.\n"
+				 "Useful to declutter the remix UI and reducing used VRAM."),
+				true
+			};
+
 
 			// -----
 			variable fixed_function_trees =

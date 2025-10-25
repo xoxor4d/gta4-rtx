@@ -672,6 +672,12 @@ namespace gta4
 		const float inbetween_spacing = 8.0f;
 
 		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" General ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Load ColorMaps Only", gs->load_colormaps_only.get_as<bool*>()); TT(gs->load_colormaps_only.get_tooltip_string().c_str());
+
+		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Foliage ");
 		ImGui::Spacing(0, 4);
 

@@ -705,6 +705,15 @@ namespace gta4
 					auto arg3 = sampler_data->sampler_constant_data[dataPoolIndex].unk3_lo >> 1;
 					auto arg4 = sampler_data->sampler_constant_data[dataPoolIndex].unk9;
 
+					if (gs->load_colormaps_only.get_as<bool>())
+					{
+						// everything that is not 0 is not a colormap (I hope)
+						if (arg1) 
+						{
+							++i;
+							continue;
+						}
+					}
 //#if DEBUG
 //					if (ctx.info.shader_name.ends_with("deferred_lighting.fxc") && arg2 && (arg2->N00000096 == 2 || arg2->N00000096 == 0)) {
 //						int break_me = 1; 
