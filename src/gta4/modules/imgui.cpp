@@ -388,6 +388,7 @@ namespace gta4
 
 		ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
 		ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
+		ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement); TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
 
 		ImGui::Spacing(0, TREENODE_SPACING);
 		if (ImGui::TreeNode("Do not render ..."))

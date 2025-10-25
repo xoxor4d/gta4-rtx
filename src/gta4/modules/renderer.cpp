@@ -1257,7 +1257,7 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 			}
 
-			if (!allow_vertex_colors){
+			if (!allow_vertex_colors && !im->m_dbg_disable_ignore_baked_lighting_enforcement) {
 				set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
 			}
 

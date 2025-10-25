@@ -51,6 +51,7 @@ namespace gta4
 		int m_dbg_tag_static_emissive_as_index = -1;
 
 		bool m_dbg_skip_draw_indexed_checks = false;
+		bool m_dbg_disable_ignore_baked_lighting_enforcement = false;
 
 		int m_dbg_used_timecycle = -1;
 

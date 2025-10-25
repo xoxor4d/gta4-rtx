@@ -514,7 +514,9 @@ namespace gta4
 
 	void on_render_light_list_hk()
 	{
-		remix_lights::on_client_frame();
+		if (shared::common::remix_api::is_initialized()) {
+			remix_lights::on_client_frame();
+		}
 	}
 
 	void __declspec(naked) on_render_light_list_stub()

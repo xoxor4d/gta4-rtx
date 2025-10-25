@@ -540,45 +540,47 @@ namespace gta4
 	// Interpolates all variables on the 'interpolate_stack' and removes them once they reach their goal. \n
 	void remix_vars::on_client_frame()
 	{
-		if (!is_paused())
+		if (shared::common::remix_api::is_initialized())
 		{
-			if (!interpolate_stack.empty())
+			if (!is_paused())
 			{
-				// remove completed transitions - we do that in-front of the loop so that the final values (complete) can be used for the entire frame
-				auto completed_condition = [](const interpolate_entry_s& ip)
-					{
-						//if (ip._complete)
-						//{
-							//int break_me = 1;
-							//DEBUG_PRINT("[VAR-LERP] Complete: %s\n", ip.option->first.c_str());
-						//}
-
-						return ip._complete;
-					};
-
-				const auto it = std::remove_if(interpolate_stack.begin(), interpolate_stack.end(), completed_condition);
-				interpolate_stack.erase(it, interpolate_stack.end());
-
-				// #
-
-				//const auto globalv = interfaces::get()->m_globals;
-				//const auto delta_abs = globalv->absoluteframetime;
-
-				for (auto& ip : interpolate_stack)
+				if (!interpolate_stack.empty())
 				{
-					ip._time_elapsed += get()->get_frametime(); //globalv->frametime;
+					// remove completed transitions - we do that in-front of the loop so that the final values (complete) can be used for the entire frame
+					auto completed_condition = [](const interpolate_entry_s& ip)
+						{
+							//if (ip._complete)
+							//{
+								//int break_me = 1;
+								//DEBUG_PRINT("[VAR-LERP] Complete: %s\n", ip.option->first.c_str());
+							//}
 
-					// initial 'time_elapsed' value can be negative because of transition delay
-					// or if transitioning backwards with delay 
-					if (ip._time_elapsed < 0.0f) {
-						continue;
-					}
+							return ip._complete;
+						};
 
-					const auto f = ip._time_elapsed / ip.time_duration;
-					const bool transition_time_exceeded = ip._time_elapsed >= ip.time_duration;
+					const auto it = std::remove_if(interpolate_stack.begin(), interpolate_stack.end(), completed_condition);
+					interpolate_stack.erase(it, interpolate_stack.end());
 
-					switch (ip.type)
+					// #
+
+					//const auto globalv = interfaces::get()->m_globals;
+					//const auto delta_abs = globalv->absoluteframetime;
+
+					for (auto& ip : interpolate_stack)
 					{
+						ip._time_elapsed += get()->get_frametime(); //globalv->frametime;
+
+						// initial 'time_elapsed' value can be negative because of transition delay
+						// or if transitioning backwards with delay 
+						if (ip._time_elapsed < 0.0f) {
+							continue;
+						}
+
+						const auto f = ip._time_elapsed / ip.time_duration;
+						const bool transition_time_exceeded = ip._time_elapsed >= ip.time_duration;
+
+						switch (ip.type)
+						{
 						case OPTION_TYPE_INT:
 						{
 							if (!transition_time_exceeded)
@@ -596,7 +598,7 @@ namespace gta4
 							}
 							break;
 						}
-							
+
 						case OPTION_TYPE_FLOAT:
 						{
 							if (!transition_time_exceeded)
@@ -619,7 +621,7 @@ namespace gta4
 								lerp_float(&ip.option->second.current.vector[0], ip.start.vector[0], ip.goal.vector[0], f, ip.style);
 								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], f, ip.style);
 								ip._complete = shared::utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
-											&& shared::utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1]);
+									&& shared::utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1]);
 							}
 							else
 							{
@@ -638,8 +640,8 @@ namespace gta4
 								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], f, ip.style);
 								lerp_float(&ip.option->second.current.vector[2], ip.start.vector[2], ip.goal.vector[2], f, ip.style);
 								ip._complete = shared::utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
-											&& shared::utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1])
-											&& shared::utils::float_equal(ip.option->second.current.vector[2], ip.goal.vector[2]);
+									&& shared::utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1])
+									&& shared::utils::float_equal(ip.option->second.current.vector[2], ip.goal.vector[2]);
 							}
 							else
 							{
@@ -664,28 +666,29 @@ namespace gta4
 								break;
 							}
 
-							ip.option->second.current.enabled = ip.goal.enabled; 
+							ip.option->second.current.enabled = ip.goal.enabled;
 							break;
 						}
 
 						case OPTION_TYPE_NONE:
 							ip._complete = true; // remove none type
 							continue;
-					}
+						}
 
-					if (!ip.option->second.not_a_remix_var) {
-						remix_vars::get()->set_option(ip.option, ip.option->second.current, false);
-					}
+						if (!ip.option->second.not_a_remix_var) {
+							remix_vars::get()->set_option(ip.option, ip.option->second.current, false);
+						}
 
-					// detect completion of first transition - check / setup backwards transition
-					if (ip._complete && !ip._in_backwards_transition && ip.time_delay_transition_back > 0.0f)
-					{
-						// swap start/goal
-						std::swap(ip.start, ip.goal);
+						// detect completion of first transition - check / setup backwards transition
+						if (ip._complete && !ip._in_backwards_transition && ip.time_delay_transition_back > 0.0f)
+						{
+							// swap start/goal
+							std::swap(ip.start, ip.goal);
 
-						ip._time_elapsed = -ip.time_delay_transition_back;
-						ip._in_backwards_transition = true;
-						ip._complete = false;
+							ip._time_elapsed = -ip.time_delay_transition_back;
+							ip._in_backwards_transition = true;
+							ip._complete = false;
+						}
 					}
 				}
 			}
