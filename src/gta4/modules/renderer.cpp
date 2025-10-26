@@ -5,12 +5,12 @@
 #include "imgui.hpp"
 #include "natives.hpp"
 #include "remix_markers.hpp"
+#include "renderer_ff.hpp"
 
 namespace gta4
 {
 	int g_is_instance_rendering = 0;
 	int g_is_sky_rendering = 0;
-	int g_is_hud_rendering = 0;
 	int g_is_water_rendering = 0;
 	int g_is_rendering_mirror = 0;
 
@@ -71,6 +71,8 @@ namespace gta4
 		if (!result && no_overrides) {
 			return;
 		}
+
+		dc_ctx.info.shaderconst_emissive_intensity = intensity;
 
 		set_remix_modifier(dev, RemixModifier::EmissiveScalar);
 		dev->SetRenderState((D3DRENDERSTATETYPE)169, *reinterpret_cast<DWORD*>(&intensity));
@@ -189,7 +191,6 @@ namespace gta4
 	{
 		auto& ctx = renderer::get()->dc_ctx;
 
-		//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR); // prob. not needed
 		ctx.save_tss(dev, D3DTSS_COLOROP);
 		ctx.save_tss(dev, D3DTSS_COLORARG1);
 		ctx.save_tss(dev, D3DTSS_COLORARG2);
@@ -314,29 +315,6 @@ namespace gta4
 		}
 
 		return false;
-	}
-
-
-	enum class EmissiveShaderType
-	{
-		None,
-		Emissive,
-		EmissiveStrong,
-		EmissiveNight
-	};
-
-	EmissiveShaderType get_emissive_shader_type(const std::string_view& shader_name)
-	{
-		if (shader_name.ends_with("emissivenight.fxc")) {
-			return EmissiveShaderType::EmissiveNight;
-		}
-		if (shader_name.ends_with("emissive.fxc")) {
-			return EmissiveShaderType::Emissive;
-		}
-		if (shader_name.ends_with("strong.fxc")) {
-			return EmissiveShaderType::EmissiveStrong;
-		}
-		return EmissiveShaderType::None;
 	}
 
 	drawcall_mod_context& setup_context(IDirect3DDevice9* dev)
@@ -610,8 +588,12 @@ namespace gta4
 				is_gta_rmptfx_litsprite_shader = true;
 			}
 
-			else if (ctx.info.shader_name.contains("emissive")) {
+			else if (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG ||
+				pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT
+				|| pidx == GTA_EMISSIVENIGHT_ALPHA || pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA
+				|| pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)/*if (ctx.info.shader_name.contains("emissive"))*/ {
 				is_emissive_shader = true;
+
 			}
 			else if (ctx.info.shader_name.ends_with("projtex.fxc")) {
 				is_projtex_shader = true;
@@ -705,27 +687,31 @@ namespace gta4
 						{
 							if (register_num == 66u && is_emissive_shader)
 							{
-								const auto stype = get_emissive_shader_type(ctx.info.shader_name);
-								if (stype != EmissiveShaderType::None)
-								{
-									switch (stype)
+								/*if (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG ||
+									pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)*/
+
+									switch (pidx)
 									{
-									case EmissiveShaderType::EmissiveNight:
+									case GTA_EMISSIVENIGHT_ALPHA:
+									case GTA_EMISSIVENIGHT:
 										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
 											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_night_surfaces_emissive_scalar.get_as<float>());
 										break;
 
-									case EmissiveShaderType::Emissive:
+									default:
+									//case GTA_EMISSIVE:
+									//case GTA_GLASS_EMISSIVE:
+									//case GTA_GLASS_EMISSIVENIGHT:
 										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
 											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_surfaces_emissive_scalar.get_as<float>());
 										break;
 
-									case EmissiveShaderType::EmissiveStrong:
+									case GTA_EMISSIVESTRONG_ALPHA:
+									case GTA_EMISSIVESTRONG:
 										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
-											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>(), true);
+											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>()/*, true*/);
 										break;
 									}
-								}
 							}
 						}
 
@@ -849,18 +835,7 @@ namespace gta4
 			}
 		}*/
 
-		//if (ctx.info.shader_name.ends_with("water.fxc"))
-		//{
-		//	set_remix_texture_hash(dev, shared::utils::string_hash32("water_distant"));
-		//	ctx.info.is_dirty = true;
-		//	//im->m_dbg_ignore_drawprimitive = true;
-		//}
-		//else if (!ctx.info.shader_name.empty())
-		//{
-		//	ctx.info.is_dirty = false;
-		//}
-
-		if (g_is_rendering_mirror) //ctx.info.shader_name.ends_with("mirror.fxc"))
+		if (g_is_rendering_mirror)
 		{
 			set_remix_texture_hash(dev, shared::utils::string_hash32("mirror"));
 			ctx.save_texture(dev, 0);
@@ -929,15 +904,7 @@ namespace gta4
 					dev->SetTexture(0, tex_addons::sky);
 				}
 			}
-			//else if (!m_triggered_remix_injection)
-			//{
-			//	char wtf[] = "asd";
-			//	natives::DrawWindow(0, 1, 0, 1, wtf, 1.0f);
-			//	natives::DrawWindowText(0, 1, 0, 1, wtf, 0);
-			//	//m_trigger
-			// ed_remix_injection = true; 
-			//}
-
+			
 			// rendering water via FF is fine and safes a ton of performance
 			if (g_is_water_rendering)
 			{
@@ -988,38 +955,10 @@ namespace gta4
 				dev->SetTransform(D3DTS_PROJECTION, &matrix);*/
 			}
 
-			/*if (viewport->wp->proj.m[3][3] == 1.0f)
-			{
-				auto asd = 1;
-			}*/
 
 			if (viewport->wp->proj.m[3][3] == 1.0f && !g_is_rendering_phone) {
-				/*if (!m_triggered_remix_injection)
-				{
-					int x = 1; 
-				}
-				else
-				{
-					int y = 0;
-				}*/
 				manually_trigger_remix_injection(dev);
 			}
-
-			//if (/*ctx.info.shader_name.ends_with("im.fxc")*/shared::utils::float_equal(viewport->wp->proj.m[3][3], 1.0f) && !g_is_sky_rendering)
-			//{
-			//	//renderer::set_remix_texture_categories(dev, InstanceCategories::WorldMatte);
-			//	//m_triggered_remix_injection = false;
-			//	//manually_trigger_remix_injection(dev);
-			//}
-
-			//if (/*ctx.info.shader_name.ends_with("im.fxc") &&*/ g_is_hud_rendering /*&& shared::utils::float_equal(viewport->wp->proj.m[3][3], 1.0f)*/
-			//	/*&& !g_is_sky_rendering*/ /*&& !g_is_rendering_phone && !g_is_water_rendering && !g_is_rendering_mirror*/ && !shared::globals::imgui_is_rendering)
-			//{
-			//	int asd = 0;
-			//	//m_triggered_remix_injection = false;
-			//	//manually_trigger_remix_injection(dev);
-			//	//renderer::set_remix_texture_categories(dev, InstanceCategories::WorldMatte);
-			//}
 		}
 
 		if (g_is_water_rendering && im->m_dbg_do_not_render_water) {
@@ -1094,7 +1033,7 @@ namespace gta4
 			// shared::utils::lookat_vertex_decl(dev);
 
 			bool render_with_ff = g_is_rendering_static;
-			bool allow_vertex_colors = false;
+			//bool allow_vertex_colors = false;
 
 #ifdef LOG_SHADERPRESETS
 			auto it = im->preset_list.find(ctx.info.preset_index);
@@ -1390,7 +1329,7 @@ namespace gta4
 				mat.m[2][2] *= 0.99f;
 
 				ctx.modifiers.dual_render = true;
-				ctx.modifiers.dual_render_mode_emissive = true;
+				ctx.modifiers.dual_render_mode_emissive_offset = true;
 
 				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap); 
 			}
@@ -1424,11 +1363,11 @@ namespace gta4
 				}
 			}
 
-			// 
-			const auto stype = get_emissive_shader_type(ctx.info.shader_name);
-			if (stype != EmissiveShaderType::None)
+			if (gs->render_emissive_surfaces_using_shaders.get_as<bool>())
 			{
-				if (gs->render_emissive_surfaces_using_shaders.get_as<bool>())
+				if (pidx == GTA_EMISSIVE			 || pidx == GTA_EMISSIVENIGHT		|| pidx == GTA_EMISSIVESTRONG ||
+					pidx == GTA_GLASS_EMISSIVE		 || pidx == GTA_GLASS_EMISSIVENIGHT	|| pidx == GTA_EMISSIVENIGHT_ALPHA ||
+					pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA)
 				{
 					if (im->m_dbg_tag_static_emissive_as_index != -1) {
 						set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
@@ -1441,6 +1380,16 @@ namespace gta4
 				}
 			}
 
+			if (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG || 
+				pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)
+			{
+				renderer_ff::on_ff_emissives(dev, ctx);
+			}
+			else if (pidx == GTA_EMISSIVENIGHT_ALPHA || pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA)
+			{
+				renderer_ff::on_ff_emissives_alpha(dev, ctx);
+			}
+
 			// check if trees should be rendered with shaders
 			if (ctx.modifiers.is_tree_foliage && !gs->fixed_function_trees.get_as<bool>()) {
 				render_with_ff = false;
@@ -1449,11 +1398,6 @@ namespace gta4
 			if (im->m_dbg_toggle_ff) {
 				render_with_ff = false;
 			}
-
-			/*const auto lcolr = game::getGlobalShaderInfoParam("globalFogParams");
-			if (lcolr) {
-				float r = *(float*)lcolr->pValue;
-			}*/
 
 			const auto viewport = game::pCurrentViewport;
 
@@ -1580,7 +1524,7 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 			}
 
-			if (!allow_vertex_colors && !im->m_dbg_disable_ignore_baked_lighting_enforcement) {
+			if (!ctx.modifiers.allow_vertex_colors && !im->m_dbg_disable_ignore_baked_lighting_enforcement) {
 				set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
 			}
 
@@ -1672,13 +1616,6 @@ namespace gta4
 					ctx.modifiers.do_not_render = true;
 				}
 			}
-
-			/*if (ctx.info.shader_name.ends_with("strong.fxc")) 
-			{
-				ctx.modifiers.dual_render = true;
-				ctx.modifiers.dual_render_mode_blend_diffuse = true;
-				set_remix_emissive_intensity(dev, ctx, gs->emissive_strong_surfaces_emissive_scalar.get_as<float>()); 
-			}*/
 		}
 
 
@@ -1768,9 +1705,9 @@ namespace gta4
 			}
 
 			// BLEND emissive mode
-			if (ctx.modifiers.dual_render_mode_emissive)
+			if (ctx.modifiers.dual_render_mode_emissive_offset)
 			{
-				ctx.restore_render_state(dev, (D3DRENDERSTATETYPE)42); // instancecategories
+				ctx.restore_render_state(dev, (D3DRENDERSTATETYPE)42); // InstanceCategories
 
 				ctx.restore_texture_stage_state(dev, D3DTSS_COLOROP);
 				ctx.restore_texture_stage_state(dev, D3DTSS_COLORARG1);
@@ -1811,8 +1748,9 @@ namespace gta4
 			// re-draw surface
 			dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
+
 			// re-drawing proxy but remix makes it emissive ...
-			if (ctx.modifiers.dual_render_mode_emissive)
+			if (ctx.modifiers.dual_render_mode_emissive_offset)
 			{
 				if (gs->vehicle_lights_dual_render_proxy_texture.get_as<bool>())
 				{
@@ -1934,12 +1872,7 @@ namespace gta4
 				{     w,     h, 0.0f, 1.0f, color }  // br
 			};
 
-			// setting fvf in any way f's up everything??
-			//DWORD og_fvf;
-			//dev->GetFVF(&og_fvf);
-			//dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
 			dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(CUSTOMVERTEX));
-			//dev->SetFVF(og_fvf);
 
 			ctx.restore_vs(dev);
 			ctx.restore_ps(dev);
@@ -1999,30 +1932,21 @@ namespace gta4
 
 	void post_render_sky()
 	{
-		//renderer::get()->m_modified_draw_prim = false;
 		remix_markers::get()->draw_nocull_markers();
-
-		/*char wtf[] = "asd";
-		natives::DrawWindow(0, 1, 0, 1, wtf, 1.0f);
-		natives::DrawWindowText(0, 1, 0, 1, wtf, 0);
-		renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);*/
 	}
 
 	void pre_sky()
 	{
-		/*char wtf[] = "asd";
-		natives::DrawWindow(0, 1, 0, 1, wtf, 1.0f);
-		natives::DrawWindowText(0, 1, 0, 1, wtf, 0);
-		natives::DrawFrontendHelperText(wtf, wtf, true);
-		natives::DisplayText(10, 10, wtf);*/
-		//renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);
+
 	}
 
 	__declspec (naked) void on_sky_render_stub()
 	{
 		__asm
 		{
-			call	pre_sky;
+			//pushad;
+			//call	pre_sky;
+			//popad;
 			mov		g_is_sky_rendering, 1;
 			call	game::func_addr__on_sky_render_stub;
 			mov		g_is_sky_rendering, 0;
@@ -2101,53 +2025,6 @@ namespace gta4
 		}
 	}
 
-	__declspec (naked) void on_hud_render_stub()
-	{
-		static uint32_t retn_addr = 0x43795E;
-		static uint32_t func_addr = 0x4237A0;
-		__asm
-		{
-			mov		g_is_hud_rendering, 1;
-			call	func_addr;
-			mov		g_is_hud_rendering, 0;
-			jmp		retn_addr;
-		}
-	}
-
-	//void aaaa()
-	//{
-	//	//renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);
-	//	shared::utils::hook::call<void(__cdecl)()>(0x923950)(); 
-
-	//	struct pos_s
-	//	{
-	//		float x = 0.0f;
-	//		float y = 0.0f;
-	//	};
-
-	//	pos_s p = {};
-
-	//	shared::utils::hook::call<void(__cdecl)(pos_s, char*, int, int)>(0x921DA0)(p, (char*)".", 0xFFFFFFFF, 0xFFFFFFFF); 
-
-	//	int aaa = 0;
-
-	//}
-
-	//__declspec (naked) void on_add_frontendhelpertext_stub()
-	//{
-	//	static uint32_t retn_addr = 0x8B6C86;
-	//	__asm
-	//	{
-	//		mov     ebp, esp;
-	//		and		esp, 0xFFFFFFF8;
-	//		pushad;
-	//		call	aaaa;
-	//		popad;
-	//		jmp		retn_addr;
-	//	}
-	//}
-
-
 	void on_add_frontendhelpertext_hk()
 	{
 		// get drawlist and add CRenderFontBufferDC
@@ -2199,9 +2076,6 @@ namespace gta4
 		// detect sky rendering
 		shared::utils::hook(game::retn_addr__on_sky_render_stub - 5u, on_sky_render_stub, HOOK_JUMP).install()->quick(); // C107C9
 
-		// 437959
-
-
 		// detect water rendering
 		shared::utils::hook(game::retn_addr__pre_draw_water - 5u, pre_water_render_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_draw_water, post_water_render_stub, HOOK_JUMP).install()->quick();
@@ -2216,9 +2090,6 @@ namespace gta4
 
 		// do not render postfx RT infront of the camera
 		shared::utils::hook::nop(game::nop_addr__disable_postfx_drawing, 5);
-
-		//shared::utils::hook(0x59D7E7, asd_stub, HOOK_CALL).install()->quick();
-		//shared::utils::hook(0x8B6C81, on_add_frontendhelpertext_stub, HOOK_JUMP).install()->quick(); // 0x8B6C81
 
 		// hack to properly detect UI - we need to "inject" frontend helper text to trigger remix injection asap
 		// doing this fixes the sniper scope + shadow background of radar

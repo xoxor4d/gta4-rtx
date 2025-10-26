@@ -3,7 +3,10 @@
 
 namespace gta4
 {
-	extern bool g_test;
+	extern int g_is_instance_rendering;
+	extern int g_is_sky_rendering;
+	extern int g_is_water_rendering;
+	extern int g_is_rendering_mirror;
 
 	namespace tex_addons
 	{
@@ -411,11 +414,13 @@ namespace gta4
 			bool is_grass_foliage = false;
 			bool is_fx = false;
 
+			bool allow_vertex_colors = false;
+
 			bool dual_render = false; // render prim a second time with texture within stage 0
 			bool dual_render_with_specified_texture = false; // render prim a second time with tex defined in 'dual_render_texture'
 			bool dual_render_mode_blend_add = false; // renders second prim using blend mode ADD
 			bool dual_render_mode_blend_diffuse = false; // renders second prim using blend mode ADD
-			bool dual_render_mode_emissive = false; // renders second prim emissive
+			bool dual_render_mode_emissive_offset = false; // renders second prim emissive
 			bool dual_render_reset_remix_modifiers = false; // reset all active remix modifiers
 			IDirect3DBaseTexture9* dual_render_texture = nullptr; // texture to be used when 'dual_render_with_specified_texture' is set
 
@@ -433,11 +438,13 @@ namespace gta4
 				is_grass_foliage = false;
 				is_fx = false;
 
+				allow_vertex_colors = false;
+
 				dual_render = false;
 				dual_render_with_specified_texture = false;
 				dual_render_mode_blend_add = false;
 				dual_render_mode_blend_diffuse = false;
-				dual_render_mode_emissive = false;
+				dual_render_mode_emissive_offset = false;
 				dual_render_reset_remix_modifiers = false;
 				dual_render_texture = nullptr;
 
@@ -457,6 +464,8 @@ namespace gta4
 			IDirect3DDevice9* device_ptr = nullptr;
 			bool is_dirty = false; // true when context was not reset in drawprimitive
 
+			float shaderconst_emissive_intensity = 0.0f;
+
 			DWORD rs_alphablendenable = 0u;
 			DWORD rs_blendop = 0u;
 			DWORD rs_srcblend = 0u;
@@ -472,6 +481,8 @@ namespace gta4
 				preset_index = 0;
 				device_ptr = nullptr;
 				is_dirty = false;
+
+				shaderconst_emissive_intensity = 0.0f;
 
 				rs_alphablendenable = 0u;
 				rs_blendop = 0u;

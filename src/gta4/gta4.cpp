@@ -9,6 +9,7 @@
 #include "modules/remix_markers.hpp"
 #include "modules/remix_vars.hpp"
 #include "modules/renderer.hpp"
+#include "modules/renderer_ff.hpp"
 #include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
 
@@ -509,6 +510,7 @@ namespace gta4
 
 		shared::common::loader::module_loader::register_module(std::make_unique<imgui>());
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer>());
+		shared::common::loader::module_loader::register_module(std::make_unique<renderer_ff>());
 		shared::common::loader::module_loader::register_module(std::make_unique<dinput>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<map_settings>());
