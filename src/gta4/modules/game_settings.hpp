@@ -428,14 +428,14 @@ namespace gta4
 			{
 				"translate_game_light_radius_scalar",
 				("Scale radius of translated game lights"),
-				3.0f
+				1.6f
 			};
 
 			variable translate_game_light_intensity_scalar =
 			{
 				"translate_game_light_intensity_scalar",
 				("Scale intensity of translated game lights"),
-				45.0f
+				80.0f
 			};
 
 			variable translate_game_light_softness_offset =
@@ -712,7 +712,7 @@ namespace gta4
 			variable timecycle_colortemp_influence = {
 				"timecycle_colortemp_influence",
 				("Controls how much the colortemp timecycle variable influences 'rtx.tonemap.colorBalance'"),
-				0.5f
+				0.3f
 			};
 
 			// -----
