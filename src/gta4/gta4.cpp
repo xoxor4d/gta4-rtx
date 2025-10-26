@@ -21,7 +21,7 @@ namespace gta4
 	void on_begin_scene_cb()
 	{
 		static auto im = imgui::get();
-		renderer::get()->m_triggered_remix_injection = false;
+		renderer::get()->m_triggered_remix_injection = false; 
 
 		if (!tex_addons::initialized) {
 			tex_addons::init_texture_addons();

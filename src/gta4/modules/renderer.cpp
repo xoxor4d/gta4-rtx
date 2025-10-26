@@ -3,12 +3,14 @@
 
 #include "game_settings.hpp"
 #include "imgui.hpp"
+#include "natives.hpp"
 #include "remix_markers.hpp"
 
 namespace gta4
 {
 	int g_is_instance_rendering = 0;
 	int g_is_sky_rendering = 0;
+	int g_is_hud_rendering = 0;
 	int g_is_water_rendering = 0;
 	int g_is_rendering_mirror = 0;
 
@@ -927,6 +929,14 @@ namespace gta4
 					dev->SetTexture(0, tex_addons::sky);
 				}
 			}
+			//else if (!m_triggered_remix_injection)
+			//{
+			//	char wtf[] = "asd";
+			//	natives::DrawWindow(0, 1, 0, 1, wtf, 1.0f);
+			//	natives::DrawWindowText(0, 1, 0, 1, wtf, 0);
+			//	//m_trigger
+			// ed_remix_injection = true; 
+			//}
 
 			// rendering water via FF is fine and safes a ton of performance
 			if (g_is_water_rendering)
@@ -978,9 +988,38 @@ namespace gta4
 				dev->SetTransform(D3DTS_PROJECTION, &matrix);*/
 			}
 
+			/*if (viewport->wp->proj.m[3][3] == 1.0f)
+			{
+				auto asd = 1;
+			}*/
+
 			if (viewport->wp->proj.m[3][3] == 1.0f && !g_is_rendering_phone) {
+				/*if (!m_triggered_remix_injection)
+				{
+					int x = 1; 
+				}
+				else
+				{
+					int y = 0;
+				}*/
 				manually_trigger_remix_injection(dev);
 			}
+
+			//if (/*ctx.info.shader_name.ends_with("im.fxc")*/shared::utils::float_equal(viewport->wp->proj.m[3][3], 1.0f) && !g_is_sky_rendering)
+			//{
+			//	//renderer::set_remix_texture_categories(dev, InstanceCategories::WorldMatte);
+			//	//m_triggered_remix_injection = false;
+			//	//manually_trigger_remix_injection(dev);
+			//}
+
+			//if (/*ctx.info.shader_name.ends_with("im.fxc") &&*/ g_is_hud_rendering /*&& shared::utils::float_equal(viewport->wp->proj.m[3][3], 1.0f)*/
+			//	/*&& !g_is_sky_rendering*/ /*&& !g_is_rendering_phone && !g_is_water_rendering && !g_is_rendering_mirror*/ && !shared::globals::imgui_is_rendering)
+			//{
+			//	int asd = 0;
+			//	//m_triggered_remix_injection = false;
+			//	//manually_trigger_remix_injection(dev);
+			//	//renderer::set_remix_texture_categories(dev, InstanceCategories::WorldMatte);
+			//}
 		}
 
 		if (g_is_water_rendering && im->m_dbg_do_not_render_water) {
@@ -1962,12 +2001,28 @@ namespace gta4
 	{
 		//renderer::get()->m_modified_draw_prim = false;
 		remix_markers::get()->draw_nocull_markers();
+
+		/*char wtf[] = "asd";
+		natives::DrawWindow(0, 1, 0, 1, wtf, 1.0f);
+		natives::DrawWindowText(0, 1, 0, 1, wtf, 0);
+		renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);*/
+	}
+
+	void pre_sky()
+	{
+		/*char wtf[] = "asd";
+		natives::DrawWindow(0, 1, 0, 1, wtf, 1.0f);
+		natives::DrawWindowText(0, 1, 0, 1, wtf, 0);
+		natives::DrawFrontendHelperText(wtf, wtf, true);
+		natives::DisplayText(10, 10, wtf);*/
+		//renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);
 	}
 
 	__declspec (naked) void on_sky_render_stub()
 	{
 		__asm
 		{
+			call	pre_sky;
 			mov		g_is_sky_rendering, 1;
 			call	game::func_addr__on_sky_render_stub;
 			mov		g_is_sky_rendering, 0;
@@ -2046,6 +2101,84 @@ namespace gta4
 		}
 	}
 
+	__declspec (naked) void on_hud_render_stub()
+	{
+		static uint32_t retn_addr = 0x43795E;
+		static uint32_t func_addr = 0x4237A0;
+		__asm
+		{
+			mov		g_is_hud_rendering, 1;
+			call	func_addr;
+			mov		g_is_hud_rendering, 0;
+			jmp		retn_addr;
+		}
+	}
+
+	//void aaaa()
+	//{
+	//	//renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);
+	//	shared::utils::hook::call<void(__cdecl)()>(0x923950)(); 
+
+	//	struct pos_s
+	//	{
+	//		float x = 0.0f;
+	//		float y = 0.0f;
+	//	};
+
+	//	pos_s p = {};
+
+	//	shared::utils::hook::call<void(__cdecl)(pos_s, char*, int, int)>(0x921DA0)(p, (char*)".", 0xFFFFFFFF, 0xFFFFFFFF); 
+
+	//	int aaa = 0;
+
+	//}
+
+	//__declspec (naked) void on_add_frontendhelpertext_stub()
+	//{
+	//	static uint32_t retn_addr = 0x8B6C86;
+	//	__asm
+	//	{
+	//		mov     ebp, esp;
+	//		and		esp, 0xFFFFFFF8;
+	//		pushad;
+	//		call	aaaa;
+	//		popad;
+	//		jmp		retn_addr;
+	//	}
+	//}
+
+
+	void on_add_frontendhelpertext_hk()
+	{
+		// get drawlist and add CRenderFontBufferDC
+		shared::utils::hook::call<void(__cdecl)()>(game::func_addr__add_renderfontbufferdc)();
+
+		struct pos_s
+		{
+			float x = 0.0f;
+			float y = 0.0f;
+		};
+		const pos_s p = {};
+
+		// add actual text/img drawcmd
+		shared::utils::hook::call<void(__cdecl)(pos_s, char*, int, int)>(game::func_addr__frontendhelpertext_add_drawcmd)(p, (char*)".", 0xFFFFFFFF, 0xFFFFFFFF);
+	}
+
+	__declspec (naked) void on_add_frontendhelpertext_stub()
+	{
+		__asm
+		{
+			mov     ebp, esp;
+			and		esp, 0xFFFFFFF8;
+
+			pushad;
+			call	on_add_frontendhelpertext_hk;
+			popad;
+
+			jmp		game::retn_addr__on_add_frontendhelpertext_stub;
+		}
+	}
+
 	renderer::renderer()
 	{
 		p_this = this;
@@ -2066,6 +2199,9 @@ namespace gta4
 		// detect sky rendering
 		shared::utils::hook(game::retn_addr__on_sky_render_stub - 5u, on_sky_render_stub, HOOK_JUMP).install()->quick(); // C107C9
 
+		// 437959
+
+
 		// detect water rendering
 		shared::utils::hook(game::retn_addr__pre_draw_water - 5u, pre_water_render_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_draw_water, post_water_render_stub, HOOK_JUMP).install()->quick();
@@ -2081,6 +2217,12 @@ namespace gta4
 		// do not render postfx RT infront of the camera
 		shared::utils::hook::nop(game::nop_addr__disable_postfx_drawing, 5);
 
+		//shared::utils::hook(0x59D7E7, asd_stub, HOOK_CALL).install()->quick();
+		//shared::utils::hook(0x8B6C81, on_add_frontendhelpertext_stub, HOOK_JUMP).install()->quick(); // 0x8B6C81
+
+		// hack to properly detect UI - we need to "inject" frontend helper text to trigger remix injection asap
+		// doing this fixes the sniper scope + shadow background of radar
+		shared::utils::hook(game::retn_addr__on_add_frontendhelpertext_stub - 5u, on_add_frontendhelpertext_stub, HOOK_JUMP).install()->quick(); // 0x8B6C81
 
 		// -----
 		m_initialized = true;
