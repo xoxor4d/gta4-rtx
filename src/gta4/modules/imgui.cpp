@@ -393,6 +393,10 @@ namespace gta4
 
 		ImGui::Checkbox("Visualize Decal Renderstates", &im->m_dbg_visualize_decal_renderstates); TT("Visualize renderstates of nearby decal surfaces.");
 
+		ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
+
+		ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
+
 #ifdef LOG_SHADERPRESETS
 		if (ImGui::Button("Copy Shader PresetLog to Clipboard"))
 		{

@@ -373,7 +373,12 @@ namespace gta4
 	BOOL __fastcall static_world_culling_check_hk(void* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
 	{
 		// this = AVCBuilding : AVCEntity : AUCVirtualBase
+		static auto im = imgui::get();
 		static auto gs = game_settings::get();
+
+		if (im->m_dbg_never_cull_statics) {
+			return TRUE;
+		}
 
 		const auto& nc_dist_near = gs->nocull_dist_near_static.get_as<float>();
 		const auto& nc_dist_med = gs->nocull_dist_medium_static.get_as<float>();

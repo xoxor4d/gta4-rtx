@@ -20,8 +20,8 @@ namespace gta4
 			dev->SetRenderState(D3DRS_ZENABLE, FALSE);
 
 
-			ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
+			ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE); 
+			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
 
 			ctx.save_rs(dev, D3DRS_BLENDOP);
 			dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
@@ -39,22 +39,22 @@ namespace gta4
 			dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
 			ctx.save_tss(dev, D3DTSS_COLORARG2);
-			//dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-			dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+			dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+			//dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 
-			/*ctx.save_tss(dev, D3DTSS_ALPHAOP);
+			ctx.save_tss(dev, D3DTSS_ALPHAOP);
 			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
 
 			ctx.save_tss(dev, D3DTSS_ALPHAARG1);
 			dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
 
 			ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);*/
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 
-			float intensity = ctx.info.shaderconst_emissive_intensity;
+			//float intensity = ctx.info.shaderconst_emissive_intensity;
 
-			ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(intensity, intensity, intensity, intensity));
+			//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+			//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(intensity, intensity, intensity, intensity));
 
 			if (im->m_dbg_tag_static_emissive_as_index != -1) {
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
@@ -63,8 +63,8 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, InstanceCategories::DecalStatic /*| InstanceCategories::Terrain*/); //1 << im->m_dbg_tag_emissivenight_as_index);
 			}
 
-			//renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
-			//ctx.modifiers.allow_vertex_colors = true;
+			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
+			ctx.modifiers.allow_vertex_colors = true;
 		}
 	}
 
@@ -81,7 +81,6 @@ namespace gta4
 			ctx.save_rs(dev, D3DRS_ZENABLE);
 			dev->SetRenderState(D3DRS_ZENABLE, FALSE);
 
-
 			ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
 			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
 
@@ -89,10 +88,10 @@ namespace gta4
 			dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 
 			ctx.save_rs(dev, D3DRS_SRCBLEND);
-			dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+			dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 
 			ctx.save_rs(dev, D3DRS_DESTBLEND);
-			dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+			dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 
 			ctx.save_tss(dev, D3DTSS_COLOROP);
 			dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
@@ -101,8 +100,8 @@ namespace gta4
 			dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
 			ctx.save_tss(dev, D3DTSS_COLORARG2);
-			//dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-			dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+			dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+			//dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 
 			ctx.save_tss(dev, D3DTSS_ALPHAOP);
 			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
@@ -112,13 +111,13 @@ namespace gta4
 
 			ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 			//dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
-			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 
 			
-			float intensity = ctx.info.shaderconst_emissive_intensity;
+			//float intensity = ctx.info.shaderconst_emissive_intensity;
 
-			ctx.save_rs(dev, D3DRS_TEXTUREFACTOR); 
-			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(intensity, intensity, intensity, intensity));
+			//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR); 
+			//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(intensity, intensity, intensity, intensity));
 
 			if (im->m_dbg_tag_static_emissive_as_index != -1) {
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
@@ -127,8 +126,8 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, InstanceCategories::DecalStatic /*| InstanceCategories::Terrain*/); //1 << im->m_dbg_tag_emissivenight_as_index);
 			}
 
-			//renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
-			//ctx.modifiers.allow_vertex_colors = true;
+			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha); 
+			ctx.modifiers.allow_vertex_colors = true;
 		}
 	}
 

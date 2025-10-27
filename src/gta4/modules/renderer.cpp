@@ -2027,6 +2027,12 @@ namespace gta4
 
 	void on_add_frontendhelpertext_hk()
 	{
+		static auto im = imgui::get();
+
+		if (im->m_dbg_disable_hud_fixup) {
+			return;
+		}
+
 		// get drawlist and add CRenderFontBufferDC
 		shared::utils::hook::call<void(__cdecl)()>(game::func_addr__add_renderfontbufferdc)();
 
