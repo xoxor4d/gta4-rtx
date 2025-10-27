@@ -146,7 +146,6 @@ namespace gta4
 					}																											\
 				}
 
-				ASSIGN(fix_windowed_hud);
 				ASSIGN(fix_windowed_hud_resolution);
 				ASSIGN(load_colormaps_only);
 				ASSIGN(fixed_function_trees);

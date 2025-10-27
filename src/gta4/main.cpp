@@ -80,7 +80,7 @@ namespace gta4
 RECT gRect = {};
 BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 {
-	if (gta4::game_settings::get()->fix_windowed_hud.get_as<bool>())
+	if (*gta4::game::ms_bWindowed)
 	{
 		const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
 		gRect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
@@ -96,11 +96,10 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 HWND gWnd;
 HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
-	if (gta4::game_settings::get()->fix_windowed_hud.get_as<bool>())
+	if (*gta4::game::ms_bWindowed)
 	{
-		gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, 1920, 1080, hWndParent, hMenu, hInstance, lpParam);
-
 		const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
+		gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y), hWndParent, hMenu, hInstance, lpParam);
 
 		*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res_setting->x); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
 		*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res_setting->y); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4

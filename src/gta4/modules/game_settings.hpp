@@ -310,13 +310,6 @@ namespace gta4
 	
 		struct var_definitions
 		{
-			variable fix_windowed_hud =
-			{
-				"fix_windowed_hud",
-				("Fix in-game hud scaling when game window resolution does not match monitor resulition. Set desired windowed resolution via 'fix_windowed_hud_resolution'"),
-				true
-			};
-
 			variable fix_windowed_hud_resolution =
 			{
 				"fix_windowed_hud_resolution",
