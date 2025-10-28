@@ -58,6 +58,7 @@ namespace shared::globals
 	extern void setup_homepath();
 
 	extern IDirect3DDevice9* d3d_device;
+	extern IDirect3D9* d3d9_interface;
 
 	extern bool imgui_is_rendering;
 	extern bool imgui_menu_open;

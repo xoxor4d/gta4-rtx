@@ -453,4 +453,35 @@ namespace gta4::game
 		int unk5;
 		int unk6;
 	};
+
+	struct settings_cfg_s
+	{
+		uint32_t resolution_index;
+		uint32_t unk1;
+		uint32_t aspect_ratio_index;
+		uint32_t texture_quality;
+		uint32_t texture_filter;
+		uint32_t view_distance; // 0-100
+		uint32_t detail_distance; // 0-100
+		uint32_t vehicle_density; // 0-100
+		uint32_t unk2;
+		uint32_t vsync;
+		uint32_t nightshadow_quality;
+		uint32_t shadow_quality;
+		uint32_t reflection_quality;
+		uint32_t water_quality;
+	};
+
+	struct resolution_mode_s
+	{
+		uint32_t width;
+		uint32_t height;
+		uint32_t hz;
+		uint32_t format;
+	};
+
+	struct resolution_modes_ptr
+	{
+		resolution_mode_s* modes;
+	};
 }

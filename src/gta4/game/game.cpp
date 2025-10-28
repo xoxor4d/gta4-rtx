@@ -64,11 +64,20 @@ namespace gta4::game
 	bool* ms_bFocusLost = nullptr;
 	bool* ms_bWindowed = nullptr;
 
+	settings_cfg_s* loaded_settings_cfg = nullptr;
+	resolution_modes_ptr* avail_game_resolutions = nullptr;
+	uint32_t* d3d9_adapter_index = nullptr;
+
+	bool* m_bMobilePhoneActive = nullptr;
+
 	// --------------
 	// game functions
 
 	FindPlayerCentreOfWorld_t FindPlayerCentreOfWorld = nullptr;
 	getNativeAddress_t getNativeAddress = nullptr;
+	PopulateAvailResolutionsArray_t PopulateAvailResolutionsArray = nullptr;
+
+
 
 	// --------------
 	// game asm offsets
@@ -313,6 +322,24 @@ namespace gta4::game
 			ms_bWindowed = (bool*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
+
+		if (const auto offset = shared::utils::mem::find_pattern("A3 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 85 C0 74 ? 0F 57 C0", 1, "loaded_settings_cfg ", use_pattern, 0x59E41B); offset) {
+			loaded_settings_cfg = (settings_cfg_s*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("8B 0D ? ? ? ? ? ? 83 C1", 2, "avail_game_resolutions ", use_pattern, 0x4238B6); offset) {
+			avail_game_resolutions = (resolution_modes_ptr*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("8B 2D ? ? ? ? E8 ? ? ? ? 83 E8", 2, "d3d9_adapter_index ", use_pattern, 0x41F511); offset) {
+			d3d9_adapter_index = (uint32_t*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+
+		if (const auto offset = shared::utils::mem::find_pattern("C6 05 ? ? ? ? ? C6 05 ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? ? ? 6A", 2, "m_bMobilePhoneActive", use_pattern, 0x5BF958); offset) {
+			m_bMobilePhoneActive = (bool*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 		// end GAME_VARIABLES
 #pragma endregion
 
@@ -326,6 +353,10 @@ namespace gta4::game
 
 		if (const auto offset = shared::utils::mem::find_pattern("E8 ? ? ? ? 8B D8 85 DB 75 ? 50", 0, "getNativeAddress", use_pattern, 0x86E508); offset) {
 			getNativeAddress = (getNativeAddress_t)shared::utils::mem::resolve_relative_call_address(offset); found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("83 EC ? 53 55 56 FF 35", 0, "PopulateAvailResolutionsArray", use_pattern, 0x8C4530); offset) {
+			PopulateAvailResolutionsArray = (PopulateAvailResolutionsArray_t)offset; found_pattern_count++;
 		} total_pattern_count++;
 
 		// end GAME_FUNCTIONS
@@ -514,7 +545,7 @@ namespace gta4::game
 		if (found_pattern_count == total_pattern_count) 
 		{
 			shared::common::set_console_color_green(true);
-			std::cout << "[INIT] Found all '" << std::to_string(total_pattern_count) << "' Patterns.\n";
+			std::cout << "[INIT] Found all '" << std::to_string(total_pattern_count) << "' Patterns.\n\n";
 			shared::common::set_console_color_default();
 		}
 		else
@@ -522,7 +553,7 @@ namespace gta4::game
 			shared::common::set_console_color_red(true);
 			std::cout << "[!][INIT] Only found '" << std::to_string(found_pattern_count) << "' out of '" << std::to_string(total_pattern_count) << "' Patterns.\n";
 			shared::common::set_console_color_blue(true);
-			std::cout << ">> Please create an issue on GitHub and attach this console log and information about your game (version, platform etc.)\n";
+			std::cout << ">> Please create an issue on GitHub and attach this console log and information about your game (version, platform etc.)\n\n";
 			shared::common::set_console_color_default();
 		}
 	}

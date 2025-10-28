@@ -75,6 +75,12 @@ namespace gta4::game
 	extern bool* ms_bFocusLost;
 	extern bool* ms_bWindowed;
 
+	extern settings_cfg_s* loaded_settings_cfg;
+	extern resolution_modes_ptr* avail_game_resolutions;
+	extern uint32_t* d3d9_adapter_index;
+
+	extern bool* m_bMobilePhoneActive;
+
 	// --------------
 	// game functions
 
@@ -83,6 +89,9 @@ namespace gta4::game
 
 	typedef	void* (__stdcall* getNativeAddress_t)(uint32_t);
 		extern getNativeAddress_t getNativeAddress;
+
+	typedef	void* (__cdecl* PopulateAvailResolutionsArray_t)(uint32_t);
+		extern PopulateAvailResolutionsArray_t PopulateAvailResolutionsArray;
 
 	// --------------
 	// game asm offsets

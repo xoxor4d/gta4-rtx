@@ -918,7 +918,8 @@ namespace gta4
 		}*/
 
 		std::cout << "[D3D9] Game is invoking 'Direct3DCreate9'. Creating proxy interface.\n";
-		return (new d3d9ex::_d3d9(Direct3DCreate9(sdk)));
+		shared::globals::d3d9_interface = new d3d9ex::_d3d9(Direct3DCreate9(sdk));
+		return shared::globals::d3d9_interface;
 	}
 
 	typedef IDirect3D9* (WINAPI* Direct3DCreate9_t)(UINT SDKVersion);
@@ -927,7 +928,8 @@ namespace gta4
 	IDirect3D9* WINAPI d3d9ex::HookedDirect3DCreate9(UINT SDKVersion)
 	{
 		std::cout << "[D3D9] Game is invoking 'Direct3DCreate9'. Creating proxy interface.\n";
-		return (new d3d9ex::_d3d9(Direct3DCreate9_original(SDKVersion)));
+		shared::globals::d3d9_interface = new d3d9ex::_d3d9(Direct3DCreate9_original(SDKVersion));
+		return shared::globals::d3d9_interface;
 	}
 
 	d3d9ex::d3d9ex()
