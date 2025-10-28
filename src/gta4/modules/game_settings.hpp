@@ -313,7 +313,8 @@ namespace gta4
 			variable fix_windowed_hud_resolution =
 			{
 				"fix_windowed_hud_resolution",
-				("Resolution used by the 'fix_windowed_hud' setting"),
+				("Resolution used by the 'fix_windowed_hud' setting\n"
+				 "Deprecated: the game now automatically detects the game resolution to fix any hud scaling issues."),
 				1920, 1080
 			};
 
