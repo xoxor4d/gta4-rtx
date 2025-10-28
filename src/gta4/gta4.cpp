@@ -41,6 +41,14 @@ namespace gta4
 			game::is_in_game = true;
 		}
 
+		if (game::CMenuManager__m_LoadscreenActive && *game::CMenuManager__m_LoadscreenActive)
+		{
+			gta4::game::loaded_settings_cfg->nightshadow_quality = 0u;
+			gta4::game::loaded_settings_cfg->reflection_quality = 0u;
+			gta4::game::loaded_settings_cfg->shadow_quality = 0u;
+			gta4::game::loaded_settings_cfg->water_quality = 0u;
+		}
+
 		// do not pause if enabled
 		if (im->m_do_not_pause_on_lost_focus) {
 			*game::ms_bNoBlockOnLostFocus = false;

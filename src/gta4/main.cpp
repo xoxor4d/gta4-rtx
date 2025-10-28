@@ -111,6 +111,13 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 
 HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
+	// TODO: find a proper place to do this
+
+	gta4::game::loaded_settings_cfg->nightshadow_quality = 0u;
+	gta4::game::loaded_settings_cfg->reflection_quality = 0u;
+	gta4::game::loaded_settings_cfg->shadow_quality = 0u;
+	gta4::game::loaded_settings_cfg->water_quality = 0u;
+
 	if (!g_populated_res_table)
 	{
 		gta4::game::PopulateAvailResolutionsArray(*gta4::game::d3d9_adapter_index); // 0x17ED930
