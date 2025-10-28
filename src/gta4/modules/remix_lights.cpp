@@ -83,7 +83,7 @@ namespace gta4
 	 * Adds and immediately spawns a single light
 	 * @param def	The game light definition
 	 */
-	void remix_lights::add_light(const game::CLightSource& def, const uint64_t& hash, const bool add_but_do_not_draw)
+	void remix_lights::add_light(const game::CLightSource& def, const uint64_t& hash, bool is_filler, const bool add_but_do_not_draw)
 	{
 		if (def.mType == game::LT_POINT || def.mType == game::LT_SPOT)
 		{
@@ -91,6 +91,7 @@ namespace gta4
 			l.m_def = def;
 			l.m_hash = hash;
 			l.m_light_num = m_active_light_spawn_tracker++;
+			l.m_is_filler = is_filler;
 			/*m_active_lights.emplace_back(
 				remix_light_def
 				{
@@ -246,6 +247,9 @@ namespace gta4
 		const auto light_list = game::get_renderLights();
 		const auto light_count = game::get_renderLightsCount();
 
+		const auto& ignored_lights = map_settings::get()->get_map_settings().ignored_lights;
+		const auto& allowed_lights = map_settings::get()->get_map_settings().allow_lights;
+
 		if (game_settings::get()->translate_game_lights.get_as<bool>() && light_count && light_list)
 		{
 			for (auto i = 0u; i < light_count; i++)
@@ -253,12 +257,14 @@ namespace gta4
 				auto& def = light_list[i];
 				const auto hash = calculate_light_hash(def);
 
+				bool is_filler_light = def.mFlags & 0x10;
+
 				bool add_zero_intensity_light = false;
+				bool is_allowed_filler_light = false;
 
 				// debug setting to disable ignore logic (performance impact test)
 				if (!im->m_dbg_disable_ignore_light_hash_logic)
 				{
-					const auto& ignored_lights = map_settings::get()->get_map_settings().ignored_lights;
 					if (ignored_lights.contains(hash))
 					{
 						// we need this light in the active list to visualize it
@@ -292,8 +298,21 @@ namespace gta4
 				// ignore filler light game setting
 				else if (gs->translate_game_lights_ignore_filler_lights.get_as<bool>())
 				{
-					if (def.mFlags & 0x10) {
-						continue;
+					if (is_filler_light)
+					{
+						// check if this filler light is whitelisted
+						if (allowed_lights.contains(hash)) {
+							is_allowed_filler_light = true;
+						}
+
+						// keep vis. working because the user needs to see the hashes to be able to whitelist them
+						else if (im->m_dbg_visualize_api_light_hashes) {
+							add_zero_intensity_light = true;  
+						}
+
+						if (!(is_allowed_filler_light || add_zero_intensity_light)) {
+							continue;
+						}
 					}
 				}
 
@@ -301,6 +320,7 @@ namespace gta4
 				if (auto it = m_active_lights.find(hash); it != m_active_lights.end()) 
 				{
 					bool should_update = im->m_dbg_visualize_api_light_hashes; // always update if in vis mode
+					it->second.m_is_filler = is_filler_light;
 
 					// check if most important properties changed - position unchanged as matched a hash
 					if (compare_dynamic_light_without_position(def, it->second.m_def)) {
@@ -322,6 +342,7 @@ namespace gta4
 							it->second.m_is_ignored = false;
 						}
 
+						it->second.m_is_allowed_filler = is_allowed_filler_light;
 						spawn_or_update_remix_sphere_light(it->second, true);
 					}
 
@@ -349,7 +370,7 @@ namespace gta4
 
 				// this is a new light
 				if (!touched_light) {
-					add_light(def, hash, add_zero_intensity_light);
+					add_light(def, hash, add_zero_intensity_light, is_filler_light);
 				}
 			}
 		}

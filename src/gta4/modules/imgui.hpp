@@ -93,7 +93,9 @@ namespace gta4
 		{
 			uint64_t hash = 0u;
 			Vector pos;
-			bool ignored = false;
+			bool ignored = false; // ignored via map_settings
+			bool allowed_filler = false; // allowed via map_settings (only used with ignore filler lights option)
+			bool is_filler = false;
 			std::uint32_t m_updateframe = 0u; // increases when light hash was found in the current frame
 			std::uint32_t m_frames_since_addition = 0u; // increases on each frame
 		};

@@ -1811,6 +1811,116 @@ namespace gta4
 
 	}
 
+	void cont_mapsettings_allow_lights()
+	{
+		static const auto& im = imgui::get();
+
+		ImGui::PushID("AllowLights");
+
+		auto& allowed_lights = map_settings::get_map_settings().allow_lights;
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (ImGui::Button("Copy Ignored to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
+		{
+			ImGui::LogToClipboard();
+			ImGui::LogText("%s", shared::common::toml_ext::build_allow_lights_array(allowed_lights).c_str());
+			ImGui::LogFinish();
+		} ImGui::PopFont();
+
+		ImGui::SameLine();
+		reload_mapsettings_button_with_popup("AllowLights");
+
+		ImGui::Spacing(0, 8.0f);
+		ImGui::Checkbox("Visualize Api Light Hashes", &im->m_dbg_visualize_api_light_hashes); TT("Visualize all spawned api light hashes closeby");
+
+		ImGui::SameLine(0, 20.0f);
+		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
+		{
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("  Draw Distance  ").x);
+			ImGui::DragFloat("  Draw Distance  ", &im->m_dbg_visualize_api_light_hashes_distance, 0.005f, 0.0f, 30.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing(0, 8.0f);
+		if (!im->m_dbg_visualize_api_light_hashes) {
+			ImGui::SeparatorText("Nearby filler lights (Double-Click to Ignore) ~ Enable 'Visualize Api Light Hashes' to enable this feature.");
+		}
+		else {
+			ImGui::SeparatorText("Nearby filler lights (Double-Click to Ignore)");
+		}
+
+		ImGui::Spacing(0.0f, 8.0f);
+
+		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
+		{
+			static ImGuiTextFilter filter;
+			if (ImGui::BeginListBox("##lights", ImVec2(ImGui::GetContentRegionAvail().x, 200)))
+			{
+				for (size_t i = 0; i < im->visualized_api_lights.size(); ++i)
+				{
+					const auto& light = im->visualized_api_lights[i];
+					//const bool is_ignored = light.ignored;
+					const bool is_allowed = light.allowed_filler;
+
+					// only add lights that are ignored (filler or manually) and alive for more than 5 frames
+					if (/*is_ignored && */ light.is_filler && light.m_frames_since_addition > 5u)
+					{
+						char hash_str[17];
+						std::snprintf(hash_str, sizeof(hash_str), "%llx", static_cast<unsigned long long>(light.hash));
+						if (!filter.PassFilter(hash_str)) {
+							continue;
+						}
+
+						if (is_allowed)
+						{
+							ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.8f, 0.1f, 1.0f));
+						}
+
+						if (ImGui::Selectable(shared::utils::va("%llx", light.hash), false, ImGuiSelectableFlags_AllowDoubleClick))
+						{
+							if (ImGui::IsMouseDoubleClicked(0))
+							{
+								if (allowed_lights.contains(light.hash))
+								{
+									auto it = std::find(allowed_lights.begin(), allowed_lights.end(), light.hash);
+									if (it != allowed_lights.end()) {
+										allowed_lights.erase(it);
+									}
+								}
+								else {
+									allowed_lights.insert(light.hash);
+								}
+							}
+						}
+
+						if (is_allowed)
+						{
+							ImGui::PopStyleColor();
+							ImGui::PopFont();
+						}
+					}
+				}
+				ImGui::EndListBox();
+			}
+
+			filter.Draw("##Filter", ImGui::GetContentRegionAvail().x
+				- ImGui::GetFrameHeight()
+				//- ImGui::CalcTextSize("Filter").x 
+				- ImGui::GetStyle().FramePadding.x + 3.0f
+			/*- (ImGui::GetStyle().ItemSpacing.x)*/);
+
+			ImGui::SameLine();
+			if (ImGui::Button("X", ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
+				filter.Clear();
+			}
+
+			//ImGui::Spacing(0.0f, 8.0f);
+			ImGui::EndDisabled();
+		}
+
+		ImGui::PopID();
+	}
+
 	void imgui::tab_map_settings()
 	{
 		// general settings
@@ -1836,6 +1946,13 @@ namespace gta4
 		{
 			static float cont_ignore_lights_height = 0.0f;
 			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Ignore Game Lights", cont_ignore_lights_height, cont_mapsettings_ignore_lights,
+				true, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// allow game lights
+		{
+			static float cont_ignore_lights_height = 0.0f;
+			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Allow Game Lights", cont_ignore_lights_height, cont_mapsettings_allow_lights,
 				true, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
@@ -1877,6 +1994,7 @@ namespace gta4
 									{
 										is_light_in_vis_list = true;
 										ign.ignored = l.second.m_is_ignored; // ignored state might have changed
+										ign.allowed_filler = l.second.m_is_allowed_filler; // ^
 										ign.m_updateframe++;
 										is_light_hash_stable = ign.m_frames_since_addition > 5u;
 										break;
@@ -1887,7 +2005,15 @@ namespace gta4
 							if (!is_light_in_vis_list)
 							{
 								visualized_api_lights.emplace_back(
-									l.second.m_hash, l.second.m_def.mPosition, l.second.m_is_ignored, 0u, 0u
+									visualized_api_light_s {
+										.hash = l.second.m_hash,
+										.pos = l.second.m_def.mPosition,
+										.ignored = l.second.m_is_ignored,
+										.allowed_filler = l.second.m_is_allowed_filler,
+										.is_filler = l.second.m_is_filler,
+										.m_updateframe = 0u,
+										.m_frames_since_addition = 0u
+									}
 								);
 							}
 
@@ -1898,10 +2024,15 @@ namespace gta4
 									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
 										ImColor(1.0f, 0.0f, 0.0f, 1.0f), shared::utils::va("[LIGHT-HASH] %llx\n~ IGNORED ~", l.second.m_hash));
 								}
+								else if (l.second.m_is_allowed_filler)
+								{
+									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+										ImColor(0.1f, 0.8f, 0.1f, 1.0f), shared::utils::va("[LIGHT-HASH] %llx\n~ ALLOWED FILLER ~", l.second.m_hash));
+								}
 								else
 								{
 									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx\n[REMIX-HASH] %llx", l.second.m_hash, l.second.m_info.hash));
+										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx", l.second.m_hash));
 								}
 							}
 						}

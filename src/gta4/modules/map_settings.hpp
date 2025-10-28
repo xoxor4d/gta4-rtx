@@ -35,6 +35,7 @@ namespace gta4
 		{
 			std::vector<marker_settings_s> map_markers;
 			std::unordered_set<uint64_t> ignored_lights;
+			std::unordered_set<uint64_t> allow_lights;
 		};
 
 		static map_settings_s& get_map_settings() { return m_map_settings; }

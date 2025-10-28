@@ -17,6 +17,7 @@ namespace shared::common::toml_ext
 {
 	std::string build_map_marker_array(const std::vector<gta4::map_settings::marker_settings_s>& markers);
 	std::string build_ignore_lights_array(const std::unordered_set<uint64_t>& hashes);
+	std::string build_allow_lights_array(const std::unordered_set<uint64_t>& hashes);
 
 	// format 2 decimals
 	inline std::string format_float(float value)

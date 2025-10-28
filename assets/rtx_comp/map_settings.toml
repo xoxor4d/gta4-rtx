@@ -42,3 +42,21 @@ MARKER = [
 IGNORE_LIGHTS = [
     
 ]
+
+# ##########################################################################################################################################
+# >> Allow Game Lights
+# 
+# :: This can be used to whitelist disabled filler lights
+# :: Only useful if 'ignore filler lights' is enabled
+# 
+# :: How to retrieve hashes:
+#    > Visualize hashes in 3D Space (GUI -> Map Settings -> Ignore Game Lights -> Draw Hash Visualization)
+#    > DoubleClick hashes in list to ignore lights and export to clipboard when done -> override ALLOW_LIGHTS with clipboard data
+#
+# ~~ ALLOW_LIGHTS = [
+#     0x0, 0x1, 0x2, ...            [uint array - hex format]
+# ]      
+
+ALLOW_LIGHTS = [
+    0x8C8CB2FC
+]
