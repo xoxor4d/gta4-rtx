@@ -13,6 +13,7 @@ namespace gta4
 	int g_is_sky_rendering = 0;
 	int g_is_water_rendering = 0;
 	int g_is_rendering_mirror = 0;
+	bool g_applied_hud_hack = false; // was hud "injection" applied this frame
 
 	namespace tex_addons
 	{
@@ -2029,9 +2030,16 @@ namespace gta4
 	{
 		static auto im = imgui::get();
 
+		// reset in gta4::on_begin_scene_cb
+		if (g_applied_hud_hack || *game::m_bMobilePhoneActive) {
+			return;
+		}
+
 		if (im->m_dbg_disable_hud_fixup) {
 			return;
 		}
+
+		g_applied_hud_hack = true;
 
 		// get drawlist and add CRenderFontBufferDC
 		shared::utils::hook::call<void(__cdecl)()>(game::func_addr__add_renderfontbufferdc)();

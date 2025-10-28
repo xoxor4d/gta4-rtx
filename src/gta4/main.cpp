@@ -109,7 +109,6 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 	return SetRect(lprc, xLeft, yTop, xRight, yBottom);
 }
 
-HWND gWnd;
 HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
 	if (!g_populated_res_table)
@@ -117,6 +116,8 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 		gta4::game::PopulateAvailResolutionsArray(*gta4::game::d3d9_adapter_index); // 0x17ED930
 		g_populated_res_table = true;
 	}
+
+	HWND gWnd;
 
 	if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
 	{

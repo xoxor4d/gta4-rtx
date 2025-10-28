@@ -7,6 +7,7 @@ namespace gta4
 	extern int g_is_sky_rendering;
 	extern int g_is_water_rendering;
 	extern int g_is_rendering_mirror;
+	extern bool g_applied_hud_hack;
 
 	namespace tex_addons
 	{

@@ -23,6 +23,7 @@ namespace gta4
 	{
 		static auto im = imgui::get();
 		renderer::get()->m_triggered_remix_injection = false; 
+		g_applied_hud_hack = false;
 
 		if (!tex_addons::initialized) {
 			tex_addons::init_texture_addons();
