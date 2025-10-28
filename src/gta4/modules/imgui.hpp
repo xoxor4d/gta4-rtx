@@ -63,6 +63,7 @@ namespace gta4
 
 		bool m_dbg_visualize_api_lights = false;
 		bool m_dbg_visualize_api_light_hashes = false;
+		bool m_dbg_visualize_api_light_unstable_hashes = false; // enabling this will also show unstable hashes
 		bool m_dbg_disable_ignore_light_hash_logic = false; // disables the map_settings logic that ignores light translation based on a list of hashes
 		float m_dbg_visualize_api_light_hashes_distance = 8.0f;
 

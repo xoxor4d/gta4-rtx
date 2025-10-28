@@ -60,7 +60,7 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
 			}
 			else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
-				renderer::set_remix_texture_categories(dev, InstanceCategories::DecalStatic /*| InstanceCategories::Terrain*/); //1 << im->m_dbg_tag_emissivenight_as_index);
+				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer /*InstanceCategories::DecalStatic*/);
 			}
 
 			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
@@ -123,7 +123,7 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
 			}
 			else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
-				renderer::set_remix_texture_categories(dev, InstanceCategories::DecalStatic /*| InstanceCategories::Terrain*/); //1 << im->m_dbg_tag_emissivenight_as_index);
+				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer /*InstanceCategories::DecalStatic*/);
 			}
 
 			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha); 

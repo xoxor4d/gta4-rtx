@@ -46,7 +46,7 @@ namespace gta4
 			std::uint32_t m_updateframe = 0u;
 		};
 
-		bool spawn_or_update_remix_sphere_light(remix_light_def& light);
+		bool spawn_or_update_remix_sphere_light(remix_light_def& light, bool update = false);
 
 		void add_light(const game::CLightSource& def, const uint64_t& hash, bool add_but_do_not_draw = false);
 		void destroy_light(remix_light_def& light);

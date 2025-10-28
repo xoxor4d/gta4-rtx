@@ -373,29 +373,29 @@ namespace gta4
 
 		ImGui::Spacing(0, TREENODE_SPACING);
 		ImGui::Checkbox("Visualize Api Lights 3D", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
+		ImGui::Checkbox("Visualize Unstable Light Hashes", &im->m_dbg_visualize_api_light_unstable_hashes);
+		ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
 
 		ImGui::Spacing(0, 4);
+		ImGui::Checkbox("Visualize Decal Renderstates", &im->m_dbg_visualize_decal_renderstates); TT("Visualize renderstates of nearby decal surfaces.");
 
+		ImGui::Spacing(0, 4);
 		ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
 		ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
+		ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
+
+		ImGui::Spacing(0, 4);
+		ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
+		ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
+
+		ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement); TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
+
 		ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
 
 		ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
 		TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
 			"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
 
-		ImGui::Spacing(0, 4);
-
-		ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
-		ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
-
-		ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement); TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
-
-		ImGui::Checkbox("Visualize Decal Renderstates", &im->m_dbg_visualize_decal_renderstates); TT("Visualize renderstates of nearby decal surfaces.");
-
-		ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
-
-		ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
 
 #ifdef LOG_SHADERPRESETS
 		if (ImGui::Button("Copy Shader PresetLog to Clipboard"))
@@ -1866,17 +1866,21 @@ namespace gta4
 						{
 							shared::imgui::world_to_screen(l.second.m_def.mPosition, viewport_pos);
 
-							bool is_light_hash_stable = false;
+							bool is_light_hash_stable = im->m_dbg_visualize_api_light_unstable_hashes; // false by default
 							bool is_light_in_vis_list = false;
-							for (auto& ign : visualized_api_lights)
+
+							if (!im->m_dbg_visualize_api_light_unstable_hashes)
 							{
-								if (ign.hash == l.second.m_hash) 
+								for (auto& ign : visualized_api_lights)
 								{
-									is_light_in_vis_list = true;
-									ign.ignored = l.second.m_is_ignored; // ignored state might have changed
-									ign.m_updateframe++;
-									is_light_hash_stable = ign.m_frames_since_addition > 5u;
-									break;
+									if (ign.hash == l.second.m_hash) 
+									{
+										is_light_in_vis_list = true;
+										ign.ignored = l.second.m_is_ignored; // ignored state might have changed
+										ign.m_updateframe++;
+										is_light_hash_stable = ign.m_frames_since_addition > 5u;
+										break;
+									}
 								}
 							}
 
@@ -1897,7 +1901,7 @@ namespace gta4
 								else
 								{
 									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx", l.second.m_hash));
+										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx\n[REMIX-HASH] %llx", l.second.m_hash, l.second.m_info.hash));
 								}
 							}
 						}

@@ -13,9 +13,10 @@ namespace gta4
 	/**
 	 * Spawns or updates a remixApi spherelight
 	 * @param light			The light
-	 * @return			True if successfull
+	 * @param update		Is this light getting an update or completely new? 
+	 * @return				True if successfull
 	 */
-	bool remix_lights::spawn_or_update_remix_sphere_light(remix_light_def& light)
+	bool remix_lights::spawn_or_update_remix_sphere_light(remix_light_def& light, bool update)
 	{
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
@@ -52,7 +53,11 @@ namespace gta4
 
 		light.m_info.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO;
 		light.m_info.pNext = &light.m_ext;
-		light.m_info.hash = light.m_hash;
+
+		if (!update) {
+			light.m_info.hash = light.m_hash;
+		}
+		
 		light.m_info.radiance = (def.mIntensity * Vector(def.mColor) * gs->translate_game_light_intensity_scalar.get_as<float>()).ToRemixFloat3D();
 
 		// car headlight = 75
@@ -296,10 +301,13 @@ namespace gta4
 				if (auto it = m_active_lights.find(hash); it != m_active_lights.end()) 
 				{
 					bool should_update = im->m_dbg_visualize_api_light_hashes; // always update if in vis mode
+
+					// check if most important properties changed - position unchanged as matched a hash
 					if (compare_dynamic_light_without_position(def, it->second.m_def)) {
-						it->second.m_updateframe = m_updateframe; // no need to touch this light
+						it->second.m_updateframe = m_updateframe; // light is up to date
 					}
-					else {
+					else 
+					{
 						it->second.m_def = def;
 						should_update = true; // radius/intensity or something else has changed, update
 					}
@@ -314,7 +322,7 @@ namespace gta4
 							it->second.m_is_ignored = false;
 						}
 
-						spawn_or_update_remix_sphere_light(it->second);
+						spawn_or_update_remix_sphere_light(it->second, true);
 					}
 
 					touched_light = true;
@@ -324,13 +332,14 @@ namespace gta4
 					// search for light with very very similar settings, then check if within a certain distance comp. to last state
 					for (auto& l : m_active_lights) 
 					{
-						if (compare_dynamic_light_without_position(def, l.second.m_def, 0.05f))
+						if (l.second.m_updateframe != m_updateframe && // do not recheck already updated lights
+							compare_dynamic_light_without_position(def, l.second.m_def, 0.05f))
 						{
-							if (def.mPosition.DistToSqr(l.second.m_def.mPosition) < 1.0f) // TODO: expose this distance?
+							if (def.mPosition.DistToSqr(l.second.m_def.mPosition) < 1.0f) // expose this?
 							{
 								l.second.m_def = def;
 								l.second.m_hash = hash; // can be used to check if a light changed its position
-								spawn_or_update_remix_sphere_light(l.second);
+								spawn_or_update_remix_sphere_light(l.second, true);
 								touched_light = true;
 								break;
 							}
@@ -344,9 +353,19 @@ namespace gta4
 				}
 			}
 		}
-		else
-		{
+		else {
 			destroy_and_clear_all_active_lights();
+		}
+
+		// delete all untouched lights
+		for (auto it = m_active_lights.begin(); it != m_active_lights.end(); )
+		{
+			if (it->second.m_updateframe != m_updateframe) 
+			{
+				destroy_light(it->second);
+				it = m_active_lights.erase(it);
+			}
+			else { ++it; }
 		}
 
 #else
@@ -434,16 +453,6 @@ namespace gta4
 	// Draw all active map lights
 	void remix_lights::draw_all_active_lights()
 	{
-
-		// erase all untouched lights
-		for (auto it = m_active_lights.begin(); it != m_active_lights.end(); ) 
-		{
-			if (it->second.m_updateframe != m_updateframe) {
-				it = m_active_lights.erase(it);
-			}
-			else { ++it; }
-		}
-
 		for (auto& l : m_active_lights)
 		{
 			if (l.second.m_handle) {
