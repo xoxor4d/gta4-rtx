@@ -1,7 +1,8 @@
 #usda 1.0
 (
     subLayers = [
-        @./comp_world_roads.usda@
+        @./comp_world_roads.usda@,
+        @./comp_world_broken_decals.usda@
     ]
     upAxis = "Z"
 )
@@ -48,6 +49,27 @@ over "RootNode"
         {
             over "Shader"
             {
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_000000002FC941C2"
+        {
+            over "Shader"
+            {
+                custom color3f inputs:diffuse_color_constant = (1, 0.99999, 0.99999)
+                asset inputs:diffuse_texture = @@
+                custom float inputs:metallic_constant = 1
+                custom float inputs:reflection_roughness_constant = 0
+            }
+        }
+
+        over "mat_31309BA1CD7A6C6C"
+        {
+            over "Shader"
+            {
+                custom bool inputs:blend_enabled = 1
+                custom int inputs:blend_type = 0
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }

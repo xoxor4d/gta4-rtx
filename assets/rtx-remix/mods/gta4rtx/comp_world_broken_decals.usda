@@ -1,0 +1,75 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "cameras"
+    {
+        over "Camera"
+        {
+            matrix4d xformOp:transform = ( (-0.9946113317564779, -0.10367400224557319, -2.5822393459606907e-9, 0), (0.055093260086440735, -0.5285450719172758, 0.8471155999301492, 0), (-0.08782386597424889, 0.8425507748559454, 0.5314086566428783, 0), (1222.5691677539633, 1491.8252980016587, 447.269128971676, 1) )
+        }
+    }
+
+    over "meshes"
+    {
+        over "mesh_A915A0B4DA727C5A" (
+            references = None
+        )
+        {
+        }
+
+        over "mesh_AF13A0E1FC3E01AC" (
+            references = None
+        )
+        {
+        }
+    }
+
+    over "instances"
+    {
+        over "inst_0A13F8FC8ED2E774_0"
+        {
+            over "mesh"
+            {
+                token visibility = "inherited"
+            }
+        }
+
+        over "inst_AF13A0E1FC3E01AC_0"
+        {
+            over "mesh"
+            {
+                token visibility = "inherited"
+            }
+        }
+    }
+
+    over "Looks"
+    {
+        over "mat_68F659E21F8FC9E4"
+        {
+            over "Shader"
+            {
+                custom float inputs:alpha_test_reference_value = 0
+                custom int inputs:alpha_test_type = 4
+                custom bool inputs:blend_enabled = 1
+                custom int inputs:blend_type = 0
+                custom bool inputs:inverted_blend = 0
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_8E6BE9E5851AEA5C"
+        {
+            over "Shader"
+            {
+                custom bool inputs:blend_enabled = 0
+                custom bool inputs:use_legacy_alpha_state = 1
+            }
+        }
+    }
+}
+

@@ -84,6 +84,27 @@ over "RootNode"
                 custom float inputs:reflection_roughness_constant = 0.055
             }
         }
+
+        over "mat_EC05074A7D0BC611"
+        {
+            over "Shader"
+            {
+                custom color3f inputs:emissive_color_constant = (0.000001, 9.9999e-7, 9.9999e-7)
+                custom float inputs:emissive_intensity = 0
+                custom bool inputs:enable_emission = 0
+                custom bool inputs:preload_textures = 1
+                custom float inputs:thin_wall_thickness = 0
+                custom bool inputs:thin_walled = 1
+            }
+        }
+    }
+
+    over "cameras"
+    {
+        over "Camera"
+        {
+            matrix4d xformOp:transform = ( (-0.9976184623303479, -0.06897393433495172, -2.5822393888950967e-9, 0), (0.026122867307647048, -0.37783341426395095, 0.9255050009963637, 0), (-0.0638357221410492, 0.9233008759055799, 0.37873538668934287, 0), (1222.5691677539633, 1491.8252980016587, 447.269128971676, 1) )
+        }
     }
 }
 

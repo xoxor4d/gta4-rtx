@@ -1,0 +1,60 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_56CF3230C75510C9"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.37
+                custom float inputs:reflection_roughness_constant = 0.044999998
+                custom int inputs:wrap_mode_u = 0
+                custom int inputs:wrap_mode_v = 0
+            }
+        }
+
+        over "mat_7780C2AB04892F2C"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.37
+                custom float inputs:reflection_roughness_constant = 0.145
+            }
+        }
+
+        over "mat_14EA993C0A98BD16"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.275
+                custom float inputs:reflection_roughness_constant = 0.13
+            }
+        }
+
+        over "mat_D6D0DE4B2B6571A3"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.22999999
+                custom float inputs:reflection_roughness_constant = 0.08
+                custom int inputs:wrap_mode_u = 0
+                custom int inputs:wrap_mode_v = 0
+            }
+        }
+
+        over "mat_A1BF26E9C69B756C"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.625
+                custom float inputs:reflection_roughness_constant = 1
+            }
+        }
+    }
+}
+

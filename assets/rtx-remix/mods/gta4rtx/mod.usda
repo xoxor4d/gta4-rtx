@@ -7,14 +7,15 @@
         }
         string lightspeed_mod_name = "gta4rtx"
         string lightspeed_mod_notes = "early access"
-        string lightspeed_mod_version = "0.7.1"
+        string lightspeed_mod_version = "0.8.3"
     }
     subLayers = [
         @./comp_world.usda@,
         @./comp_water.usda@,
         @./comp_cars.usda@,
         @./comp_peds.usda@,
-        @./comp_vehicle.usda@
+        @./comp_vehicle.usda@,
+        @./comp_effects.usda@
     ]
     timeCodesPerSecond = 24
     upAxis = "Y"
@@ -64,6 +65,19 @@ over "RootNode"
                 double3 xformOp:scale = (1, 1, 1)
                 double3 xformOp:translate = (2.9794330376748808, -10.133759303078252, -1.9494247436523442)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+        }
+    }
+
+    over "Looks"
+    {
+        over "mat_20AC3E374E816D9A"
+        {
+            over "Shader"
+            {
+                custom bool inputs:blend_enabled = 0
+                custom int inputs:blend_type = 0
+                custom bool inputs:use_legacy_alpha_state = 0
             }
         }
     }

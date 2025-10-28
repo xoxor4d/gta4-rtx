@@ -31,19 +31,148 @@ over "RootNode"
             }
         }
 
-        over "mat_20AC3E374E816D9A"
-        {
-            over "Shader"
-            {
-                custom float inputs:reflection_roughness_constant = 0.79999995
-            }
-        }
-
         over "mat_670AFD5EEA859579"
         {
             over "Shader"
             {
-                custom float inputs:reflection_roughness_constant = 0.435
+                custom float inputs:reflection_roughness_constant = 0.60499996
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_62B2FAD2EE0EA6BE"
+        {
+            over "Shader"
+            {
+                custom float inputs:alpha_test_reference_value = 0
+                custom int inputs:alpha_test_type = 0
+                custom bool inputs:blend_enabled = 1
+                custom int inputs:blend_type = 4
+                custom bool inputs:inverted_blend = 0
+                custom float inputs:reflection_roughness_constant = 0.8
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_75E03C7273CF2F86"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.44
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_7B67C61D3893974E"
+        {
+            over "Shader"
+            {
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_54F90E39A0F9356A"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.089999996
+                custom float inputs:reflection_roughness_constant = 0.37
+            }
+        }
+
+        over "mat_3253CDD7D9479B8D"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.935
+            }
+        }
+
+        over "mat_13E7C84E3F32FFB2"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.82
+            }
+        }
+
+        over "mat_7E5674E5AE1B0948"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.89
+                custom float inputs:reflection_roughness_constant = 0.375
+            }
+        }
+
+        over "mat_546D39B307D8E0EA"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.935
+            }
+        }
+
+        over "mat_2DA66B939B1F53D1"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.91999996
+            }
+        }
+
+        over "mat_A656A6A70C32734C"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.26
+                custom float inputs:reflection_roughness_constant = 0.295
+            }
+        }
+
+        over "mat_C35F1F0BE43E3BE7"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.88
+            }
+        }
+
+        over "mat_37825373649324A6"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.98999995
+            }
+        }
+
+        over "mat_9E6F414FDE421227"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.125
+                custom float inputs:reflection_roughness_constant = 0.475
+            }
+        }
+
+        over "mat_7913F1670E0081DA"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.37
+                custom float inputs:reflection_roughness_constant = 0.22999999
+            }
+        }
+    }
+
+    over "meshes"
+    {
+        over "mesh_2F04AE3D6E4BF7AD"
+        {
+            over "mesh"
+            {
+                custom uniform bool remix_category:alpha_blend_to_cutout = 0
+                custom uniform bool remix_category:decal_Static = 0
             }
         }
     }
