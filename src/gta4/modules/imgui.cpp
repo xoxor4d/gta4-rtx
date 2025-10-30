@@ -387,10 +387,22 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 		ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
 		ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
+		ImGui::Checkbox("Do not restore Drawcall Context", &im->m_dbg_do_not_restore_drawcall_context);
+		ImGui::Checkbox("Do not restore Drawcall Context on Early Out", &im->m_dbg_do_not_restore_drawcall_context_on_early_out);
 
 		ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement); TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
 
+		//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
+
+		ImGui::Spacing(0, 4);
+
 		ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Checkbox("FF Emissive: Enable Alphablend on non alpha Emissives", &im->m_dbg_emissive_ff_with_alphablend); 
+
+		//ImGui::Checkbox("FF Emissive: Enable Emissive Override", &im->m_dbg_emissive_nonalpha_override);
+		//ImGui::DragFloat("FF Emissive: Enable Emissive Override Scale", &im->m_dbg_emissive_nonalpha_override_scale, 0.005f);
+
+		ImGui::Spacing(0, 4);
 
 		ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
 		TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
@@ -938,6 +950,16 @@ namespace gta4
 			}
 			TT(gs->emissive_strong_surfaces_emissive_scalar.get_tooltip_string().c_str());
 		}
+
+		{
+			auto gs_var_ptr = gs->emissive_generic_scale.get_as<float*>();
+			if (ImGui::DragFloat("Generic Emissive Scale", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->emissive_generic_scale.get_tooltip_string().c_str());
+		}
+
+		
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Phone ");

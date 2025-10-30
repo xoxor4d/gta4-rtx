@@ -376,6 +376,8 @@ namespace gta4
 		}
 #endif
 
+		const auto& pidx = ctx.info.preset_index;
+
 		if (ctx.info.shader_name.ends_with("deferred_lighting.fxc")) {
 			ctx.modifiers.do_not_render = true;
 		}
@@ -385,7 +387,7 @@ namespace gta4
 			bool is_gta_atmoscatt_clouds_shader = false;
 			bool is_lightsemissive_shader = false;
 			bool is_gta_rmptfx_litsprite_shader = false;
-			bool is_gta_normal_spec_decal_shader = false;
+			//bool is_gta_normal_spec_decal_shader = false;
 			//bool modified_world_matrix = false;
 
 			if (g_is_sky_rendering)
@@ -394,15 +396,15 @@ namespace gta4
 					is_gta_atmoscatt_clouds_shader = true;
 				//}
 			}
-			else if (ctx.info.shader_name.ends_with("lightsemissive.fxc")) {
+			else if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE /*ctx.info.shader_name.ends_with("lightsemissive.fxc")*/) {
 				is_lightsemissive_shader = true;
 			}
 			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) {
 				is_gta_rmptfx_litsprite_shader = true;
 			}
-			else if (ctx.info.shader_name.ends_with("gta_normal_spec_decal.fxc")) {
+			/*else if (ctx.info.shader_name.ends_with("gta_normal_spec_decal.fxc")) {
 				is_gta_normal_spec_decal_shader = true;
-			}
+			}*/
 
 			int i = 0;
 			do
@@ -550,7 +552,7 @@ namespace gta4
 
 		if (*game::g_currentPixelShader != data->shader)
 		{
-			*game::g_currentPixelShader = data->shader;
+			*game::g_currentPixelShader = data->shader; 
 			game_device->SetPixelShader(data->shader);
 		}
 
@@ -558,13 +560,7 @@ namespace gta4
 			ctx.info.shader_name = constant_data_struct->data->sub.shader_name;
 		}
 
-		if (ctx.info.shader_name.contains("gta_trees")) {
-			ctx.modifiers.is_tree_foliage = true;
-		}
-		else if (ctx.info.shader_name.ends_with("gta_grass.fxc")) {
-			ctx.modifiers.is_grass_foliage = true;
-		}
-		else if (ctx.info.shader_name.contains("rmptfx_")) {
+		if (ctx.info.shader_name.contains("rmptfx_")) {
 			ctx.modifiers.is_fx = true;
 		}
 
@@ -574,14 +570,15 @@ namespace gta4
 			bool is_gta_vehicle_shader = false;
 			bool is_emissive_shader = false;
 			bool is_projtex_shader = false;
+			bool is_gta_im_shader = false;
 			bool modified_projtex_shader = false;
 
 			const auto& pidx = ctx.info.preset_index;
 
 			// shader_name.contains("gta_vehicle_")
-			if (  pidx == GTA_VEHICLE_BADGES || pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2 || pidx == GTA_VEHICLE_LIGHTS
-					|| pidx == GTA_VEHICLE_MESH || pidx == GTA_VEHICLE_NOSPLASH || pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2 || pidx == GTA_VEHICLE_PAINT3
-					|| pidx == GTA_VEHICLE_SHUTS || pidx == GTA_VEHICLE_TIRE || pidx == GTA_VEHICLE_VEHGLASS) {
+			if (   pidx == GTA_VEHICLE_BADGES || pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2 || pidx == GTA_VEHICLE_LIGHTS
+				|| pidx == GTA_VEHICLE_MESH || pidx == GTA_VEHICLE_NOSPLASH || pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2 || pidx == GTA_VEHICLE_PAINT3
+				|| pidx == GTA_VEHICLE_SHUTS || pidx == GTA_VEHICLE_TIRE || pidx == GTA_VEHICLE_VEHGLASS) {
 				is_gta_vehicle_shader = true; 
 			}
 
@@ -589,15 +586,18 @@ namespace gta4
 				is_gta_rmptfx_litsprite_shader = true;
 			}
 
-			else if (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG ||
-				pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT
-				|| pidx == GTA_EMISSIVENIGHT_ALPHA || pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA
-				|| pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)/*if (ctx.info.shader_name.contains("emissive"))*/ {
+			else if (  pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG ||
+					   pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT
+					|| pidx == GTA_EMISSIVENIGHT_ALPHA || pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA
+					|| pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)/*if (ctx.info.shader_name.contains("emissive"))*/ {
 				is_emissive_shader = true;
 
 			}
 			else if (ctx.info.shader_name.ends_with("projtex.fxc")) {
 				is_projtex_shader = true;
+			}
+			else if (ctx.info.shader_name.ends_with("_im.fxc")) {
+				is_gta_im_shader = true;
 			}
 
 			int i = 0;
@@ -625,7 +625,8 @@ namespace gta4
 							}
 						}
 
-						game_device->SetPixelShaderConstantB(register_num, constant_data_struct->constants[dataPoolIndex].bool_ptr, 1u);
+						//if (g_is_sky_rendering || is_gta_im_shader)
+							game_device->SetPixelShaderConstantB(register_num, constant_data_struct->constants[dataPoolIndex].bool_ptr, 1u);
 					}
 					else
 					{
@@ -688,34 +689,32 @@ namespace gta4
 						{
 							if (register_num == 66u && is_emissive_shader)
 							{
-								/*if (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG ||
-									pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)*/
+								ctx.info.shaderconst_uses_emissive_multiplier = true;
 
-									switch (pidx)
-									{
-									case GTA_EMISSIVENIGHT_ALPHA:
-									case GTA_EMISSIVENIGHT:
-										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
-											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_night_surfaces_emissive_scalar.get_as<float>());
-										break;
+								switch (pidx)
+								{
+								case GTA_EMISSIVENIGHT_ALPHA:
+								case GTA_EMISSIVENIGHT:
+									renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
+										*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_night_surfaces_emissive_scalar.get_as<float>());
+									break;
 
-									default:
-									//case GTA_EMISSIVE:
-									//case GTA_GLASS_EMISSIVE:
-									//case GTA_GLASS_EMISSIVENIGHT:
-										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
-											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_surfaces_emissive_scalar.get_as<float>());
-										break;
+								default:
+								//case GTA_EMISSIVE:
+								//case GTA_GLASS_EMISSIVE:
+								//case GTA_GLASS_EMISSIVENIGHT:
+									renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
+										*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_surfaces_emissive_scalar.get_as<float>());
+									break;
 
-									case GTA_EMISSIVESTRONG_ALPHA:
-									case GTA_EMISSIVESTRONG:
-										renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
-											*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>()/*, true*/);
-										break;
-									}
+								case GTA_EMISSIVESTRONG_ALPHA:
+								case GTA_EMISSIVESTRONG:
+									renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
+										*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>()/*, true*/);
+									break;
+								}
 							}
 						}
-
 
 						if (g_is_rendering_static)
 						{
@@ -727,7 +726,8 @@ namespace gta4
 							}
 						}
 
-						game_device->SetPixelShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
+						//if (g_is_sky_rendering || is_gta_im_shader)
+							game_device->SetPixelShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
 					}
 				}
 				else
@@ -827,14 +827,6 @@ namespace gta4
 
 		// fixes the skylight
 		dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
-
-		/*if (im->m_dbg_ignore_drawprimitive)
-		{
-			if (ctx.modifiers.do_not_render) 
-			{
-				int x = 1;
-			}
-		}*/
 
 		if (g_is_rendering_mirror)
 		{
@@ -1019,16 +1011,33 @@ namespace gta4
 		 
 		if (!shared::globals::imgui_is_rendering)
 		{
-			if (im->m_dbg_skip_draw_indexed_checks)
+			if (ctx.modifiers.do_not_render) 
 			{
-				const auto viewport = game::pCurrentViewport;
+				if (!im->m_dbg_do_not_restore_drawcall_context_on_early_out && !g_is_instance_rendering) {
+					ctx.restore_all(dev);
+				}
+
+				ctx.reset_context();
+				return S_OK;
+			}
+
+			if (im->m_dbg_skip_draw_indexed_checks && !g_is_instance_rendering)
+			{
+				if (!im->m_dbg_do_not_restore_drawcall_context_on_early_out) {
+					ctx.restore_all(dev);
+				}
+
+				ctx.reset_context();
+				return S_OK;
+
+				/*const auto viewport = game::pCurrentViewport;
 				if (viewport && viewport->wp)
 				{
 					dev->SetTransform(D3DTS_VIEW, &viewport->wp->view);
 					dev->SetTransform(D3DTS_PROJECTION, &viewport->wp->proj);
 				}
 
-				return dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+				return dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);*/
 			}
 
 			// shared::utils::lookat_vertex_decl(dev);
@@ -1292,7 +1301,7 @@ namespace gta4
 				set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
 			}
 
-			if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE)
+			else if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE)
 			{
 				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
@@ -1335,32 +1344,97 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap); 
 			}
 
-			if (ctx.info.shader_name.ends_with("water.fxc")) {
+			// check if trees should be rendered with shaders
+			else if (pidx == GTA_TREES || ctx.modifiers.is_grass_foliage /*ctx.modifiers.is_tree_foliage*/)
+			{
+				if (im->m_dbg_do_not_render_tree_foliage) {
+					ctx.modifiers.do_not_render = true;
+				}
+
+				if (!gs->fixed_function_trees.get_as<bool>()) {
+					render_with_ff = false;
+				}
+
+				// enable alpha testing
+				ctx.save_rs(dev, D3DRS_ALPHATESTENABLE);
+				ctx.save_rs(dev, D3DRS_ALPHAFUNC);
+				ctx.save_rs(dev, D3DRS_ALPHAREF);
+
+				dev->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+				dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
+
+				float alpha_setting = 0.7f;
+				if (pidx == GTA_TREES /*ctx.modifiers.is_tree_foliage*/) {
+					alpha_setting = gs->tree_foliage_alpha_cutout_value.get_as<float>();
+				}
+				else if (ctx.modifiers.is_grass_foliage) {
+					alpha_setting = gs->grass_foliage_alpha_cutout_value.get_as<float>();
+				}
+
+				float alpha_ref = 0.3125f / std::abs(alpha_setting); // compute normalized alpha reference
+				alpha_ref = std::min(alpha_ref, 1.0f); // clamp to [0, 1]
+
+				DWORD alpha_ref_int = static_cast<DWORD>(alpha_ref * 255.0f); // convert to 0-255 range
+				dev->SetRenderState(D3DRS_ALPHAREF, alpha_ref_int);
+
+				// disable alpha blending (since we're using alpha testing)
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+
+				// enable Z-writing and Z-testing
+				ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
+				ctx.save_rs(dev, D3DRS_ZENABLE);
+				ctx.save_rs(dev, D3DRS_ZFUNC);
+
+				dev->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+				dev->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+				dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+
+				// disable culling for two-sided foliage
+				ctx.save_rs(dev, D3DRS_CULLMODE);
+				dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+
+				// texture stage states for alpha testing
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+			}
+
+			// handle gta_decal_dirt shader
+			else if (pidx == GTA_DECAL_DIRT /*ctx.info.shader_name.ends_with("_dirt.fxc")*/)
+			{
+				if (gs->decal_dirt_shader_usage.get_as<bool>())
+				{
+					set_remix_modifier(dev, RemixModifier::DecalDirt | RemixModifier::EnableVertexColor);
+					set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+
+					// using a texture in slot1 in the opaque shader is semi working but the texture is not always updated/correct and and cause
+					// conflicts with other textures
+				}
+				else {
+					set_remix_texture_categories(dev, InstanceCategories::Ignore);
+				}
+			}
+
+			// put else g_is_rendering_static ?
+			else if (ctx.info.shader_name.ends_with("water.fxc")) {
 				ctx.modifiers.do_not_render = true;
 			}
 
+
+
 			if (g_is_rendering_static)
 			{
+				if (im->m_dbg_do_not_render_static) {
+					ctx.modifiers.do_not_render = true;
+				}
+
 				if (im->m_dbg_disable_ps_for_static)
 				{
 					ctx.save_ps(dev);
 					dev->SetPixelShader(nullptr);
-				}
-
-				// handle gta_decal_dirt shader
-				else if (ctx.info.shader_name.ends_with("_dirt.fxc"))
-				{
-					if (gs->decal_dirt_shader_usage.get_as<bool>())
-					{
-						set_remix_modifier(dev, RemixModifier::DecalDirt | RemixModifier::EnableVertexColor);
-						set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
-
-						// using a texture in slot1 in the opaque shader is semi working but the texture is not always updated/correct and and cause
-						// conflicts with other textures
-					}
-					else {
-						set_remix_texture_categories(dev, InstanceCategories::Ignore);
-					}
 				}
 			}
 
@@ -1380,24 +1454,14 @@ namespace gta4
 					render_with_ff = false;
 				}
 			}
-
-			if (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG || 
-				pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)
+			else
 			{
-				renderer_ff::on_ff_emissives(dev, ctx);
-			}
-			else if (pidx == GTA_EMISSIVENIGHT_ALPHA || pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA)
-			{
-				renderer_ff::on_ff_emissives_alpha(dev, ctx);
-			}
-
-			// check if trees should be rendered with shaders
-			if (ctx.modifiers.is_tree_foliage && !gs->fixed_function_trees.get_as<bool>()) {
-				render_with_ff = false;
-			}
-
-			if (im->m_dbg_toggle_ff) {
-				render_with_ff = false;
+				if (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG || pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)  {
+					renderer_ff::on_ff_emissives(dev, ctx);
+				}
+				else if (pidx == GTA_EMISSIVENIGHT_ALPHA || pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA) {
+					renderer_ff::on_ff_emissives_alpha(dev, ctx);
+				}
 			}
 
 			const auto viewport = game::pCurrentViewport;
@@ -1455,6 +1519,10 @@ namespace gta4
 
 			if (g_is_rendering_vehicle) 
 			{
+				if (im->m_dbg_do_not_render_vehicle) {
+					ctx.modifiers.do_not_render = true;
+				}
+
 				// we have to disable the pixelshader in order for remix to grab the vertexshader color-output
 				// it uses the vertexshader color-input otherwise
 				ctx.save_ps(dev);
@@ -1466,55 +1534,18 @@ namespace gta4
 						on_constant_emissiveMultiplier(shared::globals::d3d_device, 0.0f);
 					}
 				}
-			}
 
-			if (ctx.modifiers.is_tree_foliage || ctx.modifiers.is_grass_foliage)
-			{
-				// enable alpha testing
-				ctx.save_rs(dev, D3DRS_ALPHATESTENABLE);
-				ctx.save_rs(dev, D3DRS_ALPHAFUNC);
-				ctx.save_rs(dev, D3DRS_ALPHAREF);
-
-				dev->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
-				dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
-
-				float alpha_setting = 0.7f;
-				if (ctx.modifiers.is_tree_foliage) {
-					alpha_setting = gs->tree_foliage_alpha_cutout_value.get_as<float>();
-				} else if (ctx.modifiers.is_grass_foliage) {
-					alpha_setting = gs->grass_foliage_alpha_cutout_value.get_as<float>();
+				if (pidx == GTA_VEHICLE_VEHGLASS)
+				{
+					//if (im->m_dbg_vehglass_disable_alphablend)
+					{
+						ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+						dev->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
+					}
 				}
-
-				float alpha_ref = 0.3125f / std::abs(alpha_setting); // compute normalized alpha reference
-					  alpha_ref = std::min(alpha_ref, 1.0f); // clamp to [0, 1]
-
-				DWORD alpha_ref_int = static_cast<DWORD>(alpha_ref * 255.0f); // convert to 0-255 range
-				dev->SetRenderState(D3DRS_ALPHAREF, alpha_ref_int);
-
-				// disable alpha blending (since we're using alpha testing)
-				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-
-				// enable Z-writing and Z-testing
-				ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
-				ctx.save_rs(dev, D3DRS_ZENABLE);
-				ctx.save_rs(dev, D3DRS_ZFUNC);
-
-				dev->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
-				dev->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
-				dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
-
-				// disable culling for two-sided foliage
-				ctx.save_rs(dev, D3DRS_CULLMODE);
-				dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-
-				// texture stage states for alpha testing
-				ctx.save_tss(dev, D3DTSS_ALPHAOP);
-				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
-
-				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1); 
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
 			}
+
+			
 
 			if (ctx.modifiers.is_fx)
 			{
@@ -1527,20 +1558,6 @@ namespace gta4
 
 			if (!ctx.modifiers.allow_vertex_colors && !im->m_dbg_disable_ignore_baked_lighting_enforcement) {
 				set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
-			}
-
-			if (g_is_rendering_static)
-			{
-				if (im->m_dbg_do_not_render_static) {
-					ctx.modifiers.do_not_render = true;
-				}
-			}
-
-			if (g_is_rendering_vehicle)
-			{
-				if (im->m_dbg_do_not_render_vehicle) {
-					ctx.modifiers.do_not_render = true;
-				}
 			}
 
 			if (g_is_instance_rendering)
@@ -1604,21 +1621,17 @@ namespace gta4
 				}
 			}
 
-			if (ctx.modifiers.is_tree_foliage)
-			{
-				if (im->m_dbg_do_not_render_tree_foliage) {
-					ctx.modifiers.do_not_render = true;
-				}
-			}
-
 			if (render_with_ff)
 			{
 				if (im->m_dbg_do_not_render_ff) {
 					ctx.modifiers.do_not_render = true;
 				}
 			}
-		}
 
+			if (im->m_dbg_toggle_ff) {
+				render_with_ff = false;
+			}
+		}
 
 		// ---------
 		// draw
@@ -2099,8 +2112,8 @@ namespace gta4
 		shared::utils::hook(game::hk_addr__post_draw_statics, post_static_render_stub, HOOK_JUMP).install()->quick();
 
 		// detect mirror rendering
-		shared::utils::hook(game::retn_addr__pre_draw_mirror - 5u, pre_draw_mirror_stub, HOOK_JUMP).install()->quick();
-		shared::utils::hook(game::hk_addr__post_draw_mirror, post_draw_mirror_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::retn_addr__pre_draw_mirror - 5u, pre_draw_mirror_stub, HOOK_JUMP).install()->quick(); // 0xB59906
+		shared::utils::hook(game::hk_addr__post_draw_mirror, post_draw_mirror_stub, HOOK_JUMP).install()->quick(); // 0xB59911
 
 		// do not render postfx RT infront of the camera
 		shared::utils::hook::nop(game::nop_addr__disable_postfx_drawing, 5);

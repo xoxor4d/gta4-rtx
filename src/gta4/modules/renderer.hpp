@@ -411,7 +411,7 @@ namespace gta4
 			bool is_vehicle_paint = false;
 			bool is_vehicle_using_switch_on_state = false;
 			bool is_vehicle_on = false;
-			bool is_tree_foliage = false;
+			//bool is_tree_foliage = false;
 			bool is_grass_foliage = false;
 			bool is_fx = false;
 
@@ -435,7 +435,7 @@ namespace gta4
 				is_vehicle_paint = false;
 				is_vehicle_using_switch_on_state = false;
 				is_vehicle_on = false;
-				is_tree_foliage = false;
+				//is_tree_foliage = false;
 				is_grass_foliage = false;
 				is_fx = false;
 
@@ -466,6 +466,7 @@ namespace gta4
 			bool is_dirty = false; // true when context was not reset in drawprimitive
 
 			float shaderconst_emissive_intensity = 0.0f;
+			bool shaderconst_uses_emissive_multiplier = false;
 
 			DWORD rs_alphablendenable = 0u;
 			DWORD rs_blendop = 0u;
@@ -484,6 +485,7 @@ namespace gta4
 				is_dirty = false;
 
 				shaderconst_emissive_intensity = 0.0f;
+				shaderconst_uses_emissive_multiplier = false;
 
 				rs_alphablendenable = 0u;
 				rs_blendop = 0u;

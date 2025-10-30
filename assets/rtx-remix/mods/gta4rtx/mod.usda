@@ -3,8 +3,6 @@
     customLayerData = {
         string lightspeed_game_name = "GTAIV"
         string lightspeed_layer_type = "replacement"
-        dictionary lightspeed_mod_dependencies = {
-        }
         string lightspeed_mod_name = "gta4rtx"
         string lightspeed_mod_notes = "early access"
         string lightspeed_mod_version = "0.8.3"
@@ -77,6 +75,7 @@ over "RootNode"
             {
                 custom bool inputs:blend_enabled = 0
                 custom int inputs:blend_type = 0
+                custom float inputs:reflection_roughness_constant = 1
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }

@@ -184,6 +184,7 @@ namespace gta4
 				ASSIGN(emissive_night_surfaces_emissive_scalar);
 				ASSIGN(emissive_surfaces_emissive_scalar);
 				ASSIGN(emissive_strong_surfaces_emissive_scalar);
+				ASSIGN(emissive_generic_scale);
 
 				ASSIGN(decal_dirt_shader_usage);
 				ASSIGN(decal_dirt_shader_scalar);

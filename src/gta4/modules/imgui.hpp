@@ -47,8 +47,16 @@ namespace gta4
 		bool m_dbg_do_not_render_ff = false;
 		bool m_dbg_do_not_render_water = false;
 		bool m_dbg_toggle_ff = false;
+		bool m_dbg_do_not_restore_drawcall_context = false;
+		bool m_dbg_do_not_restore_drawcall_context_on_early_out = false;
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;
+		bool m_dbg_emissive_ff_with_alphablend = true;
+
+		bool m_dbg_emissive_nonalpha_override = false;
+		float m_dbg_emissive_nonalpha_override_scale = 0.0f;
+
+		//bool m_dbg_vehglass_disable_alphablend = true;
 
 		bool m_dbg_skip_draw_indexed_checks = false;
 		bool m_dbg_disable_ignore_baked_lighting_enforcement = false;

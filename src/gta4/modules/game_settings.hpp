@@ -520,7 +520,7 @@ namespace gta4
 			{
 				"render_emissive_surfaces_using_shaders",
 				("Enabling this will render all surfaces using a shader ending on 'emissivenight/emissive/strong' via shaders instead of fixed function."),
-				true
+				false
 			};
 
 			variable assign_decal_category_to_emissive_surfaces =
@@ -549,6 +549,13 @@ namespace gta4
 			{
 				"emissive_strong_surfaces_emissive_scalar",
 				("Scale emissive strength of every surface using a shader ending on 'strong.fxc'"),
+				0.4f
+			};
+
+			variable emissive_generic_scale =
+			{
+				"emissive_generic_scale",
+				("Some emissive surfaces do not use the emissiveMultiplier shader constant. These will use this constant."),
 				0.4f
 			};
 

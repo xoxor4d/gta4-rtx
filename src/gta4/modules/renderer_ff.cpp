@@ -14,20 +14,29 @@ namespace gta4
 		if (!gs->render_emissive_surfaces_using_shaders.get_as<bool>())
 		{
 			ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
-			dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+			dev->SetRenderState(D3DRS_ZWRITEENABLE, false);
 
 			ctx.save_rs(dev, D3DRS_ZENABLE);
-			dev->SetRenderState(D3DRS_ZENABLE, FALSE);
-
+			dev->SetRenderState(D3DRS_ZENABLE, false);
 
 			ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE); 
-			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, im->m_dbg_emissive_ff_with_alphablend);
+
+			/*ctx.save_rs(dev, D3DRS_SEPARATEALPHABLENDENABLE);
+			dev->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, true);
+
+			ctx.save_rs(dev, D3DRS_BLENDOPALPHA);
+			dev->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+			ctx.save_rs(dev, D3DRS_SRCBLENDALPHA);
+			dev->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_SRCALPHA);
+			ctx.save_rs(dev, D3DRS_DESTBLENDALPHA);
+			dev->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_INVSRCALPHA);*/
 
 			ctx.save_rs(dev, D3DRS_BLENDOP);
 			dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 
 			ctx.save_rs(dev, D3DRS_SRCBLEND);
-			dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+			dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA); // D3DBLEND_ONE
 
 			ctx.save_rs(dev, D3DRS_DESTBLEND);
 			dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
@@ -52,7 +61,6 @@ namespace gta4
 			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 
 			//float intensity = ctx.info.shaderconst_emissive_intensity;
-
 			//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
 			//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(intensity, intensity, intensity, intensity));
 
@@ -65,6 +73,12 @@ namespace gta4
 
 			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
 			ctx.modifiers.allow_vertex_colors = true;
+
+			if (!ctx.info.shaderconst_uses_emissive_multiplier /*|| im->m_dbg_emissive_nonalpha_override*/)
+			{
+				renderer::set_remix_modifier(dev, RemixModifier::EmissiveScalar);
+				renderer::set_remix_emissive_intensity(dev, gs->emissive_generic_scale.get_as<float>() /*im->m_dbg_emissive_nonalpha_override_scale*/);
+			}
 		}
 	}
 
