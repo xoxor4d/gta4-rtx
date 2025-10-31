@@ -660,19 +660,24 @@ namespace gta4
 
 						else if (is_projtex_shader && register_num == 66u)
 						{
-							modified_projtex_shader = true;
+							//modified_projtex_shader = true;
 
 							//ctx.save_vs(shared::globals::d3d_device);
 							//shared::globals::d3d_device->SetVertexShader(nullptr);
 
 							//float dat[4] = {};
-							//game_device->GetVertexShaderConstantF(66u, dat, 1);  
+							//game_device->GetVertexShaderConstantF(66u, dat, 1);
 
-							D3DXMATRIX texMatrix;
-							D3DXMatrixIdentity(&texMatrix);  // Start with identity
-							D3DXMatrixScaling(&texMatrix, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, 1.0f);
 
-							ctx.set_texture_transform(shared::globals::d3d_device, &texMatrix);
+
+							//D3DXMATRIX texMatrix;
+							//D3DXMatrixIdentity(&texMatrix);  // Start with identity
+							//D3DXMatrixScaling(&texMatrix, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, 1.0f);
+
+							//ctx.set_texture_transform(shared::globals::d3d_device, &texMatrix);
+
+
+
 
 							/*D3DXMATRIX mtx;
 							game_device->GetVertexShaderConstantF(0, mtx, 4);
@@ -824,6 +829,7 @@ namespace gta4
 		// info.shader_name can be empty here -> TODO
 
 		bool render_with_ff = false;
+		bool disable_vertex_colors = false;
 
 		// fixes the skylight
 		dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
@@ -899,7 +905,7 @@ namespace gta4
 			}
 			
 			// rendering water via FF is fine and safes a ton of performance
-			if (g_is_water_rendering)
+			else if (g_is_water_rendering)
 			{
 				dev->SetTransform(D3DTS_WORLD, &viewport->wp->world);
 				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
@@ -910,9 +916,35 @@ namespace gta4
 				if (gs->override_water_texture_hash.get_as<bool>()) {
 					set_remix_texture_hash(dev, shared::utils::string_hash32("water"));
 				}
+
+#if 0			// test - water UV's are always 0 - could be fixed in 0xAD8960 but no impr.
+				{
+					D3DXMATRIX texMatrix;
+					D3DXMatrixIdentity(&texMatrix);  // Start with identity
+					D3DXMatrixScaling(&texMatrix, imgui::get()->m_debug_vector2.x, imgui::get()->m_debug_vector2.y, 1.0f);
+					ctx.set_texture_transform(shared::globals::d3d_device, &texMatrix);
+
+					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+					ctx.save_ss(dev, D3DSAMP_ADDRESSU);
+					ctx.save_ss(dev, D3DSAMP_ADDRESSV);
+					dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+					dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::veh_light_ems_glass);
+				}
+#endif
+
+				disable_vertex_colors = true;
+
+				if (im->m_dbg_do_not_render_water) {
+					ctx.modifiers.do_not_render = true;
+				}
 			}
 
-			if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))  
+			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))  
 			{
 				set_remix_texture_categories(dev, InstanceCategories::Particle);
 				ctx.modifiers.is_fx = true;
@@ -954,10 +986,6 @@ namespace gta4
 			}
 		}
 
-		if (g_is_water_rendering && im->m_dbg_do_not_render_water) {
-			ctx.modifiers.do_not_render = true;
-		}
-
 		if (ctx.modifiers.is_fx)
 		{
 			ctx.save_tss(dev, D3DTSS_COLOROP);
@@ -977,6 +1005,10 @@ namespace gta4
 		{
 			ctx.save_vs(dev);
 			dev->SetVertexShader(nullptr);
+		}
+
+		if (disable_vertex_colors) {
+			set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
 		}
 
 
@@ -1013,21 +1045,29 @@ namespace gta4
 		{
 			if (ctx.modifiers.do_not_render) 
 			{
-				if (!im->m_dbg_do_not_restore_drawcall_context_on_early_out && !g_is_instance_rendering) {
-					ctx.restore_all(dev);
-				}
+				if (!g_is_instance_rendering) 
+				{
+					if (!im->m_dbg_do_not_restore_drawcall_context_on_early_out) {
+						ctx.restore_all(dev);
+					}
 
-				ctx.reset_context();
+					ctx.reset_context();
+				}
+				
 				return S_OK;
 			}
 
-			if (im->m_dbg_skip_draw_indexed_checks && !g_is_instance_rendering)
+			if (im->m_dbg_skip_draw_indexed_checks)
 			{
-				if (!im->m_dbg_do_not_restore_drawcall_context_on_early_out) {
-					ctx.restore_all(dev);
-				}
+				if (!g_is_instance_rendering)
+				{
+					if (!im->m_dbg_do_not_restore_drawcall_context_on_early_out) {
+						ctx.restore_all(dev);
+					}
 
-				ctx.reset_context();
+					ctx.reset_context();
+				}
+				
 				return S_OK;
 
 				/*const auto viewport = game::pCurrentViewport;
@@ -1469,12 +1509,6 @@ namespace gta4
 			// make VS use the correct matrix (if Use World Transforms is enabled in remix)
 			dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
 
-			if (render_with_ff)
-			{
-				ctx.save_vs(dev);
-				dev->SetVertexShader(nullptr);
-			}
-
 			if (viewport && viewport->wp) 
 			{
 				dev->SetTransform(D3DTS_VIEW, &viewport->wp->view);
@@ -1621,15 +1655,18 @@ namespace gta4
 				}
 			}
 
+			if (im->m_dbg_toggle_ff) {
+				render_with_ff = false;
+			}
+
 			if (render_with_ff)
 			{
 				if (im->m_dbg_do_not_render_ff) {
 					ctx.modifiers.do_not_render = true;
 				}
-			}
 
-			if (im->m_dbg_toggle_ff) {
-				render_with_ff = false;
+				ctx.save_vs(dev);
+				dev->SetVertexShader(nullptr);
 			}
 		}
 

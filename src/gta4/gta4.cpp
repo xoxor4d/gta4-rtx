@@ -214,7 +214,7 @@ namespace gta4
 			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation");
 			if (gs->timecycle_desaturation_enabled.get_as<bool>() && rtxTonemapSaturation)
 			{
-				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * mapRange(timecycle->mDesaturationFar, 0.8f, 1.0f, 0.0f, 0.4f);
+				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * mapRange(timecycle->mDesaturationFar, 0.0f, 1.0f, 0.0f, 0.4f);
 				val.value = 1.0f - ((1.0f - timecycle->mDesaturation) * gs->timecycle_desaturation_influence.get_as<float>());
 				val.value -= far_desaturation_influence;
 				vars->set_option(rtxTonemapSaturation, val);
@@ -257,9 +257,20 @@ namespace gta4
 			{
 				const auto& base_strength = gs->timecycle_fogcolor_base_strength.get_as<float>();
 				const auto& influence = gs->timecycle_fogcolor_influence_scalar.get_as<float>();
-				val.vector[0] = base_strength + fog_color_density.x * influence;
-				val.vector[1] = base_strength + fog_color_density.y * influence;
-				val.vector[2] = base_strength + fog_color_density.z * influence;
+
+				Vector t = fog_color_density * influence;
+				t += base_strength;
+
+				t.Normalize();
+
+				val.vector[0] = t.x;
+				val.vector[1] = t.y;
+				val.vector[2] = t.z;
+
+				//val.vector[0] = base_strength + fog_color_density.x * influence;
+				//val.vector[1] = base_strength + fog_color_density.y * influence;
+				//val.vector[2] = base_strength + fog_color_density.z * influence;
+				
 				vars->set_option(rtxVolumetricsSingleScatteringAlbedo, val);
 				ASSIGN_IMGUI_VIS_VEC3(singleScatteringAlbedo);
 			}
