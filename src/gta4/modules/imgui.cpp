@@ -1265,6 +1265,24 @@ namespace gta4
 		}
 	}
 
+	void gamesettings_other_container()
+	{
+		//static const auto& im = imgui::get();
+		static const auto& gs = game_settings::get();
+		const float inbetween_spacing = 8.0f;
+
+		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" Remix ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::DragInt("RTXDI Initial Sample Count Override", gs->remix_override_rtxdi_samplecount.get_as<int*>(), 0.01f);
+		TT(gs->remix_override_rtxdi_samplecount.get_tooltip_string().c_str());
+
+		ImGui::Spacing(0, inbetween_spacing);
+		/*ImGui::SeparatorText(" Huh ");
+		ImGui::Spacing(0, 8);*/
+	}
+
 	void imgui::tab_gamesettings()
 	{
 		const auto& im = imgui::get();
@@ -1303,6 +1321,13 @@ namespace gta4
 			static float cont_gs_timecycle_height = 0.0f;
 			cont_gs_timecycle_height = ImGui::Widget_ContainerWithCollapsingTitle("Timecycle Related Settings", cont_gs_timecycle_height, 
 				gamesettings_timecycle_container, false, ICON_FA_CLOCK, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+		}
+
+		// other
+		{
+			static float cont_gs_other_height = 0.0f;
+			cont_gs_other_height = ImGui::Widget_ContainerWithCollapsingTitle("Other Settings", cont_gs_other_height,
+				gamesettings_other_container, false, ICON_FA_RANDOM, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 	}
 

@@ -494,7 +494,7 @@ namespace gta4
 				"translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar",
 				("Scale influence of fogdensity timecycle setting on volumetric scale of sunlight.\n"
 				"( < translate_sunlight_volumetric_radiance_base >  +  < timecycle fogdensity (0-1) >  *  < this scalar >"),
-				10.0f
+				4.0f
 			};
 
 			//
@@ -638,7 +638,7 @@ namespace gta4
 			variable timecycle_fogcolor_influence_scalar = {
 				"timecycle_fogcolor_influence_scalar",
 				("Controls how much the fogcolor timecycle variable influences 'rtx.volumetrics.singleScatteringAlbedo'"),
-				4.60f
+				1.0f
 			};
 
 
@@ -651,7 +651,7 @@ namespace gta4
 			variable timecycle_fogdensity_influence_scalar = {
 				"timecycle_fogdensity_influence_scalar",
 				("Controls how much the fogdensity timecycle variable influences 'rtx.volumetrics.transmittanceMeasurementDistanceMeters'"),
-				2.0f
+				1.0f
 			};
 
 
@@ -693,7 +693,7 @@ namespace gta4
 			variable timecycle_skylight_scalar = {
 				"timecycle_skylight_scalar",
 				("Controls how much the skylight timecycle variable influences 'rtx.skyBrightness'"),
-				0.08f
+				0.07f
 			};
 
 			// -----
@@ -713,7 +713,7 @@ namespace gta4
 			variable timecycle_colortemp_influence = {
 				"timecycle_colortemp_influence",
 				("Controls how much the colortemp timecycle variable influences 'rtx.tonemap.colorBalance'"),
-				0.3f
+				0.6f
 			};
 
 			// -----
@@ -726,13 +726,13 @@ namespace gta4
 			variable timecycle_desaturation_influence = {
 				"timecycle_desaturation_influence",
 				("Controls how much the desaturation timecycle variable influences 'rtx.tonemap.saturation'"),
-				0.3f
+				0.7f
 			};
 
 			variable timecycle_fardesaturation_influence = {
 				"timecycle_fardesaturation_influence",
 				("Controls how much the fardesaturation timecycle variable influences 'rtx.tonemap.saturation'."),
-				0.7f
+				0.1f
 			};
 
 			// -----
@@ -779,6 +779,15 @@ namespace gta4
 				"phone_emissive_scalar",
 				("Scales the emissive intensity of phone meshes. Needs 'phone_emissive_override'"),
 				2.5f
+			};
+
+			// -----
+
+			variable remix_override_rtxdi_samplecount = {
+				"remix_override_rtxdi_samplecount",
+				("Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start.\n"
+				 "Setting this value to anything greater 0 constantly sets the remix variable with this value."),
+				30
 			};
 		};
 	

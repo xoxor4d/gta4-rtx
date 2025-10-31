@@ -22,6 +22,9 @@ namespace gta4
 	void on_begin_scene_cb()
 	{
 		static auto im = imgui::get();
+		static auto vars = remix_vars::get();
+		static auto gs = game_settings::get();
+
 		renderer::get()->m_triggered_remix_injection = false; 
 		g_applied_hud_hack = false;
 
@@ -71,8 +74,19 @@ namespace gta4
 			}
 		}
 
-		if (game::is_in_game) {
+		if (game::is_in_game) 
+		{
 			translate_and_apply_timecycle_settings();
+
+			// Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start
+			// and we def. need more then 3 samples to get somewhat good looking vehicle lights
+			const auto rtxdi_override_val = gs->remix_override_rtxdi_samplecount.get_as<int>();
+			if (rtxdi_override_val) // override if > 0
+			{
+				static auto rtxdi_samplecount = vars->get_option("rtx.di.initialSampleCount");
+				remix_vars::option_value val {.value = (float)rtxdi_override_val };
+				vars->set_option(rtxdi_samplecount, val);
+			}
 		}
 	}
 

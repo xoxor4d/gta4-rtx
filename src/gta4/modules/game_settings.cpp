@@ -223,6 +223,8 @@ namespace gta4
 				ASSIGN(phone_emissive_override);
 				ASSIGN(phone_emissive_scalar);
 
+				ASSIGN(remix_override_rtxdi_samplecount);
+
 			#undef ASSIGN
 			}
 
