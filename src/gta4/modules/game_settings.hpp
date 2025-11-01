@@ -310,6 +310,9 @@ namespace gta4
 	
 		struct var_definitions
 		{
+			// ----------------------------------
+			// remix related settings
+
 			variable fix_windowed_hud_resolution =
 			{
 				"fix_windowed_hud_resolution",
@@ -318,7 +321,6 @@ namespace gta4
 				1920, 1080
 			};
 
-			// -----
 			variable load_colormaps_only = {
 				"load_colormaps_only",
 				("This setting will prevent loading and usage all non-colormap textures.\n"
@@ -326,31 +328,17 @@ namespace gta4
 				true
 			};
 
-
-			// -----
-			variable fixed_function_trees =
-			{
-				"fixed_function_trees",
-				("Render trees via fixed function. Improves performance but gets rid of wind sway"),
-				true
-			};
-
-			variable tree_foliage_alpha_cutout_value =
-			{
-				"tree_foliage_alpha_cutout_value",
-				("Value used for ALPHAREF. 0.625f for PC and 4.0 for Console"),
-				0.5f
-			};
-
-			variable grass_foliage_alpha_cutout_value =
-			{
-				"grass_foliage_alpha_cutout_value",
-				("Value used for ALPHAREF. 0.625f for PC and 4.0 for Console"),
-				0.6f
+			variable remix_override_rtxdi_samplecount = {
+				"remix_override_rtxdi_samplecount",
+				("Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start.\n"
+				 "Setting this value to anything greater 0 constantly sets the remix variable with this value."),
+				30
 			};
 
 
-			// -----
+			// ----------------------------------
+			// culling related settings
+
 			variable nocull_dist_near_static =
 			{
 				"nocull_dist_near_static",
@@ -402,7 +390,9 @@ namespace gta4
 			};
 
 
-			// -----
+			// ----------------------------------
+			// light translation related settings
+
 			variable translate_game_lights =
 			{
 				"translate_game_lights",
@@ -497,7 +487,9 @@ namespace gta4
 				4.0f
 			};
 
-			//
+
+			// ----------------------------------
+			// emissive related settings
 
 			variable vehicle_lights_emissive_scalar =
 			{
@@ -515,7 +507,6 @@ namespace gta4
 				false
 			};
 
-			// -----
 			variable render_emissive_surfaces_using_shaders =
 			{
 				"render_emissive_surfaces_using_shaders",
@@ -559,8 +550,22 @@ namespace gta4
 				0.4f
 			};
 
+			variable phone_emissive_override = {
+				"phone_emissive_override",
+				("Automatically tags phone related meshes as world-ui and adjusts the emissive scale.\n"
+				 "Emissive intensity can be tweaked via 'phone_emissive_scalar'"),
+				true
+			};
 
-			// -----
+			variable phone_emissive_scalar = {
+				"phone_emissive_scalar",
+				("Scales the emissive intensity of phone meshes. Needs 'phone_emissive_override'"),
+				2.5f
+			};
+
+			// ----------------------------------
+			// general rendering related settings
+
 			variable decal_dirt_shader_usage =
 			{
 				"handle_decal_dirt_shader",
@@ -583,6 +588,43 @@ namespace gta4
 				1.0f
 			};
 
+			// -----
+			variable fixed_function_trees =
+			{
+				"fixed_function_trees",
+				("Render trees via fixed function. Improves performance but gets rid of wind sway"),
+				true
+			};
+
+			variable tree_foliage_alpha_cutout_value =
+			{
+				"tree_foliage_alpha_cutout_value",
+				("Value used for ALPHAREF. 0.625f for PC and 4.0 for Console"),
+				0.5f
+			};
+
+			variable grass_foliage_alpha_cutout_value =
+			{
+				"grass_foliage_alpha_cutout_value",
+				("Value used for ALPHAREF. 0.625f for PC and 4.0 for Console"),
+				0.6f
+			};
+
+			// -----
+			variable npc_expensive_hair_alpha_testing =
+			{
+				"npc_expensive_hair_alpha_testing",
+				("Alpha-test hair rendered with 'gta_hair_sorted_alpha_expensive' shader to make it look a little more like hair.\n"
+				 "Not perfect and still WIP."),
+				true
+			};
+
+			variable npc_expensive_hair_alpha_cutout_value =
+			{
+				"npc_expensive_hair_alpha_cutout_value",
+				("Value used for ALPHAREF. Lower values might cause transparency issues while higher values will reduce hair visibility."),
+				0.45f
+			};
 
 			// -----
 			variable override_water_texture_hash =
@@ -602,7 +644,9 @@ namespace gta4
 			};
 
 
-			// -----
+			// ----------------------------------
+			// timecycle related settings
+
 			variable timecycle_wetness_enabled = {
 				"timecycle_wetness_enabled",
 				("Enables material roughness tweaks based on timecycle wetness settings."),
@@ -767,28 +811,6 @@ namespace gta4
 				1.0f
 			};
 
-			// -----
-			variable phone_emissive_override = {
-				"phone_emissive_override",
-				("Automatically tags phone related meshes as world-ui and adjusts the emissive scale.\n"
-				 "Emissive intensity can be tweaked via 'phone_emissive_scalar'"),
-				true
-			};
-
-			variable phone_emissive_scalar = {
-				"phone_emissive_scalar",
-				("Scales the emissive intensity of phone meshes. Needs 'phone_emissive_override'"),
-				2.5f
-			};
-
-			// -----
-
-			variable remix_override_rtxdi_samplecount = {
-				"remix_override_rtxdi_samplecount",
-				("Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start.\n"
-				 "Setting this value to anything greater 0 constantly sets the remix variable with this value."),
-				30
-			};
 		};
 	
 		static inline var_definitions vars = {};

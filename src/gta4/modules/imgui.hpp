@@ -53,15 +53,16 @@ namespace gta4
 		int m_dbg_tag_static_emissive_as_index = -1;
 		bool m_dbg_emissive_ff_with_alphablend = true;
 
-		bool m_dbg_emissive_nonalpha_override = false;
-		float m_dbg_emissive_nonalpha_override_scale = 0.0f;
-
+		//bool m_dbg_emissive_nonalpha_override = false;
+		//float m_dbg_emissive_nonalpha_override_scale = 0.0f;
 		//bool m_dbg_vehglass_disable_alphablend = true;
 
 		bool m_dbg_skip_draw_indexed_checks = false;
 		bool m_dbg_disable_ignore_baked_lighting_enforcement = false;
 		bool m_dbg_never_cull_statics = false;
 		bool m_dbg_disable_hud_fixup = false;
+
+		int m_dbg_tag_exp_hair_as_index = -1;
 
 		int m_dbg_used_timecycle = -1;
 
@@ -241,6 +242,103 @@ namespace gta4
 		bool m_dbg_ignore_shadowZDir = false;
 		bool m_dbg_ignore_water = false;
 		bool m_dbg_ignore_waterTex = false;
+
+		// -----
+
+		enum StatMode
+		{
+			StatModeCheck, StatModeSucess
+		};
+
+		class ImGuiStats
+		{
+		private:
+			static inline bool m_tracking_enabled = false;
+
+		public:
+			bool is_tracking_enabled() const {
+				return m_tracking_enabled;
+			}
+
+			void enable_tracking(const bool state)
+			{
+				// reset stats once when tracking gets disabled
+				if (!state && m_tracking_enabled) {
+					this->reset_stats();
+				}
+
+				m_tracking_enabled = state;
+			}
+
+			struct StatObj
+			{
+				std::uint32_t num_total_checks{ 0 };
+				std::uint32_t num_successful_checks{ 0 };
+
+				bool track(StatMode type = StatModeCheck)
+				{
+					if (!m_tracking_enabled) {
+						return true;
+					}
+
+					if (type == StatModeCheck) {
+						++num_total_checks;
+					}
+					else {
+						++num_successful_checks;
+					}
+					return true;
+				}
+			};
+
+			StatObj _water_shader_name_checks;
+			StatObj _gta_rmptfx_litsprite_shader_name_checks;
+			StatObj _rmptfx_shader_name_checks;
+			StatObj _deferred_lighting_shader_name_checks;
+
+			ImGuiStats()
+			{
+				m_stat_list.emplace_back("Water Shader Name Checks", &_water_shader_name_checks);
+				m_stat_list.emplace_back("RMPTFX Litsprite Shader Name Checks", &_gta_rmptfx_litsprite_shader_name_checks);
+				m_stat_list.emplace_back("All RMPTFX Shaders Name Checks", &_rmptfx_shader_name_checks);
+				m_stat_list.emplace_back("Deferred Lighting Shaders Name Checks", &_deferred_lighting_shader_name_checks);
+			}
+
+			void imgui_widget()
+			{
+				if (!m_tracking_enabled) {
+					return;
+				}
+
+				for (const auto& p : m_stat_list) {
+					display_stat(p.first, *p.second);
+				}
+			}
+
+			void reset_stats()
+			{
+				for (auto& p : m_stat_list) {
+					reset_stat(*p.second);
+				}
+			}
+
+		private:
+			std::vector<std::pair<const char*, StatObj*>> m_stat_list;
+
+			void display_stat(const char* name, const StatObj& stat)
+			{
+				ImGui::Text("%s: %d total, %d successful", name, stat.num_total_checks, stat.num_successful_checks);
+			}
+
+			void reset_stat(StatObj& stat)
+			{
+				stat.num_total_checks = 0u;
+				stat.num_successful_checks = 0u;
+			}
+		};
+
+		ImGuiStats m_stats = {};
+		
 
 
 		static bool is_initialized()

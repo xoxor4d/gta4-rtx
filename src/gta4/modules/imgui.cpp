@@ -371,46 +371,8 @@ namespace gta4
 	{
 		static const auto& im = imgui::get();
 
-		ImGui::Spacing(0, TREENODE_SPACING);
-		ImGui::Checkbox("Visualize Api Lights 3D", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
-		ImGui::Checkbox("Visualize Unstable Light Hashes", &im->m_dbg_visualize_api_light_unstable_hashes);
-		ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
-
-		ImGui::Spacing(0, 4);
-		ImGui::Checkbox("Visualize Decal Renderstates", &im->m_dbg_visualize_decal_renderstates); TT("Visualize renderstates of nearby decal surfaces.");
-
-		ImGui::Spacing(0, 4);
-		ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
-		ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
-		ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
-
-		ImGui::Spacing(0, 4);
-		ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
-		ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
-		ImGui::Checkbox("Do not restore Drawcall Context", &im->m_dbg_do_not_restore_drawcall_context);
-		ImGui::Checkbox("Do not restore Drawcall Context on Early Out", &im->m_dbg_do_not_restore_drawcall_context_on_early_out);
-
-		ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement); TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
-
-		//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
-
-		ImGui::Spacing(0, 4);
-
-		ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::Checkbox("FF Emissive: Enable Alphablend on non alpha Emissives", &im->m_dbg_emissive_ff_with_alphablend); 
-
-		//ImGui::Checkbox("FF Emissive: Enable Emissive Override", &im->m_dbg_emissive_nonalpha_override);
-		//ImGui::DragFloat("FF Emissive: Enable Emissive Override Scale", &im->m_dbg_emissive_nonalpha_override_scale, 0.005f);
-
-		ImGui::Spacing(0, 4);
-
-		ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
-		TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
-			"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
-
-
 #ifdef LOG_SHADERPRESETS
-		if (ImGui::Button("Copy Shader PresetLog to Clipboard"))
+		if (ImGui::Button("Copy Shader PresetLog to Clipboard", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 		{
 			auto log_str = [&]()
 				{
@@ -425,7 +387,46 @@ namespace gta4
 			ImGui::LogText("%s", log_str().c_str());
 			ImGui::LogFinish();
 		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
 #endif
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Statistics ..."))
+		{
+			im->m_stats.enable_tracking(true);
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			im->m_stats.imgui_widget();
+			ImGui::TreePop();
+		}
+		else {
+			im->m_stats.enable_tracking(false);
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Disable Functionalities ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+
+			ImGui::Checkbox("Toggle Shader/FF Rendering (On: Shader)", &im->m_dbg_toggle_ff);
+			ImGui::Checkbox("Disable Pixelshader for Static Objects Rendered via FF", &im->m_dbg_disable_ps_for_static);
+			TT(	"Remix only grabs VS output when no pixel shader is bound.\n"
+				"If this makes a difference somewhere, please report it on Discord or GitHub!")
+
+			ImGui::Checkbox("Skip DrawIndexedPrim Logic", &im->m_dbg_skip_draw_indexed_checks); TT("Disables all checks in DrawIndexedPrim wrapper and renders via Shaders");
+			ImGui::Checkbox("Do not restore Drawcall Context", &im->m_dbg_do_not_restore_drawcall_context);
+			ImGui::Checkbox("Do not restore Drawcall Context on Early Out", &im->m_dbg_do_not_restore_drawcall_context_on_early_out);
+
+			ImGui::Spacing(0, 4);
+
+			ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
+			ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
+			ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement);
+			TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
+
+			//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
+
+			ImGui::TreePop();
+		}
 
 		ImGui::Spacing(0, TREENODE_SPACING);
 		if (ImGui::TreeNode("Do not render ..."))
@@ -443,9 +444,102 @@ namespace gta4
 		}
 
 		ImGui::Spacing(0, TREENODE_SPACING);
-		if (ImGui::TreeNode("Directional Light Info"))
+		if (ImGui::TreeNode("Light related ..."))
 		{
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::Checkbox("Visualize Api Lights 3D", &im->m_dbg_visualize_api_lights); TT("Visualize all spawned api lights");
+			ImGui::Checkbox("Visualize Unstable Light Hashes", &im->m_dbg_visualize_api_light_unstable_hashes);
+			ImGui::Checkbox("Skip Ignore Light Hash Logic", &im->m_dbg_disable_ignore_light_hash_logic); TT("For performance impact testing");
+
+
+			ImGui::Spacing(0, 8);
+			ImGui::SeparatorText("Ignore Lights with certain flags ...");
+			ImGui::Spacing(0, 4);
+
+			{
+				ImGui::Checkbox("Enable Flag Logic", &im->m_dbg_ignore_lights_with_flag_logic);
+
+				ImGui::BeginDisabled(!im->m_dbg_ignore_lights_with_flag_logic);
+				{
+					static const char* bit_list[] = {
+						"Bit 0:  0x1",
+						"Bit 1:  0x2",
+						"Bit 2:  0x4",
+						"Bit 3:  0x8",
+						"Bit 4:  0x10",
+						"Bit 5:  0x20",
+						"Bit 6:  0x40",
+						"Bit 7:  0x80",
+						"Bit 8:  0x100",
+						"Bit 9:  0x200",
+						"Bit 10: 0x400",
+						"Bit 11: 0x800",
+						"Bit 12: 0x1000",
+						"Bit 13: 0x2000",
+						"Bit 14: 0x4000",
+						"Bit 15: 0x8000",
+						"Bit 16: 0x10000"
+					};
+					static const int num_bit_list = std::size(bit_list);
+
+					uint32_t current_selection_flag1 = im->m_dbg_ignore_lights_with_flag_01;
+					if (ImGui::BeginCombo("Ignore Lights with Flag:", bit_list[current_selection_flag1]))
+					{
+						for (auto i = 0u; i < num_bit_list; ++i)
+						{
+							const bool is_selected = (current_selection_flag1 == i);
+							if (ImGui::Selectable(bit_list[i], is_selected)) {
+								current_selection_flag1 = i;
+							}
+
+							if (is_selected) {
+								ImGui::SetItemDefaultFocus();
+							}
+						}
+						ImGui::EndCombo();
+					}
+
+					if (current_selection_flag1 != (uint32_t)im->m_dbg_ignore_lights_with_flag_01) {
+						im->m_dbg_ignore_lights_with_flag_01 = static_cast<int>(current_selection_flag1);
+					}
+
+					ImGui::Checkbox("ADD Second Flag", &im->m_dbg_ignore_lights_with_flag_add_second_flag);
+					TT("This will add a second flag the light has to have to ignore it.\n"
+						"In short, both flags have to be set for a light to be ignored.")
+
+						ImGui::BeginDisabled(!im->m_dbg_ignore_lights_with_flag_add_second_flag);
+					{
+						uint32_t current_selection_flag2 = im->m_dbg_ignore_lights_with_flag_02;
+						if (ImGui::BeginCombo("Additional Flag:", bit_list[current_selection_flag2]))
+						{
+							for (auto i = 0u; i < num_bit_list; ++i)
+							{
+								const bool is_selected = (current_selection_flag2 == i);
+								if (ImGui::Selectable(bit_list[i], is_selected)) {
+									current_selection_flag2 = i;
+								}
+
+								if (is_selected) {
+									ImGui::SetItemDefaultFocus();
+								}
+							}
+							ImGui::EndCombo();
+						}
+
+						if (current_selection_flag2 != (uint32_t)im->m_dbg_ignore_lights_with_flag_02) {
+							im->m_dbg_ignore_lights_with_flag_02 = static_cast<int>(current_selection_flag2);
+						}
+
+						ImGui::EndDisabled();
+					}
+
+					ImGui::EndDisabled();
+				}
+			}
+
+			ImGui::Spacing(0, 8);
+			ImGui::SeparatorText("Directional Light Info");
+			ImGui::Spacing(0, 4);
 
 			for (auto i = 0u; i < 2; i++)
 			{
@@ -463,87 +557,36 @@ namespace gta4
 		}
 
 		ImGui::Spacing(0, TREENODE_SPACING);
-		if (ImGui::TreeNode("Ignore Lights with Certain Flags"))
+		if (ImGui::TreeNode("Emissive Related"))
 		{
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			ImGui::Checkbox("Enable Logic", &im->m_dbg_ignore_lights_with_flag_logic);
+			ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::Checkbox("FF Emissive: Enable Alphablend on non alpha Emissives", &im->m_dbg_emissive_ff_with_alphablend);
+			//ImGui::Checkbox("FF Emissive: Enable Emissive Override", &im->m_dbg_emissive_nonalpha_override);
+			//ImGui::DragFloat("FF Emissive: Enable Emissive Override Scale", &im->m_dbg_emissive_nonalpha_override_scale, 0.005f);
+			ImGui::TreePop();
+		}
 
-			ImGui::BeginDisabled(!im->m_dbg_ignore_lights_with_flag_logic);
-			{
-				static const char* bit_list[] = {
-					"Bit 0:  0x1",
-					"Bit 1:  0x2",
-					"Bit 2:  0x4",
-					"Bit 3:  0x8",
-					"Bit 4:  0x10",
-					"Bit 5:  0x20",
-					"Bit 6:  0x40",
-					"Bit 7:  0x80",
-					"Bit 8:  0x100",
-					"Bit 9:  0x200",
-					"Bit 10: 0x400",
-					"Bit 11: 0x800",
-					"Bit 12: 0x1000",
-					"Bit 13: 0x2000",
-					"Bit 14: 0x4000",
-					"Bit 15: 0x8000",
-					"Bit 16: 0x10000"
-				};
-				static const int num_bit_list = std::size(bit_list);
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Debug Visualizations / Rendering related ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::Checkbox("Visualize Decal Renderstates", &im->m_dbg_visualize_decal_renderstates); TT("Visualize renderstates of nearby decal surfaces.");
 
-				uint32_t current_selection_flag1 = im->m_dbg_ignore_lights_with_flag_01;
-				if (ImGui::BeginCombo("Ignore Lights with Flag:", bit_list[current_selection_flag1])) 
-				{
-					for (auto i = 0u; i < num_bit_list; ++i)
-					{
-						const bool is_selected = (current_selection_flag1 == i);
-						if (ImGui::Selectable(bit_list[i], is_selected)) {
-							current_selection_flag1 = i;
-						}
+			ImGui::Spacing(0, 4);
+			ImGui::SliderInt("Tag Exp Hair Surfaces as Category ..", &im->m_dbg_tag_exp_hair_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
 
-						if (is_selected) {
-							ImGui::SetItemDefaultFocus();
-						}
-					}
-					ImGui::EndCombo();
-				}
+			ImGui::TreePop();
+		}
 
-				if (current_selection_flag1 != (uint32_t)im->m_dbg_ignore_lights_with_flag_01) {
-					im->m_dbg_ignore_lights_with_flag_01 = static_cast<int>(current_selection_flag1);
-				}
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Timecycle related ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 
-				ImGui::Checkbox("ADD Second Flag", &im->m_dbg_ignore_lights_with_flag_add_second_flag);
-				TT( "This will add a second flag the light has to have to ignore it.\n"
-					"In short, both flags have to be set for a light to be ignored.")
-
-				ImGui::BeginDisabled(!im->m_dbg_ignore_lights_with_flag_add_second_flag);
-				{
-					uint32_t current_selection_flag2 = im->m_dbg_ignore_lights_with_flag_02;
-					if (ImGui::BeginCombo("Additional Flag:", bit_list[current_selection_flag2]))
-					{
-						for (auto i = 0u; i < num_bit_list; ++i)
-						{
-							const bool is_selected = (current_selection_flag2 == i);
-							if (ImGui::Selectable(bit_list[i], is_selected)) {
-								current_selection_flag2 = i;
-							}
-
-							if (is_selected) {
-								ImGui::SetItemDefaultFocus();
-							}
-						}
-						ImGui::EndCombo();
-					}
-
-					if (current_selection_flag2 != (uint32_t)im->m_dbg_ignore_lights_with_flag_02) {
-						im->m_dbg_ignore_lights_with_flag_02 = static_cast<int>(current_selection_flag2);
-					}
-
-					ImGui::EndDisabled();
-				}
-
-				ImGui::EndDisabled();
-			}
+			ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
+			TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
+				"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
 
 			ImGui::TreePop();
 		}
@@ -2273,6 +2316,10 @@ namespace gta4
 					}
 
 					im->draw_debug();
+
+					if (im->m_stats.is_tracking_enabled()) {
+						im->m_stats.reset_stats();
+					}
 
 					shared::globals::imgui_is_rendering = true;
 					ImGui::EndFrame();

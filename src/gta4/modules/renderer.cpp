@@ -582,23 +582,45 @@ namespace gta4
 				is_gta_vehicle_shader = true; 
 			}
 
-			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) {
-				is_gta_rmptfx_litsprite_shader = true;
-			}
-
 			else if (  pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVESTRONG ||
 					   pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT
 					|| pidx == GTA_EMISSIVENIGHT_ALPHA || pidx == GTA_EMISSIVESTRONG_ALPHA || pidx == GTA_EMISSIVE_ALPHA
 					|| pidx == GTA_GLASS_EMISSIVE || pidx == GTA_GLASS_EMISSIVENIGHT)/*if (ctx.info.shader_name.contains("emissive"))*/ {
 				is_emissive_shader = true;
-
 			}
-			else if (ctx.info.shader_name.ends_with("projtex.fxc")) {
+
+			else if ((g_is_rendering_fx_instance || g_is_rendering_fx) 
+				&& !ctx.info.checked_for_gta_rmptfx_litsprite_shader)
+			{
+				ctx.info.checked_for_gta_rmptfx_litsprite_shader = true;
+
+				if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
+				{
+					im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track(imgui::StatModeSucess);
+					ctx.info.is_gta_rmptfx_litsprite_shader = true;
+				}
+			}
+
+			/*else if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) 
+			{
+				im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track(imgui::StatModeSucess);
+				is_gta_rmptfx_litsprite_shader = true;
+			}*/
+
+#if 0
+			else if (im->m_stats._projtex_shader_name_checks.track() && ctx.info.shader_name.ends_with("projtex.fxc")) 
+			{
+				im->m_stats._projtex_shader_name_checks.track(imgui::StatModeSucess);
 				is_projtex_shader = true;
 			}
-			else if (ctx.info.shader_name.ends_with("_im.fxc")) {
+
+
+			else if (im->m_stats._gta_im_shader_name_checks.track() && ctx.info.shader_name.ends_with("_im.fxc")) 
+			{
+				im->m_stats._gta_im_shader_name_checks.track(imgui::StatModeSucess);
 				is_gta_im_shader = true;
 			}
+#endif
 
 			int i = 0;
 			do
@@ -658,26 +680,10 @@ namespace gta4
 							on_constant_diffuseCol(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].float_arr);
 						}
 
+#if 0
 						else if (is_projtex_shader && register_num == 66u)
 						{
 							//modified_projtex_shader = true;
-
-							//ctx.save_vs(shared::globals::d3d_device);
-							//shared::globals::d3d_device->SetVertexShader(nullptr);
-
-							//float dat[4] = {};
-							//game_device->GetVertexShaderConstantF(66u, dat, 1);
-
-
-
-							//D3DXMATRIX texMatrix;
-							//D3DXMatrixIdentity(&texMatrix);  // Start with identity
-							//D3DXMatrixScaling(&texMatrix, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, constant_data_struct->constants[dataPoolIndex].float_arr[0] + imgui::get()->m_debug_vector2.x, 1.0f);
-
-							//ctx.set_texture_transform(shared::globals::d3d_device, &texMatrix);
-
-
-
 
 							/*D3DXMATRIX mtx;
 							game_device->GetVertexShaderConstantF(0, mtx, 4);
@@ -689,6 +695,7 @@ namespace gta4
 
 							game_device->SetVertexShaderConstantF(0, mtx, 4);*/
 						}
+#endif
 
 						else
 						{
@@ -899,6 +906,7 @@ namespace gta4
 
 				set_remix_texture_categories(dev, InstanceCategories::Sky); 
 
+				// ~ 2 checks per frame
 				if (ctx.info.shader_name.ends_with("im.fxc")) {
 					dev->SetTexture(0, tex_addons::sky);
 				}
@@ -1091,6 +1099,9 @@ namespace gta4
 				im->preset_list[ctx.info.preset_index] = ctx.info.preset_name;
 			}
 #endif
+
+			// true if none of the below checks were true
+			bool not_part_of_large_if_check = false;
 
 			const auto& pidx = ctx.info.preset_index;
 
@@ -1458,12 +1469,79 @@ namespace gta4
 				}
 			}
 
-			// put else g_is_rendering_static ?
-			else if (ctx.info.shader_name.ends_with("water.fxc")) {
-				ctx.modifiers.do_not_render = true;
+			else if (pidx == GTA_HAIR_SORTED_ALPHA_EXPENSIVE)
+			{
+				if (im->m_dbg_tag_exp_hair_as_index != -1) {
+					set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_exp_hair_as_index));
+				}
+
+				if (gs->npc_expensive_hair_alpha_testing.get_as<bool>())
+				{
+					// enable alpha testing
+					ctx.save_rs(dev, D3DRS_ALPHATESTENABLE);
+					ctx.save_rs(dev, D3DRS_ALPHAFUNC);
+					ctx.save_rs(dev, D3DRS_ALPHAREF);
+
+					dev->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+					dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
+
+					const float alpha_ref_val = std::clamp(gs->npc_expensive_hair_alpha_cutout_value.get_as<float>(), 0.0f, 1.0f);
+					DWORD alpha_ref_int = static_cast<DWORD>(alpha_ref_val * 255.0f); // 0-255 range
+					dev->SetRenderState(D3DRS_ALPHAREF, alpha_ref_int);
+
+					// disable alpha blending (since we're using alpha testing)
+					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+
+					// enable Z-writing and Z-testing
+					ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
+					ctx.save_rs(dev, D3DRS_ZENABLE);
+					ctx.save_rs(dev, D3DRS_ZFUNC);
+
+					dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE); // TODO
+					dev->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+					dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+
+					// disable culling for two-sided foliage
+					ctx.save_rs(dev, D3DRS_CULLMODE);
+					dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+
+					// texture stage states for alpha testing
+					/*ctx.save_tss(dev, D3DTSS_ALPHAOP);
+					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+
+					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);*/
+
+					ctx.save_tss(dev, D3DTSS_ALPHAOP);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+
+					//ctx.modifiers.allow_vertex_colors = true;
+					set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
+					set_remix_texture_categories(dev, InstanceCategories::DisableBackfaceCulling);
+				}
 			}
 
+			else if (pidx == GTA_PED_SKIN || pidx == GTA_PED_SKIN_BLENDSHAPE)
+			{
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
 
+				//set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
+
+				// fix alpha issues around hair
+				set_remix_texture_categories(dev, InstanceCategories::IgnoreAlphaChannel | InstanceCategories::DisableBackfaceCulling);
+			}
+
+			else {
+				not_part_of_large_if_check = true;
+			}
 
 			if (g_is_rendering_static)
 			{
@@ -1476,6 +1554,14 @@ namespace gta4
 					ctx.save_ps(dev);
 					dev->SetPixelShader(nullptr);
 				}
+			}
+
+			// water - why do I even check this here? - never triggers?
+			else if (not_part_of_large_if_check && !g_is_rendering_phone && !g_is_rendering_mirror && !g_is_rendering_vehicle &&
+				im->m_stats._water_shader_name_checks.track() && ctx.info.shader_name.ends_with("water.fxc"))
+			{
+				im->m_stats._water_shader_name_checks.track(imgui::StatModeSucess);
+				ctx.modifiers.do_not_render = true;
 			}
 
 			if (gs->render_emissive_surfaces_using_shaders.get_as<bool>())
@@ -1601,7 +1687,7 @@ namespace gta4
 				}
 			}
 
-			if (gs->timecycle_wetness_enabled.get_as<bool>())
+			if (gs->timecycle_wetness_enabled.get_as<bool>() && *game::pTimeCycleWetnessChange > 0.0f)
 			{
 				// check for stencil
 				DWORD stencil_ref = 0u, stencil_enabled = 0u;
@@ -1610,8 +1696,8 @@ namespace gta4
 
 				// surface can get wet if stencil = 0
 				if (stencil_enabled && stencil_ref == 0
-					|| (g_is_rendering_vehicle && !ctx.info.shader_name.ends_with("_interior.fxc"))
-					|| ctx.info.shader_name.ends_with("ped_reflect.fxc"))
+					|| (g_is_rendering_vehicle && !(pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2) /*!ctx.info.shader_name.ends_with("_interior.fxc")*/)
+					|| pidx == GTA_PED_REFLECT)
 				{
 					auto get_wetness = []()
 						{

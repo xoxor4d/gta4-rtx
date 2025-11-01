@@ -146,21 +146,21 @@ namespace gta4
 					}																											\
 				}
 
+				// remix related settings
 				ASSIGN(fix_windowed_hud_resolution);
 				ASSIGN(load_colormaps_only);
-				ASSIGN(fixed_function_trees);
-				ASSIGN(tree_foliage_alpha_cutout_value);
-				ASSIGN(grass_foliage_alpha_cutout_value);
-
+				ASSIGN(remix_override_rtxdi_samplecount);
+				
+				// culling related settings
 				ASSIGN(nocull_dist_near_static);
 				ASSIGN(nocull_dist_medium_static);
 				ASSIGN(nocull_radius_medium_static);
 				ASSIGN(nocull_dist_far_static);
 				ASSIGN(nocull_radius_far_static);
 				ASSIGN(nocull_height_far_static);
-
 				ASSIGN(nocull_dist_lights);
 
+				// light translation related settings
 				ASSIGN(translate_game_lights);
 				ASSIGN(translate_game_lights_ignore_filler_lights);
 				ASSIGN(translate_game_light_radius_scalar);
@@ -175,25 +175,32 @@ namespace gta4
 				ASSIGN(translate_sunlight_volumetric_radiance_base);
 				ASSIGN(translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled);
 				ASSIGN(translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar);
-	
+
+				// emissive related settings
 				ASSIGN(vehicle_lights_emissive_scalar);
 				ASSIGN(vehicle_lights_dual_render_proxy_texture);
-
 				ASSIGN(render_emissive_surfaces_using_shaders);
 				ASSIGN(assign_decal_category_to_emissive_surfaces);
 				ASSIGN(emissive_night_surfaces_emissive_scalar);
 				ASSIGN(emissive_surfaces_emissive_scalar);
 				ASSIGN(emissive_strong_surfaces_emissive_scalar);
 				ASSIGN(emissive_generic_scale);
+				ASSIGN(phone_emissive_override);
+				ASSIGN(phone_emissive_scalar);
 
+				// general rendering related settings
 				ASSIGN(decal_dirt_shader_usage);
 				ASSIGN(decal_dirt_shader_scalar);
 				ASSIGN(decal_dirt_shader_contrast);
-
+				ASSIGN(fixed_function_trees);
+				ASSIGN(tree_foliage_alpha_cutout_value);
+				ASSIGN(grass_foliage_alpha_cutout_value);
+				ASSIGN(npc_expensive_hair_alpha_testing);
+				ASSIGN(npc_expensive_hair_alpha_cutout_value);
 				ASSIGN(override_water_texture_hash);
-
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 
+				// timecycle related settings
 				ASSIGN(timecycle_wetness_enabled);
 				ASSIGN(timecycle_wetness_scalar);
 				ASSIGN(timecycle_wetness_offset);
@@ -219,11 +226,7 @@ namespace gta4
 				ASSIGN(timecycle_bloom_enabled);
 				ASSIGN(timecycle_bloomintensity_scalar);
 				ASSIGN(timecycle_bloomthreshold_scalar);
-				
-				ASSIGN(phone_emissive_override);
-				ASSIGN(phone_emissive_scalar);
 
-				ASSIGN(remix_override_rtxdi_samplecount);
 
 			#undef ASSIGN
 			}

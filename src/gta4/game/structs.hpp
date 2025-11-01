@@ -1,7 +1,8 @@
-﻿#pragma once
+#pragma once
 
 namespace gta4::game
 {
+	// (AssaultKifle47) https://github.com/akifle47/InGameTimecycEditor/blob/main/source/TimeCycle.h
 	struct TimeCycleParams
 	{
 		//unknown means its a timecyc.dat parameter and i dont know what it does
@@ -112,6 +113,8 @@ namespace gta4::game
 		int32_t mFilmGrain;
 	};
 
+
+	// https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix
 	struct grmShaderInfo_Parameter
 	{
 		char nbType;
@@ -178,6 +181,10 @@ namespace gta4::game
 		int field_44;
 		int8_t gap48[56];
 	};
+
+	// ------
+
+
 
 	struct sceneviewport_s
 	{
