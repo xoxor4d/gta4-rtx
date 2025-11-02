@@ -117,6 +117,7 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 	gta4::game::loaded_settings_cfg->reflection_quality = 0u;
 	gta4::game::loaded_settings_cfg->shadow_quality = 0u;
 	gta4::game::loaded_settings_cfg->water_quality = 0u;
+	gta4::game::loaded_settings_cfg->sharpness = 0u; // fix cutscene crashing issue on amd cards
 
 	if (!g_populated_res_table)
 	{

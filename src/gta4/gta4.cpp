@@ -50,6 +50,7 @@ namespace gta4
 			gta4::game::loaded_settings_cfg->reflection_quality = 0u;
 			gta4::game::loaded_settings_cfg->shadow_quality = 0u;
 			gta4::game::loaded_settings_cfg->water_quality = 0u;
+			gta4::game::loaded_settings_cfg->sharpness = 0u; // fix cutscene crashing issue on amd cards
 		}
 
 		// do not pause if enabled

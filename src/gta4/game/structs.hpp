@@ -471,7 +471,7 @@ namespace gta4::game
 		uint32_t view_distance; // 0-100
 		uint32_t detail_distance; // 0-100
 		uint32_t vehicle_density; // 0-100
-		uint32_t unk2;
+		uint32_t sharpness;
 		uint32_t vsync;
 		uint32_t nightshadow_quality;
 		uint32_t shadow_quality;
