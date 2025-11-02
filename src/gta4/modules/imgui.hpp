@@ -1,4 +1,5 @@
 #pragma once
+#include "shared/imgui/imgui_helper.hpp"
 
 namespace gta4
 {
@@ -44,7 +45,10 @@ namespace gta4
 		bool m_dbg_do_not_render_instances = false;
 		bool m_dbg_do_not_render_stencil_zero = false;
 		bool m_dbg_do_not_render_tree_foliage = false;
+		bool m_dbg_do_not_render_fx = false;
 		bool m_dbg_do_not_render_ff = false;
+		bool m_dbg_do_not_render_prims_with_vertexshader = false;
+		bool m_dbg_do_not_render_indexed_prims_with_vertexshader = false;
 		bool m_dbg_do_not_render_water = false;
 		bool m_dbg_toggle_ff = false;
 		bool m_dbg_do_not_restore_drawcall_context = false;
@@ -203,8 +207,11 @@ namespace gta4
 		bool m_dbg_ignore_gta_spec_decal = false;
 		bool m_dbg_ignore_gta_spec_reflect = false;
 		bool m_dbg_ignore_gta_spec_reflect_decal = false;
-		bool m_dbg_ignore_gta_terrain = false;
+		bool m_dbg_ignore_gta_terrain_va_2lyr = false;
+		bool m_dbg_ignore_gta_terrain_va_3lyr = false;
+		bool m_dbg_ignore_gta_terrain_va_4lyr = false;
 		bool m_dbg_ignore_gta_trees = false;
+		bool m_dbg_ignore_gta_trees_extended = false;
 		bool m_dbg_ignore_gta_vehicle_badges = false;
 		bool m_dbg_ignore_gta_vehicle_basic = false;
 		bool m_dbg_ignore_gta_vehicle_chrome = false;
@@ -245,11 +252,6 @@ namespace gta4
 
 		// -----
 
-		enum StatMode
-		{
-			StatModeCheck, StatModeSucess
-		};
-
 		class ImGuiStats
 		{
 		private:
@@ -270,71 +272,101 @@ namespace gta4
 				m_tracking_enabled = state;
 			}
 
-			struct StatObj
+			class StatObj
 			{
-				std::uint32_t num_total_checks{ 0 };
-				std::uint32_t num_successful_checks{ 0 };
-
-				bool track(StatMode type = StatModeCheck)
+			public:
+				enum class Mode
 				{
-					if (!m_tracking_enabled) {
-						return true;
+					Single = 0,
+					ConditionalCheck = 1,
+				};
+
+				StatObj(Mode mode) : m_mode(mode) {};
+
+				auto& get_mode() const { return m_mode; }
+				auto& get_total() const { return m_num_total; }
+				auto& get_successful() const { return m_num_successful; }
+
+				void track_single()
+				{
+					if (m_tracking_enabled) {
+						++m_num_total;
+					}
+				}
+
+				bool track_check(const bool is_success = false)
+				{
+					if (m_tracking_enabled) 
+					{
+						if (!is_success) {
+							++m_num_total;
+						}
+						else {
+							++m_num_successful;
+						}
 					}
 
-					if (type == StatModeCheck) {
-						++num_total_checks;
-					}
-					else {
-						++num_successful_checks;
-					}
 					return true;
 				}
+
+				void reset()
+				{
+					m_num_total = 0u;
+					m_num_successful = 0u;
+				}
+
+				Mode m_mode = Mode::Single;
+
+			private:
+				std::uint32_t m_num_total{ 0 };
+				std::uint32_t m_num_successful{ 0 };
 			};
 
-			StatObj _water_shader_name_checks;
-			StatObj _gta_rmptfx_litsprite_shader_name_checks;
-			StatObj _rmptfx_shader_name_checks;
-			StatObj _deferred_lighting_shader_name_checks;
+			StatObj _water_shader_name_checks = { StatObj::Mode::ConditionalCheck };
+			StatObj _gta_rmptfx_litsprite_shader_name_checks = { StatObj::Mode::ConditionalCheck };
+
+			StatObj _drawcall_prim = { StatObj::Mode::Single };
+			StatObj _drawcall_prim_incl_ignored = { StatObj::Mode::Single };
+			StatObj _drawcall_using_vs = { StatObj::Mode::Single };
+
+			StatObj _drawcall_indexed_prim{ StatObj::Mode::Single };
+			StatObj _drawcall_indexed_prim_incl_ignored = { StatObj::Mode::Single };
+
+			StatObj _drawcall_indexed_prim_using_vs = { StatObj::Mode::Single };
+
 
 			ImGuiStats()
 			{
 				m_stat_list.emplace_back("Water Shader Name Checks", &_water_shader_name_checks);
 				m_stat_list.emplace_back("RMPTFX Litsprite Shader Name Checks", &_gta_rmptfx_litsprite_shader_name_checks);
-				m_stat_list.emplace_back("All RMPTFX Shaders Name Checks", &_rmptfx_shader_name_checks);
-				m_stat_list.emplace_back("Deferred Lighting Shaders Name Checks", &_deferred_lighting_shader_name_checks);
+
+				m_stat_list.emplace_back();
+				m_stat_list.emplace_back("DrawPrim Calls", &_drawcall_prim);
+				m_stat_list.emplace_back("DrawPrim +Ignored", &_drawcall_prim_incl_ignored);
+				m_stat_list.emplace_back("DrawPrim VS", &_drawcall_using_vs);
+
+				m_stat_list.emplace_back();
+				m_stat_list.emplace_back("DrawIndexedPrim Calls", &_drawcall_indexed_prim);
+				m_stat_list.emplace_back("DrawIndexedPrim +Ignored", &_drawcall_indexed_prim_incl_ignored);
+				m_stat_list.emplace_back("DrawIndexedPrim VS", &_drawcall_indexed_prim_using_vs);
 			}
 
-			void imgui_widget()
-			{
-				if (!m_tracking_enabled) {
-					return;
-				}
-
-				for (const auto& p : m_stat_list) {
-					display_stat(p.first, *p.second);
-				}
-			}
+			void draw_stats();
 
 			void reset_stats()
 			{
-				for (auto& p : m_stat_list) {
-					reset_stat(*p.second);
+				for (auto& p : m_stat_list) 
+				{
+					if (p.second) {
+						p.second->reset();
+					}
 				}
 			}
 
 		private:
 			std::vector<std::pair<const char*, StatObj*>> m_stat_list;
 
-			void display_stat(const char* name, const StatObj& stat)
-			{
-				ImGui::Text("%s: %d total, %d successful", name, stat.num_total_checks, stat.num_successful_checks);
-			}
-
-			void reset_stat(StatObj& stat)
-			{
-				stat.num_total_checks = 0u;
-				stat.num_successful_checks = 0u;
-			}
+			void display_single_stat(const char* name, const StatObj& stat);
 		};
 
 		ImGuiStats m_stats = {};

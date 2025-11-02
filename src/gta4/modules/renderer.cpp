@@ -13,6 +13,8 @@ namespace gta4
 	int g_is_sky_rendering = 0;
 	int g_is_water_rendering = 0;
 	int g_is_rendering_mirror = 0;
+	int g_is_rendering_fx_instance = 0;
+	int g_is_rendering_fx = 0;
 	bool g_applied_hud_hack = false; // was hud "injection" applied this frame
 
 	namespace tex_addons
@@ -213,7 +215,10 @@ namespace gta4
 		const auto& im = imgui::get();
 		if (im->m_dbg_enable_ignore_shader_logic)
 		{
-			if (im->m_dbg_ignore_all) return true;
+			if (im->m_dbg_ignore_all) {
+				return true;
+			}
+
 			if (im->m_dbg_ignore_cascade && shader.ends_with("cascade.fxc")) return true;
 			if (im->m_dbg_ignore_deferred_lighting && shader.ends_with("deferred_lighting.fxc")) return true;
 			if (im->m_dbg_ignore_gpuptfx_simplerender && shader.ends_with("gpuptfx_simplerender.fxc")) return true;
@@ -274,8 +279,11 @@ namespace gta4
 			if (im->m_dbg_ignore_gta_spec_decal && shader.ends_with("gta_spec_decal.fxc")) return true;
 			if (im->m_dbg_ignore_gta_spec_reflect && shader.ends_with("gta_spec_reflect.fxc")) return true;
 			if (im->m_dbg_ignore_gta_spec_reflect_decal && shader.ends_with("gta_spec_reflect_decal.fxc")) return true;
-			if (im->m_dbg_ignore_gta_terrain && shader.ends_with("gta_terrain.fxc")) return true;
+			if (im->m_dbg_ignore_gta_terrain_va_2lyr && shader.ends_with("gta_terrain_va_2lyr.fxc")) return true;
+			if (im->m_dbg_ignore_gta_terrain_va_3lyr && shader.ends_with("gta_terrain_va_3lyr.fxc")) return true;
+			if (im->m_dbg_ignore_gta_terrain_va_4lyr && shader.ends_with("gta_terrain_va_4lyr.fxc")) return true;
 			if (im->m_dbg_ignore_gta_trees && shader.ends_with("gta_trees.fxc")) return true;
+			if (im->m_dbg_ignore_gta_trees_extended && shader.ends_with("gta_trees_extended.fxc")) return true;
 			if (im->m_dbg_ignore_gta_vehicle_badges && shader.ends_with("gta_vehicle_badges.fxc")) return true;
 			if (im->m_dbg_ignore_gta_vehicle_basic && shader.ends_with("gta_vehicle_basic.fxc")) return true;
 			if (im->m_dbg_ignore_gta_vehicle_chrome && shader.ends_with("gta_vehicle_chrome.fxc")) return true;
@@ -342,6 +350,7 @@ namespace gta4
 	// every mesh goes through here (besides in-game ui and particles)
 	void SetupVertexShaderAndConstants(game::vs_info_s* info, game::vs_data_s* data, game::shader_info_sub_s* constant_data_struct, game::shader_data_sub_s* sampler_data)
 	{
+		static auto im = imgui::get();
 		static auto gs = game_settings::get();
 		const auto game_device = game::get_d3d_device();
 		auto& ctx = renderer::get()->dc_ctx;
@@ -378,16 +387,16 @@ namespace gta4
 
 		const auto& pidx = ctx.info.preset_index;
 
-		if (ctx.info.shader_name.ends_with("deferred_lighting.fxc")) {
+		// no longer needed because of patch @ game::cond_jmp_addr__skip_deferred_light_rendering02
+		/*if (ctx.info.shader_name.ends_with("deferred_lighting.fxc")) {
 			ctx.modifiers.do_not_render = true;
-		}
+		}*/
 
 		if (info->num_vs_constants > 0)
 		{
 			bool is_gta_atmoscatt_clouds_shader = false;
 			bool is_lightsemissive_shader = false;
-			bool is_gta_rmptfx_litsprite_shader = false;
-			//bool is_gta_normal_spec_decal_shader = false;
+			//bool is_gta_rmptfx_litsprite_shader = false;
 			//bool modified_world_matrix = false;
 
 			if (g_is_sky_rendering)
@@ -399,12 +408,6 @@ namespace gta4
 			else if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE /*ctx.info.shader_name.ends_with("lightsemissive.fxc")*/) {
 				is_lightsemissive_shader = true;
 			}
-			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) {
-				is_gta_rmptfx_litsprite_shader = true;
-			}
-			/*else if (ctx.info.shader_name.ends_with("gta_normal_spec_decal.fxc")) {
-				is_gta_normal_spec_decal_shader = true;
-			}*/
 
 			int i = 0;
 			do
@@ -435,16 +438,6 @@ namespace gta4
 					}
 					else
 					{
-						//if (register_num == 64u || register_num == 65u || register_num == 69u || register_num == 70u)
-						//{
-						//	if (ctx.info.shader_name.contains("gta_rmptfx") || ctx.info.shader_name.contains("rmptfx"))
-						//	{
-						//		/*if (shared::utils::compare_vs_shader_constant_name(shared::globals::d3d_device, register_num, "gSuperAlpha")) {
-						//			on_constant_gSuperAlpha(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].float_arr);
-						//		}*/
-						//	}
-						//}
-
 						/*if (shared::utils::compare_vs_shader_constant_name(game_device, register_num, "globalFogParams"))
 						{
 							if (constant_data_struct->constants[dataPoolIndex].float_arr[0] == 1.337f) 
@@ -505,7 +498,7 @@ namespace gta4
 							game_device->SetVertexShaderConstantF(0, newWorld, 4);
 							modified_world_matrix = true;
 						}
-						else*/ if ((register_num == 69u || register_num == 70u) && is_gta_rmptfx_litsprite_shader)
+						else*/ if ((register_num == 69u || register_num == 70u) && ctx.info.is_gta_rmptfx_litsprite_shader)
 						{
 							// gSuperAlpha constant
 							float constant[4] = { *constant_data_struct->constants[dataPoolIndex].float_arr + gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float>(), 0.0f, 0.0f, 0.0f };
@@ -546,6 +539,7 @@ namespace gta4
 	// every mesh goes through here (besides in-game ui and particles)
 	void SetupPixelShaderAndConstants(game::ps_info_s* info, game::ps_data_s* data, game::shader_info_sub_s* constant_data_struct, game::shader_data_sub_s* sampler_data)
 	{
+		static auto im = imgui::get();
 		static auto gs = game_settings::get();
 		const auto game_device = game::get_d3d_device();
 		auto& ctx = renderer::get()->dc_ctx;
@@ -560,18 +554,18 @@ namespace gta4
 			ctx.info.shader_name = constant_data_struct->data->sub.shader_name;
 		}
 
-		if (ctx.info.shader_name.contains("rmptfx_")) {
+		if (g_is_rendering_fx_instance || g_is_rendering_fx) {
 			ctx.modifiers.is_fx = true;
 		}
 
 		if (info->num_ps_constants > 0)
 		{
-			bool is_gta_rmptfx_litsprite_shader = false;
+			//bool is_gta_rmptfx_litsprite_shader = false;
 			bool is_gta_vehicle_shader = false;
 			bool is_emissive_shader = false;
-			bool is_projtex_shader = false;
-			bool is_gta_im_shader = false;
-			bool modified_projtex_shader = false;
+			//bool is_projtex_shader = false;
+			//bool is_gta_im_shader = false;
+			//bool modified_projtex_shader = false;
 
 			const auto& pidx = ctx.info.preset_index;
 
@@ -594,18 +588,12 @@ namespace gta4
 			{
 				ctx.info.checked_for_gta_rmptfx_litsprite_shader = true;
 
-				if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
+				if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
 				{
-					im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track(imgui::StatModeSucess);
+					im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check(true);
 					ctx.info.is_gta_rmptfx_litsprite_shader = true;
 				}
 			}
-
-			/*else if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc")) 
-			{
-				im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track(imgui::StatModeSucess);
-				is_gta_rmptfx_litsprite_shader = true;
-			}*/
 
 #if 0
 			else if (im->m_stats._projtex_shader_name_checks.track() && ctx.info.shader_name.ends_with("projtex.fxc")) 
@@ -832,6 +820,8 @@ namespace gta4
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
 
+		im->m_stats._drawcall_prim_incl_ignored.track_single();
+
 		auto& ctx = setup_context(dev);
 		// info.shader_name can be empty here -> TODO
 
@@ -846,6 +836,9 @@ namespace gta4
 			set_remix_texture_hash(dev, shared::utils::string_hash32("mirror"));
 			ctx.save_texture(dev, 0);
 			dev->SetTexture(0, tex_addons::mirror);
+		}
+		else if (im->m_dbg_do_not_render_fx && (g_is_rendering_fx || g_is_rendering_fx_instance)) {
+			ctx.modifiers.do_not_render = true;
 		}
 
 		const auto viewport = game::pCurrentViewport;
@@ -952,7 +945,21 @@ namespace gta4
 				}
 			}
 
-			else if (ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))  
+			else if ((g_is_rendering_fx_instance || g_is_rendering_fx)
+				&& !ctx.info.checked_for_gta_rmptfx_litsprite_shader)
+			{
+				ctx.info.checked_for_gta_rmptfx_litsprite_shader = true;
+
+				if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
+				{
+					im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check(true);
+					ctx.info.is_gta_rmptfx_litsprite_shader = true;
+				}
+			}
+
+			// --
+
+			if (ctx.info.is_gta_rmptfx_litsprite_shader)
 			{
 				set_remix_texture_categories(dev, InstanceCategories::Particle);
 				ctx.modifiers.is_fx = true;
@@ -1025,9 +1032,19 @@ namespace gta4
 
 		auto hr = S_OK;
 
+		if (!render_with_ff && !shared::globals::imgui_is_rendering && im->m_dbg_do_not_render_prims_with_vertexshader) {
+			return hr;
+		}
+
 		// do not render next surface if set
-		if (!ctx.modifiers.do_not_render) {
+		if (!ctx.modifiers.do_not_render) 
+		{
 			hr = dev->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+			im->m_stats._drawcall_prim.track_single();
+
+			if (!render_with_ff) {
+				im->m_stats._drawcall_using_vs.track_single();
+			}
 		}
 
 
@@ -1048,9 +1065,13 @@ namespace gta4
 		auto& ctx = setup_context(dev);
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
-		 
+
+		bool render_with_ff = false;
+
 		if (!shared::globals::imgui_is_rendering)
 		{
+			im->m_stats._drawcall_indexed_prim_incl_ignored.track_single();
+
 			if (ctx.modifiers.do_not_render) 
 			{
 				if (!g_is_instance_rendering) 
@@ -1090,7 +1111,7 @@ namespace gta4
 
 			// shared::utils::lookat_vertex_decl(dev);
 
-			bool render_with_ff = g_is_rendering_static;
+			render_with_ff = g_is_rendering_static;
 			//bool allow_vertex_colors = false;
 
 #ifdef LOG_SHADERPRESETS
@@ -1558,9 +1579,13 @@ namespace gta4
 
 			// water - why do I even check this here? - never triggers?
 			else if (not_part_of_large_if_check && !g_is_rendering_phone && !g_is_rendering_mirror && !g_is_rendering_vehicle &&
-				im->m_stats._water_shader_name_checks.track() && ctx.info.shader_name.ends_with("water.fxc"))
+				im->m_stats._water_shader_name_checks.track_check() && ctx.info.shader_name.ends_with("water.fxc"))
 			{
-				im->m_stats._water_shader_name_checks.track(imgui::StatModeSucess);
+				im->m_stats._water_shader_name_checks.track_check(true);
+				ctx.modifiers.do_not_render = true;
+			}
+
+			else if (im->m_dbg_do_not_render_fx && (g_is_rendering_fx || g_is_rendering_fx_instance)) {
 				ctx.modifiers.do_not_render = true;
 			}
 
@@ -1761,9 +1786,22 @@ namespace gta4
 
 		auto hr = S_OK;
 
+		if (!render_with_ff && !shared::globals::imgui_is_rendering && im->m_dbg_do_not_render_indexed_prims_with_vertexshader) {
+			return hr;
+		}
+
 		// do not render next surface if set
-		if (!ctx.modifiers.do_not_render && !ctx.modifiers.do_not_render_indexed_primitives) {
+		if (!ctx.modifiers.do_not_render && !ctx.modifiers.do_not_render_indexed_primitives) 
+		{
 			hr = dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+
+			if (!shared::globals::imgui_is_rendering) {
+				im->m_stats._drawcall_indexed_prim.track_single();
+			}
+
+			if (!render_with_ff) {
+				im->m_stats._drawcall_indexed_prim_using_vs.track_single();
+			}
 		}
 
 
@@ -1947,7 +1985,6 @@ namespace gta4
 			}
 		}
 		
-
 
 		// ---------
 		// post draw
@@ -2206,6 +2243,53 @@ namespace gta4
 		}
 	}
 
+	__declspec (naked) void pre_draw_fx_instance_stub()
+	{
+		__asm
+		{
+			mov     esi, ecx;
+			mov     ecx, [esi + 8];
+			mov		g_is_rendering_fx_instance, 1;
+			jmp		game::retn_addr__pre_draw_fx_instance;
+		}
+	}
+
+	__declspec (naked) void post_draw_fx_instance_stub()
+	{
+		__asm
+		{
+			mov		g_is_rendering_fx_instance, 0;
+			pop     esi;
+			add     esp, 8;
+			retn;
+		}
+	}
+
+
+	// ----
+
+
+	__declspec (naked) void pre_draw_fx_stub()
+	{
+		__asm
+		{
+			mov		g_is_rendering_fx, 1;
+			cmp     ax, [edi + 0x270];
+			jmp		game::retn_addr__pre_draw_fx;
+		}
+	}
+
+	__declspec (naked) void post_draw_fx_stub()
+	{
+		__asm
+		{
+			mov		g_is_rendering_fx, 0;
+			pop     edi;
+			pop     ebx;
+			retn	8;
+		}
+	}
+
 	renderer::renderer()
 	{
 		p_this = this;
@@ -2244,6 +2328,17 @@ namespace gta4
 		// hack to properly detect UI - we need to "inject" frontend helper text to trigger remix injection asap
 		// doing this fixes the sniper scope + shadow background of radar
 		shared::utils::hook(game::retn_addr__on_add_frontendhelpertext_stub - 5u, on_add_frontendhelpertext_stub, HOOK_JUMP).install()->quick(); // 0x8B6C81
+
+		// skip og light rendering
+		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__skip_deferred_light_rendering01); // 0x928AE5
+		shared::utils::hook::set(game::cond_jmp_addr__skip_deferred_light_rendering02, 0xC3); // 0x8DCBC0 - do not exec code inside CDrawDefLight::Draw
+
+		shared::utils::hook(game::retn_addr__pre_draw_fx_instance - 5u, pre_draw_fx_instance_stub, HOOK_JUMP).install()->quick(); // 0x8DD5A4 --- retn to (0x8DD5A9 .. sig addr)
+		shared::utils::hook(game::hk_addr__post_draw_fx_instance, post_draw_fx_instance_stub, HOOK_JUMP).install()->quick(); // 0x8DD659
+
+		shared::utils::hook::nop(game::retn_addr__pre_draw_fx - 7u, 7); // 0x6035BD
+		shared::utils::hook(game::retn_addr__pre_draw_fx - 7u, pre_draw_fx_stub, HOOK_JUMP).install()->quick(); // 0x6035BD --- retn to (0x6035C4 .. sig addr)
+		shared::utils::hook(game::hk_addr__post_draw_fx, post_draw_fx_stub, HOOK_JUMP).install()->quick(); // 0x60361C
 
 		// -----
 		m_initialized = true;

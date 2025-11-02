@@ -623,7 +623,7 @@ namespace gta4
 			{
 				"npc_expensive_hair_alpha_cutout_value",
 				("Value used for ALPHAREF. Lower values might cause transparency issues while higher values will reduce hair visibility."),
-				0.45f
+				0.43f
 			};
 
 			// -----

@@ -7,6 +7,8 @@ namespace gta4
 	extern int g_is_sky_rendering;
 	extern int g_is_water_rendering;
 	extern int g_is_rendering_mirror;
+	extern int g_is_rendering_fx_instance;
+	extern int g_is_rendering_fx;
 	extern bool g_applied_hud_hack;
 
 	namespace tex_addons
@@ -464,6 +466,8 @@ namespace gta4
 			int preset_index = 0;
 			IDirect3DDevice9* device_ptr = nullptr;
 			bool is_dirty = false; // true when context was not reset in drawprimitive
+			bool is_gta_rmptfx_litsprite_shader = false;
+			bool checked_for_gta_rmptfx_litsprite_shader = false; // true if shader check was performed
 
 			float shaderconst_emissive_intensity = 0.0f;
 			bool shaderconst_uses_emissive_multiplier = false;
@@ -483,6 +487,8 @@ namespace gta4
 				preset_index = 0;
 				device_ptr = nullptr;
 				is_dirty = false;
+				is_gta_rmptfx_litsprite_shader = false;
+				checked_for_gta_rmptfx_litsprite_shader = false;
 
 				shaderconst_emissive_intensity = 0.0f;
 				shaderconst_uses_emissive_multiplier = false;

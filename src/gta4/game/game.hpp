@@ -141,6 +141,11 @@ namespace gta4::game
 	extern uint32_t retn_addr__pre_draw_mirror;
 	extern uint32_t hk_addr__post_draw_mirror;
 
+	extern uint32_t retn_addr__pre_draw_fx_instance;
+	extern uint32_t hk_addr__post_draw_fx_instance;
+	extern uint32_t retn_addr__pre_draw_fx;
+	extern uint32_t hk_addr__post_draw_fx;
+
 	extern uint32_t hk_addr__frustum_check;
 
 	extern uint32_t hk_addr__prevent_game_input_func;
@@ -167,6 +172,10 @@ namespace gta4::game
 	extern uint32_t cond_jmp_addr__disable_unused_rendering_09;
 	extern uint32_t cond_jmp_addr__disable_unused_rendering_10;
 	extern uint32_t cond_jmp_addr__disable_unused_rendering_11;
+
+	extern uint32_t cond_jmp_addr__skip_deferred_light_rendering01;
+	extern uint32_t cond_jmp_addr__skip_deferred_light_rendering02;
+
 	// ---
 
 	extern void init_game_addresses();

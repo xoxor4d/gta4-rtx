@@ -127,6 +127,11 @@ namespace gta4::game
 	uint32_t retn_addr__pre_draw_mirror = 0u;
 	uint32_t hk_addr__post_draw_mirror = 0u;
 
+	uint32_t retn_addr__pre_draw_fx_instance = 0u;
+	uint32_t hk_addr__post_draw_fx_instance = 0u;
+	uint32_t retn_addr__pre_draw_fx = 0u;
+	uint32_t hk_addr__post_draw_fx = 0u;
+
 	uint32_t hk_addr__frustum_check = 0u;
 
 	uint32_t hk_addr__prevent_game_input_func = 0u;
@@ -153,6 +158,9 @@ namespace gta4::game
 	uint32_t cond_jmp_addr__disable_unused_rendering_09 = 0u;
 	uint32_t cond_jmp_addr__disable_unused_rendering_10 = 0u;
 	uint32_t cond_jmp_addr__disable_unused_rendering_11 = 0u;
+
+	uint32_t cond_jmp_addr__skip_deferred_light_rendering01 = 0u;
+	uint32_t cond_jmp_addr__skip_deferred_light_rendering02 = 0u;
 
 	// --------------
 
@@ -318,20 +326,20 @@ namespace gta4::game
 			ms_bFocusLost = (bool*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("38 05 ? ? ? ? 74 ? B8 ? ? ? ? A3", 2, "ms_bWindowed ", use_pattern, 0x4208B1); offset) {
+		if (const auto offset = shared::utils::mem::find_pattern("38 05 ? ? ? ? 74 ? B8 ? ? ? ? A3", 2, "ms_bWindowed", use_pattern, 0x4208B1); offset) {
 			ms_bWindowed = (bool*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
 
-		if (const auto offset = shared::utils::mem::find_pattern("A3 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 85 C0 74 ? 0F 57 C0", 1, "loaded_settings_cfg ", use_pattern, 0x59E41B); offset) {
+		if (const auto offset = shared::utils::mem::find_pattern("A3 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 85 C0 74 ? 0F 57 C0", 1, "loaded_settings_cfg", use_pattern, 0x59E41B); offset) {
 			loaded_settings_cfg = (settings_cfg_s*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("8B 0D ? ? ? ? ? ? 83 C1", 2, "avail_game_resolutions ", use_pattern, 0x4238B6); offset) {
+		if (const auto offset = shared::utils::mem::find_pattern("8B 0D ? ? ? ? ? ? 83 C1", 2, "avail_game_resolutions", use_pattern, 0x4238B6); offset) {
 			avail_game_resolutions = (resolution_modes_ptr*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("8B 2D ? ? ? ? E8 ? ? ? ? 83 E8", 2, "d3d9_adapter_index ", use_pattern, 0x41F511); offset) {
+		if (const auto offset = shared::utils::mem::find_pattern("8B 2D ? ? ? ? E8 ? ? ? ? 83 E8", 2, "d3d9_adapter_index", use_pattern, 0x41F511); offset) {
 			d3d9_adapter_index = (uint32_t*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
@@ -486,7 +494,7 @@ namespace gta4::game
 
 		// can't create signature at the end of the function so we get the offset from a relative jump instruction
 		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? A1 ? ? ? ? 83 F8 ? 74 ? 83 F8 ? 75", 0, "hk_addr__post_draw_water", use_pattern, 0xAD7F06); offset) {
-			hk_addr__post_draw_water = shared::utils::mem::resolve_indirect_call_address(offset, 6u, 2u); found_pattern_count++;
+			hk_addr__post_draw_water = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
 		} total_pattern_count++;
 
 
@@ -505,8 +513,27 @@ namespace gta4::game
 
 		// can't create signature at the end of the function so we get the offset from a relative jump instruction
 		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? 80 3D ? ? ? ? ? 0F 84 ? ? ? ? FF 35", 0, "hk_addr__post_draw_mirror", use_pattern, 0xB59911); offset) {
-			hk_addr__post_draw_mirror = shared::utils::mem::resolve_indirect_call_address(offset, 6u, 2u); found_pattern_count++;
+			hk_addr__post_draw_mirror = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
 		} total_pattern_count++;
+
+		// --
+
+		PATTERN_OFFSET_SIMPLE(retn_addr__pre_draw_fx_instance, "80 B9 ? ? ? ? ? 74 ? 80 B9 ? ? ? ? ? 0F 84", 0, 0x8DD5A9);
+
+		// can't create signature at the end of the function so we get the offset from a relative jump instruction
+		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? 83 3D ? ? ? ? ? 74 ? A1 ? ? ? ? 3B 05 ? ? ? ? 75 ? 83 3D ? ? ? ? ? 75", 0, "hk_addr__post_draw_fx_instance", use_pattern, 0x8DD5B9); offset) {
+			hk_addr__post_draw_fx_instance = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
+		} total_pattern_count++;
+
+		{
+			PATTERN_OFFSET_SIMPLE(retn_addr__pre_draw_fx, "73 ? 8B 44 24 ? 55", 0, 0x6035C4);
+
+			// retn addr ^ is a relative jmp to the end of the func - resolve offset
+			if (retn_addr__pre_draw_fx) {
+				hk_addr__post_draw_fx = shared::utils::mem::resolve_relative_jump_address(retn_addr__pre_draw_fx, 2u, 1u); found_pattern_count++;
+			} total_pattern_count++;
+		}
+		
 
 		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, "hk_addr__frustum_check", use_pattern, 0x431E40); offset) {
 			hk_addr__frustum_check = offset; found_pattern_count++;
@@ -537,7 +564,10 @@ namespace gta4::game
 		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_08, "0F 84 ? ? ? ? 57 E8 ? ? ? ? 83 EC", 0, 0xD5116B);
 		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_09, "0F 84 ? ? ? ? 53 55 56 6A", 0, 0xD514FD);
 		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_10, "0F 84 ? ? ? ? 57 83 EC", 0, 0xD50F8B);
-		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_11, "0F 84 ? ? ? ? 80 3D ? ? ? ? ? 0F 84 ? ? ? ? 8B 0D ? ? ? ? 64 A1", 0, 0x928AE5);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__disable_unused_rendering_11, "0F 84 ? ? ? ? 80 3D ? ? ? ? ? 0F 84 ? ? ? ? 8B 0D ? ? ? ? 64 A1", 0, 0xAC10AA);
+
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__skip_deferred_light_rendering01, "0F 8E ? ? ? ? 83 C7 ? 89 7C 24 ? 8B 47", 0, 0x928AE5);
+		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__skip_deferred_light_rendering02, "56 8B F1 FF 76 ? FF 76 ? E8", 0, 0x8DCBC0);
 
 		// end GAME_ASM_OFFSETS
 #pragma endregion

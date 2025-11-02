@@ -177,6 +177,113 @@ namespace gta4
 			ImGui::Checkbox("Also Ignore on DrawPrimitive calls", &im->m_dbg_ignore_drawprimitive);
 			ImGui::Checkbox("Ignore ALL", &im->m_dbg_ignore_all);
 
+			static bool toggle_all_state = false;
+			if(ImGui::Checkbox("Toggle All", &toggle_all_state))
+			{
+				im->m_dbg_ignore_cascade = toggle_all_state;
+				im->m_dbg_ignore_deferred_lighting = toggle_all_state;
+				im->m_dbg_ignore_gpuptfx_simplerender = toggle_all_state;
+				im->m_dbg_ignore_gta_atmoscatt_clouds = toggle_all_state;
+				im->m_dbg_ignore_gta_cubemap_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_cutout_fence = toggle_all_state;
+				im->m_dbg_ignore_gta_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_decal_amb_only = toggle_all_state;
+				im->m_dbg_ignore_gta_decal_dirt = toggle_all_state;
+				im->m_dbg_ignore_gta_decal_glue = toggle_all_state;
+				im->m_dbg_ignore_gta_decal_normal_only = toggle_all_state;
+				im->m_dbg_ignore_gta_default = toggle_all_state;
+				im->m_dbg_ignore_gta_diffuse_instance = toggle_all_state;
+				im->m_dbg_ignore_gta_emissive = toggle_all_state;
+				im->m_dbg_ignore_gta_emissivenight = toggle_all_state;
+				im->m_dbg_ignore_gta_emissivestrong = toggle_all_state;
+				im->m_dbg_ignore_gta_glass = toggle_all_state;
+				im->m_dbg_ignore_gta_glass_emissive = toggle_all_state;
+				im->m_dbg_ignore_gta_glass_emissivenight = toggle_all_state;
+				im->m_dbg_ignore_gta_glass_normal_spec_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_glass_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_glass_spec = toggle_all_state;
+				im->m_dbg_ignore_gta_grass = toggle_all_state;
+				im->m_dbg_ignore_gta_hair_sorted_alpha = toggle_all_state;
+				im->m_dbg_ignore_gta_hair_sorted_alpha_exp = toggle_all_state;
+				im->m_dbg_ignore_gta_im = toggle_all_state;
+				im->m_dbg_ignore_gta_normal = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_cubemap_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_reflect_alpha = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_reflect_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_spec = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_spec_cubemap_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_spec_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_spec_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_spec_reflect_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_spec_reflect_emissive = toggle_all_state;
+				im->m_dbg_ignore_gta_normal_spec_reflect_emissivenight = toggle_all_state;
+				im->m_dbg_ignore_gta_parallax = toggle_all_state;
+				im->m_dbg_ignore_gta_parallax_specmap = toggle_all_state;
+				im->m_dbg_ignore_gta_parallax_steep = toggle_all_state;
+				im->m_dbg_ignore_gta_ped = toggle_all_state;
+				im->m_dbg_ignore_gta_ped_face = toggle_all_state;
+				im->m_dbg_ignore_gta_ped_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_ped_skin = toggle_all_state;
+				im->m_dbg_ignore_gta_ped_skin_blendshape = toggle_all_state;
+				im->m_dbg_ignore_gta_projtex = toggle_all_state;
+				im->m_dbg_ignore_gta_projtex_steep = toggle_all_state;
+				im->m_dbg_ignore_gta_radar = toggle_all_state;
+				im->m_dbg_ignore_gta_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_reflect_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_rmptfx_gpurender = toggle_all_state;
+				im->m_dbg_ignore_gta_rmptfx_litsprite = toggle_all_state;
+				im->m_dbg_ignore_gta_rmptfx_mesh = toggle_all_state;
+				im->m_dbg_ignore_gta_rmptfx_raindrops = toggle_all_state;
+				im->m_dbg_ignore_gta_spec = toggle_all_state;
+				im->m_dbg_ignore_gta_spec_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_spec_reflect = toggle_all_state;
+				im->m_dbg_ignore_gta_spec_reflect_decal = toggle_all_state;
+				im->m_dbg_ignore_gta_terrain_va_2lyr = toggle_all_state;
+				im->m_dbg_ignore_gta_terrain_va_3lyr = toggle_all_state;
+				im->m_dbg_ignore_gta_terrain_va_4lyr = toggle_all_state;
+				im->m_dbg_ignore_gta_trees = toggle_all_state;
+				im->m_dbg_ignore_gta_trees_extended = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_badges = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_basic = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_chrome = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_disc = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_generic = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_interior = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_interior2 = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_lightsemissive = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_mesh = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_paint1 = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_paint2 = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_paint3 = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_rims1 = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_rims2 = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_rims3 = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_rubber = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_shuts = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_tire = toggle_all_state;
+				im->m_dbg_ignore_gta_vehicle_vehglass = toggle_all_state;
+				im->m_dbg_ignore_gta_wire = toggle_all_state;
+				im->m_dbg_ignore_mirror = toggle_all_state;
+				im->m_dbg_ignore_rage_atmoscatt_clouds = toggle_all_state;
+				im->m_dbg_ignore_rage_billboard_nobump = toggle_all_state;
+				im->m_dbg_ignore_rage_bink = toggle_all_state;
+				im->m_dbg_ignore_rage_default = toggle_all_state;
+				im->m_dbg_ignore_rage_fastmipmap = toggle_all_state;
+				im->m_dbg_ignore_rage_im = toggle_all_state;
+				im->m_dbg_ignore_rage_perlinnoise = toggle_all_state;
+				im->m_dbg_ignore_rage_postfx = toggle_all_state;
+				im->m_dbg_ignore_rmptfx_collision = toggle_all_state;
+				im->m_dbg_ignore_rmptfx_default = toggle_all_state;
+				im->m_dbg_ignore_rmptfx_litsprite = toggle_all_state;
+				im->m_dbg_ignore_shadowSmartBlit = toggle_all_state;
+				im->m_dbg_ignore_shadowZ = toggle_all_state;
+				im->m_dbg_ignore_shadowZDir = toggle_all_state;
+				im->m_dbg_ignore_water = toggle_all_state;
+				im->m_dbg_ignore_waterTex = toggle_all_state;
+			}
+
 			ImGui::Spacing();
 			ImGui::Separator();
 			ImGui::Spacing();
@@ -201,8 +308,11 @@ namespace gta4
 				ImGui::Checkbox("gta_radar.fxc", &im->m_dbg_ignore_gta_radar);
 				ImGui::Checkbox("gta_reflect.fxc", &im->m_dbg_ignore_gta_reflect);
 				ImGui::Checkbox("gta_reflect_decal.fxc", &im->m_dbg_ignore_gta_reflect_decal);
-				ImGui::Checkbox("gta_terrain.fxc", &im->m_dbg_ignore_gta_terrain);
+				ImGui::Checkbox("gta_terrain_va_2lyr.fxc", &im->m_dbg_ignore_gta_terrain_va_2lyr);
+				ImGui::Checkbox("gta_terrain_va_3lyr.fxc", &im->m_dbg_ignore_gta_terrain_va_3lyr);
+				ImGui::Checkbox("gta_terrain_va_4lyr.fxc", &im->m_dbg_ignore_gta_terrain_va_4lyr);
 				ImGui::Checkbox("gta_trees.fxc", &im->m_dbg_ignore_gta_trees);
+				ImGui::Checkbox("gta_trees_extended.fxc", &im->m_dbg_ignore_gta_trees_extended);
 				ImGui::Checkbox("gta_wire.fxc", &im->m_dbg_ignore_gta_wire);
 				ImGui::Checkbox("mirror.fxc", &im->m_dbg_ignore_mirror);
 				ImGui::TreePop();
@@ -367,6 +477,50 @@ namespace gta4
 		}
 	}
 
+	// draw imgui widget
+	void imgui::ImGuiStats::draw_stats()
+	{
+		if (!m_tracking_enabled) {
+			return;
+		}
+
+		for (const auto& p : m_stat_list) 
+		{
+			if (p.second) {
+				display_single_stat(p.first, *p.second);
+			}
+			else {
+				ImGui::Spacing(0, 4);
+			}
+		}
+	}
+
+	void imgui::ImGuiStats::display_single_stat(const char* name, const StatObj& stat)
+	{
+		switch (stat.get_mode())
+		{
+		case StatObj::Mode::Single:
+			ImGui::Text("%s", name);
+			ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.5f);
+			ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+			ImGui::Text("%d total", stat.get_total());
+			ImGui::PopFont();
+			break;
+
+		case StatObj::Mode::ConditionalCheck:
+			ImGui::Text("%s", name);
+			ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.5f);
+			ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+			ImGui::Text("%d total, %d successful", stat.get_total(), stat.get_successful());
+			ImGui::PopFont();
+			break;
+
+		default:
+			throw std::runtime_error("Uncovered Mode in StatObj");
+		}
+	}
+
+
 	void dev_debug_container()
 	{
 		static const auto& im = imgui::get();
@@ -395,7 +549,7 @@ namespace gta4
 		{
 			im->m_stats.enable_tracking(true);
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			im->m_stats.imgui_widget();
+			im->m_stats.draw_stats();
 			ImGui::TreePop();
 		}
 		else {
@@ -437,7 +591,10 @@ namespace gta4
 			ImGui::Checkbox("Do not render Instances", &im->m_dbg_do_not_render_instances);
 			ImGui::Checkbox("Do not render Stencil 0", &im->m_dbg_do_not_render_stencil_zero);
 			ImGui::Checkbox("Do not render Tree Foliage", &im->m_dbg_do_not_render_tree_foliage);
+			ImGui::Checkbox("Do not render FX", &im->m_dbg_do_not_render_fx);
 			ImGui::Checkbox("Do not render FF", &im->m_dbg_do_not_render_ff);
+			ImGui::Checkbox("Do not render Prims with VS", &im->m_dbg_do_not_render_prims_with_vertexshader);
+			ImGui::Checkbox("Do not render Indexed Prims with VS", &im->m_dbg_do_not_render_indexed_prims_with_vertexshader);
 			ImGui::Checkbox("Do not render Water", &im->m_dbg_do_not_render_water);
 
 			ImGui::TreePop();
@@ -778,6 +935,22 @@ namespace gta4
 				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
 			}
 			TT(gs->grass_foliage_alpha_cutout_value.get_tooltip_string().c_str());
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Hair ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("NPC Hair Alpha Testing", gs->npc_expensive_hair_alpha_testing.get_as<bool*>()); TT(gs->npc_expensive_hair_alpha_testing.get_tooltip_string().c_str());
+
+		ImGui::BeginDisabled(!gs->npc_expensive_hair_alpha_testing.get_as<bool>());
+		{
+			auto gs_var_ptr = gs->npc_expensive_hair_alpha_cutout_value.get_as<float*>();
+			if (ImGui::DragFloat("NPC Hair Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			}
+			TT(gs->npc_expensive_hair_alpha_cutout_value.get_tooltip_string().c_str());
+			ImGui::EndDisabled();
 		}
 
 		ImGui::Spacing(0, inbetween_spacing);

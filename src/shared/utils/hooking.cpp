@@ -345,7 +345,7 @@ namespace shared::utils
 		uint32_t resolve_relative_call_address(uint32_t call_instruction_addr)
 		{
 			const uint8_t* bytes = (uint8_t*)call_instruction_addr;
-			const uint32_t offset = *(uint32_t*)(bytes + 1); // read 4 bytes after E8
+			const int32_t offset = *(int32_t*)(bytes + 1); // read 4 bytes after E8
 			return call_instruction_addr + 5 + offset;
 		}
 
@@ -353,10 +353,22 @@ namespace shared::utils
 		/// @param instruction_addr				base address of the instruction
 		/// @param instruction_size				total size of instruction in bytes
 		/// @param bytes_until_relative_addr	bytes from base address until relative addr begins
-		uint32_t resolve_indirect_call_address(uint32_t instruction_addr, uint32_t instruction_size, uint32_t bytes_until_relative_addr)
+		uint32_t resolve_relative_jump_address(uint32_t instruction_addr, uint32_t instruction_size, uint32_t bytes_until_relative_addr)
 		{
 			const uint8_t* bytes = (uint8_t*)instruction_addr;
-			const uint32_t offset = *(uint32_t*)(bytes + bytes_until_relative_addr);
+			const uint32_t offset_size = instruction_size - bytes_until_relative_addr;
+
+			int32_t offset = 0;
+			if      (offset_size == 1) { offset = *(int8_t*) (bytes + bytes_until_relative_addr); }
+			else if (offset_size == 2) { offset = *(int16_t*)(bytes + bytes_until_relative_addr); }
+			else if (offset_size == 4) { offset = *(int32_t*)(bytes + bytes_until_relative_addr); }
+			else 
+			{
+				common::set_console_color_red(true);
+				std::cout << "[!][HOOK] Invalid offset size while resolving relative jump address @ 0x" << std::hex << instruction_addr << std::endl;
+				common::set_console_color_default();
+				return 0;
+			}
 			return instruction_addr + instruction_size + offset;
 		}
 	}
