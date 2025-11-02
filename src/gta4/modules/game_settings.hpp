@@ -461,7 +461,7 @@ namespace gta4
 			{
 				"translate_sunlight_angular_diameter_degrees",
 				("Angular Diameter of sunlight (Static value, not influenced by the game)"),
-				0.5f
+				0.45f
 			};
 
 			variable translate_sunlight_volumetric_radiance_base =
@@ -623,7 +623,7 @@ namespace gta4
 			{
 				"npc_expensive_hair_alpha_cutout_value",
 				("Value used for ALPHAREF. Lower values might cause transparency issues while higher values will reduce hair visibility."),
-				0.43f
+				0.35f
 			};
 
 			// -----
