@@ -24,7 +24,20 @@ namespace gta4
 	{
 		try 
 		{
-			auto config = toml::parse("rtx_comp\\map_settings.toml", toml::spec::v(1, 1, 0));
+			std::cout << "[MAPSETTINGS] Parsing 'map_settings.toml' ...\n";
+
+			toml::basic_value<toml::type_config> config;
+
+			try {
+				config = toml::parse("rtx_comp\\map_settings.toml", toml::spec::v(1, 1, 0));
+			}
+			catch (const toml::file_io_error& err)
+			{
+				shared::common::set_console_color_red(true);
+				std::cout << "[!] " << err.what() << "\n";
+				shared::common::set_console_color_default();
+				return false;
+			}
 
 			// ####################
 			// parse 'MARKER' table
@@ -39,7 +52,7 @@ namespace gta4
 						}
 						else
 						{
-							TOML_ERROR("[MARKER] #index", entry, "Marker did not define an index via 'marker' or 'nocull' -> skipping");
+							TOML_ERROR("[!] [MARKER] #index", entry, "Marker did not define an index via 'marker' or 'nocull' -> skipping");
 							return;
 						}
 
@@ -64,7 +77,7 @@ namespace gta4
 								{
 									if (const auto& rot = entry.at("rotation").as_array(); rot.size() == 3) {
 										temp_rotation = { DEG2RAD(to_float(rot[0])), DEG2RAD(to_float(rot[1])), DEG2RAD(to_float(rot[2])) };
-									} else { TOML_ERROR("[MARKER] #rotation", entry.at("rotation"), "expected a 3D vector but got => %d ", entry.at("rotation").as_array().size()); }
+									} else { TOML_ERROR("[!] [MARKER] #rotation", entry.at("rotation"), "expected a 3D vector but got => %d ", entry.at("rotation").as_array().size()); }
 								}
 
 								// optional
@@ -72,7 +85,7 @@ namespace gta4
 								{
 									if (const auto& scale = entry.at("scale").as_array(); scale.size() == 3) {
 										temp_scale = {to_float(scale[0]), to_float(scale[1]), to_float(scale[2]) };
-									} else { TOML_ERROR("[MARKER] #scale", entry.at("scale"), "expected a 3D vector but got => %d ", entry.at("scale").as_array().size()); }
+									} else { TOML_ERROR("[!] [MARKER] #scale", entry.at("scale"), "expected a 3D vector but got => %d ", entry.at("scale").as_array().size()); }
 								}
 
 								// optional
@@ -92,7 +105,7 @@ namespace gta4
 										.internal__frames_until_next_vis_check = static_cast<uint32_t>(temp_marker_index % remix_markers::DISTANCE_CHECK_FRAME_INTERVAL),
 									});
 							}
-							else { TOML_ERROR("[MARKER] #position", entry.at("position"), "expected a 3D vector but got => %d ", entry.at("position").as_array().size()); }
+							else { TOML_ERROR("[!] [MARKER] #position", entry.at("position"), "expected a 3D vector but got => %d ", entry.at("position").as_array().size()); }
 						}
 					};
 
@@ -133,7 +146,6 @@ namespace gta4
 		catch (const toml::syntax_error& err)
 		{
 			shared::common::set_console_color_red(true);
-			shared::common::console();
 			printf("%s\n", err.what());
 			shared::common::set_console_color_default();
 			return false;
