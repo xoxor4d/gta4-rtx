@@ -569,6 +569,8 @@ namespace gta4
 
 			const auto& pidx = ctx.info.preset_index;
 
+			bool is_vehicle_paint_1_or_2 = pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2;
+
 			// shader_name.contains("gta_vehicle_")
 			if (   pidx == GTA_VEHICLE_BADGES || pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2 || pidx == GTA_VEHICLE_LIGHTS
 				|| pidx == GTA_VEHICLE_MESH || pidx == GTA_VEHICLE_NOSPLASH || pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2 || pidx == GTA_VEHICLE_PAINT3
@@ -662,6 +664,30 @@ namespace gta4
 									}*/
 								}
 							}
+							else if (register_num == 72u && is_vehicle_paint_1_or_2)
+							{
+								ctx.info.ps_const_72_veh_dirt.x = constant_data_struct->constants[dataPoolIndex].float_arr[0];
+								ctx.info.ps_const_72_veh_dirt.y = constant_data_struct->constants[dataPoolIndex].float_arr[1];
+								ctx.info.ps_const_72_veh_dirt.z = constant_data_struct->constants[dataPoolIndex].float_arr[2];
+								ctx.info.ps_const_72_veh_dirt.w = constant_data_struct->constants[dataPoolIndex].float_arr[3];
+							}
+							else if (register_num == 73u && is_vehicle_paint_1_or_2)
+							{
+								// dirt level
+								ctx.info.ps_const_73_veh_dirt.x = constant_data_struct->constants[dataPoolIndex].float_arr[0];
+								ctx.info.ps_const_73_veh_dirt.y = constant_data_struct->constants[dataPoolIndex].float_arr[1];
+								ctx.info.ps_const_73_veh_dirt.z = constant_data_struct->constants[dataPoolIndex].float_arr[2];
+								ctx.info.ps_const_73_veh_dirt.w = constant_data_struct->constants[dataPoolIndex].float_arr[3];
+							}
+							else if (register_num == 74u && is_vehicle_paint_1_or_2)
+							{
+								// dirt color?
+								// variant 5 ...
+								ctx.info.ps_const_74_veh_dirt.x = constant_data_struct->constants[dataPoolIndex].float_arr[0];
+								ctx.info.ps_const_74_veh_dirt.y = constant_data_struct->constants[dataPoolIndex].float_arr[1];
+								ctx.info.ps_const_74_veh_dirt.z = constant_data_struct->constants[dataPoolIndex].float_arr[2];
+								ctx.info.ps_const_74_veh_dirt.w = constant_data_struct->constants[dataPoolIndex].float_arr[3];
+							}
 						}
 
 						else if (register_num == 66u && pidx == GTA_RADAR) {
@@ -739,10 +765,28 @@ namespace gta4
 					auto arg3 = sampler_data->sampler_constant_data[dataPoolIndex].unk3_lo >> 1;
 					auto arg4 = sampler_data->sampler_constant_data[dataPoolIndex].unk9;
 
+					bool is_livery = false;
+					bool is_dirt = false;
+
+					if (pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2) { 
+						is_dirt = arg3 == 6 && arg1 == 1;
+					}
+
+#if DEBUG
+					if (arg3 == 6 && arg1 == 1)
+					{
+						int y = 0;
+					}
+#endif
+
+					if (pidx == GTA_VEHICLE_PAINT3) {
+						is_livery = arg3 == 6 && arg1 == 1;
+					}
+
 					if (gs->load_colormaps_only.get_as<bool>() && !g_is_sky_rendering)
 					{
 						// everything that is not 0 is not a colormap (I hope)
-						if (arg1) 
+						if (arg1 && !is_livery && !is_dirt)
 						{
 							++i;
 							continue;
@@ -759,6 +803,34 @@ namespace gta4
 						call	game::func_addr__SetupTextureAndSampler;
 						add     esp, 8;
 						popad;
+					}
+
+					if (is_livery)
+					{
+						if (arg3 == 6 && arg1 == 1)
+						{
+							IDirect3DBaseTexture9* tex1ptr = nullptr;
+							if (game_device->GetTexture(1, &tex1ptr); tex1ptr)
+							{
+								ctx.modifiers.dual_render = true;
+								ctx.modifiers.dual_render_texture = tex1ptr;
+								ctx.modifiers.dual_render_mode_vehicle_livery = true;
+							}
+						}
+					}
+
+					if (is_dirt && gs->vehicle_dirt_enabled.get_as<bool>())
+					{
+						if (arg3 == 6 && arg1 == 1)
+						{
+							IDirect3DBaseTexture9* tex1ptr = nullptr;
+							if (game_device->GetTexture(1, &tex1ptr); tex1ptr)
+							{
+								ctx.modifiers.dual_render = true;
+								ctx.modifiers.dual_render_texture = tex1ptr;
+								ctx.modifiers.dual_render_mode_vehicle_dirt = true;
+							}
+						}
 					}
 				}
 
@@ -1807,19 +1879,121 @@ namespace gta4
 
 		// second drawings
 
-		if (ctx.modifiers.dual_render || ctx.modifiers.dual_render_with_specified_texture)
+		if (ctx.modifiers.dual_render)
 		{
 			if (ctx.modifiers.dual_render_reset_remix_modifiers) {
 				ctx.restore_render_state(dev, (D3DRENDERSTATETYPE)149);
 			}
 
-			if (ctx.modifiers.dual_render_with_specified_texture && ctx.modifiers.dual_render_texture)
+			if (ctx.modifiers.dual_render_texture)
 			{
 				// save og texture
 				ctx.save_texture(dev, 0);
 
 				// set new texture
 				dev->SetTexture(0, ctx.modifiers.dual_render_texture);
+			}
+
+			if (ctx.modifiers.dual_render_mode_vehicle_livery)
+			{
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+				ctx.save_rs(dev, D3DRS_BLENDOP);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+				ctx.save_rs(dev, D3DRS_SRCBLEND);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+				ctx.save_tss(dev, D3DTSS_COLOROP);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+				ctx.save_tss(dev, D3DTSS_COLORARG1);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+				ctx.save_tss(dev, D3DTSS_COLORARG2);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+
+				ctx.save_tss(dev, D3DTSS_TEXCOORDINDEX);
+				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 1);
+
+				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+			}
+
+			if (ctx.modifiers.dual_render_mode_vehicle_dirt)
+			{
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+				ctx.save_rs(dev, D3DRS_BLENDOP);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+				ctx.save_rs(dev, D3DRS_SRCBLEND);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+				ctx.save_tss(dev, D3DTSS_COLOROP);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+				ctx.save_tss(dev, D3DTSS_COLORARG1);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+				ctx.save_tss(dev, D3DTSS_COLORARG2);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE); 
+
+				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR); 
+
+				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+
+				if (gs->vehicle_dirt_custom_color_enabled.get_as<bool>())
+				{
+					const auto& col = gs->vehicle_dirt_custom_color.get_as<Vector*>();
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
+						D3DCOLOR_COLORVALUE(
+							col->x,
+							col->y,
+							col->z,
+							ctx.info.ps_const_73_veh_dirt.x));
+				}
+				else
+				{
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
+						D3DCOLOR_COLORVALUE(
+							ctx.info.ps_const_74_veh_dirt.x,
+							ctx.info.ps_const_74_veh_dirt.y,
+							ctx.info.ps_const_74_veh_dirt.z,
+							ctx.info.ps_const_73_veh_dirt.x));
+				}
+
+				ctx.save_tss(dev, D3DTSS_TEXCOORDINDEX);
+				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 1);
+
+				// slightly scale roughness with dirt (less roughness from dirt on flat surfaces (pointing upwards))
+				set_remix_roughness_scalar(dev, 0.0f - ctx.info.ps_const_73_veh_dirt.x);
+
+				set_remix_modifier(dev, RemixModifier::VehicleDecalDirt);
+				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
 			}
 
 			// BLEND ADD mode
@@ -1980,7 +2154,7 @@ namespace gta4
 			}
 			
 
-			if (ctx.modifiers.dual_render_with_specified_texture) {
+			if (ctx.modifiers.dual_render_texture) {
 				ctx.restore_texture(dev, 0);
 			}
 		}

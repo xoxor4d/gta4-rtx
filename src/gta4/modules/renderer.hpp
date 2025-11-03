@@ -31,6 +31,7 @@ namespace gta4
 		EnableVertexColor = 1 << 2,
 		DecalDirt = 1 << 3,
 		RemoveVertexColorKeepAlpha = 1 << 4,
+		VehicleDecalDirt = 1 << 5,
 	};
 
 	constexpr RemixModifier operator|(RemixModifier lhs, RemixModifier rhs) {
@@ -420,12 +421,13 @@ namespace gta4
 			bool allow_vertex_colors = false;
 
 			bool dual_render = false; // render prim a second time with texture within stage 0
-			bool dual_render_with_specified_texture = false; // render prim a second time with tex defined in 'dual_render_texture'
+			bool dual_render_mode_vehicle_livery = false;
+			bool dual_render_mode_vehicle_dirt = false;
 			bool dual_render_mode_blend_add = false; // renders second prim using blend mode ADD
 			bool dual_render_mode_blend_diffuse = false; // renders second prim using blend mode ADD
 			bool dual_render_mode_emissive_offset = false; // renders second prim emissive
 			bool dual_render_reset_remix_modifiers = false; // reset all active remix modifiers
-			IDirect3DBaseTexture9* dual_render_texture = nullptr; // texture to be used when 'dual_render_with_specified_texture' is set
+			IDirect3DBaseTexture9* dual_render_texture = nullptr; // use this texture for dual rendering if set
 
 			InstanceCategories remix_instance_categories = InstanceCategories::None;
 			RemixModifier remix_modifier = RemixModifier::None;
@@ -444,7 +446,8 @@ namespace gta4
 				allow_vertex_colors = false;
 
 				dual_render = false;
-				dual_render_with_specified_texture = false;
+				dual_render_mode_vehicle_livery = false;
+				dual_render_mode_vehicle_dirt = false;
 				dual_render_mode_blend_add = false;
 				dual_render_mode_blend_diffuse = false;
 				dual_render_mode_emissive_offset = false;
@@ -480,6 +483,10 @@ namespace gta4
 			DWORD tss_alphaarg1 = 0u;
 			DWORD tss_alphaarg2 = 0u;
 
+			Vector4D ps_const_72_veh_dirt;
+			Vector4D ps_const_73_veh_dirt;
+			Vector4D ps_const_74_veh_dirt;
+
 			void reset()
 			{
 				shader_name = "";
@@ -500,6 +507,10 @@ namespace gta4
 				tss_alphaop = 0u;
 				tss_alphaarg1 = 0u;
 				tss_alphaarg2 = 0u;
+
+				ps_const_72_veh_dirt.Zero();
+				ps_const_73_veh_dirt.Zero();
+				ps_const_74_veh_dirt.Zero();
 			}
 		};
 

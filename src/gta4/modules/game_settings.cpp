@@ -189,6 +189,9 @@ namespace gta4
 				ASSIGN(phone_emissive_scalar);
 
 				// general rendering related settings
+				ASSIGN(vehicle_dirt_enabled);
+				ASSIGN(vehicle_dirt_custom_color_enabled);
+				ASSIGN(vehicle_dirt_custom_color);
 				ASSIGN(decal_dirt_shader_usage);
 				ASSIGN(decal_dirt_shader_scalar);
 				ASSIGN(decal_dirt_shader_contrast);

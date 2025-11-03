@@ -21,9 +21,6 @@ namespace gta4
 
 		static void write_toml();
 		static bool parse_toml();
-	
-	private:
-		bool m_initialized = false;
 
 		union var_value
 		{
@@ -307,6 +304,9 @@ namespace gta4
 			var_value m_var_default;
 			var_type m_type;
 		};
+
+		private:
+			bool m_initialized = false;
 	
 		struct var_definitions
 		{
@@ -386,7 +386,7 @@ namespace gta4
 			{
 				"nocull_dist_lights",
 				("Distance (radius around player) where culling of game lights is disabled."),
-				40.0f
+				20.0f
 			};
 
 
@@ -566,12 +566,36 @@ namespace gta4
 			// ----------------------------------
 			// general rendering related settings
 
+			variable vehicle_dirt_enabled =
+			{
+				"vehicle_dirt_enabled",
+				("Enable dirt on vehicles. This renders the vehicle surface a second time\n"
+				"using the dirt texture and applies it as a decal."),
+				true
+			};
+
+			variable vehicle_dirt_custom_color_enabled =
+			{
+				"vehicle_dirt_custom_color_enabled",
+				("Enable dirt color override on vehicles. The color constant of the game seems to be static.\n"
+				"This option can be used to use a custom dirt color."),
+				false
+			};
+
+			variable vehicle_dirt_custom_color =
+			{
+				"vehicle_dirt_custom_color",
+				("Color used for vehicle dirt when 'vehicle_dirt_custom_color_enabled' is enabled."),
+				0.22f, 0.21f, 0.20f
+			};
+
+
 			variable decal_dirt_shader_usage =
 			{
 				"handle_decal_dirt_shader",
 				("Enable decal_dirt shader logic. Runtime will use 'rtx_comp/textures/decal_dirt.png' in texture slot 0 and the games intensity/alpha mask in slot 1.\n"
 				"This allows remixing the dirt texture while the game is handling the blending."),
-				true
+				false
 			};
 
 			variable decal_dirt_shader_scalar =
@@ -737,7 +761,7 @@ namespace gta4
 			variable timecycle_skylight_scalar = {
 				"timecycle_skylight_scalar",
 				("Controls how much the skylight timecycle variable influences 'rtx.skyBrightness'"),
-				0.07f
+				0.03f
 			};
 
 			// -----
@@ -757,7 +781,7 @@ namespace gta4
 			variable timecycle_colortemp_influence = {
 				"timecycle_colortemp_influence",
 				("Controls how much the colortemp timecycle variable influences 'rtx.tonemap.colorBalance'"),
-				0.6f
+				0.8f
 			};
 
 			// -----
@@ -770,13 +794,13 @@ namespace gta4
 			variable timecycle_desaturation_influence = {
 				"timecycle_desaturation_influence",
 				("Controls how much the desaturation timecycle variable influences 'rtx.tonemap.saturation'"),
-				0.7f
+				0.55f
 			};
 
 			variable timecycle_fardesaturation_influence = {
 				"timecycle_fardesaturation_influence",
 				("Controls how much the fardesaturation timecycle variable influences 'rtx.tonemap.saturation'."),
-				0.1f
+				0.06f
 			};
 
 			// -----

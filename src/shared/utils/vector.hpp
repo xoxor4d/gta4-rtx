@@ -32,6 +32,11 @@
 			x = v[0]; y = v[1]; z = v[2]; w = v[3];
 		}
 
+		Vector4D& operator=(const Vector4D& v)
+		{
+			x = v.x; y = v.y; z = v.z; w = v.w; return *this;
+		}
+
 		Vector4D operator+(const Vector4D& v) const
 		{
 			return Vector4D(x + v.x, y + v.y, z + v.z, w + v.w);
@@ -80,6 +85,11 @@
 		Vector4D operator-() const
 		{
 			return Vector4D(-x, -y, -z, -w);
+		}
+
+		void Zero()
+		{
+			x = 0.0f; y = 0.0f; z = 0.0f; w = 0.0f;
 		}
 
 		vec_t x, y, z, w;
@@ -534,6 +544,11 @@
 		void Init(float ix = 0.0f, float iy = 0.0f, float iz = 0.0f)
 		{
 			x = ix; y = iy; z = iz;
+		}
+
+		void Zero()
+		{
+			x = 0.0f; y = 0.0f; z = 0.0f;
 		}
 
 		void Add(const Vector& a, const Vector& b)

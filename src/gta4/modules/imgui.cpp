@@ -900,6 +900,22 @@ namespace gta4
 	}
 
 
+	bool gamesettings_bool_widget(const char* desc, game_settings::variable& var)
+	{
+		const auto gs_var_ptr = var.get_as<bool*>();
+		const bool result = ImGui::Checkbox(desc, gs_var_ptr);
+		TT(var.get_tooltip_string().c_str());
+		return result;
+	}
+
+	bool gamesettings_float_widget(const char* desc, game_settings::variable& var, const float& min = 0.0f, const float& max = 0.0f, const float& speed = 0.02f)
+	{
+		const auto gs_var_ptr = var.get_as<float*>();
+		const bool result = ImGui::DragFloat(desc, gs_var_ptr, speed, min, max, "%.2f", (min != 0.0f || max != 0.0f) ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
+		TT(var.get_tooltip_string().c_str());
+		return result;
+	}
+
 	// --------------------
 
 	void gamesettings_rendering_container()
@@ -913,43 +929,24 @@ namespace gta4
 		ImGui::SeparatorText(" General ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::Checkbox("Load ColorMaps Only", gs->load_colormaps_only.get_as<bool*>()); TT(gs->load_colormaps_only.get_tooltip_string().c_str());
+		gamesettings_bool_widget("Load ColorMaps Only", gs->load_colormaps_only);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Foliage ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::Checkbox("Fixed function Trees", gs->fixed_function_trees.get_as<bool*>()); TT(gs->fixed_function_trees.get_tooltip_string().c_str());
-
-		{
-			auto gs_var_ptr = gs->tree_foliage_alpha_cutout_value.get_as<float*>();
-			if (ImGui::DragFloat("Tree Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->tree_foliage_alpha_cutout_value.get_tooltip_string().c_str());
-		}
-
-		{
-			auto gs_var_ptr = gs->grass_foliage_alpha_cutout_value.get_as<float*>();
-			if (ImGui::DragFloat("Grass Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->grass_foliage_alpha_cutout_value.get_tooltip_string().c_str());
-		}
+		gamesettings_bool_widget("Fixed function Trees", gs->fixed_function_trees);
+		gamesettings_float_widget("Tree Alpha Cutout Value", gs->tree_foliage_alpha_cutout_value, 0.0f, 20.0f);
+		//gamesettings_float_widget("Grass Alpha Cutout Value", gs->grass_foliage_alpha_cutout_value, 0.0f, 20.0f);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Hair ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::Checkbox("NPC Hair Alpha Testing", gs->npc_expensive_hair_alpha_testing.get_as<bool*>()); TT(gs->npc_expensive_hair_alpha_testing.get_tooltip_string().c_str());
-
+		gamesettings_bool_widget("NPC Hair Alpha Testing", gs->npc_expensive_hair_alpha_testing);
 		ImGui::BeginDisabled(!gs->npc_expensive_hair_alpha_testing.get_as<bool>());
 		{
-			auto gs_var_ptr = gs->npc_expensive_hair_alpha_cutout_value.get_as<float*>();
-			if (ImGui::DragFloat("NPC Hair Alpha Cutout Value", gs_var_ptr, 0.02f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->npc_expensive_hair_alpha_cutout_value.get_tooltip_string().c_str());
+			gamesettings_float_widget("NPC Hair Alpha Cutout Value", gs->npc_expensive_hair_alpha_cutout_value, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 		}
 
@@ -957,98 +954,65 @@ namespace gta4
 		ImGui::SeparatorText(" Anti Culling of Static Objects ");
 		ImGui::Spacing(0, 4);
 
-		{
-			auto gs_var_ptr = gs->nocull_dist_near_static.get_as<float*>();
-			if (ImGui::DragFloat("Near: No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->nocull_dist_near_static.get_tooltip_string().c_str());
-		}
+		gamesettings_float_widget("Near: No Culling Until Distance", gs->nocull_dist_near_static, 0.0f, FLT_MAX, 0.5f);
+		
+		ImGui::Spacing(0, inbetween_spacing);
+
+		// ----
+
+		gamesettings_float_widget("Near to Medium Cascade: Medium Distance", gs->nocull_dist_medium_static, 0.0f, FLT_MAX, 0.5f);
+		gamesettings_float_widget("Near to Medium Cascade: Min. Object Radius", gs->nocull_radius_medium_static, 0.0f, FLT_MAX, 0.5f);
 
 		ImGui::Spacing(0, inbetween_spacing);
 
 		// ----
 
-		{
-			auto gs_var_ptr = gs->nocull_dist_medium_static.get_as<float*>();
-			//const auto& near_dist = gs->nocull_dist_near_static.get_as<float>();
-			if (ImGui::DragFloat("Near to Medium Cascade: Medium Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->nocull_dist_medium_static.get_tooltip_string().c_str());
-		}
-
-		{
-			auto gs_var_ptr = gs->nocull_radius_medium_static.get_as<float*>();
-			if (ImGui::DragFloat("Near to Medium Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->nocull_radius_medium_static.get_tooltip_string().c_str());
-		}
+		gamesettings_float_widget("Medium to Far Cascade: Far Distance", gs->nocull_dist_far_static, 0.0f, FLT_MAX, 0.5f);
+		gamesettings_float_widget("Medium to Far Cascade: Min. Object Radius", gs->nocull_radius_far_static, 0.0f, FLT_MAX, 0.5f);
+		gamesettings_float_widget("Medium to Far Cascade: Min. Object Height", gs->nocull_height_far_static, 0.0f, FLT_MAX, 0.5f);
 
 		ImGui::Spacing(0, inbetween_spacing);
-
-		// ----
-
-		{
-			auto gs_var_ptr = gs->nocull_dist_far_static.get_as<float*>();
-			//const auto& med_dist = gs->nocull_dist_medium_static.get_as<float>();
-			if (ImGui::DragFloat("Medium to Far Cascade: Far Distance", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->nocull_dist_far_static.get_tooltip_string().c_str());
-		}
-
-		{
-			auto gs_var_ptr = gs->nocull_radius_far_static.get_as<float*>();
-			if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Radius", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->nocull_radius_far_static.get_tooltip_string().c_str());
-		}
-
-		{
-			auto gs_var_ptr = gs->nocull_height_far_static.get_as<float*>();
-			if (ImGui::DragFloat("Medium to Far Cascade: Min. Object Height", gs_var_ptr, 0.5f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->nocull_height_far_static.get_tooltip_string().c_str());
-		}
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Dirt ");
+		ImGui::SeparatorText(" Vehicle Dirt ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::Checkbox("Decal Dirt Shader Usage", gs->decal_dirt_shader_usage.get_as<bool*>());
-		TT(gs->decal_dirt_shader_usage.get_tooltip_string().c_str());
-
+		gamesettings_bool_widget("Enable Vehicle Dirt", gs->vehicle_dirt_enabled);
+		ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
 		{
-			auto gs_var_ptr = gs->decal_dirt_shader_scalar.get_as<float*>();
-			if (ImGui::DragFloat("Dirt Decal Shader Scalar", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
+			gamesettings_bool_widget("Enable Vehicle Dirt Color Override", gs->vehicle_dirt_custom_color_enabled);
+
+			{
+				auto gs_var_ptr = gs->vehicle_dirt_custom_color.get_as<float*>();
+				if (ImGui::ColorEdit3("Vehicle Dirt Color", gs_var_ptr, ImGuiColorEditFlags_Float)) 
+				{
+					gs_var_ptr[0] = std::clamp(gs_var_ptr[0], 0.0f, 1.0f);
+					gs_var_ptr[1] = std::clamp(gs_var_ptr[1], 0.0f, 1.0f);
+					gs_var_ptr[2] = std::clamp(gs_var_ptr[2], 0.0f, 1.0f);
+				}
+				TT(gs->vehicle_dirt_custom_color.get_tooltip_string().c_str());
 			}
-			TT(gs->decal_dirt_shader_scalar.get_tooltip_string().c_str());
+
+			ImGui::EndDisabled();
 		}
 
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Interioir Dirt ");
+		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("Decal Dirt Shader Usage", gs->decal_dirt_shader_usage);
+		ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
 		{
-			auto gs_var_ptr = gs->decal_dirt_shader_contrast.get_as<float*>();
-			if (ImGui::DragFloat("Dirt Decal Shader Contrast", gs_var_ptr, 0.02f, 0.0f, 8.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->decal_dirt_shader_contrast.get_tooltip_string().c_str());
+			gamesettings_float_widget("Dirt Decal Shader Scalar", gs->decal_dirt_shader_scalar, 0.0f, 8.0f);
+			gamesettings_float_widget("Dirt Decal Shader Contrast", gs->decal_dirt_shader_contrast, 0.0f, 8.0f);
+			ImGui::EndDisabled();
 		}
+
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Effects ");
 		ImGui::Spacing(0, 4);
 
-		{
-			auto gs_var_ptr = gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float*>();
-			if (ImGui::DragFloat("gta_rmptfx_litsprite Alpha Scalar", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->gta_rmptfx_litsprite_alpha_scalar.get_tooltip_string().c_str());
-		}
+		gamesettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
 	}
 
 	void gamesettings_light_container()
@@ -1062,43 +1026,24 @@ namespace gta4
 		ImGui::SeparatorText(" Sphere/Spot ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::Checkbox("Translate Game Lights", gs->translate_game_lights.get_as<bool*>());
-		TT(gs->translate_game_lights.get_tooltip_string().c_str());
+		gamesettings_bool_widget("Translate Game Lights", gs->translate_game_lights);
+		gamesettings_bool_widget("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights);
 
-		ImGui::Checkbox("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights.get_as<bool*>());
-		TT(gs->translate_game_lights_ignore_filler_lights.get_tooltip_string().c_str());
+		gamesettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f);
+		gamesettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f);
 
-		ImGui::DragFloat("Light Radius Scalar", gs->translate_game_light_radius_scalar.get_as<float*>(), 0.005f);
-		TT(gs->translate_game_light_radius_scalar.get_tooltip_string().c_str());
-
-		ImGui::DragFloat("Light Intensity Scalar", gs->translate_game_light_intensity_scalar.get_as<float*>(), 0.005f);
-		TT(gs->translate_game_light_intensity_scalar.get_tooltip_string().c_str());
-
-		ImGui::DragFloat("Light Softness Offset", gs->translate_game_light_softness_offset.get_as<float*>(), 0.005f, -1.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		TT(gs->translate_game_light_softness_offset.get_tooltip_string().c_str());
-
-		ImGui::DragFloat("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		TT(gs->translate_game_light_spotlight_volumetric_radiance_scale.get_tooltip_string().c_str());
-
-		ImGui::DragFloat("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		TT(gs->translate_game_light_spherelight_volumetric_radiance_scale.get_tooltip_string().c_str());
-
-		ImGui::DragFloat("Light Angle Offset", gs->translate_game_light_angle_offset.get_as<float*>(), 0.005f, -180.0f, 180.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		TT(gs->translate_game_light_angle_offset.get_tooltip_string().c_str());
-
+		gamesettings_float_widget("Light Softness Offset", gs->translate_game_light_softness_offset, -1.0f, 1.0f, 0.005f);
+		gamesettings_float_widget("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f);
+		gamesettings_float_widget("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f);
+		gamesettings_float_widget("Light Angle Offset", gs->translate_game_light_angle_offset, -180.0f, 180.0f, 0.1f);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Distant ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::DragFloat("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar.get_as<float*>(), 0.005f, 0, 0, "%.2f");
-		TT(gs->translate_sunlight_intensity_scalar.get_tooltip_string().c_str());
-
-		ImGui::DragFloat("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees.get_as<float*>(), 0.005f, 0.0f, 45.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		TT(gs->translate_sunlight_angular_diameter_degrees.get_tooltip_string().c_str());
-
-		ImGui::DragFloat("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base.get_as<float*>(), 0.005f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		TT(gs->translate_sunlight_volumetric_radiance_base.get_tooltip_string().c_str());
+		gamesettings_float_widget("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar, 0.0f, 0.0f, 0.005f);
+		gamesettings_float_widget("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees, 0.0f, 45.0f, 0.005f);
+		gamesettings_float_widget("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base, 0.0f, 10.0f, 0.005f);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::Separator();
@@ -1107,13 +1052,7 @@ namespace gta4
 		ImGui::SeparatorText(" Anti Culling of Lights ");
 		ImGui::Spacing(0, 4);
 
-		{
-			auto gs_var_ptr = gs->nocull_dist_lights.get_as<float*>();
-			if (ImGui::DragFloat("No Culling Until Distance", gs_var_ptr, 0.5f, 0.0f, 500.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->nocull_dist_lights.get_tooltip_string().c_str());
-		}
+		gamesettings_float_widget("No Culling Until Distance", gs->nocull_dist_lights, 0.0f, 500.0f, 0.5f);
 	}
 
 	void gamesettings_emissive_container()
@@ -1127,71 +1066,30 @@ namespace gta4
 		ImGui::SeparatorText(" Vehicle ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::DragFloat("Vehicle Light Emissive Scalar", gs->vehicle_lights_emissive_scalar.get_as<float*>(), 0.005f);
-		TT(gs->vehicle_lights_emissive_scalar.get_tooltip_string().c_str());
+		gamesettings_float_widget("Vehicle Light Emissive Scalar", gs->vehicle_lights_emissive_scalar, 0.0f, 0.0f, 0.005f);
 
-		ImGui::Checkbox("Render Surfs a Second Time with Proxy Texture", gs->vehicle_lights_dual_render_proxy_texture.get_as<bool*>());
-		TT(gs->vehicle_lights_dual_render_proxy_texture.get_tooltip_string().c_str());
+		gamesettings_bool_widget("Render Surfs a Second Time with Proxy Texture", gs->vehicle_lights_dual_render_proxy_texture);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" World ");
 		ImGui::Spacing(0, 8);
 
-		ImGui::Checkbox("Render Emissive Surfaces using Shaders", gs->render_emissive_surfaces_using_shaders.get_as<bool*>());
-		TT(gs->render_emissive_surfaces_using_shaders.get_tooltip_string().c_str());
+		gamesettings_bool_widget("Render Emissive Surfaces using Shaders", gs->render_emissive_surfaces_using_shaders);
+		gamesettings_bool_widget("Assign Decal Texture Category to Emissive Surfaces", gs->assign_decal_category_to_emissive_surfaces);
 
-		ImGui::Checkbox("Assign Decal Texture Category to Emissive Surfaces", gs->assign_decal_category_to_emissive_surfaces.get_as<bool*>());
-		TT(gs->assign_decal_category_to_emissive_surfaces.get_tooltip_string().c_str());
-
-		{
-			auto gs_var_ptr = gs->emissive_night_surfaces_emissive_scalar.get_as<float*>();
-			if (ImGui::DragFloat("EmissiveNight Surfaces Scalar", gs_var_ptr, 0.02f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->emissive_night_surfaces_emissive_scalar.get_tooltip_string().c_str());
-		}
-
-		{
-			auto gs_var_ptr = gs->emissive_surfaces_emissive_scalar.get_as<float*>();
-			if (ImGui::DragFloat("Emissive Surfaces Scalar", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->emissive_surfaces_emissive_scalar.get_tooltip_string().c_str());
-		}
-
-		{
-			auto gs_var_ptr = gs->emissive_strong_surfaces_emissive_scalar.get_as<float*>();
-			if (ImGui::DragFloat("EmissiveStrong Surfaces Scalar", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->emissive_strong_surfaces_emissive_scalar.get_tooltip_string().c_str());
-		}
-
-		{
-			auto gs_var_ptr = gs->emissive_generic_scale.get_as<float*>();
-			if (ImGui::DragFloat("Generic Emissive Scale", gs_var_ptr, 0.001f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->emissive_generic_scale.get_tooltip_string().c_str());
-		}
-
-		
+		gamesettings_float_widget("EmissiveNight Surfaces Scalar", gs->emissive_night_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
+		gamesettings_float_widget("Emissive Surfaces Scalar", gs->emissive_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
+		gamesettings_float_widget("EmissiveStrong Surfaces Scalar", gs->emissive_strong_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
+		gamesettings_float_widget("Generic Emissive Scale", gs->emissive_generic_scale, 0.0f, 1000.0f, 0.001f);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Phone ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::Checkbox("Phone Emissive Override", gs->phone_emissive_override.get_as<bool*>());
-		TT(gs->phone_emissive_override.get_tooltip_string().c_str());
-
+		gamesettings_bool_widget("Phone Emissive Override", gs->phone_emissive_override);
 		ImGui::BeginDisabled(!gs->phone_emissive_override.get_as<bool>());
 		{
-			auto gs_var_ptr = gs->phone_emissive_scalar.get_as<float*>();
-			if (ImGui::DragFloat("Phone Emissive Scalar", gs_var_ptr, 0.02f, 0.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
-				*gs_var_ptr = *gs_var_ptr < 0.0f ? 0.0f : *gs_var_ptr;
-			}
-			TT(gs->phone_emissive_scalar.get_tooltip_string().c_str());
-
+			gamesettings_float_widget("Phone Emissive Scalar", gs->phone_emissive_scalar, 0.0f, 20.0f);
 			ImGui::EndDisabled();
 		}
 	}
@@ -1218,16 +1116,11 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		{
-			ImGui::Checkbox("Enable FogColor Logic", gs->timecycle_fogcolor_enabled.get_as<bool*>());
-			TT(gs->timecycle_fogcolor_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable FogColor Logic", gs->timecycle_fogcolor_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_fogcolor_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("FogColor Base Strength", gs->timecycle_fogcolor_base_strength.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_fogcolor_base_strength.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("FogColor Influence Scalar", gs->timecycle_fogcolor_influence_scalar.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_fogcolor_influence_scalar.get_tooltip_string().c_str());
+				gamesettings_float_widget("FogColor Base Strength", gs->timecycle_fogcolor_base_strength, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("FogColor Influence Scalar", gs->timecycle_fogcolor_influence_scalar, 0.0f, 0.0f, 0.005f);
 
 				ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
 					im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
@@ -1249,13 +1142,10 @@ namespace gta4
 		ImGui::Spacing(0, inbetween_spacing);
 
 		{
-			ImGui::Checkbox("Enable FogDensity Logic", gs->timecycle_fogdensity_enabled.get_as<bool*>());
-			TT(gs->timecycle_fogdensity_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable FogDensity Logic", gs->timecycle_fogdensity_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_fogdensity_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("FogDensity Influence Scalar", gs->timecycle_fogdensity_influence_scalar.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_fogdensity_influence_scalar.get_tooltip_string().c_str());
+				gamesettings_float_widget("FogDensity Influence Scalar", gs->timecycle_fogdensity_influence_scalar, 0.0f, 0.0f, 0.005f);
 
 				ImGui::TextDisabled("Timecycle mSkyBottomColorFogDensity: [ %.2f, %.2f, %.2f, (Density) %.2f ]",
 					im->m_timecyc_curr_mSkyBottomColorFogDensity.x,
@@ -1275,19 +1165,12 @@ namespace gta4
 		ImGui::Spacing(0, inbetween_spacing);
 
 		{
-			ImGui::Checkbox("Enable SkyHorizonHeight Logic", gs->timecycle_skyhorizonheight_enabled.get_as<bool*>());
-			TT(gs->timecycle_skyhorizonheight_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable SkyHorizonHeight Logic", gs->timecycle_skyhorizonheight_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_skyhorizonheight_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("SkyHorizonHeight Scalar", gs->timecycle_skyhorizonheight_scalar.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_skyhorizonheight_scalar.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("SkyHorizonHeight Low - Transmittance Offset", gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float*>(), 0.01f);
-				TT(gs->timecycle_skyhorizonheight_low_transmittance_offset.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("SkyHorizonHeight High - Transmittance Offset", gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float*>(), 0.01f);
-				TT(gs->timecycle_skyhorizonheight_high_transmittance_offset.get_tooltip_string().c_str());
+				gamesettings_float_widget("SkyHorizonHeight Scalar", gs->timecycle_skyhorizonheight_scalar, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("SkyHorizonHeight Low - Transmittance Offset", gs->timecycle_skyhorizonheight_low_transmittance_offset, 0.0f, 0.0f, 0.01f);
+				gamesettings_float_widget("SkyHorizonHeight High - Transmittance Offset", gs->timecycle_skyhorizonheight_high_transmittance_offset, 0.0f, 0.0f, 0.01f);
 
 				ImGui::TextDisabled("Timecycle mSkyHorizonHeight: [ %.2f ]",
 					im->m_timecyc_curr_mSkyHorizonHeight);
@@ -1306,13 +1189,10 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		{
-			ImGui::Checkbox("Enable SkyLight Logic", gs->timecycle_skylight_enabled.get_as<bool*>());
-			TT(gs->timecycle_skylight_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable SkyLight Logic", gs->timecycle_skylight_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("SkyLight Scalar", gs->timecycle_skylight_scalar.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_skylight_scalar.get_tooltip_string().c_str());
+				gamesettings_float_widget("SkyLight Scalar", gs->timecycle_skylight_scalar, 0.0f, 0.0f, 0.005f);
 
 				ImGui::TextDisabled("Timecycle mSkyLightMultiplier: [ %.2f ]",
 					im->m_timecyc_curr_mSkyLightMultiplier);
@@ -1329,14 +1209,10 @@ namespace gta4
 			ImGui::Spacing(0, inbetween_spacing);
 
 
-			ImGui::Checkbox("Enable Fogdensity Influence on Volumetric Scale", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_as<bool*>());
-			TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable Fogdensity Influence on Volumetric Scale", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_skylight_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("Fogdensity Volumetric Influence Scalar", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_as<float*>(), 0.005f);
-				TT(gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar.get_tooltip_string().c_str());
-
+				gamesettings_float_widget("Fogdensity Volumetric Influence Scalar", gs->translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar, 0.0f, 0.0f, 0.005f);
 				ImGui::EndDisabled();
 			}
 		}
@@ -1346,13 +1222,10 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		{
-			ImGui::Checkbox("Enable ColorCorrection Logic", gs->timecycle_colorcorrection_enabled.get_as<bool*>());
-			TT(gs->timecycle_colorcorrection_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable ColorCorrection Logic", gs->timecycle_colorcorrection_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
 			{
-				ImGui::Checkbox("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled.get_as<bool*>());
-				TT(gs->timecycle_colortemp_enabled.get_tooltip_string().c_str());
+				gamesettings_bool_widget("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled);
 
 				ImGui::TextDisabled("Timecycle mColorCorrection: [ %.2f, %.2f, %.2f ]",
 					im->m_timecyc_curr_mColorCorrection.x,
@@ -1368,8 +1241,7 @@ namespace gta4
 
 				ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
 				{
-					ImGui::DragFloat("ColorTemperature Influence", gs->timecycle_colortemp_influence.get_as<float*>(), 0.005f);
-					TT(gs->timecycle_colortemp_influence.get_tooltip_string().c_str());
+					gamesettings_float_widget("ColorTemperature Influence", gs->timecycle_colortemp_influence, 0.0f, 0.0f, 0.005f);
 
 					ImGui::TextDisabled("Timecycle mTemperature: [ %.2f ]",
 						im->m_timecyc_curr_mTemperature);
@@ -1388,16 +1260,11 @@ namespace gta4
 		ImGui::Spacing(0, inbetween_spacing);
 
 		{
-			ImGui::Checkbox("Enable Desaturation Logic", gs->timecycle_desaturation_enabled.get_as<bool*>());
-			TT(gs->timecycle_desaturation_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable Desaturation Logic", gs->timecycle_desaturation_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_desaturation_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("Desaturation Influence", gs->timecycle_desaturation_influence.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_desaturation_influence.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("Far Desaturation Influence", gs->timecycle_fardesaturation_influence.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_fardesaturation_influence.get_tooltip_string().c_str());
+				gamesettings_float_widget("Desaturation Influence", gs->timecycle_desaturation_influence, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("Far Desaturation Influence", gs->timecycle_fardesaturation_influence, 0.0f, 0.0f, 0.005f);
 
 				ImGui::TextDisabled("Timecycle mDesaturation: [ %.2f ]",
 					im->m_timecyc_curr_mDesaturation);
@@ -1420,13 +1287,10 @@ namespace gta4
 		ImGui::Spacing(0, inbetween_spacing);
 
 		{
-			ImGui::Checkbox("Enable Gamma Logic", gs->timecycle_gamma_enabled.get_as<bool*>());
-			TT(gs->timecycle_gamma_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable Gamma Logic", gs->timecycle_gamma_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_gamma_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("Gamma Offset", gs->timecycle_gamma_offset.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_gamma_offset.get_tooltip_string().c_str());
+				gamesettings_float_widget("Gamma Offset", gs->timecycle_gamma_offset, 0.0f, 0.0f, 0.005f);
 
 				ImGui::TextDisabled("Timecycle mGamma: [ %.2f ]",
 					im->m_timecyc_curr_mGamma);
@@ -1445,17 +1309,11 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		{
-			ImGui::Checkbox("Enable Bloom Logic", gs->timecycle_bloom_enabled.get_as<bool*>());
-			TT(gs->timecycle_bloom_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable Bloom Logic", gs->timecycle_bloom_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_bloom_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("Bloom Intensity Scalar", gs->timecycle_bloomintensity_scalar.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_bloomintensity_scalar.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("Bloom Threshold Scalar", gs->timecycle_bloomthreshold_scalar.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_bloomthreshold_scalar.get_tooltip_string().c_str());
-
+				gamesettings_float_widget("Bloom Intensity Scalar", gs->timecycle_bloomintensity_scalar, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("Bloom Threshold Scalar", gs->timecycle_bloomthreshold_scalar, 0.0f, 0.0f, 0.005f);
 				ImGui::EndDisabled();
 			}
 		}
@@ -1465,17 +1323,11 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		{
-			ImGui::Checkbox("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled.get_as<bool*>());
-			TT(gs->timecycle_wetness_enabled.get_tooltip_string().c_str());
-
+			gamesettings_bool_widget("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_wetness_enabled.get_as<bool>());
 			{
-				ImGui::DragFloat("Weather Wetness Scalar", gs->timecycle_wetness_scalar.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_wetness_scalar.get_tooltip_string().c_str());
-
-				ImGui::DragFloat("Additional Wetness Offset", gs->timecycle_wetness_offset.get_as<float*>(), 0.005f);
-				TT(gs->timecycle_wetness_offset.get_tooltip_string().c_str());
-
+				gamesettings_float_widget("Weather Wetness Scalar", gs->timecycle_wetness_scalar, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("Additional Wetness Offset", gs->timecycle_wetness_offset, 0.0f, 0.0f, 0.005f);
 				ImGui::EndDisabled();
 			}
 		}
