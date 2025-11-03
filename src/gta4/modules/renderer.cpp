@@ -1193,6 +1193,17 @@ namespace gta4
 			}
 #endif
 
+			const auto viewport = game::pCurrentViewport;
+
+			// make VS use the correct matrix (if Use World Transforms is enabled in remix)
+			dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
+
+			if (viewport && viewport->wp)
+			{
+				dev->SetTransform(D3DTS_VIEW, &viewport->wp->view);
+				dev->SetTransform(D3DTS_PROJECTION, &viewport->wp->proj);
+			}
+
 			// true if none of the below checks were true
 			bool not_part_of_large_if_check = false;
 
@@ -1445,13 +1456,13 @@ namespace gta4
 				set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
 			}
 
-			else if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE)
+			else if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE) 
 			{
 				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
 
 				ctx.save_rs(dev, D3DRS_BLENDOP);
-				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD); 
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 
 				ctx.save_rs(dev, D3DRS_SRCBLEND);
 				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
@@ -1475,17 +1486,19 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 
 				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0, 0, 0, 1.0f)); 
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0, 0, 0, 1.0f));
 
+				// i swear this did something at one point?!
 				D3DXMATRIX mat = *game::pCurrentWorldTransform;
-				mat.m[0][0] *= 0.99f;
-				mat.m[1][1] *= 0.99f;
-				mat.m[2][2] *= 0.99f;
+				mat.m[0][0] *= 0.999f; //im->m_debug_vector2.y + 1.0f; //0.99f; 0.999f
+				mat.m[1][1] *= 0.999f; //im->m_debug_vector2.y + 1.0f;
+				mat.m[2][2] *= 0.999f; //im->m_debug_vector2.y + 1.0f; 
+				dev->SetTransform(D3DTS_WORLD, &mat);
 
 				ctx.modifiers.dual_render = true;
 				ctx.modifiers.dual_render_mode_emissive_offset = true;
 
-				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap); 
+				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap);
 			}
 
 			// check if trees should be rendered with shaders
@@ -1687,17 +1700,6 @@ namespace gta4
 				}
 			}
 
-			const auto viewport = game::pCurrentViewport;
-
-			// make VS use the correct matrix (if Use World Transforms is enabled in remix)
-			dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
-
-			if (viewport && viewport->wp) 
-			{
-				dev->SetTransform(D3DTS_VIEW, &viewport->wp->view);
-				dev->SetTransform(D3DTS_PROJECTION, &viewport->wp->proj);
-			}
-
 			if (g_is_rendering_phone)
 			{
 				ctx.restore_vs(dev);
@@ -1881,6 +1883,8 @@ namespace gta4
 
 		if (ctx.modifiers.dual_render)
 		{
+			bool redrew = false;
+
 			if (ctx.modifiers.dual_render_reset_remix_modifiers) {
 				ctx.restore_render_state(dev, (D3DRENDERSTATETYPE)149);
 			}
@@ -2056,7 +2060,7 @@ namespace gta4
 			// BLEND emissive mode
 			if (ctx.modifiers.dual_render_mode_emissive_offset)
 			{
-				ctx.restore_render_state(dev, (D3DRENDERSTATETYPE)42); // InstanceCategories
+				//ctx.restore_render_state(dev, (D3DRENDERSTATETYPE)42); // InstanceCategories
 
 				ctx.restore_texture_stage_state(dev, D3DTSS_COLOROP);
 				ctx.restore_texture_stage_state(dev, D3DTSS_COLORARG1);
@@ -2064,13 +2068,12 @@ namespace gta4
 				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE); 
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);  
 
+				// i swear this did something at one point?!
 				D3DXMATRIX mat = *game::pCurrentWorldTransform;
-				mat.m[0][0] *= 1.005f;
-				mat.m[1][1] *= 1.005f;
-				mat.m[2][2] *= 1.005f;
-
+				mat.m[0][0] *= 1.001f; //im->m_debug_vector2.z + 1.00f; //  1.005f
+				mat.m[1][1] *= 1.001f; //im->m_debug_vector2.z + 1.00f;
+				mat.m[2][2] *= 1.001f; //im->m_debug_vector2.z + 1.00f;
 				dev->SetTransform(D3DTS_WORLD, &mat);
-				//dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
 
 				ctx.save_rs(dev, D3DRS_BLENDOP);
 				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
@@ -2092,11 +2095,18 @@ namespace gta4
 
 				ctx.save_tss(dev, D3DTSS_COLORARG1); 
 				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+				// re-draw surface
+				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount - 1);
+				redrew = true;
 			}
 
-			// re-draw surface
-			dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+			if (!redrew)
+			{
+				// re-draw surface
+				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
+			}
 
 			// re-drawing proxy but remix makes it emissive ...
 			if (ctx.modifiers.dual_render_mode_emissive_offset)
