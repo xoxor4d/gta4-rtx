@@ -70,23 +70,7 @@ namespace gta4
 		{
 			auto& io = ImGui::GetIO();
 			ImGui_ImplWin32_WndProcHandler(shared::globals::main_window, message_type, wparam, lparam);
-
-			// enable game input if no imgui window is hovered and right mouse is held
-			if (!m_im_window_hovered && io.MouseDown[1])
-			{
-				ImGui::SetWindowFocus(); // unfocus input text
-				shared::globals::imgui_allow_input_bypass = true;
-				return false;
-			}
-
-			// ^ wait until mouse is up and call set_cursor_always_visible once
-			if (shared::globals::imgui_allow_input_bypass && !io.MouseDown[1])
-			{
-				shared::globals::imgui_allow_input_bypass = false;
-				return false;
-			}
-		}
-		else {
+		} else {
 			shared::globals::imgui_allow_input_bypass = false; // always reset if there is no imgui window open
 		}
 
@@ -2240,7 +2224,7 @@ namespace gta4
 
 		{
 			ImGui::Separator();
-			const char* movement_hint_str = "Press and Hold the Right Mouse Button outside ImGui to allow for Game Input ";
+			const char* movement_hint_str = "Hold Right Mouse to enable Game Input ";
 			const auto avail_width = ImGui::GetContentRegionAvail().x;
 			float cur_pos = avail_width - 54.0f;
 
@@ -2295,13 +2279,47 @@ namespace gta4
 
 					auto& io = ImGui::GetIO();
 
+					if (shared::globals::imgui_allow_input_bypass_timeout) {
+						shared::globals::imgui_allow_input_bypass_timeout--;
+					}
+
 					if (shared::globals::imgui_menu_open) 
 					{
 						io.MouseDrawCursor = true;
 						im->devgui();
+
+						// ---
+						// enable game input via right mouse button logic
+
+						if (!im->m_im_window_hovered && io.MouseDown[1])
+						{
+							// reset stuck rmb if timeout is active 
+							if (shared::globals::imgui_allow_input_bypass_timeout)
+							{
+								io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
+								shared::globals::imgui_allow_input_bypass_timeout = 0u;
+							}
+
+							// enable game input if no imgui window is hovered and right mouse is held
+							else
+							{
+								ImGui::SetWindowFocus(); // unfocus input text
+								shared::globals::imgui_allow_input_bypass = true;
+							}
+						}
+
+						// ^ wait until mouse is up
+						else if (shared::globals::imgui_allow_input_bypass && !io.MouseDown[1] && !shared::globals::imgui_allow_input_bypass_timeout)
+						{
+							shared::globals::imgui_allow_input_bypass_timeout = 2u;
+							shared::globals::imgui_allow_input_bypass = false;
+						}
 					}
-					else {
+					else 
+					{
 						io.MouseDrawCursor = false;
+						shared::globals::imgui_allow_input_bypass_timeout = 0u;
+						shared::globals::imgui_allow_input_bypass = false;
 					}
 
 					im->draw_debug();

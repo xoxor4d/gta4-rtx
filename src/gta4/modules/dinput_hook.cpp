@@ -146,7 +146,6 @@ namespace gta4
 		//	s_mouseMove = wm;
 		//}
 
-
 		if (s_mouseButtons[0] != state->rgbButtons[0]) 
 		{
 			wm.msg = (state->rgbButtons[0] & 0x80) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
@@ -233,6 +232,7 @@ namespace gta4
 	{
 		HRESULT hr = g_dinput8_device_get_device_state_original(device, cbData, lpvData);
 		const auto di = dinput::get();
+		bool do_not_clear = false;
 
 		switch (cbData)
 		{
@@ -247,10 +247,11 @@ namespace gta4
 			case 256:
 				//di->updateKeyState(static_cast<LPBYTE>(lpvData)); // game sends keyboard input via window messages so no need
 				//di->KeyboardDeviceStateUsed = true;
+				do_not_clear = true;
 				break;
 		}
 
-		if (shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass) {
+		if (!do_not_clear && shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass) {
 			memset(lpvData, 0, cbData);
 		}
 

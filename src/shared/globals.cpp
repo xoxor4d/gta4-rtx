@@ -69,6 +69,7 @@ namespace shared::globals
 	bool imgui_is_rendering = false;
 	bool imgui_menu_open = false;
 	bool imgui_allow_input_bypass = false;
+	uint32_t imgui_allow_input_bypass_timeout = 0u;
 
 
 	std::chrono::high_resolution_clock::time_point last_frame_time;

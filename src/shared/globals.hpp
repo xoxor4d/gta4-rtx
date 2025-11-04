@@ -63,6 +63,7 @@ namespace shared::globals
 	extern bool imgui_is_rendering;
 	extern bool imgui_menu_open;
 	extern bool imgui_allow_input_bypass;
+	extern uint32_t imgui_allow_input_bypass_timeout;
 
 	extern std::chrono::high_resolution_clock::time_point last_frame_time;
 	extern float frame_time_ms;
