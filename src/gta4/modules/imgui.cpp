@@ -68,7 +68,7 @@ namespace gta4
 
 		if (shared::globals::imgui_menu_open)
 		{
-			auto& io = ImGui::GetIO();
+			//auto& io = ImGui::GetIO();
 			ImGui_ImplWin32_WndProcHandler(shared::globals::main_window, message_type, wparam, lparam);
 		} else {
 			shared::globals::imgui_allow_input_bypass = false; // always reset if there is no imgui window open

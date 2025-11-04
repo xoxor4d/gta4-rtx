@@ -2,6 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo Initializing GTA IV launch and CPU affinity setup...
+echo Assigning 2 Cores to GTA4 and the rest to RTX Remix
 echo.
 
 :: Launch GTA IV
@@ -9,7 +10,7 @@ start GTAIV.exe
 
 :: Compute CPU core masks
 echo Detecting system CPU cores...
-powershell -Command "$total = (Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum; if ($total -le 0) { $total = 1 }; $half = [math]::Floor($total / 2); $gtaMask = (1 -shl $half) - 1; $nvMask = ((1 -shl $total) - 1) - $gtaMask; Write-Output \"$gtaMask $nvMask\"" > masks.txt
+powershell -Command "$total = (Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum; if ($total -le 0) { $total = 4 }; $gtaCores = 2; $gtaMask = (1 -shl $gtaCores) - 1; $nvMask = ((1 -shl $total) - 1) - $gtaMask; Write-Output \"$gtaMask $nvMask\"" > masks.txt
 set /p line=<masks.txt
 del masks.txt 2>nul
 for /f "tokens=1,2" %%a in ("%line%") do (
