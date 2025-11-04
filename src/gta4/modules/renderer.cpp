@@ -805,7 +805,7 @@ namespace gta4
 						popad;
 					}
 
-					if (is_livery)
+					if (is_livery && gs->vehicle_livery_enabled.get_as<bool>())
 					{
 						if (arg3 == 6 && arg1 == 1)
 						{

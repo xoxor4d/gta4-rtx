@@ -589,7 +589,16 @@ namespace gta4
 				0.22f, 0.21f, 0.20f
 			};
 
+			// -----
+			variable vehicle_livery_enabled =
+			{
+				"vehicle_livery_enabled",
+				("Enable livery on vehicles. This renders the vehicle surface a second time\n"
+				"using the livery texture and applies it as a decal."),
+				true
+			};
 
+			// -----
 			variable decal_dirt_shader_usage =
 			{
 				"handle_decal_dirt_shader",
