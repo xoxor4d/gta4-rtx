@@ -37,8 +37,7 @@ namespace gta4
 	
 	LRESULT __stdcall wnd_proc_hk(HWND window, UINT message_type, WPARAM wparam, LPARAM lparam)
 	{
-		if (message_type != WM_MOUSEMOVE && message_type != WM_NCMOUSEMOVE
-			/*&& message_type != WM_KEYDOWN && message_type != WM_KEYUP*/)
+		if (message_type != WM_MOUSEMOVE && message_type != WM_NCMOUSEMOVE)
 		{
 			if (imgui::get()->input_message(message_type, wparam, lparam)) {
 			//	return true;
@@ -1802,32 +1801,52 @@ namespace gta4
 		ImGui::Spacing();
 	}
 
-	void cont_mapsettings_ignore_lights()
+	void cont_mapsettings_ignore_allow_lights()
 	{
 		static const auto& im = imgui::get();
+		static const auto& gs = game_settings::get();
 
-		auto& ignore_lights = map_settings::get_map_settings().ignored_lights;
+		auto& ignored_lights = map_settings::get_map_settings().ignored_lights;
+		auto& allowed_lights = map_settings::get_map_settings().allow_lights;
+
 		ImGui::PushFont(shared::imgui::font::BOLD);
 		if (ImGui::Button("Copy Ignored to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
 		{
 			ImGui::LogToClipboard();
-			ImGui::LogText("%s", shared::common::toml_ext::build_ignore_lights_array(ignore_lights).c_str());
+			ImGui::LogText("%s", shared::common::toml_ext::build_ignore_lights_array(ignored_lights).c_str());
 			ImGui::LogFinish();
 		} ImGui::PopFont();
 
 		ImGui::SameLine();
-		reload_mapsettings_button_with_popup("IgnoreLights");
+
+		ImGui::BeginDisabled(!gs->translate_game_lights_ignore_filler_lights.get_as<bool>());
+		{
+			ImGui::PushFont(shared::imgui::font::BOLD);
+			if (ImGui::Button("Copy Allowed to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+			{
+				ImGui::LogToClipboard();
+				ImGui::LogText("%s", shared::common::toml_ext::build_allow_lights_array(allowed_lights).c_str());
+				ImGui::LogFinish();
+			} ImGui::PopFont();
+
+			ImGui::EndDisabled();
+		}
+
+		reload_mapsettings_button_with_popup("Ignore-Allow-Lights");
 
 		ImGui::Spacing(0, 8.0f);
 		ImGui::Checkbox("Visualize Api Light Hashes", &im->m_dbg_visualize_api_light_hashes); TT("Visualize all spawned api light hashes closeby");
 
-		ImGui::SameLine(0, 20.0f);
+		ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.5f, 0);
 		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
 		{
-			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("  Draw Distance  ").x);
-			ImGui::DragFloat("  Draw Distance  ", &im->m_dbg_visualize_api_light_hashes_distance, 0.005f, 0.0f, 30.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("  Draw Distance      ").x);
+			ImGui::DragFloat("  Draw Distance      ", &im->m_dbg_visualize_api_light_hashes_distance, 0.005f, 0.0f, 30.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::EndDisabled();
 		}
+
+		ImGui::Checkbox("Ignore Filler Lights (Game Setting)", gs->translate_game_lights_ignore_filler_lights.get_as<bool*>());
+			TT(gs->translate_game_lights_ignore_filler_lights.get_tooltip_string().c_str());
 
 		ImGui::Spacing(0, 8.0f);
 		if (!im->m_dbg_visualize_api_light_hashes) {
@@ -1841,199 +1860,152 @@ namespace gta4
 
 		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
 		{
-			static ImGuiTextFilter filter;
-			if (ImGui::BeginListBox("##lights", ImVec2(ImGui::GetContentRegionAvail().x, 200)))
 			{
-				for (size_t i = 0; i < im->visualized_api_lights.size(); ++i)
+				static ImGuiTextFilter ignore_filter;
+				if (ImGui::BeginListBox("##ignore_lights", ImVec2(ImGui::GetContentRegionAvail().x, 140)))
 				{
-					const auto& light = im->visualized_api_lights[i];
-					const bool is_ignored = light.ignored;
-
-					// only add lights that are alive for more than 5 frames
-					if (light.m_frames_since_addition > 5u)
+					for (size_t i = 0; i < im->visualized_api_lights.size(); ++i)
 					{
-						char hash_str[17];
-						std::snprintf(hash_str, sizeof(hash_str), "%llx", static_cast<unsigned long long>(light.hash));
-						if (!filter.PassFilter(hash_str)) {
+						const auto& light = im->visualized_api_lights[i];
+						const bool is_ignored = light.ignored;
+
+						if (light.allowed_filler) {
 							continue;
 						}
 
-						if (is_ignored)
+						// only add lights that are alive for more than 5 frames
+						if (light.m_frames_since_addition > 5u)
 						{
-							ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
-							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-						}
+							char hash_str[17];
+							std::snprintf(hash_str, sizeof(hash_str), "%llx", static_cast<unsigned long long>(light.hash));
+							if (!ignore_filter.PassFilter(hash_str)) {
+								continue;
+							}
 
-						if (ImGui::Selectable(shared::utils::va("%llx", light.hash), false, ImGuiSelectableFlags_AllowDoubleClick))
-						{
-							if (ImGui::IsMouseDoubleClicked(0))
+							if (is_ignored)
 							{
-								if (ignore_lights.contains(light.hash))
+								ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+								ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+							}
+
+							if (ImGui::Selectable(shared::utils::va("%llx", light.hash), false, ImGuiSelectableFlags_AllowDoubleClick))
+							{
+								if (ImGui::IsMouseDoubleClicked(0))
 								{
-									auto it = std::find(ignore_lights.begin(), ignore_lights.end(), light.hash);
-									if (it != ignore_lights.end()) {
-										ignore_lights.erase(it);
+									if (ignored_lights.contains(light.hash))
+									{
+										auto it = std::find(ignored_lights.begin(), ignored_lights.end(), light.hash);
+										if (it != ignored_lights.end()) {
+											ignored_lights.erase(it);
+										}
+									}
+									else {
+										ignored_lights.insert(light.hash);
 									}
 								}
-								else {
-									ignore_lights.insert(light.hash);
-								}
+							}
+
+							if (is_ignored)
+							{
+								ImGui::PopStyleColor();
+								ImGui::PopFont();
 							}
 						}
-
-						if (is_ignored)
-						{
-							ImGui::PopStyleColor();
-							ImGui::PopFont();
-						}
 					}
+					ImGui::EndListBox();
 				}
-				ImGui::EndListBox();
+
+				ignore_filter.Draw("##Filter", ImGui::GetContentRegionAvail().x
+					- ImGui::GetFrameHeight()
+					- ImGui::GetStyle().FramePadding.x + 3.0f);
+
+				ImGui::SameLine();
+				if (ImGui::Button("X", ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
+					ignore_filter.Clear();
+				}
+			}
+			
+
+			ImGui::Spacing(0.0f, 12.0f);
+
+			ImGui::PushID("AllowLights");
+
+			ImGui::Spacing(0, 8.0f);
+			if (!im->m_dbg_visualize_api_light_hashes) {
+				ImGui::SeparatorText("Nearby filler lights (Double-Click to Ignore) ~ Enable 'Visualize Light Hashes'");
+			}
+			else {
+				ImGui::SeparatorText("Nearby filler lights (Double-Click to Ignore)");
 			}
 
-			filter.Draw("##Filter", ImGui::GetContentRegionAvail().x
-				- ImGui::GetFrameHeight()
-				//- ImGui::CalcTextSize("Filter").x 
-				- ImGui::GetStyle().FramePadding.x + 3.0f
-				/*- (ImGui::GetStyle().ItemSpacing.x)*/);
+			ImGui::Spacing(0.0f, 8.0f);
 
-			ImGui::SameLine();
-			if (ImGui::Button("X", ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
-				filter.Clear();
-			}
-
-			//ImGui::Spacing(0.0f, 8.0f);
-			ImGui::EndDisabled();
-		}
-
-
-		//std::string new_light_hash_buffer;
-		//uint64_t temp_new_light_hash;
-		//if (ImGui::InputText("##IgnLightHash", &new_light_hash_buffer, ImGuiInputTextFlags_CallbackCharFilter | ImGuiInputTextFlags_EnterReturnsTrue,
-		//	[](ImGuiInputTextCallbackData* data)
-		//	{
-		//		const auto c = static_cast<char>(data->EventChar);
-		//		if (std::isxdigit(c) || c == 'x' || c == 'X') {
-		//			return 0; // allow input
-		//		}
-		//		return 1; // block input
-		//	}))
-		//{
-		//	temp_new_light_hash = static_cast<uint32_t>(std::strtoul(new_light_hash_buffer.c_str(), nullptr, 16));
-		//	new_light_hash_buffer = std::format("0x{:X}", temp_new_light_hash);
-		//} TT( "Add hash of a light to not translate it to a remix light");
-
-
-	}
-
-	void cont_mapsettings_allow_lights()
-	{
-		static const auto& im = imgui::get();
-
-		ImGui::PushID("AllowLights");
-
-		auto& allowed_lights = map_settings::get_map_settings().allow_lights;
-		ImGui::PushFont(shared::imgui::font::BOLD);
-		if (ImGui::Button("Copy Ignored to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
-		{
-			ImGui::LogToClipboard();
-			ImGui::LogText("%s", shared::common::toml_ext::build_allow_lights_array(allowed_lights).c_str());
-			ImGui::LogFinish();
-		} ImGui::PopFont();
-
-		ImGui::SameLine();
-		reload_mapsettings_button_with_popup("AllowLights");
-
-		ImGui::Spacing(0, 8.0f);
-		ImGui::Checkbox("Visualize Api Light Hashes", &im->m_dbg_visualize_api_light_hashes); TT("Visualize all spawned api light hashes closeby");
-
-		ImGui::SameLine(0, 20.0f);
-		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
-		{
-			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("  Draw Distance  ").x);
-			ImGui::DragFloat("  Draw Distance  ", &im->m_dbg_visualize_api_light_hashes_distance, 0.005f, 0.0f, 30.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::EndDisabled();
-		}
-
-		ImGui::Spacing(0, 8.0f);
-		if (!im->m_dbg_visualize_api_light_hashes) {
-			ImGui::SeparatorText("Nearby filler lights (Double-Click to Ignore) ~ Enable 'Visualize Api Light Hashes' to enable this feature.");
-		}
-		else {
-			ImGui::SeparatorText("Nearby filler lights (Double-Click to Ignore)");
-		}
-
-		ImGui::Spacing(0.0f, 8.0f);
-
-		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
-		{
-			static ImGuiTextFilter filter;
-			if (ImGui::BeginListBox("##lights", ImVec2(ImGui::GetContentRegionAvail().x, 200)))
+			if (gs->translate_game_lights_ignore_filler_lights.get_as<bool>())
 			{
-				for (size_t i = 0; i < im->visualized_api_lights.size(); ++i)
+				static ImGuiTextFilter filter_allow_lights;
+				if (ImGui::BeginListBox("##allow_lights", ImVec2(ImGui::GetContentRegionAvail().x, 140)))
 				{
-					const auto& light = im->visualized_api_lights[i];
-					//const bool is_ignored = light.ignored;
-					const bool is_allowed = light.allowed_filler;
-
-					// only add lights that are ignored (filler or manually) and alive for more than 5 frames
-					if (/*is_ignored && */ light.is_filler && light.m_frames_since_addition > 5u)
+					for (size_t i = 0; i < im->visualized_api_lights.size(); ++i)
 					{
-						char hash_str[17];
-						std::snprintf(hash_str, sizeof(hash_str), "%llx", static_cast<unsigned long long>(light.hash));
-						if (!filter.PassFilter(hash_str)) {
-							continue;
-						}
+						const auto& light = im->visualized_api_lights[i];
+						//const bool is_ignored = light.ignored;
+						const bool is_allowed = light.allowed_filler;
 
-						if (is_allowed)
+						// only add lights that are ignored (filler or manually) and alive for more than 5 frames
+						if (/*is_ignored && */ light.is_filler && light.m_frames_since_addition > 5u)
 						{
-							ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
-							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.8f, 0.1f, 1.0f));
-						}
+							char hash_str[17];
+							std::snprintf(hash_str, sizeof(hash_str), "%llx", static_cast<unsigned long long>(light.hash));
+							if (!filter_allow_lights.PassFilter(hash_str)) {
+								continue;
+							}
 
-						if (ImGui::Selectable(shared::utils::va("%llx", light.hash), false, ImGuiSelectableFlags_AllowDoubleClick))
-						{
-							if (ImGui::IsMouseDoubleClicked(0))
+							if (is_allowed)
 							{
-								if (allowed_lights.contains(light.hash))
+								ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+								ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.8f, 0.1f, 1.0f));
+							}
+
+							if (ImGui::Selectable(shared::utils::va("%llx", light.hash), false, ImGuiSelectableFlags_AllowDoubleClick))
+							{
+								if (ImGui::IsMouseDoubleClicked(0))
 								{
-									auto it = std::find(allowed_lights.begin(), allowed_lights.end(), light.hash);
-									if (it != allowed_lights.end()) {
-										allowed_lights.erase(it);
+									if (allowed_lights.contains(light.hash))
+									{
+										auto it = std::find(allowed_lights.begin(), allowed_lights.end(), light.hash);
+										if (it != allowed_lights.end()) {
+											allowed_lights.erase(it);
+										}
+									}
+									else {
+										allowed_lights.insert(light.hash);
 									}
 								}
-								else {
-									allowed_lights.insert(light.hash);
-								}
+							}
+
+							if (is_allowed)
+							{
+								ImGui::PopStyleColor();
+								ImGui::PopFont();
 							}
 						}
-
-						if (is_allowed)
-						{
-							ImGui::PopStyleColor();
-							ImGui::PopFont();
-						}
 					}
+					ImGui::EndListBox();
 				}
-				ImGui::EndListBox();
+
+				filter_allow_lights.Draw("##Filter", ImGui::GetContentRegionAvail().x
+					- ImGui::GetFrameHeight()
+					- ImGui::GetStyle().FramePadding.x + 3.0f);
+
+				ImGui::SameLine();
+				if (ImGui::Button("X", ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
+					filter_allow_lights.Clear();
+				}
 			}
 
-			filter.Draw("##Filter", ImGui::GetContentRegionAvail().x
-				- ImGui::GetFrameHeight()
-				//- ImGui::CalcTextSize("Filter").x 
-				- ImGui::GetStyle().FramePadding.x + 3.0f
-			/*- (ImGui::GetStyle().ItemSpacing.x)*/);
-
-			ImGui::SameLine();
-			if (ImGui::Button("X", ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
-				filter.Clear();
-			}
-
-			//ImGui::Spacing(0.0f, 8.0f);
+			ImGui::PopID();
 			ImGui::EndDisabled();
 		}
-
-		ImGui::PopID();
 	}
 
 	void imgui::tab_map_settings()
@@ -2057,17 +2029,10 @@ namespace gta4
 				false, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
-		// ignore game lights
+		// ignore/allow game lights
 		{
 			static float cont_ignore_lights_height = 0.0f;
-			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Ignore Game Lights", cont_ignore_lights_height, cont_mapsettings_ignore_lights,
-				true, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
-		}
-
-		// allow game lights
-		{
-			static float cont_ignore_lights_height = 0.0f;
-			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Allow Game Lights", cont_ignore_lights_height, cont_mapsettings_allow_lights,
+			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Ignore/Allow Game Lights", cont_ignore_lights_height, cont_mapsettings_ignore_allow_lights,
 				true, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
@@ -2214,8 +2179,7 @@ namespace gta4
 	void imgui::devgui()
 	{
 		ImGui::SetNextWindowSize(ImVec2(900, 800), ImGuiCond_FirstUseEver);
-
-		if (!ImGui::Begin("Devgui", &shared::globals::imgui_menu_open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollWithMouse/*, &shared::imgui::draw_window_blur_callback*/))
+		if (!ImGui::Begin("Remix Compatibility-Mod Settings", &shared::globals::imgui_menu_open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollWithMouse/*, &shared::imgui::draw_window_blur_callback*/))
 		{
 			ImGui::End();
 			return;
