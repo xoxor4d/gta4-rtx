@@ -1,4 +1,15 @@
 @echo off
+
+:: Check for admin rights - relaunch with UAC prompt
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    exit /b
+)
+
+:: Set working directory
+cd /d "%~dp0"
+
 setlocal enabledelayedexpansion
 
 echo Initializing GTA IV launch and CPU affinity setup ...
