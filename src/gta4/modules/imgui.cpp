@@ -1004,12 +1004,17 @@ namespace gta4
 		gamesettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
 	}
 
+#define CLEAR_CACHE_CHECK(B, FN) \
+	(B) = (FN) ? true : (B);
+
 	void gamesettings_light_container()
 	{
 		//static const auto& im = imgui::get();
 		static const auto& gs = game_settings::get();
 
 		const float inbetween_spacing = 8.0f;
+
+		bool clear = false;
 
 		ImGui::Spacing(0, 4);
 		ImGui::SeparatorText(" Sphere/Spot ");
@@ -1018,13 +1023,13 @@ namespace gta4
 		gamesettings_bool_widget("Translate Game Lights", gs->translate_game_lights);
 		gamesettings_bool_widget("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights);
 
-		gamesettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f);
-		gamesettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f);
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f));
 
-		gamesettings_float_widget("Light Softness Offset", gs->translate_game_light_softness_offset, -1.0f, 1.0f, 0.005f);
-		gamesettings_float_widget("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f);
-		gamesettings_float_widget("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f);
-		gamesettings_float_widget("Light Angle Offset", gs->translate_game_light_angle_offset, -180.0f, 180.0f, 0.1f);
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Light Softness Offset", gs->translate_game_light_softness_offset, -1.0f, 1.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Light Angle Offset", gs->translate_game_light_angle_offset, -180.0f, 180.0f, 0.1f));
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Distant ");
@@ -1033,6 +1038,10 @@ namespace gta4
 		gamesettings_float_widget("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar, 0.0f, 0.0f, 0.005f);
 		gamesettings_float_widget("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees, 0.0f, 45.0f, 0.005f);
 		gamesettings_float_widget("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base, 0.0f, 10.0f, 0.005f);
+
+		if (clear) {
+			remix_lights::clear_light_cache();
+		}
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::Separator();
@@ -1043,6 +1052,8 @@ namespace gta4
 
 		gamesettings_float_widget("No Culling Until Distance", gs->nocull_dist_lights, 0.0f, 500.0f, 0.5f);
 	}
+
+#undef CLEAR_CACHE_CHECK
 
 	void gamesettings_emissive_container()
 	{

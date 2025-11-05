@@ -65,6 +65,8 @@ namespace gta4
 			return &m_active_lights;
 		}
 
+		static void clear_light_cache() { m_active_lights.clear(); }
+
 		remix_distant_light_def* get_distant_light() {
 			return &m_distant_light;
 		}
