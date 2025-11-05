@@ -74,11 +74,14 @@ namespace gta4
 			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
 			ctx.modifiers.allow_vertex_colors = true;
 
+#if 0		// TODO: This breaks traffic lights and removes vertex colors at certain angles?
+			// Only used by EMISSIVENIGHT shader
 			if (!ctx.info.shaderconst_uses_emissive_multiplier /*|| im->m_dbg_emissive_nonalpha_override*/)
 			{
 				renderer::set_remix_modifier(dev, RemixModifier::EmissiveScalar);
 				renderer::set_remix_emissive_intensity(dev, gs->emissive_generic_scale.get_as<float>() /*im->m_dbg_emissive_nonalpha_override_scale*/);
 			}
+#endif
 		}
 	}
 

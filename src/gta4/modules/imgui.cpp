@@ -1063,7 +1063,10 @@ namespace gta4
 		gamesettings_float_widget("EmissiveNight Surfaces Scalar", gs->emissive_night_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
 		gamesettings_float_widget("Emissive Surfaces Scalar", gs->emissive_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
 		gamesettings_float_widget("EmissiveStrong Surfaces Scalar", gs->emissive_strong_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
+
+#if 0	// TODO: This breaks traffic lights and removes vertex colors at certain angles?
 		gamesettings_float_widget("Generic Emissive Scale", gs->emissive_generic_scale, 0.0f, 1000.0f, 0.001f);
+#endif
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Phone ");
