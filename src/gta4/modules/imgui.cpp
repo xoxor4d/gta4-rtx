@@ -977,9 +977,15 @@ namespace gta4
 			ImGui::EndDisabled();
 		}
 
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Vehicle Livery ");
+		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("Enable Vehicle Livery", gs->vehicle_livery_enabled);
+
 
 		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Interioir Dirt ");
+		ImGui::SeparatorText(" Interior Dirt ");
 		ImGui::Spacing(0, 4);
 
 		gamesettings_bool_widget("Decal Dirt Shader Usage", gs->decal_dirt_shader_usage);

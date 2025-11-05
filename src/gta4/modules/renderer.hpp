@@ -429,6 +429,9 @@ namespace gta4
 			bool dual_render_reset_remix_modifiers = false; // reset all active remix modifiers
 			IDirect3DBaseTexture9* dual_render_texture = nullptr; // use this texture for dual rendering if set
 
+			bool tri_render = false; 
+			IDirect3DBaseTexture9* tri_render_texture = nullptr;
+
 			InstanceCategories remix_instance_categories = InstanceCategories::None;
 			RemixModifier remix_modifier = RemixModifier::None;
 
@@ -453,6 +456,9 @@ namespace gta4
 				dual_render_mode_emissive_offset = false;
 				dual_render_reset_remix_modifiers = false;
 				dual_render_texture = nullptr;
+
+				tri_render = false;
+				tri_render_texture = nullptr;
 
 				remix_instance_categories = InstanceCategories::None;
 				remix_modifier = RemixModifier::None;

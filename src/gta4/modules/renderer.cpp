@@ -569,7 +569,7 @@ namespace gta4
 
 			const auto& pidx = ctx.info.preset_index;
 
-			bool is_vehicle_paint_1_or_2 = pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2;
+			bool is_vehicle_paint = pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2 || pidx == GTA_VEHICLE_PAINT3;
 
 			// shader_name.contains("gta_vehicle_")
 			if (   pidx == GTA_VEHICLE_BADGES || pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2 || pidx == GTA_VEHICLE_LIGHTS
@@ -664,14 +664,14 @@ namespace gta4
 									}*/
 								}
 							}
-							else if (register_num == 72u && is_vehicle_paint_1_or_2)
+							else if (register_num == 72u && is_vehicle_paint)
 							{
 								ctx.info.ps_const_72_veh_dirt.x = constant_data_struct->constants[dataPoolIndex].float_arr[0];
 								ctx.info.ps_const_72_veh_dirt.y = constant_data_struct->constants[dataPoolIndex].float_arr[1];
 								ctx.info.ps_const_72_veh_dirt.z = constant_data_struct->constants[dataPoolIndex].float_arr[2];
 								ctx.info.ps_const_72_veh_dirt.w = constant_data_struct->constants[dataPoolIndex].float_arr[3];
 							}
-							else if (register_num == 73u && is_vehicle_paint_1_or_2)
+							else if (register_num == 73u && is_vehicle_paint)
 							{
 								// dirt level
 								ctx.info.ps_const_73_veh_dirt.x = constant_data_struct->constants[dataPoolIndex].float_arr[0];
@@ -679,7 +679,7 @@ namespace gta4
 								ctx.info.ps_const_73_veh_dirt.z = constant_data_struct->constants[dataPoolIndex].float_arr[2];
 								ctx.info.ps_const_73_veh_dirt.w = constant_data_struct->constants[dataPoolIndex].float_arr[3];
 							}
-							else if (register_num == 74u && is_vehicle_paint_1_or_2)
+							else if (register_num == 74u && is_vehicle_paint)
 							{
 								// dirt color?
 								// variant 5 ...
@@ -767,26 +767,48 @@ namespace gta4
 
 					bool is_livery = false;
 					bool is_dirt = false;
+					bool is_dirt_s2 = false;
 
 					if (pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2) { 
 						is_dirt = arg3 == 6 && arg1 == 1;
 					}
 
 #if DEBUG
-					if (arg3 == 6 && arg1 == 1)
+					if (pidx == GTA_VEHICLE_PAINT1 || pidx == GTA_VEHICLE_PAINT2 || pidx == GTA_VEHICLE_PAINT3)
 					{
-						int y = 0;
+						if (arg3 == 6 && arg1 == 0) 
+						{
+							int y = 0;
+						}
+
+						if (arg3 == 6 && arg1 == 1)
+						{
+							int y = 0;
+						}
+
+						if (arg3 == 6 && arg1 == 2)
+						{
+							int y = 0;
+						}
+
+						if (arg3 == 6 && arg1 == 3)
+						{
+							int y = 0;
+						}
 					}
+					
 #endif
 
-					if (pidx == GTA_VEHICLE_PAINT3) {
+					if (pidx == GTA_VEHICLE_PAINT3) 
+					{
 						is_livery = arg3 == 6 && arg1 == 1;
+						is_dirt_s2 = arg3 == 6 && arg1 == 2;
 					}
 
 					if (gs->load_colormaps_only.get_as<bool>() && !g_is_sky_rendering)
 					{
 						// everything that is not 0 is not a colormap (I hope)
-						if (arg1 && !is_livery && !is_dirt)
+						if (arg1 && !is_livery && !is_dirt && !is_dirt_s2)
 						{
 							++i;
 							continue;
@@ -819,9 +841,9 @@ namespace gta4
 						}
 					}
 
-					if (is_dirt && gs->vehicle_dirt_enabled.get_as<bool>())
+					if (gs->vehicle_dirt_enabled.get_as<bool>())
 					{
-						if (arg3 == 6 && arg1 == 1)
+						if (is_dirt && arg3 == 6 && arg1 == 1)
 						{
 							IDirect3DBaseTexture9* tex1ptr = nullptr;
 							if (game_device->GetTexture(1, &tex1ptr); tex1ptr)
@@ -829,6 +851,16 @@ namespace gta4
 								ctx.modifiers.dual_render = true;
 								ctx.modifiers.dual_render_texture = tex1ptr;
 								ctx.modifiers.dual_render_mode_vehicle_dirt = true;
+							}
+						}
+
+						if (is_dirt_s2 && arg3 == 6 && arg1 == 2)
+						{
+							IDirect3DBaseTexture9* tex2ptr = nullptr;
+							if (game_device->GetTexture(2, &tex2ptr); tex2ptr)
+							{
+								ctx.modifiers.tri_render = true;
+								ctx.modifiers.tri_render_texture = tex2ptr;
 							}
 						}
 					}
@@ -1486,14 +1518,14 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 
 				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0, 0, 0, 1.0f));
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0, 0, 0, 1.0f)); 
 
 				// i swear this did something at one point?!
-				D3DXMATRIX mat = *game::pCurrentWorldTransform;
-				mat.m[0][0] *= 0.999f; //im->m_debug_vector2.y + 1.0f; //0.99f; 0.999f
-				mat.m[1][1] *= 0.999f; //im->m_debug_vector2.y + 1.0f;
-				mat.m[2][2] *= 0.999f; //im->m_debug_vector2.y + 1.0f; 
-				dev->SetTransform(D3DTS_WORLD, &mat);
+				//D3DXMATRIX mat = *game::pCurrentWorldTransform;
+				//mat.m[0][0] *= 0.999f; //im->m_debug_vector2.y + 1.0f; //0.99f; 0.999f
+				//mat.m[1][1] *= 0.999f; //im->m_debug_vector2.y + 1.0f;
+				//mat.m[2][2] *= 0.999f; //im->m_debug_vector2.y + 1.0f; 
+				//dev->SetTransform(D3DTS_WORLD, &mat);
 
 				ctx.modifiers.dual_render = true;
 				ctx.modifiers.dual_render_mode_emissive_offset = true;
@@ -1998,6 +2030,10 @@ namespace gta4
 
 				set_remix_modifier(dev, RemixModifier::VehicleDecalDirt);
 				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+
+				// re-draw surface
+				//dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount /*- 1*/);
+				//redrew = true; 
 			}
 
 			// BLEND ADD mode
@@ -2068,11 +2104,13 @@ namespace gta4
 				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE); 
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);  
 
+				//dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY); 
+
 				// i swear this did something at one point?!
 				D3DXMATRIX mat = *game::pCurrentWorldTransform;
-				mat.m[0][0] *= 1.001f; //im->m_debug_vector2.z + 1.00f; //  1.005f
-				mat.m[1][1] *= 1.001f; //im->m_debug_vector2.z + 1.00f;
-				mat.m[2][2] *= 1.001f; //im->m_debug_vector2.z + 1.00f;
+				mat.m[0][0] = 1.001f; //im->m_debug_vector2.z + 1.00f; //  1.005f
+				mat.m[1][1] = 1.001f; //im->m_debug_vector2.z + 1.00f;
+				mat.m[2][2] = 1.001f; //im->m_debug_vector2.z + 1.00f;
 				dev->SetTransform(D3DTS_WORLD, &mat);
 
 				ctx.save_rs(dev, D3DRS_BLENDOP);
@@ -2096,9 +2134,17 @@ namespace gta4
 				ctx.save_tss(dev, D3DTSS_COLORARG1); 
 				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
+				// fix issue with merging material?
+				IDirect3DBaseTexture9* currTex = nullptr; 
+				if (dev->GetTexture(0, &currTex); currTex)
+				{
+					DWORD hash = (DWORD)(uintptr_t)currTex;
+					set_remix_texture_hash(dev, hash);
+				}
+
 				// re-draw surface
-				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount - 1);
-				redrew = true;
+				//dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount/* - 1*/);
+				//redrew = true;
 			}
 
 			if (!redrew)
@@ -2166,6 +2212,86 @@ namespace gta4
 
 			if (ctx.modifiers.dual_render_texture) {
 				ctx.restore_texture(dev, 0);
+			}
+		}
+
+
+
+		if (ctx.modifiers.tri_render)
+		{
+			if (ctx.modifiers.tri_render_texture)
+			{
+				ctx.restore_texture(dev, 0);
+
+				// save og texture
+				ctx.save_texture(dev, 0);
+
+				// set new texture
+				dev->SetTexture(0, ctx.modifiers.tri_render_texture);
+
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+				ctx.save_rs(dev, D3DRS_BLENDOP);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+				ctx.save_rs(dev, D3DRS_SRCBLEND);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+				ctx.save_tss(dev, D3DTSS_COLOROP);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+				ctx.save_tss(dev, D3DTSS_COLORARG1);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+				ctx.save_tss(dev, D3DTSS_COLORARG2);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+
+				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+
+				if (gs->vehicle_dirt_custom_color_enabled.get_as<bool>())
+				{
+					const auto& col = gs->vehicle_dirt_custom_color.get_as<Vector*>();
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
+						D3DCOLOR_COLORVALUE(
+							col->x,
+							col->y,
+							col->z,
+							ctx.info.ps_const_73_veh_dirt.x));
+				}
+				else
+				{
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
+						D3DCOLOR_COLORVALUE(
+							ctx.info.ps_const_74_veh_dirt.x,
+							ctx.info.ps_const_74_veh_dirt.y,
+							ctx.info.ps_const_74_veh_dirt.z,
+							ctx.info.ps_const_73_veh_dirt.x));
+				}
+
+				ctx.save_tss(dev, D3DTSS_TEXCOORDINDEX);
+				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 1);
+
+				// slightly scale roughness with dirt (less roughness from dirt on flat surfaces (pointing upwards))
+				set_remix_roughness_scalar(dev, 0.0f - ctx.info.ps_const_73_veh_dirt.x);
+
+				set_remix_modifier(dev, RemixModifier::VehicleDecalDirt);
+				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+
+				// re-draw surface
+				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount /*- 1*/);
 			}
 		}
 		
