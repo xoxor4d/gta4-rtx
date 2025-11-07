@@ -491,7 +491,7 @@ namespace gta4
 		static auto im = imgui::get();
 
 		// check if paused
-		rml->m_is_paused = *game::CMenuManager__m_MenuActive; //shared::utils::float_equal(shared::globals::frame_time_ms, 0.0f);
+		rml->m_is_paused = *game::CMenuManager__m_MenuActive;
 
 		if (!rml->m_is_paused)
 		{
@@ -501,11 +501,11 @@ namespace gta4
 
 		rml->draw_all_active_lights();
 
-		Vector player_pos;
-		player_pos = game::FindPlayerCentreOfWorld(&player_pos);
-
 		if (im->m_dbg_visualize_api_lights)
 		{
+			Vector player_pos;
+			player_pos = game::FindPlayerCentreOfWorld(&player_pos);
+
 			game::CLightSource* list = game::get_renderLights();
 			const auto count = game::get_renderLightsCount();
 
