@@ -4,6 +4,7 @@
 #include "shared/common/flags.hpp"
 #include "modules/d3d9ex.hpp"
 #include "modules/game_settings.hpp"
+#include "modules/renderer.hpp"
 
 namespace gta4
 {
@@ -70,7 +71,26 @@ namespace gta4
 			Beep(523, 100);
 		}
 
-		//shared::utils::focus_and_lock_cursor_on_init();
+		// Wait until the first prim was rendered
+
+		T = 0u;
+		while (true)
+		{
+			if (g_rendered_first_primitive) {
+				break;
+			}
+
+			Sleep(1u); T += 1u;
+			if (T >= 6000)
+			{
+				shared::common::set_console_color_blue(true);
+				std::cout << 
+					"\n[MAIN] Drawing of first Primitive takes longer then expected.\n"
+					"> Proceeding to initiate the Compatibility Mod ...\n\n";
+				shared::common::set_console_color_default();
+				break;
+			}
+		}
 
 		gta4::main();
 		return 0;

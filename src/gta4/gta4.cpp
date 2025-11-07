@@ -19,6 +19,8 @@ namespace gta4
 	int  g_is_rendering_vehicle = 0;
 	bool g_is_rendering_phone = false;
 
+	bool g_rendered_first_primitive = false;
+
 	void on_begin_scene_cb()
 	{
 		static auto im = imgui::get();
