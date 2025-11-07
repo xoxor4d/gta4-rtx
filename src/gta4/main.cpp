@@ -4,7 +4,8 @@
 #include "shared/common/flags.hpp"
 #include "modules/d3d9ex.hpp"
 #include "modules/game_settings.hpp"
-#include "modules/renderer.hpp"
+
+//#define BLOCK_DISCORDHOOK // also hooks d3d
 
 namespace gta4
 {
@@ -100,9 +101,9 @@ namespace gta4
 
 bool g_populated_res_table = false;
 
-RECT gRect = {};
 BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 {
+	RECT rect = {};
  	if (!g_populated_res_table)
 	{
 		gta4::game::PopulateAvailResolutionsArray(*gta4::game::d3d9_adapter_index); // 0x17ED930
@@ -112,19 +113,30 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 	if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
 	{
 		const auto res = modes_ptr->modes[gta4::game::loaded_settings_cfg->resolution_index]; // 0x1160E80
-		gRect = { xLeft, yTop, (LONG)res.width, (LONG)res.height };
+		rect = { xLeft, yTop, (LONG)res.width, (LONG)res.height };
 	}
 	else
 	{
 		if (*gta4::game::ms_bWindowed)
 		{
 			const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
-			gRect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
+			rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
 		}
 		else {
-			gRect = { xLeft, yTop, xRight, yBottom };
+			rect = { xLeft, yTop, xRight, yBottom };
 		}
 	}
+
+	if (gta4::game::hmodule_fusionfix)
+	{
+		using FusionFix_SetRect_RemixFn = void(__cdecl*)(RECT rect);
+		if (const auto pFusionFix_SetRect = reinterpret_cast<FusionFix_SetRect_RemixFn>(GetProcAddress(gta4::game::hmodule_fusionfix, "SetRect_Remix"));
+			pFusionFix_SetRect) 
+		{
+			pFusionFix_SetRect(rect);
+		}
+	}
+	
 
 	return SetRect(lprc, xLeft, yTop, xRight, yBottom);
 }
@@ -132,6 +144,8 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
 	// TODO: find a proper place to do this
+
+	//gta4::game::hmodule_fusionfix = GetModuleHandleA("GTAIV.EFLC.FusionFix.asi");
 
 	gta4::game::loaded_settings_cfg->nightshadow_quality = 0u;
 	gta4::game::loaded_settings_cfg->reflection_quality = 0u;
@@ -145,12 +159,12 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 		g_populated_res_table = true;
 	}
 
-	HWND gWnd;
+	HWND wnd;
 
 	if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
 	{
 		const auto res = modes_ptr->modes[gta4::game::loaded_settings_cfg->resolution_index]; // 0x1160E80
-		gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res.width), static_cast<int>(res.height), hWndParent, hMenu, hInstance, lpParam);
+		wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res.width), static_cast<int>(res.height), hWndParent, hMenu, hInstance, lpParam);
 		*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res.width); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
 		*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res.height); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
 	}
@@ -159,21 +173,40 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 		if (*gta4::game::ms_bWindowed)
 		{
 			const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
-			gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y), hWndParent, hMenu, hInstance, lpParam);
+			wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y), hWndParent, hMenu, hInstance, lpParam);
 
 			*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res_setting->x); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
 			*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res_setting->y); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
 		}
 		else {
-			gWnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+			wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 		}
 	}
 
-	return gWnd;
+	if (gta4::game::hmodule_fusionfix)
+	{
+		using FusionFix_CreateWindowExA_RemixFn = void(__cdecl*)(HWND hwnd);
+		if (const auto FusionFix_CreateWindowExA_Remix = reinterpret_cast<FusionFix_CreateWindowExA_RemixFn>(GetProcAddress(gta4::game::hmodule_fusionfix, "CreateWindowExA_Remix"));
+			FusionFix_CreateWindowExA_Remix)
+		{
+			DWORD hash = (DWORD)(uintptr_t)wnd;
+			std::cout << "[INIT] Sending HWND to FusionFix (0x" << std::hex << hash << ")\n";
+			FusionFix_CreateWindowExA_Remix(wnd);
+		}
+	}
+
+	return wnd;
 }
 
 void on_create_game_window_hk()
 {
+	if (gta4::game::hmodule_fusionfix = GetModuleHandleA("GTAIV.EFLC.FusionFix.asi"); gta4::game::hmodule_fusionfix)
+	{
+		shared::common::set_console_color_blue(true);
+		std::cout << "[INIT] Detected FusionFix.\n";
+		shared::common::set_console_color_default();
+	}
+
 	// delayed hooking because of FusionFix
 	shared::utils::hook::set(gta4::game::import_addr__SetRect, SetRect_hk);
 	shared::utils::hook::set(gta4::game::import_addr__CreateWindowExA, CreateWindowExA_hk);
@@ -193,6 +226,64 @@ __declspec (naked) void on_create_game_window_stub()
 	}
 }
 
+#ifdef BLOCK_DISCORDHOOK
+
+bool is_discord_dll(const char* name)
+{
+	if (strstr(name, "DiscordHook.dll"))
+	{
+		shared::common::set_console_color_blue(true);
+		std::cout << "[INIT] Prevented 'DiscordHook.dll' from loading ...\n";
+		shared::common::set_console_color_default();
+		return true;
+	}
+
+	return false;
+}
+
+bool is_discord_dll_wide(const wchar_t* name)
+{
+	char buf[1024];
+	if (const int len = WideCharToMultiByte(CP_UTF8, 0, name, -1, buf, sizeof(buf), nullptr, nullptr); len > 0) {
+		buf[len - 1] = 0;
+	}
+
+	if (strstr(buf, "DiscordHook.dll"))
+	{
+		shared::common::set_console_color_blue(true);
+		std::cout << "[INIT] Prevented 'DiscordHook.dll' from loading ...\n";
+		shared::common::set_console_color_default();
+		return true;
+	}
+
+	return false;
+}
+
+typedef HMODULE(WINAPI* pLoadLibraryA)(LPCSTR);
+pLoadLibraryA LoadLibraryA_og = LoadLibraryA;
+
+HMODULE WINAPI LoadLibraryA_hk(LPCSTR lpFileName)
+{
+	if (is_discord_dll(lpFileName)) {
+		return nullptr;
+	}
+
+	return LoadLibraryA_og(lpFileName);
+}
+
+typedef HMODULE(WINAPI* pLoadLibraryW)(LPCWSTR);
+pLoadLibraryW LoadLibraryW_og = LoadLibraryW;
+
+HMODULE WINAPI LoadLibraryW_hk(LPCWSTR lpFileName)
+{
+	if (is_discord_dll_wide(lpFileName)) {
+		return nullptr;
+	}
+
+	return LoadLibraryW_og(lpFileName);
+}
+#endif
+
 BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 {
 	if (ul_reason_for_call == DLL_PROCESS_ATTACH) 
@@ -208,8 +299,6 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		std::cout << "> https://github.com/xoxor4d/gta4-rtx\n\n";
 		shared::common::set_console_color_default();
 
-		gta4::game::init_game_addresses();
-
 		if (const auto MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)
 		{
 			shared::common::set_console_color_red(true);
@@ -217,6 +306,14 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 			shared::common::set_console_color_default();
 			return TRUE;
 		}
+
+#ifdef BLOCK_DISCORDHOOK
+		MH_CreateHook(&LoadLibraryA, &LoadLibraryA_hk, reinterpret_cast<LPVOID*>(&LoadLibraryA_og));
+		MH_CreateHook(&LoadLibraryW, &LoadLibraryW_hk, reinterpret_cast<LPVOID*>(&LoadLibraryW_og));
+		MH_EnableHook(MH_ALL_HOOKS);
+#endif
+
+		gta4::game::init_game_addresses();
 
 		shared::common::loader::module_loader::register_module(std::make_unique<gta4::d3d9ex>());
 		shared::common::loader::module_loader::register_module(std::make_unique<gta4::game_settings>());

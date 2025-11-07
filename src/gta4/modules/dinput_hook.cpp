@@ -247,7 +247,7 @@ namespace gta4
 			case 256:
 				//di->updateKeyState(static_cast<LPBYTE>(lpvData)); // game sends keyboard input via window messages so no need
 				//di->KeyboardDeviceStateUsed = true;
-				do_not_clear = true;
+				do_not_clear = true; 
 				break;
 		}
 
@@ -264,7 +264,7 @@ namespace gta4
 		const auto hr = g_dinput8_device_get_device_data_original(device, cbData, rgdod, pdwInOut, flags);
 
 		// Block game input when menu is open
-		if (shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass) 
+		if (shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass)
 		{
 			memset(rgdod, 0, *pdwInOut * cbData);
 			*pdwInOut = 0;
@@ -276,7 +276,7 @@ namespace gta4
 	// not used
 	HRESULT __stdcall dinput8_device_acquire_hk(IDirectInputDevice8* device)
 	{
-		/*if (globals::imgui_menu_open && !globals::imgui_allow_input_bypass) {
+		/*if (shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass) {
 			return DI_OK;
 		}*/
 
