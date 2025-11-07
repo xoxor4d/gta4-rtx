@@ -589,6 +589,28 @@ namespace gta4
 				0.22f, 0.21f, 0.20f
 			};
 
+
+			variable vehicle_dirt_expo =
+			{
+				"vehicle_dirt_expo",
+				("Exponent applied to the dirtiness value so that smaller values do not make the vehicle dirty and rough as quickly."),
+				3.0f
+			};
+
+			variable vehicle_dirt_roughness_z_normal =
+			{
+				"vehicle_dirt_roughness_z_normal",
+				("Surfaces with a Z-Normal value above this will be influenced by adjusted roughness."),
+				1.0f
+			};
+
+			variable vehicle_dirt_roughness_blending =
+			{
+				"vehicle_dirt_roughness_blending",
+				("Defines the blending strength used to go from original roughness to adjusted roughness."),
+				0.02f
+			};
+
 			// -----
 			variable vehicle_livery_enabled =
 			{
@@ -686,19 +708,90 @@ namespace gta4
 				true
 			};
 
-			variable timecycle_wetness_scalar =
+			variable timecycle_wetness_world_scalar =
 			{
-				"timecycle_wetness_scalar",
+				"timecycle_wetness_world_scalar",
 				("Scales the weather wetness value (ranges from 0-1). Final value is clamped to 0-1. Increasing this will mostly affect damper weather states"),
 				1.8f
 			};
 
-			variable timecycle_wetness_offset =
+			variable timecycle_wetness_world_offset =
 			{
-				"timecycle_wetness_offset",
+				"timecycle_wetness_world_offset",
 				("Additional offset applied onto the final wetness value."),
 				0.0f
 			};
+
+			variable timecycle_wetness_world_z_normal =
+			{
+				"timecycle_wetness_world_z_normal",
+				("Surfaces with a Z-Normal value above this can get wet."),
+				0.30f
+			};
+
+			variable timecycle_wetness_world_blending =
+			{
+				"timecycle_wetness_world_blending",
+				("Defines the blending strength used to go from original roughness to adjusted roughness."),
+				0.65f
+			};
+
+			// -----
+
+			variable timecycle_wetness_vehicle_scalar =
+			{
+				"timecycle_wetness_vehicle_scalar",
+				("Vehicle Roughness Scalar when it's wet.\n"
+				 "0 = No Roughness, 1 = Original Roughness, > 1 increases the original roughness"),
+				0.0f
+			};
+
+			variable timecycle_wetness_vehicle_z_normal =
+			{
+				"timecycle_wetness_vehicle_z_normal",
+				("Surfaces with a Z-Normal value above this can get wet."),
+				0.15f
+			};
+
+			variable timecycle_wetness_vehicle_blending =
+			{
+				"timecycle_wetness_vehicle_blending",
+				("Defines the blending strength used to go from original roughness to adjusted roughness."),
+				1.0f
+			};
+
+
+			variable timecycle_wetness_vehicle_dirt_intensity_scalar =
+			{
+				"timecycle_wetness_vehicle_dirt_intensity_scalar",
+				("Vehicle Dirt Intensity Scalar when it's wet.\n"
+				 "0 = No Dirt to 1 = Original Dirt Amount"),
+				0.8f
+			};
+
+			variable timecycle_wetness_vehicle_dirt_roughness_scalar =
+			{
+				"timecycle_wetness_vehicle_dirt_roughness_scalar",
+				("Vehicle Dirt Roughness Scalar when it's wet.\n"
+				 "0 = No Roughness, 1 = Original Roughness, > 1 increases the original roughness"),
+				0.1f
+			};
+
+			variable timecycle_wetness_vehicle_dirt_z_normal =
+			{
+				"timecycle_wetness_vehicle_dirt_z_normal",
+				("Surfaces with a Z-Normal value above this can get wet."),
+				0.2f
+			};
+
+			variable timecycle_wetness_vehicle_dirt_blending =
+			{
+				"timecycle_wetness_vehicle_dirt_blending",
+				("Defines the blending strength used to go from original roughness to adjusted roughness."),
+				1.0f
+			};
+
+			// -----
 
 			variable timecycle_fogcolor_enabled = {
 				"timecycle_fogcolor_enabled",

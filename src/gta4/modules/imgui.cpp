@@ -48,6 +48,7 @@ namespace gta4
 		{
 			uint32_t counter = 0u;
 			while (::ShowCursor(TRUE) < 0 && ++counter < 3) {}
+			ClipCursor(NULL);
 		}
 
 		//printf("MSG 0x%x -- w: 0x%x -- l: 0x%x\n", message_type, wparam, lparam);
@@ -974,6 +975,10 @@ namespace gta4
 				TT(gs->vehicle_dirt_custom_color.get_tooltip_string().c_str());
 			}
 
+			gamesettings_float_widget("Dirt Roughness: Expo", gs->vehicle_dirt_expo, 0.5f, 5.0f, 0.005f);
+			gamesettings_float_widget("Dirt Roughness: Min Z-Normal", gs->vehicle_dirt_roughness_z_normal, 0.0f, 1.0f, 0.005f);
+			gamesettings_float_widget("Dirt Roughness: Blending", gs->vehicle_dirt_roughness_blending, 0.0f, 1.0f, 0.005f);
+	
 			ImGui::EndDisabled();
 		}
 
@@ -1329,8 +1334,24 @@ namespace gta4
 			gamesettings_bool_widget("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_wetness_enabled.get_as<bool>());
 			{
-				gamesettings_float_widget("Weather Wetness Scalar", gs->timecycle_wetness_scalar, 0.0f, 0.0f, 0.005f);
-				gamesettings_float_widget("Additional Wetness Offset", gs->timecycle_wetness_offset, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("World: Wetness Scalar", gs->timecycle_wetness_world_scalar, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("World: Additional Wetness Offset", gs->timecycle_wetness_world_offset, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("World: Min Surface Z-Normal", gs->timecycle_wetness_world_z_normal, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("World: Blending Strength", gs->timecycle_wetness_world_blending, 0.0f, 1.0f, 0.005f);
+
+				ImGui::Spacing(0, inbetween_spacing);
+
+				gamesettings_float_widget("Vehicle: Wetness Scalar", gs->timecycle_wetness_vehicle_scalar, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Vehicle: Min Surface Z-Normal", gs->timecycle_wetness_vehicle_z_normal, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Vehicle: Blending Strength", gs->timecycle_wetness_vehicle_blending, 0.0f, 1.0f, 0.005f);
+
+				ImGui::Spacing(0, inbetween_spacing);
+
+				gamesettings_float_widget("Vehicle Dirt: Intensity Scalar", gs->timecycle_wetness_vehicle_dirt_intensity_scalar, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Vehicle Dirt: Wetness Scalar", gs->timecycle_wetness_vehicle_dirt_roughness_scalar, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Vehicle Dirt: Min Surface Z-Normal", gs->timecycle_wetness_vehicle_dirt_z_normal, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Vehicle Dirt: Blending Strength", gs->timecycle_wetness_vehicle_dirt_blending, 0.0f, 1.0f, 0.005f);
+
 				ImGui::EndDisabled();
 			}
 		}

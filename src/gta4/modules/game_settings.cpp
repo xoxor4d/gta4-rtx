@@ -45,6 +45,8 @@ namespace gta4
 
 	bool game_settings::parse_toml()
 	{
+
+#if !DEBUG
 		std::ifstream file;
 		if (shared::utils::open_file_homepath("rtx_comp", "game_settings.toml", file))
 		{
@@ -192,6 +194,11 @@ namespace gta4
 				ASSIGN(vehicle_dirt_enabled);
 				ASSIGN(vehicle_dirt_custom_color_enabled);
 				ASSIGN(vehicle_dirt_custom_color);
+
+				ASSIGN(vehicle_dirt_expo);
+				ASSIGN(vehicle_dirt_roughness_z_normal);
+				ASSIGN(vehicle_dirt_roughness_blending);
+
 				ASSIGN(vehicle_livery_enabled);
 				ASSIGN(decal_dirt_shader_usage);
 				ASSIGN(decal_dirt_shader_scalar);
@@ -206,8 +213,18 @@ namespace gta4
 
 				// timecycle related settings
 				ASSIGN(timecycle_wetness_enabled);
-				ASSIGN(timecycle_wetness_scalar);
-				ASSIGN(timecycle_wetness_offset);
+				ASSIGN(timecycle_wetness_world_scalar);
+				ASSIGN(timecycle_wetness_world_offset);
+				ASSIGN(timecycle_wetness_world_z_normal);
+				ASSIGN(timecycle_wetness_world_blending);
+				ASSIGN(timecycle_wetness_vehicle_scalar);
+				ASSIGN(timecycle_wetness_vehicle_z_normal);
+				ASSIGN(timecycle_wetness_vehicle_blending);
+				ASSIGN(timecycle_wetness_vehicle_dirt_intensity_scalar);
+				ASSIGN(timecycle_wetness_vehicle_dirt_roughness_scalar);
+				ASSIGN(timecycle_wetness_vehicle_dirt_z_normal);
+				ASSIGN(timecycle_wetness_vehicle_dirt_blending);
+
 				ASSIGN(timecycle_fogcolor_enabled);
 				ASSIGN(timecycle_fogcolor_base_strength);
 				ASSIGN(timecycle_fogcolor_influence_scalar);
@@ -245,6 +262,7 @@ namespace gta4
 				return false;
 			}
 		}
+#endif
 
 		// always re-write file
 		write_toml();

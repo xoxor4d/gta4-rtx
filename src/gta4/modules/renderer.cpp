@@ -1,6 +1,7 @@
 #include "std_include.hpp"
 #include "renderer.hpp"
 
+#include "d3d9ex.hpp"
 #include "game_settings.hpp"
 #include "imgui.hpp"
 #include "natives.hpp"
@@ -54,77 +55,110 @@ namespace gta4
 
 	// ----
 
+	enum remix_custom_rs
+	{
+		RS_42_TEXTURE_CATEGORY		= 42,
+		RS_149_REMIX_MODIFIER		= 149,
+		RS_150_TEXTURE_HASH			= 150,
+		RS_169_EMISSIVE_SCALE		= 169,
+		RS_177_DECAL_DIRT_CONTRAST	= 177,
+		RS_210_ROUGHNESS_SCALAR		= 210,
+		RS_211_ROUGHNESS_ZNORMAL	= 211,
+		RS_212_ROUGHNESS_BLEND		= 212,
+		RS_213_FREE					= 213,
+		RS_214_FREE					= 214,
+		RS_215_FREE					= 215,
+		RS_216_FREE					= 216,
+		RS_217_FREE					= 217,
+		RS_218_FREE					= 218,
+		RS_219_FREE					= 219,
+		RS_220_FREE					= 220,
+	};
 
-	// uses unused Renderstate 149 to set per drawcall modifiers
-	// ~ currently req. runtime changes
+	// Uses unused Renderstate 149 to set per drawcall modifiers
+	// ~ req. runtime changes
 	void renderer::set_remix_modifier(IDirect3DDevice9* dev, RemixModifier mod)
 	{
-		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)149);
+		dc_ctx.save_rs(dev, RS_149_REMIX_MODIFIER);
 		dc_ctx.modifiers.remix_modifier |= mod;
 
-		dev->SetRenderState((D3DRENDERSTATETYPE)149, static_cast<DWORD>(dc_ctx.modifiers.remix_modifier));
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_149_REMIX_MODIFIER, static_cast<DWORD>(dc_ctx.modifiers.remix_modifier));
 	}
 
-	// uses unused Renderstate 149 & 169 to tweak the emissive intensity of remix materials (legacy/opaque)
+	// Uses unused Renderstate 149 & 169 to tweak the emissive intensity of remix materials (legacy/opaque)
 	// ~ currently req. runtime changes --> remixTempFloat01FromD3D
 	/// @param no_overrides	will not override any previously set intensity if true
 	void renderer::set_remix_emissive_intensity(IDirect3DDevice9* dev, float intensity, bool no_overrides)
 	{
-		const bool result = dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)169);
+		const bool result = dc_ctx.save_rs(dev, RS_169_EMISSIVE_SCALE);
 		if (!result && no_overrides) {
 			return;
 		}
 
 		dc_ctx.info.shaderconst_emissive_intensity = intensity;
-
 		set_remix_modifier(dev, RemixModifier::EmissiveScalar);
-		dev->SetRenderState((D3DRENDERSTATETYPE)169, *reinterpret_cast<DWORD*>(&intensity));
+		set_remix_temp_float01(dev, intensity);
 	}
 
-	// uses unused Renderstate 149 & 177 to tweak the roughness of remix materials (legacy/opaque)
-	// ~ currently req. runtime changes --> remixTempFloat02FromD3D
-	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar)
+	// RemixModifier::RoughnessScalar to tweak the roughness of remix materials (legacy/opaque)
+	// - uses RS_210_ROUGHNESS_SCALAR
+	// - uses RS_211_ROUGHNESS_ZNORMAL
+	// - uses RS_212_ROUGHNESS_BLEND
+	// ~ req. runtime changes
+	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width)
 	{
 		set_remix_modifier(dev, RemixModifier::RoughnessScalar);
 
-		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)177);
-		dev->SetRenderState((D3DRENDERSTATETYPE)177, *reinterpret_cast<DWORD*>(&roughness_scalar));
+		dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
+		dc_ctx.save_rs(dev, RS_211_ROUGHNESS_ZNORMAL);
+		dc_ctx.save_rs(dev, RS_212_ROUGHNESS_BLEND);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, *reinterpret_cast<DWORD*>(&roughness_scalar));
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_211_ROUGHNESS_ZNORMAL, *reinterpret_cast<DWORD*>(&max_z));
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_212_ROUGHNESS_BLEND, *reinterpret_cast<DWORD*>(&blend_width));
 	}
 
+	// ---
 
 	// uses unused Renderstate 169 to pass per drawcall data
-	// ~ currently req. runtime changes --> remixTempFloat02FromD3D
+	// - used by emissive scalar mod
+	// ~ req. runtime changes --> remixTempFloat01FromD3D
 	void renderer::set_remix_temp_float01(IDirect3DDevice9* dev, float value)
 	{
-		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)169);
-		dev->SetRenderState((D3DRENDERSTATETYPE)169, *reinterpret_cast<DWORD*>(&value));
+		dc_ctx.save_rs(dev, RS_169_EMISSIVE_SCALE);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_169_EMISSIVE_SCALE, *reinterpret_cast<DWORD*>(&value));
 	}
 
-	// uses unused Renderstate 177 to pass per drawcall data
-	// ~ currently req. runtime changes --> remixTempFloat02FromD3D
+	
+	// ---
+
+	// Uses unused Renderstate 177 to pass per drawcall data
+	// - used by decal dirt (contrast)
+	// ~ req. runtime changes --> remixTempFloat02FromD3D
 	void renderer::set_remix_temp_float02(IDirect3DDevice9* dev, float value)
 	{
-		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)177);
-		dev->SetRenderState((D3DRENDERSTATETYPE)177, *reinterpret_cast<DWORD*>(&value));
+		dc_ctx.save_rs(dev, RS_177_DECAL_DIRT_CONTRAST);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_177_DECAL_DIRT_CONTRAST, *reinterpret_cast<DWORD*>(&value));
 	}
 
+	// ---
 
-	// uses unused Renderstate 42 to set remix texture categories
-	// ~ currently req. runtime changes
+	// Uses unused Renderstate 42 to set remix texture categories
+	// ~ req. runtime changes
 	void renderer::set_remix_texture_categories(IDirect3DDevice9* dev, const InstanceCategories& cat)
 	{
-		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+		dc_ctx.save_rs(dev, RS_42_TEXTURE_CATEGORY);
 		dc_ctx.modifiers.remix_instance_categories |= cat;
-		dev->SetRenderState((D3DRENDERSTATETYPE)42, static_cast<DWORD>(dc_ctx.modifiers.remix_instance_categories));
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_42_TEXTURE_CATEGORY, static_cast<DWORD>(dc_ctx.modifiers.remix_instance_categories));
 	}
 
-	// uses unused Renderstate 150 to set custom remix hash
-	// ~ currently req. runtime changes
+	// Uses unused Renderstate 150 to set custom remix hash
+	// ~ req. runtime changes
 	void renderer::set_remix_texture_hash(IDirect3DDevice9* dev, const std::uint32_t& hash)
 	{
-		dc_ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
-		dev->SetRenderState((D3DRENDERSTATETYPE)150, hash);
+		dc_ctx.save_rs(dev, RS_150_TEXTURE_HASH);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_150_TEXTURE_HASH, hash);
 	}
+
 
 	// ---
 
@@ -207,6 +241,119 @@ namespace gta4
 
 		renderer::set_remix_emissive_intensity(dev, intensity);
 	}
+
+	// ----
+
+	void handle_vehicle_roughness_when_wet(IDirect3DDevice9* dev, const drawcall_mod_context& ctx)
+	{
+		const auto gs = game_settings::get();
+		renderer::set_remix_roughness_scalar(dev,
+			gs->timecycle_wetness_vehicle_scalar.get_as<float>(),
+			gs->timecycle_wetness_vehicle_z_normal.get_as<float>(),
+			gs->timecycle_wetness_vehicle_blending.get_as<float>());
+	}
+
+	void handle_vehicle_dirt_roughness_when_wet(IDirect3DDevice9* dev, const drawcall_mod_context& ctx)
+	{
+		const auto gs = game_settings::get();
+		renderer::set_remix_roughness_scalar(dev,
+			gs->timecycle_wetness_vehicle_dirt_roughness_scalar.get_as<float>(),
+			gs->timecycle_wetness_vehicle_dirt_z_normal.get_as<float>(),
+			gs->timecycle_wetness_vehicle_dirt_blending.get_as<float>());
+	}
+
+	void handle_vehicle_dirt_roughness_when_dry(IDirect3DDevice9* dev, const drawcall_mod_context& ctx)
+	{
+		const auto gs = game_settings::get();
+
+		// not wet: slightly scale roughness wi* imgui::get()->m_debug_vector2.xth dirt
+		const float adjusted = powf(ctx.info.ps_const_73_veh_dirt.x, gs->vehicle_dirt_expo.get_as<float>());
+
+		renderer::set_remix_roughness_scalar(dev,
+			0.0f - adjusted,
+			gs->vehicle_dirt_roughness_z_normal.get_as<float>(),
+			gs->vehicle_dirt_roughness_blending.get_as<float>());
+	}
+
+	void handle_vehicle_dirt_decal(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
+	{
+		const auto gs = game_settings::get();
+
+		ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+		dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+		ctx.save_rs(dev, D3DRS_BLENDOP);
+		dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+		ctx.save_rs(dev, D3DRS_SRCBLEND);
+		dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+
+		ctx.save_rs(dev, D3DRS_DESTBLEND);
+		dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+		ctx.save_tss(dev, D3DTSS_COLOROP);
+		dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+		ctx.save_tss(dev, D3DTSS_COLORARG1);
+		dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+		ctx.save_tss(dev, D3DTSS_COLORARG2);
+		dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+
+		ctx.save_tss(dev, D3DTSS_ALPHAOP);
+		dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+		ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+		dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+
+		ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+		dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+
+		ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+
+		float dirtscale = powf(ctx.info.ps_const_73_veh_dirt.x, gs->vehicle_dirt_expo.get_as<float>());
+		if (ctx.modifiers.is_vehicle_wet) {
+			dirtscale *= gs->timecycle_wetness_vehicle_dirt_intensity_scalar.get_as<float>();
+		}
+
+		if (gs->vehicle_dirt_custom_color_enabled.get_as<bool>())
+		{
+			const auto& col = gs->vehicle_dirt_custom_color.get_as<Vector*>();
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR,
+				D3DCOLOR_COLORVALUE(
+					col->x,
+					col->y,
+					col->z,
+					dirtscale));
+		}
+		else
+		{
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR,
+				D3DCOLOR_COLORVALUE(
+					ctx.info.ps_const_74_veh_dirt.x,
+					ctx.info.ps_const_74_veh_dirt.y,
+					ctx.info.ps_const_74_veh_dirt.z,
+					dirtscale));
+		}
+
+		ctx.save_tss(dev, D3DTSS_TEXCOORDINDEX);
+		dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 1);
+
+		if (ctx.modifiers.is_vehicle_wet)
+		{
+			// dirt roughness when wet
+			handle_vehicle_dirt_roughness_when_wet(dev, ctx);
+		}
+		else
+		{
+			// not wet: slightly scale roughness with dirt
+			handle_vehicle_dirt_roughness_when_dry(dev, ctx);
+		}
+
+		renderer::set_remix_modifier(dev, RemixModifier::VehicleDecalDirt);
+		renderer::set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+	}
+	
 
 	// ----
 
@@ -796,7 +943,6 @@ namespace gta4
 							int y = 0;
 						}
 					}
-					
 #endif
 
 					if (pidx == GTA_VEHICLE_PAINT3) 
@@ -921,6 +1067,15 @@ namespace gta4
 
 	HRESULT renderer::on_draw_primitive(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const UINT& StartVertex, const UINT& PrimitiveCount)
 	{
+		// needed for comp mod initialization 
+		if (!g_rendered_first_primitive) {
+			g_rendered_first_primitive = true;
+		}
+
+		if (!is_initialized()) {
+			return dev->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+		}
+
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
 
@@ -1166,6 +1321,10 @@ namespace gta4
 
 	HRESULT renderer::on_draw_indexed_prim(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const INT& BaseVertexIndex, const UINT& MinVertexIndex, const UINT& NumVertices, const UINT& startIndex, const UINT& primCount)
 	{
+		if (!is_initialized()) {
+			return dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+		}
+
 		auto& ctx = setup_context(dev);
 		static auto im = imgui::get();
 		static auto gs = game_settings::get();
@@ -1827,7 +1986,7 @@ namespace gta4
 
 				// surface can get wet if stencil = 0
 				if (stencil_enabled && stencil_ref == 0
-					|| (g_is_rendering_vehicle && !(pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2) /*!ctx.info.shader_name.ends_with("_interior.fxc")*/)
+					|| (g_is_rendering_vehicle && !(pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2))
 					|| pidx == GTA_PED_REFLECT)
 				{
 					auto get_wetness = []()
@@ -1858,12 +2017,23 @@ namespace gta4
 					const float wetness_value = get_wetness();
 					if (wetness_value > 0.0f)
 					{
-						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_scalar.get_as<float>(), 0.0f, 1.0f);
+						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_world_scalar.get_as<float>(), 0.0f, 1.0f);
 						float scalar = 1.0f - adjusted_wetness;
+						scalar += gs->timecycle_wetness_world_offset.get_as<float>();
 						scalar = std::clamp(scalar * 0.8f, 0.0f, 1.0f);
-						scalar += gs->timecycle_wetness_offset.get_as<float>();
 						scalar = scalar < 0.0f ? 0.0f : scalar;
-						set_remix_roughness_scalar(dev, scalar);
+
+						if (g_is_rendering_vehicle)
+						{
+							ctx.modifiers.is_vehicle_wet = true;
+							handle_vehicle_roughness_when_wet(dev, ctx);
+						}
+						else {
+							set_remix_roughness_scalar(dev, 
+								scalar, 
+								gs->timecycle_wetness_world_z_normal.get_as<float>(), 
+								gs->timecycle_wetness_world_blending.get_as<float>());
+						}
 					}
 
 					if (im->m_dbg_do_not_render_stencil_zero) {
@@ -1966,70 +2136,18 @@ namespace gta4
 				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 1);
 
 				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+
+				// livery
+				if (ctx.modifiers.is_vehicle_wet) 
+				{
+					// same as car paint
+					handle_vehicle_roughness_when_wet(dev, ctx);
+				}
 			}
 
 			if (ctx.modifiers.dual_render_mode_vehicle_dirt)
 			{
-				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-
-				ctx.save_rs(dev, D3DRS_BLENDOP);
-				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
-
-				ctx.save_rs(dev, D3DRS_SRCBLEND);
-				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-
-				ctx.save_rs(dev, D3DRS_DESTBLEND);
-				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-
-				ctx.save_tss(dev, D3DTSS_COLOROP);
-				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-				ctx.save_tss(dev, D3DTSS_COLORARG1);
-				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-
-				ctx.save_tss(dev, D3DTSS_COLORARG2);
-				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-
-				ctx.save_tss(dev, D3DTSS_ALPHAOP);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE); 
-
-				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR); 
-
-				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-
-				if (gs->vehicle_dirt_custom_color_enabled.get_as<bool>())
-				{
-					const auto& col = gs->vehicle_dirt_custom_color.get_as<Vector*>();
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
-						D3DCOLOR_COLORVALUE(
-							col->x,
-							col->y,
-							col->z,
-							ctx.info.ps_const_73_veh_dirt.x));
-				}
-				else
-				{
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
-						D3DCOLOR_COLORVALUE(
-							ctx.info.ps_const_74_veh_dirt.x,
-							ctx.info.ps_const_74_veh_dirt.y,
-							ctx.info.ps_const_74_veh_dirt.z,
-							ctx.info.ps_const_73_veh_dirt.x));
-				}
-
-				ctx.save_tss(dev, D3DTSS_TEXCOORDINDEX);
-				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 1);
-
-				// slightly scale roughness with dirt (less roughness from dirt on flat surfaces (pointing upwards))
-				set_remix_roughness_scalar(dev, 0.0f - ctx.info.ps_const_73_veh_dirt.x);
-
-				set_remix_modifier(dev, RemixModifier::VehicleDecalDirt);
-				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+				handle_vehicle_dirt_decal(dev, ctx);
 
 				// re-draw surface
 				//dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount /*- 1*/);
@@ -2229,66 +2347,7 @@ namespace gta4
 				// set new texture
 				dev->SetTexture(0, ctx.modifiers.tri_render_texture);
 
-				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-
-				ctx.save_rs(dev, D3DRS_BLENDOP);
-				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
-
-				ctx.save_rs(dev, D3DRS_SRCBLEND);
-				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-
-				ctx.save_rs(dev, D3DRS_DESTBLEND);
-				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-
-				ctx.save_tss(dev, D3DTSS_COLOROP);
-				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-				ctx.save_tss(dev, D3DTSS_COLORARG1);
-				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-
-				ctx.save_tss(dev, D3DTSS_COLORARG2);
-				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-
-				ctx.save_tss(dev, D3DTSS_ALPHAOP);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-
-				ctx.save_tss(dev, D3DTSS_ALPHAARG1);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-
-				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-
-				if (gs->vehicle_dirt_custom_color_enabled.get_as<bool>())
-				{
-					const auto& col = gs->vehicle_dirt_custom_color.get_as<Vector*>();
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
-						D3DCOLOR_COLORVALUE(
-							col->x,
-							col->y,
-							col->z,
-							ctx.info.ps_const_73_veh_dirt.x));
-				}
-				else
-				{
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR,
-						D3DCOLOR_COLORVALUE(
-							ctx.info.ps_const_74_veh_dirt.x,
-							ctx.info.ps_const_74_veh_dirt.y,
-							ctx.info.ps_const_74_veh_dirt.z,
-							ctx.info.ps_const_73_veh_dirt.x));
-				}
-
-				ctx.save_tss(dev, D3DTSS_TEXCOORDINDEX);
-				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 1);
-
-				// slightly scale roughness with dirt (less roughness from dirt on flat surfaces (pointing upwards))
-				set_remix_roughness_scalar(dev, 0.0f - ctx.info.ps_const_73_veh_dirt.x);
-
-				set_remix_modifier(dev, RemixModifier::VehicleDecalDirt);
-				set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
+				handle_vehicle_dirt_decal(dev, ctx);
 
 				// re-draw surface
 				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount /*- 1*/);

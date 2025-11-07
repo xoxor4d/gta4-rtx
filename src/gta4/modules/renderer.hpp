@@ -235,6 +235,11 @@ namespace gta4
 			return true;
 		}
 
+		bool save_rs(IDirect3DDevice9* device, const uint32_t& state)
+		{
+			return save_rs(device, (D3DRENDERSTATETYPE)state);
+		}
+
 		// save sampler state (D3DSAMPLERSTATETYPE)
 		void save_ss(IDirect3DDevice9* device, const D3DSAMPLERSTATETYPE& state)
 		{
@@ -414,7 +419,7 @@ namespace gta4
 			bool is_vehicle_paint = false;
 			bool is_vehicle_using_switch_on_state = false;
 			bool is_vehicle_on = false;
-			//bool is_tree_foliage = false;
+			bool is_vehicle_wet = false;
 			bool is_grass_foliage = false;
 			bool is_fx = false;
 
@@ -442,7 +447,7 @@ namespace gta4
 				is_vehicle_paint = false;
 				is_vehicle_using_switch_on_state = false;
 				is_vehicle_on = false;
-				//is_tree_foliage = false;
+				is_vehicle_wet = false;
 				is_grass_foliage = false;
 				is_fx = false;
 
@@ -576,9 +581,13 @@ namespace gta4
 
 		static void set_remix_modifier(IDirect3DDevice9* dev, RemixModifier mod);
 		static void set_remix_emissive_intensity(IDirect3DDevice9* dev, float intensity, bool no_overrides = false);
-		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar);
+		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f);
+
 		static void set_remix_temp_float01(IDirect3DDevice9* dev, float value);
+		static void set_remix_temp_float01_pack_two_halfs(IDirect3DDevice9* dev, float value_low, float value_high);
 		static void set_remix_temp_float02(IDirect3DDevice9* dev,  float value);
+		static void set_remix_temp_float02_pack_two_halfs(IDirect3DDevice9* dev, float value_low, float value_high);
+		static void set_remix_temp_float03_pack_four(IDirect3DDevice9* dev, float v1, float v2, float v3, float v4);
 		static void set_remix_texture_categories(IDirect3DDevice9* dev, const InstanceCategories& cat);
 		static void set_remix_texture_hash(IDirect3DDevice9* dev, const std::uint32_t& hash);
 
