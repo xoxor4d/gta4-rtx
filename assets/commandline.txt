@@ -1,4 +1,3 @@
--windowed 
 -d3dst 
 -noprecache
 -availablevidmem 1024
