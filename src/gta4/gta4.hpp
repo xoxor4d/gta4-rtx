@@ -2,6 +2,8 @@
 
 namespace gta4
 {
+	void force_graphic_settings();
+
 	void on_begin_scene_cb();
 	void translate_and_apply_timecycle_settings();
 	void main();

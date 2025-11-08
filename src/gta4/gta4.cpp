@@ -21,6 +21,18 @@ namespace gta4
 
 	bool g_rendered_first_primitive = false;
 
+	void force_graphic_settings()
+	{
+		if (gta4::game::loaded_settings_cfg)
+		{
+			gta4::game::loaded_settings_cfg->nightshadow_quality = 0u;
+			gta4::game::loaded_settings_cfg->reflection_quality = 0u;
+			gta4::game::loaded_settings_cfg->shadow_quality = 0u;
+			gta4::game::loaded_settings_cfg->water_quality = 0u;
+			gta4::game::loaded_settings_cfg->sharpness = 0u; // fix cutscene crashing issue on amd cards
+		}
+	}
+
 	void on_begin_scene_cb()
 	{
 		static auto im = imgui::get();
@@ -46,14 +58,12 @@ namespace gta4
 			game::is_in_game = true;
 		}
 
-		if (game::CMenuManager__m_LoadscreenActive && *game::CMenuManager__m_LoadscreenActive)
-		{
-			gta4::game::loaded_settings_cfg->nightshadow_quality = 0u;
-			gta4::game::loaded_settings_cfg->reflection_quality = 0u;
-			gta4::game::loaded_settings_cfg->shadow_quality = 0u;
-			gta4::game::loaded_settings_cfg->water_quality = 0u;
-			gta4::game::loaded_settings_cfg->sharpness = 0u; // fix cutscene crashing issue on amd cards
+
+		// force graphic settings when menu is active
+		if (game::CMenuManager__m_MenuActive && *game::CMenuManager__m_MenuActive) {
+			force_graphic_settings();
 		}
+
 
 		// do not pause if enabled
 		if (im->m_do_not_pause_on_lost_focus) {
@@ -66,6 +76,8 @@ namespace gta4
 			im->m_do_not_pause_on_lost_focus_changed = false;
 		}
 
+
+		// camera setup
 		{
 			shared::globals::d3d_device->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
 
@@ -76,6 +88,7 @@ namespace gta4
 				shared::globals::d3d_device->SetTransform(D3DTS_PROJECTION, &vp->sceneviewport->proj);
 			}
 		}
+
 
 		if (game::is_in_game) 
 		{

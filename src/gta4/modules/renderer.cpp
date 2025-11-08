@@ -244,7 +244,7 @@ namespace gta4
 
 	// ----
 
-	void handle_vehicle_roughness_when_wet(IDirect3DDevice9* dev, const drawcall_mod_context& ctx)
+	void handle_vehicle_roughness_when_wet(IDirect3DDevice9* dev, [[maybe_unused]] const drawcall_mod_context& ctx)
 	{
 		const auto gs = game_settings::get();
 		renderer::set_remix_roughness_scalar(dev,
@@ -253,7 +253,7 @@ namespace gta4
 			gs->timecycle_wetness_vehicle_blending.get_as<float>());
 	}
 
-	void handle_vehicle_dirt_roughness_when_wet(IDirect3DDevice9* dev, const drawcall_mod_context& ctx)
+	void handle_vehicle_dirt_roughness_when_wet(IDirect3DDevice9* dev, [[maybe_unused]] const drawcall_mod_context& ctx)
 	{
 		const auto gs = game_settings::get();
 		renderer::set_remix_roughness_scalar(dev,
