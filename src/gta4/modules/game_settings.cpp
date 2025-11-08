@@ -3,9 +3,7 @@
 #include "shared/common/toml_ext.hpp"
 
 #define CATCH_ERR_PRINT	catch (toml::type_error& err) { \
-		shared::common::console(); shared::common::set_console_color_red(true); \
-		std::cout << err.what() << "\n"; \
-		shared::common::set_console_color_default(); }
+		shared::common::log("GameSettings", std::format("{}", err.what()), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true); }
 
 namespace gta4
 {
@@ -254,11 +252,8 @@ namespace gta4
 
 			catch (const toml::syntax_error& err)
 			{
-				shared::common::set_console_color_red(true);
-				shared::common::console();
-				std::cout << err.what() << "\n";
-				std::cout << "[!][GameSettings] Not writing defaults! Please check 'game_settings.toml' or remove the file to re-generate it on next startup!\n";
-				shared::common::set_console_color_default();
+				shared::common::log("GameSettings", std::format("{}", err.what()), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+				shared::common::log("GameSettings", "Not writing defaults! Please check 'game_settings.toml' or remove the file to re-generate it on next startup!", shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 				return false;
 			}
 		}
@@ -275,6 +270,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[GAME_SETTINGS] loaded\n";
+		shared::common::log("GameSettings", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

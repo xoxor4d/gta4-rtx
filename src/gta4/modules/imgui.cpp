@@ -2301,11 +2301,14 @@ namespace gta4
 			{
 				if (!im->m_initialized_device)
 				{
+					//Sleep(1000);
+					shared::common::log("ImGui", "ImGui_ImplDX9_Init");
 					ImGui_ImplDX9_Init(dev);
 					im->m_initialized_device = true;
 				}
 
-				if (im->m_initialized_device)
+				// else so we render the first frame one frame later
+				else if (im->m_initialized_device)
 				{
 					// fix imgui colors / background if no hud elem is visible
 					DWORD og_srgb_samp, og_srgb_write;
@@ -2539,6 +2542,6 @@ namespace gta4
 
 		// ---
 		m_initialized = true;
-		std::cout << "[IMGUI] loaded\n";
+		shared::common::log("ImGui", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

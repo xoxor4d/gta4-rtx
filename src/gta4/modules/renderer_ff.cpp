@@ -154,6 +154,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[RENDERER_FF] loaded\n";
+		shared::common::log("RendererFF", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

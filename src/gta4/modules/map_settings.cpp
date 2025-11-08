@@ -24,8 +24,7 @@ namespace gta4
 	{
 		try 
 		{
-			std::cout << "[MAPSETTINGS] Parsing 'map_settings.toml' ...\n";
-
+			shared::common::log("MapSettings", "Parsing 'map_settings.toml' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 			toml::basic_value<toml::type_config> config;
 
 			try {
@@ -33,9 +32,7 @@ namespace gta4
 			}
 			catch (const toml::file_io_error& err)
 			{
-				shared::common::set_console_color_red(true);
-				std::cout << "[!] " << err.what() << "\n";
-				shared::common::set_console_color_default();
+				shared::common::log("MapSettings", std::format("{}", err.what()), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 				return false;
 			}
 
@@ -170,6 +167,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[MAP_SETTINGS] loaded\n";
+		shared::common::log("MapSettings", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

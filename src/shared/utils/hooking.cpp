@@ -124,25 +124,21 @@ namespace shared::utils
 				{
 					const auto place = reinterpret_cast<DWORD>(base + i + offset);
 					{
-
-						std::cout << "[HOOK][find_pattern] Found pattern at 0x" << std::hex << place;
 						if (description) {
-							std::cout << " (" << description << ")";
+							shared::common::log("Hook", std::format("Found pattern @ (0x{:X}) ({})", place, description), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+						} else {
+							shared::common::log("Hook", std::format("Found pattern @ (0x{:X})", place), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 						}
-						std::cout << std::endl;
-
 					}
 					return place;
 				}
 			}
 
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][HOOK][find_pattern] Could not find pattern: '" << signature << "'";
 			if (description) {
-				std::cout << " (" << description << ")";
+				shared::common::log("Hook", std::format("Could not find pattern '{}' ({})", signature, description), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+			} else {
+				shared::common::log("Hook", std::format("Could not find pattern '{}'", signature), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			}
-			std::cout << std::endl;
-			shared::common::set_console_color_default();
 			return 0;
 		}
 
@@ -251,26 +247,21 @@ namespace shared::utils
 					static bool validate_patterns = common::flags::has_flag("validate_patterns");
 					const auto place = reinterpret_cast<DWORD>(base + i + offset);
 					{
-						std::cout << "[HOOK][find_pattern] Found pattern at 0x" << std::hex << place;
-						if (description) {
-							std::cout << " (" << description << ")";
-						}
 
-						std::cout << std::endl;
+						if (description) {
+							shared::common::log("Hook", std::format("Found pattern @ (0x{:X}) ({})", place, description), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+						}
+						else {
+							shared::common::log("Hook", std::format("Found pattern @ (0x{:X})", place), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+						}
 
 						if (validate_patterns) 
 						{
-							if (place == inactive_offset + offset)
-							{
-								shared::common::set_console_color_blue(true);
-								std::cout << "|> Pattern offset validated." << std::endl;
-								shared::common::set_console_color_default();
+							if (place == inactive_offset + offset) {
+								shared::common::log("Hook", std::format("> Pattern offset validated!", place), shared::common::LOG_TYPE::LOG_TYPE_GREEN, true);
 							}
-							else
-							{
-								shared::common::set_console_color_red(true);
-								std::cout << "|> Pattern offset invalid!" << std::endl;
-								shared::common::set_console_color_default();
+							else {
+								shared::common::log("Hook", std::format("> Pattern offset invalid!", place), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 							}
 						}
 					}
@@ -278,13 +269,12 @@ namespace shared::utils
 				}
 			}
 
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][HOOK][find_pattern] Could not find pattern: '" << signature << "'";
 			if (description) {
-				std::cout << " (" << description << ")";
+				shared::common::log("Hook", std::format("Could not find pattern '{}' ({})", signature, description), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			}
-			std::cout << std::endl;
-			shared::common::set_console_color_default();
+			else {
+				shared::common::log("Hook", std::format("Could not find pattern '{}'", signature), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+			}
 			return 0;
 		}
 #pragma optimize("", on)
@@ -364,9 +354,7 @@ namespace shared::utils
 			else if (offset_size == 4) { offset = *(int32_t*)(bytes + bytes_until_relative_addr); }
 			else 
 			{
-				common::set_console_color_red(true);
-				std::cout << "[!][HOOK] Invalid offset size while resolving relative jump address @ 0x" << std::hex << instruction_addr << std::endl;
-				common::set_console_color_default();
+				shared::common::log("Hook", std::format("Invalid offset size while resolving relative jump address @ (0x{:X})", instruction_addr), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 				return 0;
 			}
 			return instruction_addr + instruction_size + offset;
@@ -692,9 +680,7 @@ namespace shared::utils
 			// check if the offset fits in a short jump (±127 bytes)
 			if (new_jmp_offset < -128 || new_jmp_offset > 127) 
 			{
-				shared::common::set_console_color_red(true);
-				std::cout << "[!][HOOK][cond_jump_to_jmp] Target address 0x" << std::hex << target_address << " is out of range for a short JMP at 0x" << place << std::dec << std::endl;
-				shared::common::set_console_color_default();
+				shared::common::log("Hook", std::format("ConditionalJumpToJump: Target address @ (0x{:X}) is out of range for a short JMP @ (0x{:X})", target_address, place), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 				return false;
 			}
 
@@ -704,29 +690,15 @@ namespace shared::utils
 		}
 		else 
 		{
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][HOOK][cond_jump_to_jmp] Instruction at 0x" << std::hex << place << " is not a supported conditional jump (opcode: " << std::hex << first_two_bytes << ")" << std::dec << std::endl;
-			shared::common::set_console_color_default();
+			shared::common::log("Hook", std::format("ConditionalJumpToJump: Instruction @ (0x{:X}) is not a supported conditional jump (opcode: {:X})", place, first_two_bytes), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			return false;
 		}
-
-		//if (debug_prints)
-		//{
-		//	// log old bytes
-		//	std::cout << "[HOOK][cond_jump_to_jmp] Old bytes at 0x" << std::hex << place << ": ";
-		//	for (size_t i = 0; i < instruction_size; i++) {
-		//		std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)code[i] << " ";
-		//	}
-		//	std::cout << std::dec << std::endl;
-		//}
 
 		// change memory protection
 		DWORD old_protect;
 		if (!VirtualProtect((void*)place, instruction_size, PAGE_EXECUTE_READWRITE, &old_protect)) 
 		{
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][HOOK][cond_jump_to_jmp] Failed to change memory protection at 0x" << std::hex << place << std::dec << std::endl;
-			shared::common::set_console_color_default();
+			shared::common::log("Hook", std::format("ConditionalJumpToJump: Failed to change memory protection @ (0x{:X})", place), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			return false;
 		}
 
@@ -739,13 +711,8 @@ namespace shared::utils
 		// flush instruction cache
 		FlushInstructionCache(GetCurrentProcess(), (void*)place, instruction_size);
 
-		if (debug_prints)
-		{
-			std::cout << "[HOOK][cond_jump_to_jmp] Patched " << jump_name << " to JMP at 0x" << std::hex << place << ": ";
-			for (size_t i = 0; i < instruction_size; i++) {
-				std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)new_instruction[i] << " ";
-			}
-			std::cout << std::dec << std::endl;
+		if (debug_prints) {
+			shared::common::log("Hook", std::format("ConditionalJumpToJump: Patched {} to JMP @ (0x{:X})", jump_name, place), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		}
 		return true;
 	}
@@ -756,18 +723,14 @@ namespace shared::utils
 		if (const auto state = MH_CreateHook(reinterpret_cast<LPVOID>(offset), stub, original);
 			state != MH_OK)
 		{
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][HOOK] Failed to install detour @ " << std::hex << offset << std::endl;
-			shared::common::set_console_color_default();
+			shared::common::log("Hook", std::format("Failed to install detour @ (0x{:X})", offset), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			return false;
 		}
 
 		if (const auto state = MH_EnableHook(reinterpret_cast<LPVOID>(offset));
 			state != MH_OK)
 		{
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][HOOK] Failed to activate detour @ " << std::hex << offset << std::endl;
-			shared::common::set_console_color_default();
+			shared::common::log("Hook", std::format("Failed to activate detour @ (0x{:X})", offset), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			return false;
 		}
 

@@ -174,8 +174,11 @@ namespace gta4::game
 	// init any adresses here
 	void init_game_addresses()
 	{
-		std::cout << "[INIT] Getting offsets ...\n";
+		
 		const bool use_pattern = !shared::common::flags::has_flag("no_pattern");
+		if (use_pattern) {
+			shared::common::log("Game", "Getting offsets ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+		}
 
 		std::uint32_t total_pattern_count = 0u;
 		std::uint32_t found_pattern_count = 0u;
@@ -574,19 +577,16 @@ namespace gta4::game
 		// end GAME_ASM_OFFSETS
 #pragma endregion
 
-		if (found_pattern_count == total_pattern_count) 
+		if (use_pattern)
 		{
-			shared::common::set_console_color_green(true);
-			std::cout << "[INIT] Found all '" << std::to_string(total_pattern_count) << "' Patterns.\n\n";
-			shared::common::set_console_color_default();
-		}
-		else
-		{
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][INIT] Only found '" << std::to_string(found_pattern_count) << "' out of '" << std::to_string(total_pattern_count) << "' Patterns.\n";
-			shared::common::set_console_color_blue(true);
-			std::cout << ">> Please create an issue on GitHub and attach this console log and information about your game (version, platform etc.)\n\n";
-			shared::common::set_console_color_default();
+			if (found_pattern_count == total_pattern_count) {
+				shared::common::log("Game", std::format("Found all '{:d}' Patterns.", total_pattern_count), shared::common::LOG_TYPE::LOG_TYPE_GREEN, true);
+			}
+			else
+			{
+				shared::common::log("Game", std::format("Only found '{:d}' out of '{:d}' Patterns.", found_pattern_count, total_pattern_count), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+				shared::common::log("Game", ">> Please create an issue on GitHub and attach this console log and information about your game (version, platform etc.)\n", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
+			}
 		}
 	}
 

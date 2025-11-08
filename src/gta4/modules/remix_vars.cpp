@@ -373,12 +373,8 @@ namespace gta4
 
 			file.close();
 		}
-		else
-		{
-			shared::common::set_console_color_red(true);
-			shared::common::console();
-			std::cout << "[RemixVars] Failed to find config : \"rtx_comp\\map_configs\" in \"" << conf_name << "\"\n";
-			shared::common::set_console_color_default();
+		else {
+			shared::common::log("RemixVars", std::format("Failed to find config: {} in \"rtx_comp\\map_configs\"", conf_name.c_str()), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 		}
 	}
 
@@ -730,6 +726,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[REMIX_VARS] loaded\n";
+		shared::common::log("RemixVars", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

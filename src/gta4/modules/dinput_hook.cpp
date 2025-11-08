@@ -310,12 +310,12 @@ namespace gta4
 			if (rguid == GUID_SysMouse && !di->mouse_device)
 			{
 				di->mouse_device = *device;
-				std::cout << "[DINPUT8] Captured mouse device: " << *device << "\n";
+				shared::common::log("DInput8", "Captured mouse device.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 			}
 			else if (rguid == GUID_SysKeyboard && !di->keyboard_device)
 			{
 				di->keyboard_device = *device;
-				std::cout << "[DINPUT8] Captured keyboard device: " << *device << "\n";
+				shared::common::log("DInput8", "Captured keyboard device.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 			}
 		}
 		return hr;
@@ -328,7 +328,7 @@ namespace gta4
 	{
 		p_this = this;
 
-		std::cout << "[DINPUT8] Creating dummy device\n";
+		shared::common::log("DInput8", "Creating dummy device.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		void* vtable[32];
 		{
 			IDirectInput8W* dinput8 = nullptr;
@@ -349,7 +349,7 @@ namespace gta4
 			// Get IDirectInput8 vtable for CreateDevice hook
 			//void** dinput8_vtable = *(void***)dinput8;
 
-			std::cout << "[DINPUT8] Hooking vtable\n";
+			shared::common::log("DInput8", "Hooking vTable ..", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 			if (!g_dinput8_device_acquire_original && !g_dinput8_device_get_device_data_original && !g_dinput8_device_get_device_state_original)
 			{
 				MH_CreateHook(vtable[9], dinput8_device_get_device_state_hk, (LPVOID*)&g_dinput8_device_get_device_state_original);
@@ -364,7 +364,6 @@ namespace gta4
 		}
 
 		// -----
-		m_initialized = true;
-		std::cout << "[DINPUT8] loaded\n";
+		shared::common::log("DInput8", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

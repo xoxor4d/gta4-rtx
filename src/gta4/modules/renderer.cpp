@@ -42,13 +42,22 @@ namespace gta4
 				return;
 			}
 
+			shared::common::log("Renderer", "Loading CompMod Textures ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+
+			auto load_texture = [](IDirect3DDevice9* dev, const char* path, LPDIRECT3DTEXTURE9* tex)
+				{
+					HRESULT hr;
+					hr = D3DXCreateTextureFromFileA(dev, path, tex);
+					if (FAILED(hr)) shared::common::log("Renderer", std::format("Failed to load {}", path), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+				};
+
 			const auto dev = shared::globals::d3d_device;
-			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\sky.png", &tex_addons::sky);
-			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white01.png", &tex_addons::white01); // marker meshes
-			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\white02.png", &tex_addons::white02);
-			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
-			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\berry.png", &tex_addons::berry);
-			D3DXCreateTextureFromFileA(dev, "rtx_comp\\textures\\mirror.png", &tex_addons::mirror);
+			load_texture(dev, "rtx_comp\\textures\\sky.png", &tex_addons::sky);
+			load_texture(dev, "rtx_comp\\textures\\white01.png", &tex_addons::white01);
+			load_texture(dev, "rtx_comp\\textures\\white02.png", &tex_addons::white02);
+			load_texture(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
+			load_texture(dev, "rtx_comp\\textures\\berry.png", &tex_addons::berry);
+			load_texture(dev, "rtx_comp\\textures\\mirror.png", &tex_addons::mirror);
 			tex_addons::initialized = true;
 		}
 	}
@@ -2711,6 +2720,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[RENDERER] loaded\n";
+		shared::common::log("Renderer", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

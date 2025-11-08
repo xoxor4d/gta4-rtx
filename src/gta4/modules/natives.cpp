@@ -9,6 +9,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[NATIVES] loaded\n";
+		shared::common::log("Natives", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

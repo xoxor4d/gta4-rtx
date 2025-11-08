@@ -24,8 +24,8 @@ namespace gta4
 			if (!wnd_class_list.contains(hwnd))
 			{
 				char debug_msg[256];
-				wsprintfA(debug_msg, "|> HWND: %p, PID: %u, Class: %s, Visible: %d \n", hwnd, window_pid, class_name, IsWindowVisible(hwnd));
-				std::cout << debug_msg;
+				wsprintfA(debug_msg, "> HWND: %p, PID: %u, Class: %s, Visible: %d \n", hwnd, window_pid, class_name, IsWindowVisible(hwnd));
+				shared::common::log("Main", debug_msg, shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 				wnd_class_list.insert(hwnd);
 			}
 
@@ -47,8 +47,7 @@ namespace gta4
 		char exe_path[MAX_PATH]; GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
 		const std::string sha1 = shared::utils::hash_file_sha1(exe_path);
 
-		std::cout << "[INIT] Waiting for window with classname containing 'grcWindow' ... \n";
-
+		shared::common::log("Main", "Waiting for window with classname containing 'grcWindow'...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		{
 			while (!shared::globals::main_window)
 			{
@@ -60,9 +59,7 @@ namespace gta4
 				if (T >= 30000)
 				{
 					Beep(300, 100); Sleep(100); Beep(200, 100);
-					shared::common::set_console_color_red(true);
-					shared::common::console(); std::cout << "|> Could not find 'grcWindow' Window. Not loading RTX Compatibility Mod.\n";
-					shared::common::set_console_color_default();
+					shared::common::log("Main", "Could not find 'grcWindow' Window. Not loading RTX Compatibility Mod.", shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 					return TRUE;
 				}
 			}
@@ -84,11 +81,8 @@ namespace gta4
 			Sleep(1u); T += 1u;
 			if (T >= 6000)
 			{
-				shared::common::set_console_color_blue(true);
-				std::cout << 
-					"\n[MAIN] Drawing of first Primitive takes longer then expected.\n"
-					"> Proceeding to initiate the Compatibility Mod ...\n\n";
-				shared::common::set_console_color_default();
+				shared::common::log("Main", "Drawing of first Primitive takes longer then expected.", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true, true);
+				shared::common::log("Main", "Proceeding to initiate the Compatibility Mod ...\n", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
 				break;
 			}
 		}
@@ -190,7 +184,7 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 			FusionFix_CreateWindowExA_Remix)
 		{
 			DWORD hash = (DWORD)(uintptr_t)wnd;
-			std::cout << "[INIT] Sending HWND to FusionFix (0x" << std::hex << hash << ")\n";
+			shared::common::log("Main", std::format("Sending HWND to FusionFix (0x{:X})", hash));
 			FusionFix_CreateWindowExA_Remix(wnd);
 		}
 	}
@@ -200,11 +194,8 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 
 void on_create_game_window_hk()
 {
-	if (gta4::game::hmodule_fusionfix = GetModuleHandleA("GTAIV.EFLC.FusionFix.asi"); gta4::game::hmodule_fusionfix)
-	{
-		shared::common::set_console_color_blue(true);
-		std::cout << "[INIT] Detected FusionFix.\n";
-		shared::common::set_console_color_default();
+	if (gta4::game::hmodule_fusionfix = GetModuleHandleA("GTAIV.EFLC.FusionFix.asi"); gta4::game::hmodule_fusionfix) {
+		shared::common::log("Main", "Detected FusionFix", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
 	}
 
 	// delayed hooking because of FusionFix
@@ -232,9 +223,7 @@ bool is_discord_dll(const char* name)
 {
 	if (strstr(name, "DiscordHook.dll"))
 	{
-		shared::common::set_console_color_blue(true);
-		std::cout << "[INIT] Prevented 'DiscordHook.dll' from loading ...\n";
-		shared::common::set_console_color_default();
+		shared::common::log("Main", "Prevented 'DiscordHook.dll' from loading ...", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
 		return true;
 	}
 
@@ -250,9 +239,7 @@ bool is_discord_dll_wide(const wchar_t* name)
 
 	if (strstr(buf, "DiscordHook.dll"))
 	{
-		shared::common::set_console_color_blue(true);
-		std::cout << "[INIT] Prevented 'DiscordHook.dll' from loading ...\n";
-		shared::common::set_console_color_default();
+		shared::common::log("Main", "Prevented 'DiscordHook.dll' from loading ...", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
 		return true;
 	}
 
@@ -301,9 +288,7 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 
 		if (const auto MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)
 		{
-			shared::common::set_console_color_red(true);
-			std::cout << "[!][INIT] MinHook failed to initialize with code: " << MH_INIT_STATUS << "\n";
-			shared::common::set_console_color_default();
+			shared::common::log("Main", std::format("MinHook failed to initialize with code: {:d}", static_cast<int>(MH_INIT_STATUS)), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			return TRUE;
 		}
 

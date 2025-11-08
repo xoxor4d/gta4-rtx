@@ -677,10 +677,10 @@ namespace shared::common
 				instance.m_debug_circle_materials.reserve(512);
 
 				instance.m_initialized = true;
-				std::cout << "[RemixApi] Initialized remixApi!\n";
+				shared::common::log("RemixApi", "Initialized RemixApi", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
 			}
 			else {
-				console(); std::cout << "[!][RemixApi] Failed to initialize the remixApi - Code: " << status << "\n";
+				shared::common::log("RemixApi", std::format("Failed to initialize the remixApi - Code: {:d}", static_cast<int>(status)), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			}
 		}
 	}

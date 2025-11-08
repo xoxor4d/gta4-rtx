@@ -572,6 +572,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[REMIX_LIGHTS] loaded\n";
+		shared::common::log("RemixLights", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

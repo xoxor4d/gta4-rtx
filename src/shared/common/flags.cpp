@@ -43,7 +43,9 @@ namespace shared::common
 					if (wide_flag[0] == L'-')
 					{
 						wide_flag.erase(wide_flag.begin());
-						m_enabled_flags.emplace_back(utils::convert_wstring(wide_flag));
+						auto str = utils::convert_wstring(wide_flag);
+						shared::common::log("Flags", std::format("Found flag: {}", str), shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
+						m_enabled_flags.emplace_back(std::move(str));
 					}
 				}
 

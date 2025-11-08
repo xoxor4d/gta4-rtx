@@ -93,6 +93,6 @@ namespace gta4
 
 		// -----
 		m_initialized = true;
-		std::cout << "[REMIX_MARKERS] loaded\n";
+		shared::common::log("RemixMarkers", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }

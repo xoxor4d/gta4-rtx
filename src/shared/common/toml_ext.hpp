@@ -2,13 +2,9 @@
 #include "gta4/modules/map_settings.hpp"
 
 #define TOML_ERROR(TITLE, ENTRY, MSG, ...) \
-	shared::common::set_console_color_red(true); \
-	shared::common::console(); std::cout << toml::format_error(toml::make_error_info(#TITLE, (ENTRY), shared::utils::va(#MSG, __VA_ARGS__))) << std::endl; \
-	shared::common::set_console_color_default(); \
+	shared::common::log("Toml", std::format("{}", toml::format_error(toml::make_error_info(#TITLE, (ENTRY), shared::utils::va(#MSG, __VA_ARGS__)))), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 
-#define TOML_CATCH_ERROR_WHAT	{ shared::common::set_console_color_red(true); \
-								  shared::common::console(); printf("%s\n", err.what()); \
-								  shared::common::set_console_color_default(); }
+#define TOML_CATCH_ERROR_WHAT	{ shared::common::log("Toml", std::format("{}", err.what()), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true); }
 
 #define TOML_CATCH_SYNTAX_ERROR	catch (toml::syntax_error& err) TOML_CATCH_ERROR_WHAT
 #define TOML_CATCH_TYPE_ERROR	catch (toml::type_error& err) TOML_CATCH_ERROR_WHAT

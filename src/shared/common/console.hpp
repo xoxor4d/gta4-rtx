@@ -18,6 +18,26 @@ namespace shared::common
                 freopen_s(&file, "CONOUT$", "w", stderr);
                 SetConsoleTitleA("RTX-Comp Debug Console");
             }
+
+			HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+			CONSOLE_SCREEN_BUFFER_INFO info;
+			GetConsoleScreenBufferInfo(hOut, &info);
+
+			// Desired sizes
+			SHORT newWidth = 500;
+			SHORT newHeight = std::max((SHORT)(info.srWindow.Bottom + 1), (SHORT)300);
+
+			// Step 1: Shrink window temporarily to avoid SetConsoleScreenBufferSize failure
+			SMALL_RECT rect = { 0, 0, 1, 1 };
+			SetConsoleWindowInfo(hOut, TRUE, &rect);
+
+			// Step 2: Apply new buffer size
+			COORD newSize = { newWidth, newHeight };
+			SetConsoleScreenBufferSize(hOut, newSize);
+
+			// Step 3: Resize visible window (optional)
+			rect = { 0, 0, (SHORT)(120 - 1), (SHORT)(40 - 1) };
+			SetConsoleWindowInfo(hOut, TRUE, &rect);
         }
     }
 
@@ -57,6 +77,18 @@ namespace shared::common
 		}
 	}
 
+	inline void set_console_color_yellow(bool highlight = false)
+	{
+		if (g_external_console_created)
+		{
+			WORD color = FOREGROUND_RED | FOREGROUND_GREEN;
+			if (highlight) {
+				color |= FOREGROUND_INTENSITY;
+			}
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+		}
+	}
+
 	inline void set_console_color_default(bool highlight = false)
 	{
 		if (g_external_console_created)
@@ -69,11 +101,55 @@ namespace shared::common
 		}
 	}
 
-	inline void print_error(const char* msg)
-    {
-		console();
-		set_console_color_red(true);
-		std::cout << msg << "\n";
+	enum class LOG_TYPE
+	{
+		LOG_TYPE_DEFAULT,
+		LOG_TYPE_STATUS,
+		LOG_TYPE_GREEN,
+		LOG_TYPE_WARN,
+		LOG_TYPE_ERROR,
+    };
+
+	inline void log(const std::string_view& module_str, const std::string_view& msg, LOG_TYPE type = LOG_TYPE::LOG_TYPE_DEFAULT, bool highlight = false, bool newline_infront = false)
+	{
+		auto colorize = [](const LOG_TYPE& t, const bool h)
+			{
+				switch (t)
+				{
+				case LOG_TYPE::LOG_TYPE_DEFAULT:
+					set_console_color_default(h);
+					break;
+				case LOG_TYPE::LOG_TYPE_STATUS:
+					set_console_color_blue(h);
+					break;
+				case LOG_TYPE::LOG_TYPE_GREEN:
+					set_console_color_green(h);
+					break;
+				case LOG_TYPE::LOG_TYPE_WARN:
+					set_console_color_yellow(h);
+					break;
+				case LOG_TYPE::LOG_TYPE_ERROR:
+					set_console_color_red(h);
+					break;
+				default:
+					break;
+				}
+			};
+		
+		// width of the inner module field
+		constexpr int inner_width = 14;
+
+		std::cout << (newline_infront ? "\n" : "")
+			<< std::setw(2) << (type == LOG_TYPE::LOG_TYPE_ERROR ? "!" : " ") << "[ ";
+
+		colorize(type, true);
+		std::cout << std::format("{:>{}}", module_str, inner_width);
 		set_console_color_default();
-    }
+
+		std::cout << " ]  ";
+
+		colorize(type, highlight);
+		std::cout << msg << '\n';
+		set_console_color_default();
+	}
 }

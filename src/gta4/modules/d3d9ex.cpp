@@ -15,7 +15,12 @@ namespace gta4
 		*ppvObj = nullptr;
 
 		HRESULT hRes = m_pIDirect3DDevice9->QueryInterface(riid, ppvObj);
-		if (hRes == NOERROR) *ppvObj = this;
+		//shared::common::log("d3d9", "m_pIDirect3DDevice9->QueryInterface", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+
+		if (hRes == NOERROR) {
+			*ppvObj = this;
+		}
+
 		return hRes;
 	}
 
@@ -667,6 +672,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery)
 	{
+		//shared::common::log("d3d9", "m_pIDirect3DDevice9->CreateQuery", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		return m_pIDirect3DDevice9->CreateQuery(Type, ppQuery);
 	}
 
@@ -679,9 +685,9 @@ namespace gta4
 		*ppvObj = nullptr;
 
 		HRESULT hRes = m_pIDirect3D9->QueryInterface(riid, ppvObj);
+		//shared::common::log("d3d9", "m_pIDirect3D9->QueryInterface", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 
-		if (hRes == NOERROR)
-		{
+		if (hRes == NOERROR) {
 			*ppvObj = this;
 		}
 
@@ -768,7 +774,7 @@ namespace gta4
 	HRESULT __stdcall d3d9ex::_d3d9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
 	{
 		HRESULT hres = m_pIDirect3D9->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
-		
+		shared::common::log("d3d9", "m_pIDirect3D9->CreateDevice", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		*ppReturnedDeviceInterface = new d3d9ex::D3D9Device(*ppReturnedDeviceInterface);
 		shared::globals::d3d_device = *ppReturnedDeviceInterface;
 
@@ -785,9 +791,9 @@ namespace gta4
 		*ppvObj = nullptr;
 
 		HRESULT hRes = m_pIDirect3D9Ex->QueryInterface(riid, ppvObj);
+		//shared::common::log("d3d9", "m_pIDirect3D9Ex->QueryInterface", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 
-		if (hRes == NOERROR)
-		{
+		if (hRes == NOERROR) {
 			*ppvObj = this;
 		}
 
@@ -874,7 +880,8 @@ namespace gta4
 	HRESULT __stdcall d3d9ex::_d3d9ex::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
 	{
 		HRESULT hres = m_pIDirect3D9Ex->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
-		
+		shared::common::log("d3d9", "m_pIDirect3D9Ex->CreateDevice", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+
 		*ppReturnedDeviceInterface = new d3d9ex::D3D9Device(*ppReturnedDeviceInterface);
 		shared::globals::d3d_device = *ppReturnedDeviceInterface;
 
@@ -917,7 +924,7 @@ namespace gta4
 			}
 		}*/
 
-		std::cout << "[D3D9] Game is invoking 'Direct3DCreate9'. Creating proxy interface.\n";
+		shared::common::log("d3d9", "Game is invoking 'Direct3DCreate9'. Creating proxy interface.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		shared::globals::d3d9_interface = new d3d9ex::_d3d9(Direct3DCreate9(sdk));
 		return shared::globals::d3d9_interface;
 	}
@@ -927,7 +934,7 @@ namespace gta4
 
 	IDirect3D9* WINAPI d3d9ex::HookedDirect3DCreate9(UINT SDKVersion)
 	{
-		std::cout << "[D3D9] Game is invoking 'Direct3DCreate9'. Creating proxy interface.\n";
+		shared::common::log("d3d9", "Game is invoking 'Direct3DCreate9'. Creating proxy interface.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		shared::globals::d3d9_interface = new d3d9ex::_d3d9(Direct3DCreate9_original(SDKVersion));
 		return shared::globals::d3d9_interface;
 	}
@@ -936,8 +943,13 @@ namespace gta4
 	{
 		const auto addr = (DWORD)GetProcAddress(GetModuleHandle(L"d3d9.dll"), "Direct3DCreate9");
 ;
-		MH_CreateHook((LPVOID)addr, &d3d9ex::HookedDirect3DCreate9, (LPVOID*)&Direct3DCreate9_original);
+		const auto status = MH_CreateHook((LPVOID)addr, &d3d9ex::HookedDirect3DCreate9, (LPVOID*)&Direct3DCreate9_original);
 		MH_EnableHook(MH_ALL_HOOKS);
+
+		if (status == MH_OK) {
+			shared::common::log("d3d9", "Hooked 'Direct3DCreate9' import.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+		}
+		
 
 		// hook interface creation
 		//const auto d3d9_import_addr = shared::utils::mem::find_import_addr(shared::globals::exe_hmodule, "d3d8.dll", "Direct3DCreate9");
@@ -952,5 +964,7 @@ namespace gta4
 		//{
 		//	std::cout << "[D3D9] Could not find 'Direct3DCreate9' import -> ImGui will not work.\n";
 		//}
+
+		shared::common::log("d3d9", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
 }
