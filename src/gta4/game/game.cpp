@@ -197,9 +197,15 @@ namespace gta4::game
 			g_currentPixelShader = (IDirect3DPixelShader9**)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("80 3D ? ? ? ? ? 74 4B E8 ? ? ? ? 84 C0", 2, "CMenuManager__m_MenuActive", use_pattern, 0x47D0A1); offset) {
+		if (auto offset = shared::utils::mem::find_pattern("80 3D ? ? ? ? ? 74 4B E8 ? ? ? ? 84 C0", 2, "CMenuManager__m_MenuActive", use_pattern, 0x47D0A1); offset) {
+			CMenuManager__m_MenuActive = (bool*)*(DWORD*)offset; found_pattern_count++;
+		}
+		// fallback
+		else if (offset = shared::utils::mem::find_pattern("80 3D ? ? ? ? ? 74 ? E8 ? ? ? ? 6A ? 6A", 2, "CMenuManager__m_MenuActive", use_pattern, 0x481BA3); offset) {
 			CMenuManager__m_MenuActive = (bool*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
+
+		// 80 3D ? ? ? ? ? 74 ? E8 ? ? ? ? 6A ? 6A
 
 		if (const auto offset = shared::utils::mem::find_pattern("80 3D ? ? ? ? ? 53 56 8A FA", 2, "CMenuManager__m_LoadscreenActive", use_pattern, 0x5CDBC3); offset) {
 			CMenuManager__m_LoadscreenActive = (bool*)*(DWORD*)offset; found_pattern_count++;
@@ -323,7 +329,10 @@ namespace gta4::game
 			m_dwCutsceneState = (int*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("0F 94 05 ? ? ? ? FF 15", 3, "ms_bNoBlockOnLostFocus", use_pattern, 0x4241BC); offset) {
+		if (auto offset = shared::utils::mem::find_pattern("0F 94 05 ? ? ? ? FF 15", 3, "ms_bNoBlockOnLostFocus", use_pattern, 0x4241BC); offset) {
+			ms_bNoBlockOnLostFocus = (bool*)*(DWORD*)offset; found_pattern_count++;
+		} // fallback
+		else if (offset = shared::utils::mem::find_pattern("A2 ? ? ? ? C6 05 ? ? ? ? ? FF 15", 3, "ms_bNoBlockOnLostFocus", use_pattern, 0x424417); offset) {
 			ms_bNoBlockOnLostFocus = (bool*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
