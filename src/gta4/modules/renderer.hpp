@@ -80,6 +80,7 @@ namespace gta4
 		IgnoreTransparencyLayer = 1 << 22,
 		ParticleEmitter = 1 << 23,
 		DisableBackfaceCulling = 1 << 24,
+		Count = 24,
 		None = 0u
 	};
 

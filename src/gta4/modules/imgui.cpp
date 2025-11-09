@@ -701,7 +701,7 @@ namespace gta4
 		if (ImGui::TreeNode("Emissive Related"))
 		{
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, (int)InstanceCategories::Count, "%d", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::Checkbox("FF Emissive: Enable Alphablend on non alpha Emissives", &im->m_dbg_emissive_ff_with_alphablend);
 			//ImGui::Checkbox("FF Emissive: Enable Emissive Override", &im->m_dbg_emissive_nonalpha_override);
 			//ImGui::DragFloat("FF Emissive: Enable Emissive Override Scale", &im->m_dbg_emissive_nonalpha_override_scale, 0.005f);
@@ -1794,7 +1794,7 @@ namespace gta4
 			}
 
 			//ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
-			ImGui::Widget_PrettyDragVec3("Origin", &selection->origin.x, true, 80.0f, 0.5f,
+			ImGui::Widget_PrettyDragVec3("Origin", &selection->origin.x, true, 80.0f, 0.01f,
 				-FLT_MAX, FLT_MAX, "X", "Y", "Z");
 			//ImGui::PopStyleVar();
 
@@ -1802,7 +1802,7 @@ namespace gta4
 			Vector temp_rot = { RAD2DEG(selection->rotation.x), RAD2DEG(selection->rotation.y), RAD2DEG(selection->rotation.z) };
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
-			if (ImGui::Widget_PrettyDragVec3("Rotation", &temp_rot.x, true, 80.0f, 0.1f,
+			if (ImGui::Widget_PrettyDragVec3("Rotation", &temp_rot.x, true, 80.0f, 0.05f,
 				-360.0f, 360.0f, "Rx", "Ry", "Rz"))
 			{
 				selection->rotation = { DEG2RAD(temp_rot.x), DEG2RAD(temp_rot.y), DEG2RAD(temp_rot.z) };
