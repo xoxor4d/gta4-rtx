@@ -151,6 +151,8 @@ namespace gta4::game
 
 	extern uint32_t hk_addr__prevent_game_input_func;
 
+	extern uint32_t nop_addr__always_draw_game_in_menus;
+
 	extern uint32_t nop_addr__disable_unused_rendering_01;
 	extern uint32_t nop_addr__disable_unused_rendering_02;
 	extern uint32_t nop_addr__disable_unused_rendering_03;

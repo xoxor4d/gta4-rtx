@@ -642,6 +642,10 @@ namespace gta4
 		// hk_addr__prevent_game_input_func
 		shared::utils::hook::detour(game::hk_addr__prevent_game_input_func, process_game_input, (LPVOID*)&ProcessGameInput_og);
 
+		// (c) https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix/blob/fcb91f0c9629a25de4941ce55312798d591d109c/source/settings.ixx#L772
+		// FF places a jmp here to allow game vis in certain menus - we always want the game to draw -> nop FF hook
+		shared::utils::hook::nop(game::nop_addr__always_draw_game_in_menus, 5);
+
 		MH_EnableHook(MH_ALL_HOOKS);
 	}
 }

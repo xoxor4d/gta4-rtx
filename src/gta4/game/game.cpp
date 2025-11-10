@@ -138,6 +138,8 @@ namespace gta4::game
 
 	uint32_t hk_addr__prevent_game_input_func = 0u;
 
+	uint32_t nop_addr__always_draw_game_in_menus = 0u;
+
 	uint32_t nop_addr__disable_unused_rendering_01 = 0u;
 	uint32_t nop_addr__disable_unused_rendering_02 = 0u;
 	uint32_t nop_addr__disable_unused_rendering_03 = 0u;
@@ -554,6 +556,8 @@ namespace gta4::game
 		} total_pattern_count++;
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__prevent_game_input_func, "53 8A 5C 24 ? 8A CB", 0, 0x69F0C0);
+
+		PATTERN_OFFSET_SIMPLE(nop_addr__always_draw_game_in_menus, "83 FE ? 75 ? FF 35 ? ? ? ? E8 ? ? ? ? 83 C4 ? 85 C0 79", 0, 0x5C278A);
 
 		// --
 
