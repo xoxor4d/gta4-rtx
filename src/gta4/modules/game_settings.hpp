@@ -313,11 +313,18 @@ namespace gta4
 			// ----------------------------------
 			// remix related settings
 
-			variable fix_windowed_hud_resolution =
+			variable manual_game_resolution_enabled = {
+				"manual_game_resolution_enabled",
+				("Enabling this will override saved resolution settings\n"
+				 "and use settings defined in 'manual_game_resolution'."),
+				false
+			};
+
+			variable manual_game_resolution =
 			{
-				"fix_windowed_hud_resolution",
-				("Resolution used by the 'fix_windowed_hud' setting\n"
-				 "Deprecated: the game now automatically detects the game resolution to fix any hud scaling issues."),
+				"manual_game_resolution",
+				("Resolution override when 'manual_game_resolution_enabled' is enabled\n"
+				 "Not required normally"),
 				1920, 1080
 			};
 

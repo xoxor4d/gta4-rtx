@@ -44,7 +44,7 @@ namespace gta4
 	bool game_settings::parse_toml()
 	{
 
-#if !DEBUG
+#if TRUE // !DEBUG
 		std::ifstream file;
 		if (shared::utils::open_file_homepath("rtx_comp", "game_settings.toml", file))
 		{
@@ -147,7 +147,8 @@ namespace gta4
 				}
 
 				// remix related settings
-				ASSIGN(fix_windowed_hud_resolution);
+				ASSIGN(manual_game_resolution_enabled);
+				ASSIGN(manual_game_resolution);
 				ASSIGN(load_colormaps_only);
 				ASSIGN(remix_override_rtxdi_samplecount);
 				

@@ -112,6 +112,7 @@ namespace gta4::game
 
 	uint32_t nop_addr__allow_commandline01 = 0u;
 	uint32_t jmp_addr__allow_commandline02 = 0u;
+	uint32_t hk_addr__commandlinearg_get_int = 0u;
 
 	uint32_t hk_addr__on_create_game_window_hk = 0u;
 	uint32_t retn_addr__on_create_game_window_hk = 0u;
@@ -481,6 +482,7 @@ namespace gta4::game
 			jmp_addr__allow_commandline02 = offset; found_pattern_count++;
 		} total_pattern_count++;
 
+		PATTERN_OFFSET_SIMPLE(hk_addr__commandlinearg_get_int, "8B 41 ? 85 C0 74 ? ? ? ? 74 ? 6A ? 6A ? 50", 0, 0x4102D0);
 
 		// 
 		if (const auto offset = shared::utils::mem::find_pattern("6A ? 0F 45 DF", 0, "hk_addr__on_create_game_window_hk", use_pattern, 0x420D91); offset) {

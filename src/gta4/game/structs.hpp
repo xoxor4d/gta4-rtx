@@ -2,6 +2,55 @@
 
 namespace gta4::game
 {
+	
+	struct geometry
+	{
+		void* vtbl;
+		int vertexdecl;
+		int pad1;
+		int vb[4];
+		int ib[4];
+		int ibCount;
+		int faceCount;
+		uint16_t vertCount;
+		uint16_t indicesPerFace;
+		int pad2;
+		uint16_t stride;
+		uint16_t pad3;
+		int pUnk1;
+		int pUnk2;
+		int pad4;
+	};
+
+	struct geometry_ptr
+	{
+		geometry* geo;
+	};
+
+	struct model
+	{
+		void* vtbl;
+		geometry_ptr* m_geometries;
+		uint16_t m_geocount;
+		uint16_t m_geosize;
+		int pUnk1;
+		int pShaderRelated;
+		char cUnk0;
+		bool isSkinned;
+		char cUnk1;
+		char cUnk2;
+		char cUnk3;
+		char cUnk4;
+		uint16_t shaderRelatedCount;
+	};
+
+	struct cmdarg
+	{
+		const char* arg_name;
+		const char* arg_desc;
+		const char* arg_val;
+	};
+
 	// (AssaultKifle47) https://github.com/akifle47/InGameTimecycEditor/blob/main/source/TimeCycle.h
 	struct TimeCycleParams
 	{

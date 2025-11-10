@@ -98,29 +98,41 @@ bool g_populated_res_table = false;
 BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 {
 	RECT rect = {};
- 	if (!g_populated_res_table)
-	{
-		gta4::game::PopulateAvailResolutionsArray(*gta4::game::d3d9_adapter_index); // 0x17ED930
-		g_populated_res_table = true;
-	}
 
-	if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
+	// if manual override via game setting
+	if (gta4::game_settings::get()->manual_game_resolution_enabled.get_as<bool>())
 	{
-		const auto res = modes_ptr->modes[gta4::game::loaded_settings_cfg->resolution_index]; // 0x1160E80
-		rect = { xLeft, yTop, (LONG)res.width, (LONG)res.height };
+		const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
+		rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
 	}
 	else
 	{
-		if (*gta4::game::ms_bWindowed)
+		if (!g_populated_res_table)
 		{
-			const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
-			rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
+			gta4::game::PopulateAvailResolutionsArray(*gta4::game::d3d9_adapter_index); // 0x17ED930
+			g_populated_res_table = true;
 		}
-		else {
-			rect = { xLeft, yTop, xRight, yBottom };
+
+		if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
+		{
+			const auto res = modes_ptr->modes[gta4::game::loaded_settings_cfg->resolution_index]; // 0x1160E80
+			rect = { xLeft, yTop, (LONG)res.width, (LONG)res.height };
+		}
+		else
+		{
+			if (*gta4::game::ms_bWindowed)
+			{
+				// fallback
+				const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
+				rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
+			}
+			else {
+				rect = { xLeft, yTop, xRight, yBottom };
+			}
 		}
 	}
 
+	// send rect to FF
 	if (gta4::game::hmodule_fusionfix)
 	{
 		using FusionFix_SetRect_RemixFn = void(__cdecl*)(RECT rect);
@@ -137,46 +149,56 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 
 HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
-	// TODO: find a proper place to do this
-
-	//gta4::game::hmodule_fusionfix = GetModuleHandleA("GTAIV.EFLC.FusionFix.asi");
-
 	gta4::game::loaded_settings_cfg->nightshadow_quality = 0u;
 	gta4::game::loaded_settings_cfg->reflection_quality = 0u;
 	gta4::game::loaded_settings_cfg->shadow_quality = 0u;
 	gta4::game::loaded_settings_cfg->water_quality = 0u;
 	gta4::game::loaded_settings_cfg->sharpness = 0u; // fix cutscene crashing issue on amd cards
 
-	if (!g_populated_res_table)
-	{
-		gta4::game::PopulateAvailResolutionsArray(*gta4::game::d3d9_adapter_index); // 0x17ED930
-		g_populated_res_table = true;
-	}
-
 	HWND wnd;
 
-	if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
+	// if manual override via game setting
+	if (gta4::game_settings::get()->manual_game_resolution_enabled.get_as<bool>())
 	{
-		const auto res = modes_ptr->modes[gta4::game::loaded_settings_cfg->resolution_index]; // 0x1160E80
-		wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res.width), static_cast<int>(res.height), hWndParent, hMenu, hInstance, lpParam);
-		*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res.width); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
-		*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res.height); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
+		const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
+		*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res_setting->x); // xRight - GetSystemMetrics(0)
+		*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res_setting->y); // xBottom - GetSystemMetrics(1)
+		wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y), hWndParent, hMenu, hInstance, lpParam);
 	}
 	else
 	{
-		if (*gta4::game::ms_bWindowed)
+		// load game settings to populate modes
+		if (!g_populated_res_table)
 		{
-			const auto res_setting = gta4::game_settings::get()->fix_windowed_hud_resolution.get_as<Vector2D*>();
-			wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y), hWndParent, hMenu, hInstance, lpParam);
-
-			*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res_setting->x); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
-			*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res_setting->y); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
+			gta4::game::PopulateAvailResolutionsArray(*gta4::game::d3d9_adapter_index); // 0x17ED930
+			g_populated_res_table = true;
 		}
-		else {
-			wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+
+		if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
+		{
+			const auto res = modes_ptr->modes[gta4::game::loaded_settings_cfg->resolution_index]; // 0x1160E80
+			wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res.width), static_cast<int>(res.height), hWndParent, hMenu, hInstance, lpParam);
+			*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res.width); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
+			*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res.height); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
+		}
+		else
+		{
+			if (*gta4::game::ms_bWindowed)
+			{
+				// fallback
+				const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
+				wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, 0, 0, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y), hWndParent, hMenu, hInstance, lpParam);
+
+				*reinterpret_cast<int*>(gta4::game::systemMetrics_xRight) = static_cast<int>(res_setting->x); // xRight - GetSystemMetrics(0) .. another but unused: 0x17ED8CC
+				*reinterpret_cast<int*>(gta4::game::systemMetrics_yBottom) = static_cast<int>(res_setting->y); // xBottom - GetSystemMetrics(1) .. ^ 0x17ED8D4
+			}
+			else {
+				wnd = CreateWindowExA(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+			}
 		}
 	}
 
+	// send hwnd to FF
 	if (gta4::game::hmodule_fusionfix)
 	{
 		using FusionFix_CreateWindowExA_RemixFn = void(__cdecl*)(HWND hwnd);
@@ -192,6 +214,42 @@ HWND WINAPI CreateWindowExA_hk(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWin
 	return wnd;
 }
 
+// detoured cmdline get int func to be able to set width and height via game setting override
+BOOL __fastcall commandlinearg_get_int_hk(gta4::game::cmdarg* arg, [[maybe_unused]] void* fastcall, int* ret)
+{
+	if (arg)
+	{
+		if (gta4::game_settings::get()->manual_game_resolution_enabled.get_as<bool>())
+		{
+			// is game checking for width but val is null?
+			if (std::string_view(arg->arg_name) == "width" && (!arg->arg_val || !*arg->arg_val))
+			{
+				const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
+				*ret = static_cast<int>(res_setting->x);
+				return 1;
+			}
+
+			if (std::string_view(arg->arg_name) == "height" && (!arg->arg_val || !*arg->arg_val))
+			{
+				const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
+				*ret = static_cast<int>(res_setting->y);
+				return 1;
+			}
+		}
+		
+		// original code
+		if (!arg->arg_val || !*arg->arg_val) {
+			return 0;
+		}
+
+		*ret = strtol(arg->arg_val, nullptr, 0);
+		return 1;
+	}
+
+	return 0;
+}
+
+// delayed hook to override potential FF hooks
 void on_create_game_window_hk()
 {
 	if (gta4::game::hmodule_fusionfix = GetModuleHandleA("GTAIV.EFLC.FusionFix.asi"); gta4::game::hmodule_fusionfix) {
@@ -309,6 +367,9 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		// allow actual commandline args + commandline.txt
 		shared::utils::hook::nop(gta4::game::nop_addr__allow_commandline01, 6);
 		shared::utils::hook::conditional_jump_to_jmp(gta4::game::jmp_addr__allow_commandline02);
+
+		// detour cmd line get int func
+		shared::utils::hook::detour(gta4::game::hk_addr__commandlinearg_get_int, &commandlinearg_get_int_hk, nullptr);
 
 		if (const auto t = CreateThread(nullptr, 0, gta4::find_game_window_by_sha1, nullptr, 0, nullptr); t) {
 			CloseHandle(t);

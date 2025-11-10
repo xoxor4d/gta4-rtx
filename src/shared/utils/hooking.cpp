@@ -680,7 +680,7 @@ namespace shared::utils
 			// check if the offset fits in a short jump (±127 bytes)
 			if (new_jmp_offset < -128 || new_jmp_offset > 127) 
 			{
-				shared::common::log("Hook", std::format("ConditionalJumpToJump: Target address @ (0x{:X}) is out of range for a short JMP @ (0x{:X})", target_address, place), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+				shared::common::log("Hook", std::format("CondJmpToJmp: Target address @ (0x{:X}) is out of range for a short JMP @ (0x{:X})", target_address, place), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 				return false;
 			}
 
@@ -690,7 +690,7 @@ namespace shared::utils
 		}
 		else 
 		{
-			shared::common::log("Hook", std::format("ConditionalJumpToJump: Instruction @ (0x{:X}) is not a supported conditional jump (opcode: {:X})", place, first_two_bytes), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+			shared::common::log("Hook", std::format("CondJmpToJmp: Instruction @ (0x{:X}) is not a supported conditional jump (opcode: {:X})", place, first_two_bytes), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			return false;
 		}
 
@@ -698,7 +698,7 @@ namespace shared::utils
 		DWORD old_protect;
 		if (!VirtualProtect((void*)place, instruction_size, PAGE_EXECUTE_READWRITE, &old_protect)) 
 		{
-			shared::common::log("Hook", std::format("ConditionalJumpToJump: Failed to change memory protection @ (0x{:X})", place), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+			shared::common::log("Hook", std::format("CondJmpToJmp: Failed to change memory protection @ (0x{:X})", place), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 			return false;
 		}
 
@@ -712,7 +712,7 @@ namespace shared::utils
 		FlushInstructionCache(GetCurrentProcess(), (void*)place, instruction_size);
 
 		if (debug_prints) {
-			shared::common::log("Hook", std::format("ConditionalJumpToJump: Patched {} to JMP @ (0x{:X})", jump_name, place), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			shared::common::log("Hook", std::format("Patched {} to JMP @ (0x{:X})", jump_name, place), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		}
 		return true;
 	}
