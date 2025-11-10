@@ -739,6 +739,7 @@ namespace gta4
 			ImGui::DragFloat3("Debug Vector", &im->m_debug_vector.x, 0.01f);
 			ImGui::DragFloat3("Debug Vector 2", &im->m_debug_vector2.x, 0.1f);
 			ImGui::Checkbox("Debug Bool 1", &im->m_dbg_debug_bool01);
+			ImGui::Checkbox("Debug Bool 2", &im->m_dbg_debug_bool02);
 			ImGui::DragInt("Debug Int 1", &im->m_dbg_int_01, 0.005f);
 			ImGui::TreePop();
 		}
@@ -1085,10 +1086,7 @@ namespace gta4
 		gamesettings_float_widget("EmissiveNight Surfaces Scalar", gs->emissive_night_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
 		gamesettings_float_widget("Emissive Surfaces Scalar", gs->emissive_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
 		gamesettings_float_widget("EmissiveStrong Surfaces Scalar", gs->emissive_strong_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
-
-#if 0	// TODO: This breaks traffic lights and removes vertex colors at certain angles?
 		gamesettings_float_widget("Generic Emissive Scale", gs->emissive_generic_scale, 0.0f, 1000.0f, 0.001f);
-#endif
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Phone ");

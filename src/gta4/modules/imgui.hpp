@@ -38,6 +38,7 @@ namespace gta4
 		D3DXMATRIX m_debug_mtx03;
 
 		bool m_dbg_debug_bool01 = false;
+		bool m_dbg_debug_bool02 = false;
 		int m_dbg_int_01 = 0;
 
 		bool m_dbg_do_not_render_static = false;
