@@ -419,14 +419,14 @@ namespace gta4
 			{
 				"translate_game_light_radius_scalar",
 				("Scale radius of translated game lights"),
-				1.6f
+				0.5f
 			};
 
 			variable translate_game_light_intensity_scalar =
 			{
 				"translate_game_light_intensity_scalar",
 				("Scale intensity of translated game lights"),
-				80.0f
+				200.0f
 			};
 
 			variable translate_game_light_softness_offset =
@@ -492,6 +492,59 @@ namespace gta4
 				("Scale influence of fogdensity timecycle setting on volumetric scale of sunlight.\n"
 				"( < translate_sunlight_volumetric_radiance_base >  +  < timecycle fogdensity (0-1) >  *  < this scalar >"),
 				4.0f
+			};
+
+			// --
+
+			variable translate_vehicle_headlight_intensity_scalar =
+			{
+				"translate_vehicle_headlight_intensity_scalar",
+				("Scale intensity of vehicle headlights."),
+				1.0f
+			};
+
+			variable translate_vehicle_headlight_radius_scalar =
+			{
+				"translate_vehicle_headlight_radius_scalar",
+				("Scale radius of vehicle headlights."),
+				1.0f
+			};
+
+			// --
+
+			variable translate_vehicle_rearlight_intensity_scalar =
+			{
+				"translate_vehicle_rearlight_intensity_scalar",
+				("Scale intensity of vehicle rearlights."),
+				0.2f
+			};
+
+			variable translate_vehicle_rearlight_radius_scalar =
+			{
+				"translate_vehicle_rearlight_radius_scalar",
+				("Scale radius of vehicle headlights."),
+				4.0f
+			};
+
+			variable translate_vehicle_rearlight_inner_cone_angle_offset =
+			{
+				"translate_vehicle_rearlight_inner_cone_angle_offset",
+				("Additional offset applied to the inner cone of the spotlight (can be negative)"),
+				0.0f
+			};
+
+			variable translate_vehicle_rearlight_outer_cone_angle_offset =
+			{
+				"translate_vehicle_rearlight_outer_cone_angle_offset",
+				("Additional offset applied to the outer cone of the spotlight (can be negative)"),
+				-45.0f
+			};
+
+			variable translate_vehicle_rearlight_direction_offset =
+			{
+				"translate_vehicle_rearlight_direction_offset",
+				("Additional offset applied to direction vector of the light"),
+				0.0f, 0.0f, -0.2f
 			};
 
 

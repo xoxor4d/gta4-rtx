@@ -558,6 +558,159 @@ namespace gta4
 		ProcessGameInput_og(arg);
 	}
 
+
+	// hooked function call that would normally render a singular headlight in the center until one of the two is defect
+	// we do not call the original center headlight function and instead call the singular one two times here. Once for with the left light pos and once with the right light pos.
+	void veh_center_headlight(D3DXMATRIX* some_mtx, D3DXMATRIX* left_light_pos, D3DXMATRIX* right_light_pos, [[maybe_unused]] float* pos, float* light_dir, float* color, float intensity, float radius, [[maybe_unused]] std::int64_t ee, int inter_index, int room_index, int shadow_rel_index, char some_flag)
+	{
+		const auto im = imgui::get();
+		const auto gs = game_settings::get();
+
+		const float inner_cone = 0.8f * (1.0f * 20.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC54) * *reinterpret_cast<float*>(0x12E23C8))
+		const float outer_cone = 0.8f * (1.0f * 50.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC58) * *reinterpret_cast<float*>(0x12E23CC))
+
+		game::AddSingleVehicleLight(some_mtx, &left_light_pos->m[3][0],
+			light_dir,
+			im->m_dbg_custom_veh_headlight_enabled ? &im->m_dbg_custom_veh_headlight_color.x : color,
+			intensity * gs->translate_vehicle_headlight_intensity_scalar.get_as<float>(),
+			radius * gs->translate_vehicle_headlight_radius_scalar.get_as<float>(),
+			inner_cone,
+			outer_cone,
+			inter_index, room_index, shadow_rel_index, 1, some_flag);
+
+		game::AddSingleVehicleLight(some_mtx, &right_light_pos->m[3][0],
+			light_dir,
+			im->m_dbg_custom_veh_headlight_enabled ? &im->m_dbg_custom_veh_headlight_color.x : color,
+			intensity * gs->translate_vehicle_headlight_intensity_scalar.get_as<float>(),
+			radius * gs->translate_vehicle_headlight_radius_scalar.get_as<float>(),
+			inner_cone,
+			outer_cone,
+			inter_index, room_index, shadow_rel_index, 1, some_flag);
+
+		/*shared::utils::hook::call<void(__cdecl)(float* _some_mtx, float* _headlight_pos, float* some_vec3, float* _a4, float _cc, float _dd, float _h1, float _h2, int _this_p0x48, int _this_p0x40, int _shadowRelIndex, char _one, char _some_flag)>
+			(0xA3DE90)(some_mtx, &left_light_pos->m[3][0], light_dir, color, intensity, radius, inner_cone, outer_cone, inter_index, room_index, 0, 1, some_flag);*/
+	}
+
+	__declspec (naked) void veh_center_headlight_stub()
+	{
+		__asm
+		{
+			// we are at +100 here
+			mov     ecx, [esp + 0x50]; // right_light_pos
+			mov     eax, [esp + 0x54]; // left_light_pos
+			//add     eax, 0x30; // 12th float (base matrix4x4) .. we push the ptr to the matrix
+
+			push	ecx; // r
+			push	eax; // l
+
+			push    dword ptr[ebp + 0x24]; // some_mtx (overwritten with hk) .. normally at stack offs + 0x30
+
+			call	veh_center_headlight;
+			add     esp, 0x38; // normally + 0x30 but we added two additional pushes
+
+			mov		eax, game::hk_addr__vehicle_center_headlight;
+			add		eax, 11; // skip og add esp op 
+			jmp		eax; //  0xA3FE19
+		}
+	}
+
+
+	void veh_single_headlight_hk(D3DXMATRIX* some_mtx, float* light_pos, float* light_dir, float* color, float intensity, float radius, [[maybe_unused]] float inner_cone_angle, [[maybe_unused]] float outer_cone_angle, int inter_index, int room_index, int shadow_rel_index, char flag1, char flag2)
+	{
+		const auto im = imgui::get();
+		const auto gs = game_settings::get();
+
+		const float inner_cone = 0.8f * (1.0f * 20.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC54) * *reinterpret_cast<float*>(0x12E23C8))
+		const float outer_cone = 0.8f * (1.0f * 50.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC58) * *reinterpret_cast<float*>(0x12E23CC))
+
+		game::AddSingleVehicleLight(some_mtx, light_pos,
+			light_dir,
+			im->m_dbg_custom_veh_headlight_enabled ? &im->m_dbg_custom_veh_headlight_color.x : color,
+			intensity * gs->translate_vehicle_headlight_intensity_scalar.get_as<float>(),
+			radius * gs->translate_vehicle_headlight_radius_scalar.get_as<float>(),
+			inner_cone,
+			outer_cone,
+			inter_index, room_index, shadow_rel_index, flag1, flag2);
+	}
+
+
+
+
+	// todo create hooks for single light paths to adjust light settings similar to dual
+	void veh_center_rearlight(D3DXMATRIX* some_mtx, D3DXMATRIX* left_light_pos, D3DXMATRIX* right_light_pos, [[maybe_unused]] float* some_vec3, float* color, float intensity, float radius, float inner_cone_angle, float outer_cone_angle, int inter_index, int room_index, int shadow_rel_index, char flag1, char flag2)
+	{
+		//const auto im = imgui::get();
+		const auto gs = game_settings::get();
+
+		const float inner_cone = inner_cone_angle * 0.6f + gs->translate_vehicle_rearlight_inner_cone_angle_offset.get_as<float>();
+		const float outer_cone = outer_cone_angle * 0.6f + gs->translate_vehicle_rearlight_outer_cone_angle_offset.get_as<float>();
+
+		Vector light_dir = { 0.0f, -1.0f, 0.0f };
+		light_dir += *gs->translate_vehicle_rearlight_direction_offset.get_as<Vector*>();
+
+		game::AddSingleVehicleLight(some_mtx, &left_light_pos->m[3][0], 
+			&light_dir.x,
+			color,
+			intensity * gs->translate_vehicle_rearlight_intensity_scalar.get_as<float>(),
+			radius * gs->translate_vehicle_rearlight_radius_scalar.get_as<float>(),
+			inner_cone,
+			outer_cone,
+			inter_index, room_index, shadow_rel_index, flag1, flag2);
+
+		game::AddSingleVehicleLight(some_mtx, &right_light_pos->m[3][0],
+			&light_dir.x,
+			color,
+			intensity * gs->translate_vehicle_rearlight_intensity_scalar.get_as<float>(),
+			radius * gs->translate_vehicle_rearlight_radius_scalar.get_as<float>(),
+			inner_cone,
+			outer_cone,
+			inter_index, room_index, shadow_rel_index, flag1, flag2);
+	}
+
+	__declspec (naked) void veh_center_rearlight_stub()
+	{
+		__asm
+		{
+			// we are at +0xA0 here
+			mov     ecx, [esp + 0x58]; // right_light_pos
+			mov     eax, [esp + 0x50]; // left_light_pos
+			//add     eax, 0x30; // 12th float (base matrix4x4) .. we push the ptr to the matrix
+
+			push	ecx; // r
+			push	eax; // l
+
+			push    dword ptr[ebp + 0x2C]; // some_mtx
+
+			call	veh_center_rearlight;
+			add     esp, 0x38; // normally + 0x34 but we omit one push (arg set to 0.0 when single light rendering) with the hook and add two additional pushes
+
+			mov		eax, game::hk_addr__vehicle_center_rearlight;
+			add		eax, 16; // skip og add esp op 
+			jmp		eax; //  0xA4337E
+		}
+	}
+
+	void veh_single_rearlight_hk(D3DXMATRIX* some_mtx, float* light_pos, [[maybe_unused]] float* og_light_dir, float* color, float intensity, float radius, float inner_cone_angle, float outer_cone_angle, int inter_index, int room_index, int shadow_rel_index, char flag1, char flag2)
+	{
+		//const auto im = imgui::get();
+		const auto gs = game_settings::get();
+
+		const float inner_cone = inner_cone_angle * 0.6f + gs->translate_vehicle_rearlight_inner_cone_angle_offset.get_as<float>();
+		const float outer_cone = outer_cone_angle * 0.6f + gs->translate_vehicle_rearlight_outer_cone_angle_offset.get_as<float>();
+
+		Vector light_dir = { 0.0f, -1.0f, 0.0f };
+		light_dir += *gs->translate_vehicle_rearlight_direction_offset.get_as<Vector*>();
+
+		game::AddSingleVehicleLight(some_mtx, light_pos,
+			&light_dir.x,
+			color,
+			intensity * gs->translate_vehicle_rearlight_intensity_scalar.get_as<float>(),
+			radius * gs->translate_vehicle_rearlight_radius_scalar.get_as<float>(),
+			inner_cone,
+			outer_cone,
+			inter_index, room_index, shadow_rel_index, flag1, flag2);
+	}
+
 	void main()
 	{
 		// init remix api
@@ -645,6 +798,19 @@ namespace gta4
 		// (c) https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix/blob/fcb91f0c9629a25de4941ce55312798d591d109c/source/settings.ixx#L772
 		// FF places a jmp here to allow game vis in certain menus - we always want the game to draw -> nop FF hook
 		shared::utils::hook::nop(game::nop_addr__always_draw_game_in_menus, 5);
+
+		// draw two headlights instead of a singular center one
+		shared::utils::hook::nop(game::hk_addr__vehicle_center_headlight, 8); // nop push so we start at stack+0x100 - 0xA3FE0E
+		shared::utils::hook(game::hk_addr__vehicle_center_headlight, veh_center_headlight_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook::nop(game::nop_addr__vehicle_headlight_prevent_override, 6); // overrides right light pos - 0xA3FCBB
+		shared::utils::hook::nop(game::nop_addr__vehicle_headlight_prevent_read, 6); // reads overridden right light pos (prob. not needed) - 0xA3FCF2
+
+		// also hook single light drawing because we adjust light parameters and we want single lights to have the same settings as the two above
+		shared::utils::hook(game::hk_addr__vehicle_single_headlight, veh_single_headlight_hk, HOOK_CALL).install()->quick(); // single light mode if one is defect (both use the same func) - 0xA3FF0F
+
+		// rear lights
+		shared::utils::hook(game::hk_addr__vehicle_center_rearlight, veh_center_rearlight_stub, HOOK_JUMP).install()->quick(); // center light to two lights - 0xA4336E
+		shared::utils::hook(game::hk_addr__vehicle_single_rearlight, veh_single_rearlight_hk, HOOK_CALL).install()->quick(); // single light mode if one is defect (both use the same func) - 0xA4342D
 
 		MH_EnableHook(MH_ALL_HOOKS);
 	}

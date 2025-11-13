@@ -94,6 +94,9 @@ namespace gta4::game
 	typedef	void* (__cdecl* PopulateAvailResolutionsArray_t)(uint32_t);
 		extern PopulateAvailResolutionsArray_t PopulateAvailResolutionsArray;
 
+	typedef	void* (__cdecl* AddSingleVehicleLight_t)(D3DXMATRIX* some_mtx, float* light_pos, float* light_dir, float* color, float intensity, float radius, float inner_cone_angle, float outer_cone_angle, int interIndex, int roomindex, int shadowRelIndex, char light_flag_0x4, char light_flag_0x400);
+		extern AddSingleVehicleLight_t AddSingleVehicleLight;
+
 	// --------------
 	// game asm offsets
 
@@ -147,6 +150,14 @@ namespace gta4::game
 	extern uint32_t hk_addr__post_draw_fx_instance;
 	extern uint32_t retn_addr__pre_draw_fx;
 	extern uint32_t hk_addr__post_draw_fx;
+
+	extern uint32_t hk_addr__vehicle_center_headlight;
+	extern uint32_t nop_addr__vehicle_headlight_prevent_override;
+	extern uint32_t nop_addr__vehicle_headlight_prevent_read;
+	extern uint32_t hk_addr__vehicle_single_headlight;
+
+	extern uint32_t hk_addr__vehicle_center_rearlight;
+	extern uint32_t hk_addr__vehicle_single_rearlight;
 
 	extern uint32_t hk_addr__frustum_check;
 

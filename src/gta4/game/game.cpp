@@ -78,6 +78,7 @@ namespace gta4::game
 	FindPlayerCentreOfWorld_t FindPlayerCentreOfWorld = nullptr;
 	getNativeAddress_t getNativeAddress = nullptr;
 	PopulateAvailResolutionsArray_t PopulateAvailResolutionsArray = nullptr;
+	AddSingleVehicleLight_t AddSingleVehicleLight = nullptr;
 
 
 
@@ -134,6 +135,14 @@ namespace gta4::game
 	uint32_t hk_addr__post_draw_fx_instance = 0u;
 	uint32_t retn_addr__pre_draw_fx = 0u;
 	uint32_t hk_addr__post_draw_fx = 0u;
+
+	uint32_t hk_addr__vehicle_center_headlight = 0u;
+	uint32_t nop_addr__vehicle_headlight_prevent_override = 0u;
+	uint32_t nop_addr__vehicle_headlight_prevent_read = 0u;
+	uint32_t hk_addr__vehicle_single_headlight = 0u;
+
+	uint32_t hk_addr__vehicle_center_rearlight = 0u;
+	uint32_t hk_addr__vehicle_single_rearlight = 0u;
 
 	uint32_t hk_addr__frustum_check = 0u;
 
@@ -384,6 +393,10 @@ namespace gta4::game
 			PopulateAvailResolutionsArray = (PopulateAvailResolutionsArray_t)offset; found_pattern_count++;
 		} total_pattern_count++;
 
+		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 83 EC ? 80 7D ? ? 8B 4D", 0, "AddSingleVehicleLight", use_pattern, 0xA3DE90); offset) {
+			AddSingleVehicleLight = (AddSingleVehicleLight_t)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 		// end GAME_FUNCTIONS
 #pragma endregion
 
@@ -551,7 +564,16 @@ namespace gta4::game
 				hk_addr__post_draw_fx = shared::utils::mem::resolve_relative_jump_address(retn_addr__pre_draw_fx, 2u, 1u); found_pattern_count++;
 			} total_pattern_count++;
 		}
-		
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_center_headlight, "FF 75 ? E8 ? ? ? ? 83 C4 ? 5F 5E 8B E5 5D C2 ? ? 84 C0 0F 85 ? ? ? ? 80 7D", 0, 0xA3FE0E);
+		PATTERN_OFFSET_SIMPLE(nop_addr__vehicle_headlight_prevent_override, "F3 0F 11 44 24 ? E8 ? ? ? ? 8D 44 24 ? 50 8B 44 24 ? 50 8B CE E8 ? ? ? ? F3 0F 10 64 24 ? F3 0F 58 64 24 ? F3 0F 10 6C 24 ? 8B 46 ? F3 0F 58 6C 24 ? F3 0F 10 74 24 ? F3 0F 59 25 ? ? ? ? F3 0F 11 74 24 ? F3 0F 59 2D ? ? ? ? F3 0F 11 64 24 ? 6A", 0, 0xA3FCBB);
+		PATTERN_OFFSET_SIMPLE(nop_addr__vehicle_headlight_prevent_read, "F3 0F 10 74 24 ? F3 0F 59 25 ? ? ? ? F3 0F 11 74 24 ? F3 0F 59 2D ? ? ? ? F3 0F 11 64 24 ? 6A", 0, 0xA3FCF2);
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_single_headlight, "F3 0F 11 44 24 ? F3 0F 10 44 24 ? ? ? ? ? ? 68 ? ? ? ? 50 8B 44 24 ? 83 C0", 34, 0xA3FEED); // dest addr: 0xA3FF0F
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_center_rearlight, "8D 44 24 ? 50 FF 75 ? E8 ? ? ? ? 83 C4 ? 5F 5E 8B E5 5D C2 ? ? 83 FF ? 0F 84 ? ? ? ? 80 7D ? ? 0F 85 ? ? ? ? F3 0F 10 05", 0, 0xA4336E);
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_single_rearlight, "F3 0F 59 05 ? ? ? ? F3 0F 59 05 ? ? ? ? ? ? ? ? ? 68", 38, 0xA433E1); // dest addr: 0xA43407
+
+
 
 		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, "hk_addr__frustum_check", use_pattern, 0x431E40); offset) {
 			hk_addr__frustum_check = offset; found_pattern_count++;

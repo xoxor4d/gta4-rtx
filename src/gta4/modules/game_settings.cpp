@@ -44,7 +44,7 @@ namespace gta4
 	bool game_settings::parse_toml()
 	{
 
-#if TRUE // !DEBUG
+#ifndef asd // DEBUG
 		std::ifstream file;
 		if (shared::utils::open_file_homepath("rtx_comp", "game_settings.toml", file))
 		{
@@ -176,6 +176,14 @@ namespace gta4
 				ASSIGN(translate_sunlight_volumetric_radiance_base);
 				ASSIGN(translate_sunlight_timecycle_fogdensity_volumetric_influence_enabled);
 				ASSIGN(translate_sunlight_timecycle_fogdensity_volumetric_influence_scalar);
+
+				ASSIGN(translate_vehicle_headlight_intensity_scalar);
+				ASSIGN(translate_vehicle_headlight_radius_scalar);
+				ASSIGN(translate_vehicle_rearlight_intensity_scalar);
+				ASSIGN(translate_vehicle_rearlight_radius_scalar);
+				ASSIGN(translate_vehicle_rearlight_inner_cone_angle_offset);
+				ASSIGN(translate_vehicle_rearlight_outer_cone_angle_offset);
+				ASSIGN(translate_vehicle_rearlight_direction_offset);
 
 				// emissive related settings
 				ASSIGN(vehicle_lights_emissive_scalar);

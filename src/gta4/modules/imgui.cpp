@@ -694,6 +694,17 @@ namespace gta4
 				ImGui::Spacing(0, 4);
 			}
 
+			ImGui::Spacing(0, 8);
+			ImGui::SeparatorText("Fun");
+			ImGui::Spacing(0, 4);
+
+			ImGui::Checkbox("Enable Custom Vehicle Headlight Color", &im->m_dbg_custom_veh_headlight_enabled);
+			ImGui::BeginDisabled(!im->m_dbg_custom_veh_headlight_enabled);
+			{
+				ImGui::ColorEdit3("Custom Vehicle Headlight Color", &im->m_dbg_custom_veh_headlight_color.x);
+				ImGui::EndDisabled();
+			}
+
 			ImGui::TreePop();
 		}
 
@@ -738,6 +749,10 @@ namespace gta4
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 			ImGui::DragFloat3("Debug Vector", &im->m_debug_vector.x, 0.01f);
 			ImGui::DragFloat3("Debug Vector 2", &im->m_debug_vector2.x, 0.1f);
+			ImGui::DragFloat3("Debug Vector 3", &im->m_debug_vector3.x, 0.1f);
+			ImGui::DragFloat3("Debug Vector 4", &im->m_debug_vector4.x, 0.1f);
+			ImGui::DragFloat3("Debug Vector 5", &im->m_debug_vector5.x, 0.1f);
+
 			ImGui::Checkbox("Debug Bool 1", &im->m_dbg_debug_bool01);
 			ImGui::Checkbox("Debug Bool 2", &im->m_dbg_debug_bool02);
 			ImGui::DragInt("Debug Int 1", &im->m_dbg_int_01, 0.005f);
@@ -1044,6 +1059,24 @@ namespace gta4
 		gamesettings_float_widget("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar, 0.0f, 0.0f, 0.005f);
 		gamesettings_float_widget("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees, 0.0f, 45.0f, 0.005f);
 		gamesettings_float_widget("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base, 0.0f, 10.0f, 0.005f);
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Vehicle ");
+		ImGui::Spacing(0, 4);
+
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Headlight Intensity Scalar", gs->translate_vehicle_headlight_intensity_scalar, 0.0f, 0.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Headlight Radius Scalar", gs->translate_vehicle_headlight_radius_scalar, 0.0f, 0.0f, 0.005f));
+
+		CLEAR_CACHE_CHECK(clear,gamesettings_float_widget("Rearlight Intensity Scalar", gs->translate_vehicle_rearlight_intensity_scalar, 0.0f, 0.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear,gamesettings_float_widget("Rearlight Radius Scalar", gs->translate_vehicle_rearlight_radius_scalar, 0.0f, 0.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear,gamesettings_float_widget("Rearlight Inner ConeAngle Offset", gs->translate_vehicle_rearlight_inner_cone_angle_offset, 0.0f, 0.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear,gamesettings_float_widget("Rearlight Outer ConeAngle Offset", gs->translate_vehicle_rearlight_outer_cone_angle_offset, 0.0f, 0.0f, 0.005f));
+
+		{
+			const auto gs_var_ptr = gs->translate_vehicle_rearlight_direction_offset.get_as<float*>();
+			CLEAR_CACHE_CHECK(clear, ImGui::DragFloat3("Rearlight Direction Offset", gs_var_ptr, 0.005f, 0.0f, 0.0f, "%.2f"));
+			TT(gs->translate_vehicle_rearlight_direction_offset.get_tooltip_string().c_str());
+		}
 
 		if (clear) {
 			remix_lights::clear_light_cache();

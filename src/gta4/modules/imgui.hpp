@@ -33,6 +33,10 @@ namespace gta4
 		Vector m_debug_vector = { 0.0f, 0.0f, 0.0f };
 		Vector m_debug_vector2 = { 0.0f, 0.0f, 0.0f };
 
+		Vector m_debug_vector3 = { 1.0f, 1.0f, 1.0f };
+		Vector m_debug_vector4 = { 0.4f, 4.0f, 1.0f };
+		Vector m_debug_vector5 = { 0.0f, -45.0f, 1.0f };
+
 		D3DXMATRIX m_dbg_phone_projection_matrix_offset;
 		D3DXMATRIX m_debug_mtx02;
 		D3DXMATRIX m_debug_mtx03;
@@ -70,6 +74,9 @@ namespace gta4
 		int m_dbg_tag_exp_hair_as_index = -1;
 
 		int m_dbg_used_timecycle = -1;
+
+		bool m_dbg_custom_veh_headlight_enabled = false;
+		Vector m_dbg_custom_veh_headlight_color = { 1.0f, 0.0f, 0.0f };
 
 		// --
 
