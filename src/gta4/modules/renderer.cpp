@@ -1028,6 +1028,20 @@ namespace gta4
 
 	// -----
 
+	// 1 if "special" SetupVsPsPass call is used (used by bink)
+	int g_is_special_vspspass = 0;
+
+	__declspec (naked) void handle_special_setupvspspass_stub()
+	{
+		__asm
+		{
+			mov		g_is_special_vspspass, 1;
+			call	game::hk_addr__SetupVsPsPass_hk;
+			mov		g_is_special_vspspass, 0;
+			jmp		game::retn_addr__special_SetupVsPsPass_handling;
+		}
+	}
+
 	DETOUR_TYPEDEF(SetupVsPsPass, void, __thiscall, game::current_pass_s* pass, game::vs_data_s** vs_data_struct, game::ps_data_s** ps_data_struct, game::shader_info_sub_s* data, game::shader_data_sub_s* sampler_data);
 
 	void __fastcall SetupVsPsPass_hk(game::current_pass_s* pass, [[maybe_unused]] int fastcall, game::vs_data_s** vs_data_struct, game::ps_data_s** ps_data_struct, game::shader_info_sub_s* data, game::shader_data_sub_s* sampler_data)
@@ -1035,12 +1049,26 @@ namespace gta4
 		// in case we need to compare the rewritten one to the og version
 		//return SetupVsPsPass_og(pass, vs_data_struct, ps_data_struct, data, sampler_data);
 
+		// the "base" object is not a function arg so we get it by subtracting 0x14 from the data arg
+		//auto* parent_addr = reinterpret_cast<std::byte*>(data) - 0x14;
+		//const auto* shader_obj = reinterpret_cast<game::shaderfx_base*>(parent_addr);
+
 		const auto game_device = game::get_d3d_device();
 		int n_renderstates = pass->num_renderstates;
 
 		auto& ctx = renderer::get()->dc_ctx;
 		ctx.info.shader_name = data->data->sub.shader_name;
 
+		// special case because the data around the function args seems to be drastically different for bink passes?
+		// invalid data preset index and name locations which can result in a crash in mission "Lure" (Francis)
+		if (g_is_special_vspspass && ctx.info.shader_name.ends_with("bink.fxc"))
+		{
+			ctx.info.is_bink = true;
+			ctx.info.preset_index = -1;
+			return SetupVsPsPass_og(pass, vs_data_struct, ps_data_struct, data, sampler_data);
+		}
+
+		// we actually read past the substruct into the preset index here (part of grmShader?)
 		ctx.info.preset_index = data->preset_index;
 
 		if (ctx.info.preset_index >= 0 && data->preset_name) {
@@ -1294,6 +1322,21 @@ namespace gta4
 			set_remix_texture_categories(dev, InstanceCategories::IgnoreBakedLighting);
 		}
 
+		// TODO
+		if (ctx.info.is_bink)
+		{
+			ctx.modifiers.do_not_render = true; // does not work anyway
+
+			/*ctx.save_texture(dev, 0);
+
+			IDirect3DBaseTexture9* tex1 = nullptr;
+			dev->GetTexture(0, &tex1);
+
+			if (tex1)
+			{
+				dev->SetTexture(0, tex1);
+			}*/
+		}
 
 		// ---------
 		// draw
@@ -2672,6 +2715,7 @@ namespace gta4
 	{
 		p_this = this;
 
+		shared::utils::hook(game::retn_addr__special_SetupVsPsPass_handling - 5u, handle_special_setupvspspass_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook::detour(game::hk_addr__SetupVsPsPass_hk, &SetupVsPsPass_hk, DETOUR_CAST(SetupVsPsPass_og));
 
 		// there is a renderpath that calls SetupVsPsPass once and then renders multiple instances

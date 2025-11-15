@@ -510,6 +510,45 @@ namespace gta4::game
 		int unk6;
 	};
 
+	struct shaderfx_base
+	{
+		void* grmShaderFx_vtbl; //0x0000 
+		int unk32_01; //0x0004 
+		std::int8_t unk8_1; //0x0008 
+		std::int8_t unk8_2; //0x0009 
+		std::int8_t unk8_3; //0x000A 
+		std::int8_t unk8_4; //0x000B 
+		std::uint16_t unk16_01; //0x000C 
+		std::uint16_t unk16_02; //0x000E 
+		int unk32_02; //0x0010 
+		game::shader_info_sub_s* sinfo_substruct; //0x0014 
+		game::shader_data_s* sinfo_substruct_data; //0x0018 
+		int unk32_03; //0x001C 
+		int unk32_04; //0x0020 
+		void* ptr01; //0x0024 
+		DWORD maybe_shaderhash; //0x0028 
+		int unk32_05; //0x002C 
+		int unk32_06; //0x0030 
+		void* ptr02; //0x0034 
+		int unk32_07; //0x0038 
+		int unk32_08; //0x003C 
+		void* ptr03; //0x0040 
+		char* shadername; //0x0044 
+		char* spsname; //0x0048 
+		int ret_grmShaderFx_m5; //0x004C 
+		int ret_grmShaderFx_m6; //0x0050 
+		int spsIndex; //0x0054 
+		int ret_grmShaderFx_m15; //0x0058 
+		char pad_0x005C[0x4]; //0x005C
+		void* N00000513; //0x0060 
+		char pad_0x0064[0x4]; //0x0064
+		void* N00000515; //0x0068 
+		char pad_0x006C[0xC]; //0x006C
+		void* N00000519; //0x0078 
+		char pad_0x007C[0x44]; //0x007C
+
+	}; //Size=0x00C0
+
 	struct settings_cfg_s
 	{
 		uint32_t resolution_index;

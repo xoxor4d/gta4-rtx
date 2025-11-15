@@ -100,6 +100,7 @@ namespace gta4::game
 	// --------------
 	// game asm offsets
 
+	extern uint32_t retn_addr__special_SetupVsPsPass_handling;
 	extern uint32_t hk_addr__SetupVsPsPass_hk;
 	extern uint32_t func_addr__SetupTextureAndSampler;
 	extern uint32_t hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub;

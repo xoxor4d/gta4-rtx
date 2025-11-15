@@ -483,6 +483,7 @@ namespace gta4
 			bool is_dirty = false; // true when context was not reset in drawprimitive
 			bool is_gta_rmptfx_litsprite_shader = false;
 			bool checked_for_gta_rmptfx_litsprite_shader = false; // true if shader check was performed
+			bool is_bink = false;
 
 			float shaderconst_emissive_intensity = 0.0f;
 			bool shaderconst_uses_emissive_multiplier = false;
@@ -508,6 +509,7 @@ namespace gta4
 				is_dirty = false;
 				is_gta_rmptfx_litsprite_shader = false;
 				checked_for_gta_rmptfx_litsprite_shader = false;
+				is_bink = false;
 
 				shaderconst_emissive_intensity = 0.0f;
 				shaderconst_uses_emissive_multiplier = false;

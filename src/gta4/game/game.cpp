@@ -85,6 +85,7 @@ namespace gta4::game
 	// --------------
 	// game asm offsets
 
+	uint32_t retn_addr__special_SetupVsPsPass_handling = 0u;
 	uint32_t hk_addr__SetupVsPsPass_hk = 0u;
 	uint32_t func_addr__SetupTextureAndSampler = 0u;
 	uint32_t hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub = 0u;
@@ -403,6 +404,8 @@ namespace gta4::game
 		// ---
 
 #pragma region GAME_ASM_OFFSETS
+
+		PATTERN_OFFSET_SIMPLE(retn_addr__special_SetupVsPsPass_handling, "C7 05 ? ? ? ? ? ? ? ? B0 ? 5F C3", 0, 0x6091F1);
 
 		if (const auto offset = shared::utils::mem::find_pattern("53 55 8B E9 56 0F B7 5D ? 33 F6", 0, "hk_addr__SetupVsPsPass_hk", use_pattern, 0x4373E0); offset) {
 			hk_addr__SetupVsPsPass_hk = offset; found_pattern_count++;
