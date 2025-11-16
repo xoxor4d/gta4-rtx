@@ -16,6 +16,11 @@ namespace gta4
 	int g_is_rendering_mirror = 0;
 	int g_is_rendering_fx_instance = 0;
 	int g_is_rendering_fx = 0;
+	int  g_is_rendering_static = 0;
+	int  g_is_rendering_vehicle = 0;
+	bool g_is_rendering_phone = false;
+
+	bool g_rendered_first_primitive = false;
 	bool g_applied_hud_hack = false; // was hud "injection" applied this frame
 
 	namespace tex_addons
@@ -2525,23 +2530,17 @@ namespace gta4
 		}
 	}
 
+	// ---
+
 	void post_render_sky()
 	{
 		remix_markers::get()->draw_nocull_markers();
-	}
-
-	void pre_sky()
-	{
-
 	}
 
 	__declspec (naked) void on_sky_render_stub()
 	{
 		__asm
 		{
-			//pushad;
-			//call	pre_sky;
-			//popad;
 			mov		g_is_sky_rendering, 1;
 			call	game::func_addr__on_sky_render_stub;
 			mov		g_is_sky_rendering, 0;
@@ -2551,6 +2550,8 @@ namespace gta4
 			jmp		game::retn_addr__on_sky_render_stub;
 		}
 	}
+
+	// ---
 
 	__declspec (naked) void pre_water_render_stub()
 	{
@@ -2587,12 +2588,73 @@ namespace gta4
 		}
 	}
 
+	// ---
+
 	__declspec (naked) void post_static_render_stub()
 	{
 		__asm
 		{
 			mov		g_is_rendering_static, 0;
 			retn    0x10;
+		}
+	}
+
+	// ---
+
+	void reset_world_transform()
+	{
+		const auto& dev = shared::globals::d3d_device;
+		dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
+	}
+
+	__declspec (naked) void pre_entity_surfs_stub()
+	{
+		__asm
+		{
+			mov     ebp, esp;
+			and		esp, 0xFFFFFFF0;
+			mov		g_is_rendering_static, 1;
+			jmp		game::retn_addr__pre_entity_surfs_stub;
+		}
+	}
+
+	__declspec (naked) void post_entity_surfs_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	reset_world_transform;
+			popad;
+			mov		g_is_rendering_static, 0;
+			pop     ebx;
+			mov     esp, ebp;
+			pop     ebp;
+			retn;
+		}
+	}
+
+	// ---
+
+	__declspec (naked) void pre_vehicle_surfs_stub()
+	{
+		__asm
+		{
+			mov     ebp, esp;
+			and		esp, 0xFFFFFFF0;
+			mov		g_is_rendering_vehicle, 1;
+			jmp		game::retn_addr__pre_vehicle_surfs_stub;
+		}
+	}
+
+	__declspec (naked) void post_vehicle_surfs_stub()
+	{
+		__asm
+		{
+			mov		g_is_rendering_vehicle, 0;
+			pop     ebx;
+			mov     esp, ebp;
+			pop     ebp;
+			retn;
 		}
 	}
 
@@ -2619,6 +2681,8 @@ namespace gta4
 			retn;
 		}
 	}
+
+	// ---
 
 	void on_add_frontendhelpertext_hk()
 	{
@@ -2736,9 +2800,18 @@ namespace gta4
 		shared::utils::hook(game::retn_addr__pre_draw_water - 5u, pre_water_render_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_draw_water, post_water_render_stub, HOOK_JUMP).install()->quick();
 
-		// detect vehicle rendering
+		// detect static rendering
 		shared::utils::hook(game::retn_addr__pre_draw_statics - 5u, pre_static_render_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_draw_statics, post_static_render_stub, HOOK_JUMP).install()->quick();
+
+		// also considered static
+		shared::utils::hook(game::retn_addr__pre_entity_surfs_stub - 5u, pre_entity_surfs_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::hk_addr__post_entity_surfs_stub, post_entity_surfs_stub, HOOK_JUMP).install()->quick();
+
+		// detect vehicle rendering - CDrawFrag
+		shared::utils::hook(game::retn_addr__pre_vehicle_surfs_stub - 5u, pre_vehicle_surfs_stub, HOOK_JUMP).install()->quick(); // 0x8DCDA1
+		shared::utils::hook(game::hk_addr__post_vehicle_surfs_stub, post_vehicle_surfs_stub, HOOK_JUMP).install()->quick();
+
 
 		// detect mirror rendering
 		shared::utils::hook(game::retn_addr__pre_draw_mirror - 5u, pre_draw_mirror_stub, HOOK_JUMP).install()->quick(); // 0xB59906

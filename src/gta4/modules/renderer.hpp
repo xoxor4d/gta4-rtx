@@ -9,6 +9,11 @@ namespace gta4
 	extern int g_is_rendering_mirror;
 	extern int g_is_rendering_fx_instance;
 	extern int g_is_rendering_fx;
+	extern int g_is_rendering_static;
+	extern int g_is_rendering_vehicle;
+	extern bool g_is_rendering_phone;
+
+	extern bool g_rendered_first_primitive;
 	extern bool g_applied_hud_hack;
 
 	namespace tex_addons

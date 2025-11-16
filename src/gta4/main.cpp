@@ -4,6 +4,7 @@
 #include "shared/common/flags.hpp"
 #include "modules/d3d9ex.hpp"
 #include "modules/game_settings.hpp"
+#include "modules/renderer.hpp"
 
 //#define BLOCK_DISCORDHOOK // also hooks d3d
 

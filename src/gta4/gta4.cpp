@@ -15,12 +15,6 @@
 
 namespace gta4
 {
-	int  g_is_rendering_static = 0;
-	int  g_is_rendering_vehicle = 0;
-	bool g_is_rendering_phone = false;
-
-	bool g_rendered_first_primitive = false;
-
 	void force_graphic_settings()
 	{
 		if (gta4::game::loaded_settings_cfg)
@@ -36,8 +30,6 @@ namespace gta4
 	void on_begin_scene_cb()
 	{
 		static auto im = imgui::get();
-		static auto vars = remix_vars::get();
-		static auto gs = game_settings::get();
 
 		renderer::get()->m_triggered_remix_injection = false; 
 		g_applied_hud_hack = false;
@@ -88,329 +80,9 @@ namespace gta4
 				shared::globals::d3d_device->SetTransform(D3DTS_PROJECTION, &vp->sceneviewport->proj);
 			}
 		}
-
-
-		if (game::is_in_game) 
-		{
-			translate_and_apply_timecycle_settings();
-
-			// Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start
-			// and we def. need more then 3 samples to get somewhat good looking vehicle lights
-			const auto rtxdi_override_val = gs->remix_override_rtxdi_samplecount.get_as<int>();
-			if (rtxdi_override_val) // override if > 0
-			{
-				static auto rtxdi_samplecount = vars->get_option("rtx.di.initialSampleCount");
-				remix_vars::option_value val {.value = (float)rtxdi_override_val };
-				vars->set_option(rtxdi_samplecount, val);
-			}
-		}
 	}
 
-
-	// for visualization of values in gui
-#define ASSIGN_IMGUI_VIS_FLOAT(name) \
-		im->m_timecyc_curr_##name = timecycle->##name; \
-		im->m_timecyc_curr_##name##_final = val.value;
-
-			// for visualization of values in gui
-#define ASSIGN_IMGUI_VIS_VEC3(tc_name) \
-		im->m_timecyc_curr_##tc_name##.x = val.vector[0]; \
-		im->m_timecyc_curr_##tc_name##.y = val.vector[1]; \
-		im->m_timecyc_curr_##tc_name##.z = val.vector[2];
-
-		// for visualization of values in gui
-#define ASSIGN_IMGUI_VIS_UNPACKED_COLOR(tc_name, temp_vec) \
-		im->m_timecyc_curr_##tc_name = ##temp_vec; \
-		im->m_timecyc_curr_##tc_name##_final.x = val.vector[0]; \
-		im->m_timecyc_curr_##tc_name##_final.y = val.vector[1]; \
-		im->m_timecyc_curr_##tc_name##_final.z = val.vector[2]; \
-		im->m_timecyc_curr_##tc_name##_final.w = val.vector[3];
-
-	void translate_and_apply_timecycle_settings()
-	{
-		auto unpack_uint32 = [](const uint32_t& in, float* out)
-			{
-				out[0] = static_cast<float>(in >> 16 & 0xFF) / 255.0f;
-				out[1] = static_cast<float>(in >> 8  & 0xFF) / 255.0f;
-				out[2] = static_cast<float>(in >> 0  & 0xFF) / 255.0f;
-				out[3] = static_cast<float>(in >> 24 & 0xFF) / 255.0f;
-			};
-
-		auto mapRange = [](float input, float in_min, float in_max, float out_min, float out_max)
-			{
-				return out_min + (out_max - out_min) * ((input - in_min) / (in_max - in_min));
-			};
-
-		{
-			static auto im = imgui::get();
-			static auto vars = remix_vars::get();
-			static auto gs = game_settings::get();
-			remix_vars::option_value val{};
-
-
-			// TODO! Add defaults for used remix variables in case user disables the saving of ALL remix variables
-
-			//auto first_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8910);
-			//auto third_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8B20);
-
-			game::TimeCycleParams* timecycle = game::m_pCurrentTimeCycleParams_01;
-
-			if (game::m_dwCutsceneState && *game::m_dwCutsceneState > 0) {
-				timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
-			}
-
-			// manual override
-			if (im->m_dbg_used_timecycle >= 0)
-			{
-				switch (im->m_dbg_used_timecycle)
-				{
-				default:
-				case 0:
-					timecycle = game::m_pCurrentTimeCycleParams_01;
-					break;
-
-				case 1:
-					timecycle = game::m_pCurrentTimeCycleParams_02;
-					break;
-
-				case 2:
-					timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
-					break;
-				}
-			}
-
-			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness");
-			if (gs->timecycle_skylight_enabled.get_as<bool>() && rtxSkybrightness)
-			{
-				val.value = timecycle->mSkyLightMultiplier * gs->timecycle_skylight_scalar.get_as<float>();
-				vars->set_option(rtxSkybrightness, val);
-				ASSIGN_IMGUI_VIS_FLOAT(mSkyLightMultiplier);
-			}
-
-
-			static auto rtxBloomBurnIntensity = vars->get_option("rtx.bloom.burnIntensity");
-			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold");
-			if (gs->timecycle_bloom_enabled.get_as<bool>() && rtxBloomBurnIntensity && rtxBloomLuminanceThreshold)
-			{
-				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
-				vars->set_option(rtxBloomBurnIntensity, val);
-				ASSIGN_IMGUI_VIS_FLOAT(mBloomIntensity);
-
-				val.value = timecycle->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
-				vars->set_option(rtxBloomLuminanceThreshold, val);
-				ASSIGN_IMGUI_VIS_FLOAT(mBloomThreshold);
-			}
-
-
-			static auto rtxTonemapColorBalance = vars->get_option("rtx.tonemap.colorBalance");
-			if (gs->timecycle_colorcorrection_enabled.get_as<bool>() && rtxTonemapColorBalance)
-			{
-				Vector temp_color_offset;
-				if (gs->timecycle_colortemp_enabled.get_as<bool>())
-				{
-					const float nrml_temp = std::clamp(timecycle->mTemperature / 15.0f, -1.0f, 1.0f);
-					temp_color_offset.x = nrml_temp * 0.3f;
-					temp_color_offset.y = 0.0f;
-					temp_color_offset.z = -nrml_temp * 0.3f;
-					temp_color_offset *= gs->timecycle_colortemp_influence.get_as<float>();
-					im->m_timecyc_curr_mTemperature = timecycle->mTemperature;
-					im->m_timecyc_curr_mTemperature_offset = temp_color_offset;
-				}
-
-				Vector4D color_correction;
-				unpack_uint32(timecycle->mColorCorrection, &color_correction.x);
-				val.vector[0] = color_correction.x + temp_color_offset.x;
-				val.vector[1] = color_correction.y + temp_color_offset.y;
-				val.vector[2] = color_correction.z + temp_color_offset.z;
-				vars->set_option(rtxTonemapColorBalance, val);
-				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction);
-			}
-
-
-			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation");
-			if (gs->timecycle_desaturation_enabled.get_as<bool>() && rtxTonemapSaturation)
-			{
-				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * mapRange(timecycle->mDesaturationFar, 0.0f, 1.0f, 0.0f, 0.4f);
-				val.value = 1.0f - ((1.0f - timecycle->mDesaturation) * gs->timecycle_desaturation_influence.get_as<float>());
-				val.value -= far_desaturation_influence;
-				vars->set_option(rtxTonemapSaturation, val);
-				ASSIGN_IMGUI_VIS_FLOAT(mDesaturation);
-				im->m_timecyc_curr_mDesaturationFar = timecycle->mDesaturationFar;
-				im->m_timecyc_curr_mDesaturationFar_offset = far_desaturation_influence;
-			}
-
-
-			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias");
-			if (gs->timecycle_gamma_enabled.get_as<bool>() && rtxTonemapExposureBias)
-			{
-				val.value = -(1.0f - timecycle->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
-				vars->set_option(rtxTonemapExposureBias, val);
-				ASSIGN_IMGUI_VIS_FLOAT(mGamma);
-			}
-
-
-			{
-				//val.value = log2(game::m_pCurrentTimeCycleParams->mLumMin * 0.01f) + 4.0f; // +6?m_dbg_timecyc_skylight_scalar
-				//vars->set_option(vars->get_option("rtx.autoExposure.evMinValue"), val);
-
-				//val.value = log2(game::m_pCurrentTimeCycleParams->mLumMax * 0.01f) + 4.0f; // +4?
-				//vars->set_option(vars->get_option("rtx.autoExposure.evMaxValue"), val);
-			}
-
-
-			Vector4D fog_color_density;
-			unpack_uint32(timecycle->mSkyBottomColorFogDensity, &fog_color_density.x);
-			game::helper_timecycle_current_fog_density = fog_color_density.w; // global
-
-			// vis.
-			im->m_timecyc_curr_mSkyBottomColorFogDensity.x = val.vector[0];
-			im->m_timecyc_curr_mSkyBottomColorFogDensity.y = val.vector[1];
-			im->m_timecyc_curr_mSkyBottomColorFogDensity.z = val.vector[2];
-			im->m_timecyc_curr_mSkyBottomColorFogDensity.w = val.vector[3];
-
-			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
-			if (gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
-			{
-				const auto& base_strength = gs->timecycle_fogcolor_base_strength.get_as<float>();
-				const auto& influence = gs->timecycle_fogcolor_influence_scalar.get_as<float>();
-
-				Vector t = fog_color_density * influence;
-				t += base_strength;
-
-				t.Normalize();
-
-				val.vector[0] = t.x;
-				val.vector[1] = t.y;
-				val.vector[2] = t.z;
-
-				//val.vector[0] = base_strength + fog_color_density.x * influence;
-				//val.vector[1] = base_strength + fog_color_density.y * influence;
-				//val.vector[2] = base_strength + fog_color_density.z * influence;
-				
-				vars->set_option(rtxVolumetricsSingleScatteringAlbedo, val);
-				ASSIGN_IMGUI_VIS_VEC3(singleScatteringAlbedo);
-			}
-
-			float atmos_height = 0.0f;
-			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters");
-			if (gs->timecycle_skyhorizonheight_enabled.get_as<bool>() && rtxVolumetricsAtmosphereHeightMeters)
-			{
-				atmos_height = timecycle->mSkyHorizonHeight * 100.0f * gs->timecycle_skyhorizonheight_scalar.get_as<float>();
-				val.value = atmos_height;
-				vars->set_option(rtxVolumetricsAtmosphereHeightMeters, val);
-				ASSIGN_IMGUI_VIS_FLOAT(mSkyHorizonHeight);
-			}
-
-			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters");
-			if (gs->timecycle_fogdensity_enabled.get_as<bool>() && rtxVolumetricsTransmittanceMeasurementDistanceMeters)
-			{
-				val.value = mapRange(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.6f)
-					* gs->timecycle_fogdensity_influence_scalar.get_as<float>()
-					+ mapRange(atmos_height, 0.0f, 1000.0f,
-						gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float>(),
-						gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float>());
-
-				if (val.value < 0.6f) {
-					val.value = 0.6f;
-				}
-
-				vars->set_option(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
-				im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters = val.value;
-			}
-		}
-	}
-
-#undef ASSIGN_IMGUI_VIS_FLOAT
-
-	void post_vehicle_rendering()
-	{
-		g_is_rendering_vehicle = 0;
-	}
-
-	/*__declspec (naked) void pre_static_surfs_stub()
-	{
-		static uint32_t retn_addr = 0x42EC46;
-		__asm
-		{
-			push	ebp;
-			shl		eax, 2;
-			push	edi;
-			mov		g_is_rendering_static, 1;
-			jmp		retn_addr;
-		}
-	}
-
-	__declspec (naked) void post_static_surfs_stub()
-	{
-		__asm
-		{
-			mov		g_is_rendering_static, 0;
-			retn	0x10;
-		}
-	}*/
-
-
-	void reset_world_transform()
-	{
-		const auto& dev = shared::globals::d3d_device;
-		dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
-	}
-
-	__declspec (naked) void pre_entity_surfs_stub()
-	{
-		__asm
-		{
-			mov     ebp, esp;
-			and		esp, 0xFFFFFFF0;
-			mov		g_is_rendering_static, 1;
-			jmp		game::retn_addr__pre_entity_surfs_stub;
-		}
-	}
-
-	__declspec (naked) void post_entity_surfs_stub()
-	{
-		__asm
-		{
-			pushad;
-			call	reset_world_transform;
-			popad;
-			mov		g_is_rendering_static, 0;
-			pop     ebx;
-			mov     esp, ebp;
-			pop     ebp;
-			retn;
-		}
-	}
-
-	// -------------
-
-	__declspec (naked) void pre_vehicle_surfs_stub()
-	{
-		__asm
-		{
-			mov     ebp, esp;
-			and		esp, 0xFFFFFFF0;
-			mov		g_is_rendering_vehicle, 1;
-			jmp		game::retn_addr__pre_vehicle_surfs_stub;
-		}
-	}
-
-	__declspec (naked) void post_vehicle_surfs_stub()
-	{
-		__asm
-		{
-			pushad;
-			call	post_vehicle_rendering;
-			popad;
-
-			pop     ebx;
-			mov     esp, ebp;
-			pop     ebp;
-			retn;
-		}
-	}
-
-	// -------
+	// ----
 
 	struct unkown_struct_culling
 	{
@@ -418,13 +90,74 @@ namespace gta4
 		game::grcViewport viewport;
 	};
 
+	struct drawableReference
+	{
+		int pDrawable;
+		int pShaderEffect;
+		int field_8;
+		int pPrev;
+		int pNext;
+	};
+
+	// from https://public.sannybuilder.com/gtasa_exe_idb/gta_iv_eflc/
+	struct CEntity
+	{
+		void* vtbl;
+		int field_4;
+		int field_8;
+		int field_C;
+		Vector m_pos;
+		int m_fHeading;                       ///< float
+		D3DXMATRIX* worldTransform;                        ///< pointer to position matrix
+		int m_dwFlags;                        ///< see CFlags
+		///< 0x1 = UsesCollision
+		///< 0x4 = Fixed (frozen)
+		///< 0x8 = FixedWaitingForCollision
+		///< 0x10 = FixedByPhysics
+		///< 0x20 = Visible
+		///< 0x100 = Damaged
+		///< 0x1000 = draw last
+		///< 0x4000000 = Has Physics Inst
+		int m_dwFlags2;                       ///< flags - 2 - lights, 21 - onFire
+		///< 0x40 thru 0x200 (4 bits)
+		///< --> & 0x3C0
+		///< --> object type (2 = playerPed, 4 = ped)
+		///< 0x200000 = OnFire
+		///< 0x400000 = have coords matrix
+		__int16 field_2C;
+		__int16 m_wModelIndex;
+		int m_pReference;
+		drawableReference* m_pDrawableReference;
+		int m_pPhysics;                       ///< phInst *
+		int field_3C;
+		char field_40;
+		char field_41;
+		__int16 field_42;
+		__int16 field_44;
+		__int16 field_46;
+		int m_hInterior;
+		int field_4C;
+		int field_50;                         ///< float
+		int field_54;
+		int field_58;
+		__int16 m_wIplIndex;
+		__int16 field_5E;
+		char field_60;
+		char field_61;
+		char field_62;
+		char m_alpha;
+		int field_64;
+		int field_68;
+		int m_pNetEntity;
+	};
+
 
 	DETOUR_TYPEDEF(static_world_culling_check, BOOL, __thiscall, void* this_ptr, unkown_struct_culling* unk);
-	BOOL __fastcall static_world_culling_check_hk(void* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
+	BOOL __fastcall static_world_culling_check_hk(CEntity* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
 	{
 		// this = AVCBuilding : AVCEntity : AUCVirtualBase
-		static auto im = imgui::get();
-		static auto gs = game_settings::get();
+		auto im = imgui::get();
+		auto gs = game_settings::get();
 
 		if (im->m_dbg_never_cull_statics) {
 			return TRUE;
@@ -451,12 +184,99 @@ namespace gta4
 
 		const float object_radius = shared::utils::hook::call_virtual<22, float>(this_ptr);
 
+		const auto object_mins = shared::utils::hook::call_virtual<24, Vector*>(this_ptr);
+		const auto object_maxs = shared::utils::hook::call_virtual<25, Vector*>(this_ptr);
+
+		float object_height = 0.0f;
+		if (object_mins && object_maxs) {
+			object_height = object_maxs->z - object_mins->z;
+		}
+
+		bool dbg_vis_added = false, dbg_vis_forced_visible = false;
+		const float dbg_vis_draw_dist = im->m_dbg_visualize_anti_cull_info_distance;
+
+		if (im->m_dbg_visualize_anti_cull_info
+			&& im->visualized_anti_cull.size() < 160
+			&& object_radius > im->m_dbg_visualize_anti_cull_info_min_radius
+			&& dist_sqr < dbg_vis_draw_dist * dbg_vis_draw_dist)
+		{
+			std::lock_guard lock(im->visualized_anti_cull_mutex); // multi thread
+			imgui::visualized_anti_cull_s vis = { {object_origin.x, object_origin.y, object_origin.z}, object_radius, object_height, this_ptr->m_wModelIndex };
+
+			if (im->m_dbg_visualize_anti_cull_highlight && im->m_dbg_visualize_anti_cull_highlight == this_ptr->m_wModelIndex)
+			{
+				// transform mins/maxs 
+				if (this_ptr->worldTransform)
+				{
+					D3DXVECTOR3 corners[8];
+					corners[0] = object_mins->ToD3DXVector();
+					corners[1] = D3DXVECTOR3(object_maxs->x, object_mins->y, object_mins->z);
+					corners[2] = D3DXVECTOR3(object_mins->x, object_maxs->y, object_mins->z);
+					corners[3] = D3DXVECTOR3(object_maxs->x, object_maxs->y, object_mins->z);
+					corners[4] = D3DXVECTOR3(object_mins->x, object_mins->y, object_maxs->z);
+					corners[5] = D3DXVECTOR3(object_maxs->x, object_mins->y, object_maxs->z);
+					corners[6] = D3DXVECTOR3(object_mins->x, object_maxs->y, object_maxs->z);
+					corners[7] = object_maxs->ToD3DXVector();
+
+					D3DXVECTOR3 world_mins(FLT_MAX, FLT_MAX, FLT_MAX), world_maxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+					D3DXMATRIX world = *this_ptr->worldTransform;
+					world.m[0][3] = 0.0f;
+					world.m[1][3] = 0.0f;
+					world.m[2][3] = 0.0f;
+					world.m[3][3] = 1.0f;
+
+					for (auto i = 0u; i < 8u; ++i)
+					{
+						D3DXVec3TransformCoord(&corners[i], &corners[i], &world);
+						world_mins.x = std::min(world_mins.x, corners[i].x);
+						world_mins.y = std::min(world_mins.y, corners[i].y);
+						world_mins.z = std::min(world_mins.z, corners[i].z);
+						world_maxs.x = std::max(world_maxs.x, corners[i].x);
+						world_maxs.y = std::max(world_maxs.y, corners[i].y);
+						world_maxs.z = std::max(world_maxs.z, corners[i].z);
+					}
+
+					vis.mins.x = world_mins.x;
+					vis.mins.y = world_mins.y;
+					vis.mins.z = world_mins.z;
+
+					vis.maxs.x = world_maxs.x;
+					vis.maxs.y = world_maxs.y;
+					vis.maxs.z = world_maxs.z;
+				}
+				else
+				{
+					vis.mins = *object_mins + object_origin;
+					vis.maxs = *object_maxs + object_origin;
+				}
+
+				vis.draw_debug_box = true;
+				dbg_vis_forced_visible = true;
+			}
+
+			im->visualized_anti_cull.emplace_back(vis);
+			dbg_vis_added = true;
+		}
+
+		// perfect -> Map Settings
+		/*if (im->m_dbg_int_01)
+		{
+			if (this_ptr->m_wModelIndex == im->m_dbg_int_01) {
+				return TRUE;
+			}
+		}*/
+
 		// do not cull if obj is within medium dist and larger then medium radius setting
 		if (nc_dist_med > 0.0f && dist_sqr < nc_dist_med * nc_dist_med)
 		{
 			if (object_radius > nc_radius_med) {
 				return TRUE;
 			}
+
+			/*if (im->m_debug_vector3.x > 0.0f && object_origin.z + object_height >= im->m_debug_vector3.x) {
+				return TRUE;
+			}*/
 		}
 
 		// do not cull if obj is within far dist and larger then far radius setting
@@ -466,17 +286,35 @@ namespace gta4
 				return TRUE;
 			}
 
-			const auto object_mins = shared::utils::hook::call_virtual<24, Vector*>(this_ptr);
-			const auto object_maxs = shared::utils::hook::call_virtual<25, Vector*>(this_ptr);
-
-			float object_height = 0.0f;
-			if (object_mins && object_maxs) {
-				object_height = object_maxs->z - object_mins->z;
-			}
-
 			if (object_height > 0.0f && object_height > nc_height_far) {
 				return TRUE;
 			}
+
+			/*if (im->m_debug_vector3.y > 0.0f && object_origin.z + object_height >= im->m_debug_vector3.y) {
+				return TRUE;
+			}*/
+		}
+
+		if (const auto& ms = map_settings::get_map_settings(); !ms.anticull_meshes.empty())
+		{
+			for (const auto& cat : ms.anticull_meshes)
+			{
+				// dist 0 = always active
+				if (!cat.distance || (int)dist_sqr < cat.distance * cat.distance)
+				{
+					if (cat.indices.contains(this_ptr->m_wModelIndex)) {
+						return TRUE;
+					}
+				}
+			}
+		}
+
+		// if vis was added but we did not return (to force vis) - draw as white text
+		if (dbg_vis_added && !dbg_vis_forced_visible
+			&& im->m_dbg_visualize_anti_cull_info && !im->visualized_anti_cull.empty())
+		{
+			std::lock_guard lock(im->visualized_anti_cull_mutex); // multi thread
+			im->visualized_anti_cull.back().forced_visible = false;
 		}
 
 		return static_world_culling_check_og(this_ptr, unk);
@@ -725,24 +563,6 @@ namespace gta4
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_markers>());
 		shared::common::loader::module_loader::register_module(std::make_unique<natives>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_vars>());
-
-		//shared::utils::hook(0x415648, pre_non_blended_surfs, HOOK_JUMP).install()->quick();
-
-		// 42EC80 draws static stuff?
-		//shared::utils::hook(0x42EC41, pre_static_surfs_stub, HOOK_JUMP).install()->quick();
-		//shared::utils::hook(0x42ECB7, post_static_surfs_stub, HOOK_JUMP).install()->quick();
-
-		// 8DD4CE to jmp to not render nico
-		// 8DCDBB to jmp to not render vehicles
-		// 8DCC0B to jmp to not render a bunch of stuff
-
-		// 
-		shared::utils::hook(game::retn_addr__pre_entity_surfs_stub - 5u, pre_entity_surfs_stub, HOOK_JUMP).install()->quick();
-		shared::utils::hook(game::hk_addr__post_entity_surfs_stub, post_entity_surfs_stub, HOOK_JUMP).install()->quick();
-
-		// CDrawFrag
-		shared::utils::hook(game::retn_addr__pre_vehicle_surfs_stub - 5u, pre_vehicle_surfs_stub, HOOK_JUMP).install()->quick(); // 0x8DCDA1
-		shared::utils::hook(game::hk_addr__post_vehicle_surfs_stub, post_vehicle_surfs_stub, HOOK_JUMP).install()->quick();
 
 		// reduce culling 01 - low lod variants do not get culled outside frustum
 		// 0x431E52 from: 0F 84 B1 00 00 00 (je 0x431F09) -- to: E9 A6 00 00 00 90 (jmp 0x431EFD)
