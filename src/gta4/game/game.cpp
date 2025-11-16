@@ -571,10 +571,10 @@ namespace gta4::game
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_center_headlight, "FF 75 ? E8 ? ? ? ? 83 C4 ? 5F 5E 8B E5 5D C2 ? ? 84 C0 0F 85 ? ? ? ? 80 7D", 0, 0xA3FE0E);
 		PATTERN_OFFSET_SIMPLE(nop_addr__vehicle_headlight_prevent_override, "F3 0F 11 44 24 ? E8 ? ? ? ? 8D 44 24 ? 50 8B 44 24 ? 50 8B CE E8 ? ? ? ? F3 0F 10 64 24 ? F3 0F 58 64 24 ? F3 0F 10 6C 24 ? 8B 46 ? F3 0F 58 6C 24 ? F3 0F 10 74 24 ? F3 0F 59 25 ? ? ? ? F3 0F 11 74 24 ? F3 0F 59 2D ? ? ? ? F3 0F 11 64 24 ? 6A", 0, 0xA3FCBB);
 		PATTERN_OFFSET_SIMPLE(nop_addr__vehicle_headlight_prevent_read, "F3 0F 10 74 24 ? F3 0F 59 25 ? ? ? ? F3 0F 11 74 24 ? F3 0F 59 2D ? ? ? ? F3 0F 11 64 24 ? 6A", 0, 0xA3FCF2);
-		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_single_headlight, "F3 0F 11 44 24 ? F3 0F 10 44 24 ? ? ? ? ? ? 68 ? ? ? ? 50 8B 44 24 ? 83 C0", 34, 0xA3FEED); // dest addr: 0xA3FF0F
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_single_headlight, "F3 0F 11 44 24 ? F3 0F 10 44 24 ? ? ? ? ? ? 68 ? ? ? ? 50 8B 44 24 ? 83 C0", 0x22, 0xA3FEED); // dest addr: 0xA3FF0F
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_center_rearlight, "8D 44 24 ? 50 FF 75 ? E8 ? ? ? ? 83 C4 ? 5F 5E 8B E5 5D C2 ? ? 83 FF ? 0F 84 ? ? ? ? 80 7D ? ? 0F 85 ? ? ? ? F3 0F 10 05", 0, 0xA4336E);
-		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_single_rearlight, "F3 0F 59 05 ? ? ? ? F3 0F 59 05 ? ? ? ? ? ? ? ? ? 68", 38, 0xA433E1); // dest addr: 0xA43407
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_single_rearlight, "F3 0F 59 05 ? ? ? ? F3 0F 59 05 ? ? ? ? ? ? ? ? ? 68", 0x26, 0xA43407); // dest addr: 0xA4342D
 
 
 
