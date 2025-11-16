@@ -8,6 +8,7 @@
 #include "remix_lights.hpp"
 #include "remix_vars.hpp"
 #include "renderer.hpp"
+#include "shared/common/remix_api.hpp"
 #include "shared/common/toml_ext.hpp"
 #include "shared/imgui/imgui_helper.hpp"
 #include "shared/imgui/font_awesome_solid_900.hpp"
@@ -2064,6 +2065,207 @@ namespace gta4
 		}
 	}
 
+	void cont_mapsettings_anticull_meshes()
+	{
+		/*ImGui::Checkbox("Visualize Anti Culling Info", &im->m_dbg_visualize_anti_cull_info); TT("Visualize Anti Culling Info");
+		ImGui::DragFloat("Info Distance", &im->m_dbg_visualize_anti_cull_info_distance, 0.05f);  TT("Only draw mesh vis. up until this distance.");
+		ImGui::DragFloat("Info Min Radius", &im->m_dbg_visualize_anti_cull_info_min_radius, 0.05f); TT("A mesh needs to have at least this radius to be visualized.");
+		ImGui::DragInt("Highlight Mesh with Index", &im->m_dbg_visualize_anti_cull_highlight); TT("Draw bounding box around mesh with this index.");
+		ImGui::DragFloat("Highlight Line Width", &im->m_dbg_visualize_anti_cull_info_highlight_line_width, 0.05f); TT("Line width for bounding box.");*/
+
+		//const auto& gs = game_settings::get();
+
+		const auto& im = imgui::get();
+		auto& ac = map_settings::get_map_settings().anticull_meshes;
+		
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (ImGui::Button("Copy to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
+		{
+			ImGui::LogToClipboard();
+			ImGui::LogText("%s", shared::common::toml_ext::build_anticull_array(ac).c_str());
+			ImGui::LogFinish();
+		} ImGui::PopFont();
+
+		ImGui::SameLine();
+		reload_mapsettings_button_with_popup("AnticullMeshes");
+
+		ImGui::Spacing(0, 12);
+		ImGui::Separator();
+		ImGui::Spacing(0, 4);
+
+		ImGui::Checkbox("Visualize Anti Culling Info", &im->m_dbg_visualize_anti_cull_info); TT("Visualize Anti Culling Info");
+		ImGui::DragFloat("Info Distance", &im->m_dbg_visualize_anti_cull_info_distance, 0.05f);  TT("Only draw mesh vis. up until this distance.");
+		ImGui::DragFloat("Info Min Radius", &im->m_dbg_visualize_anti_cull_info_min_radius, 0.05f); TT("A mesh needs to have at least this radius to be visualized.");
+		ImGui::DragInt("Highlight Mesh with Index", &im->m_dbg_visualize_anti_cull_highlight); TT("Draw bounding box around mesh with this index.");
+		ImGui::DragFloat("Highlight Line Width", &im->m_dbg_visualize_anti_cull_info_highlight_line_width, 0.05f); TT("Line width for bounding box.");
+
+		ImGui::Spacing(0, 4);
+		ImGui::Separator();
+		ImGui::Spacing(0, 12);
+
+		ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonGreen, true);
+		if (ImGui::Button("Add new Category", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			ac.emplace_back(map_settings::anti_cull_meshes_s { .distance = 0, .comment = "new" + std::to_string(ac.size())});
+		}
+		ImGui::Style_ColorButtonPop();
+
+		ImGui::Spacing(0, 6);
+
+		// unassigned
+		static ImGuiTextFilter filter_index;
+
+		ImGui::PushFont(shared::imgui::font::REGULAR_SMALL);
+		ImGui::TextUnformatted("  Filter Indices ... ");
+		ImGui::PopFont();
+
+		filter_index.Draw("##Filter", ImGui::GetContentRegionAvail().x
+			- ImGui::GetFrameHeight()
+			- ImGui::GetStyle().FramePadding.x + 3.0f);
+
+		ImGui::SameLine();
+		if (ImGui::Button("X", ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
+			filter_index.Clear();
+		}
+
+		int cat_idx = 0;
+		for (auto it = ac.begin(); it != ac.end(); )
+		{
+			auto& elem = *it;
+
+			if (!cat_idx) {
+				ImGui::Spacing(0, 20);
+			} else {
+				ImGui::Spacing(0, 8);
+			}
+
+			cat_idx++;
+			bool pending_cat_removal = false;
+
+			ImGui::PushID(shared::utils::va("cat_%d", cat_idx));
+			const auto section_name = shared::utils::va("Section: %s", elem.comment.c_str());
+			if (ImGui::CollapsingHeader(section_name))
+			{
+				/*ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::SeparatorText(section_name);
+				ImGui::PopFont();*/
+				ImGui::Spacing(0, 4);
+
+				{
+					SET_CHILD_WIDGET_WIDTH;
+					ImGui::DragInt("Distance", &elem.distance);
+
+					SET_CHILD_WIDGET_WIDTH;
+					ImGui::InputText("Comment", &elem.comment);
+
+					ImGui::Spacing(0, 4);
+
+					ImGui::PushFont(shared::imgui::font::REGULAR_SMALL);
+					ImGui::TextUnformatted("  Double Click to remove an entry .. ");
+					ImGui::PopFont();
+
+
+					ImGui::Widget_ContainerWithDropdownShadowSquare(120, [&elem, im]()
+						{
+							if (ImGui::BeginTable("##ac_table", 5, ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg, ImVec2(ImGui::GetContentRegionAvail().x, 100)))
+							{
+								ImGui::TableSetupColumn("##col1", ImGuiTableColumnFlags_WidthFixed, ImGui::GetContentRegionAvail().x / 5);
+								ImGui::TableSetupColumn("##col2", ImGuiTableColumnFlags_WidthFixed, ImGui::GetContentRegionAvail().x / 5);
+								ImGui::TableSetupColumn("##col3", ImGuiTableColumnFlags_WidthFixed, ImGui::GetContentRegionAvail().x / 5);
+								ImGui::TableSetupColumn("##col4", ImGuiTableColumnFlags_WidthFixed, ImGui::GetContentRegionAvail().x / 5);
+								ImGui::TableSetupColumn("##col5", ImGuiTableColumnFlags_WidthFixed, ImGui::GetContentRegionAvail().x / 5);
+								int col = 0;
+
+								for (auto set_it = elem.indices.begin(); set_it != elem.indices.end(); )
+								{
+									const auto index_str = shared::utils::va("%d", *set_it);
+									if (!filter_index.PassFilter(index_str))
+									{
+										++set_it;
+										continue;
+									}
+									if (col % 4 == 0) {
+										ImGui::TableNextRow();
+									}
+
+									ImGui::TableNextColumn();
+									bool erase_this = false;
+
+									if (ImGui::Selectable(index_str, false, ImGuiSelectableFlags_AllowDoubleClick))
+									{
+										if (ImGui::IsMouseDoubleClicked(0)) {
+											erase_this = true;
+										}
+										else {
+											im->m_dbg_visualize_anti_cull_highlight = *set_it;
+										}
+									}
+
+									++col;
+									if (erase_this) {
+										set_it = elem.indices.erase(set_it);
+									}
+									else {
+										++set_it;
+									}
+								}
+								ImGui::EndTable();
+							}
+						});
+
+
+					auto add_mesh_index = [](map_settings::anti_cull_meshes_s& ac)
+						{
+							try
+							{
+								const int val = std::stoi(ac._internal_buffer);
+								ac.indices.emplace(val);
+							}
+							catch (const std::invalid_argument&) {
+								shared::common::log("ImGui", "AntiCull - Add Index - Invalid Argument", shared::common::LOG_TYPE::LOG_TYPE_ERROR);
+							}
+							catch (const std::out_of_range&) {
+								shared::common::log("ImGui", "AntiCull - Add Index -Out of Range", shared::common::LOG_TYPE::LOG_TYPE_ERROR);
+							}
+
+							ac._internal_buffer.clear();
+						};
+
+					ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonRed, true);
+					if (ImGui::Button("Remove Category")) {
+						pending_cat_removal = true;
+					}
+					ImGui::Style_ColorButtonPop();
+
+					ImGui::SameLine(0, 24);
+
+					ImGui::BeginDisabled(elem._internal_buffer.empty());
+					{
+						if (ImGui::Button(" + ")) {
+							add_mesh_index(elem);
+						}
+
+						ImGui::EndDisabled();
+					}
+
+					ImGui::SameLine();
+
+					SET_CHILD_WIDGET_WIDTH;
+					if (ImGui::InputText("Add Index", &elem._internal_buffer, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_EnterReturnsTrue)) {
+						add_mesh_index(elem);
+					} TT("Use the + Button on the left or press ENTER to add the index.");
+				}
+			}
+			ImGui::PopID();
+
+			if (pending_cat_removal) {
+				it = ac.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
+	}
+
 	void imgui::tab_map_settings()
 	{
 		// general settings
@@ -2089,7 +2291,14 @@ namespace gta4
 		{
 			static float cont_ignore_lights_height = 0.0f;
 			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Ignore/Allow Game Lights", cont_ignore_lights_height, cont_mapsettings_ignore_allow_lights,
-				true, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+				false, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// anticull meshes
+		{
+			static float cont_anticull_height = 0.0f;
+			cont_anticull_height = ImGui::Widget_ContainerWithCollapsingTitle("Anti Cull Meshes", cont_anticull_height, cont_mapsettings_anticull_meshes,
+				false, ICON_FA_EYE, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
 
@@ -2227,6 +2436,41 @@ namespace gta4
 				}
 
 				visualized_decal_renderstates.clear();
+			}
+		}
+
+		if (m_dbg_visualize_anti_cull_info)
+		{
+			const auto vp = game::pViewports;
+			if (vp->sceneviewport)
+			{
+				//const float draw_dist = im->m_dbg_visualize_anti_cull_info_distance;
+
+				ImVec2 viewport_pos = {};
+				const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
+
+				for (auto& l : visualized_anti_cull)
+				{
+					//if (fabs(cam_org.DistToSqr(l.pos) < draw_dist * draw_dist))
+					{
+						shared::imgui::world_to_screen(l.pos, viewport_pos);
+
+						std::ostringstream oss;
+						oss << "R: " << std::format("{:.2f}", l.radius) << "\n"
+							<< "H: " << std::format("{:.2f}", l.height) << "\n"
+							<< "ID: " << std::to_string(l.m_wModelIndex);
+
+						ImGui::GetBackgroundDrawList()->AddText(viewport_pos, 
+							l.forced_visible ? ImGui::GetColorU32(ImVec4(0.3f, 0.8f, 0.2f, 1.0f)) : ImGui::GetColorU32(ImGuiCol_Text),
+							oss.str().c_str());
+
+						if (l.draw_debug_box) {
+							shared::common::remix_api::get().debug_draw_box(l.mins, l.maxs, im->m_dbg_visualize_anti_cull_info_highlight_line_width, shared::common::remix_api::DEBUG_REMIX_LINE_COLOR::GREEN);
+						}
+					}
+				}
+
+				visualized_anti_cull.clear();
 			}
 		}
 	}
@@ -2497,7 +2741,7 @@ namespace gta4
 		colors[ImGuiCol_TableBorderStrong] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
 		colors[ImGuiCol_TableBorderLight] = ImVec4(0.00f, 0.00f, 0.00f, 0.54f);
 		colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.39f);
-		colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.67f, 0.52f, 0.24f, 1.00f);
+		colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.00f, 0.00f, 0.00f, 0.60f);
 		colors[ImGuiCol_TextLink] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
 		colors[ImGuiCol_TextSelectedBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
 		colors[ImGuiCol_DragDropTarget] = ImVec4(0.00f, 0.51f, 0.39f, 0.31f);

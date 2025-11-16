@@ -27,6 +27,8 @@ MARKER = [
     { marker_num = 570, position = [-1721.77, 347.40, 26.00], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 50.00 },
 ]
 
+
+
 # ##########################################################################################################################################
 # >> Ignore Game Lights
 # 
@@ -45,6 +47,8 @@ IGNORE_LIGHTS = [
     0x32734E7F
 ]
 
+
+
 # ##########################################################################################################################################
 # >> Allow Game Lights
 # 
@@ -61,4 +65,34 @@ IGNORE_LIGHTS = [
 
 ALLOW_LIGHTS = [
     0x8C8CB2FC
+]
+
+
+
+# ##########################################################################################################################################
+# >> Anti Culling Tweaks
+# 
+# :: The anti-cull logic might miss certain meshes (eg. if a skyscraper is made up of multiple smaller meshes) 
+# :: so this can be used tweak anti-culling behavior for specified meshes. 
+# :: Meshes will only be forced up until the specified distance of the 'category' they are in.
+# 
+# :: How to retrieve hashes:
+#    > Visualize model info in 3D Space (GUI -> Map Settings -> Anti Culling Tweaks -> Draw Visualization)
+#    > Select index of model and a add it to an existing categor
+#    > ! Export to clipboard when done -> override ANTICULL with clipboard data
+#
+# ~~ ANTICULL = [
+#   {          
+#       #                   comment         
+#       distance =          distance (from player) until forcing logic is active (0 = always forced)    [int 0-inf]
+#       indices = []        indices of meshes                                                           [int array]
+#   }, 
+#   { ... },
+# ]      
+ANTICULL = [
+
+    # skyscrapers
+    { distance = 400, indices = [
+        25679, 26510
+    ]},
 ]

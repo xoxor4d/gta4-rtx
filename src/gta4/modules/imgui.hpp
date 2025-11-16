@@ -33,9 +33,9 @@ namespace gta4
 		Vector m_debug_vector = { 0.0f, 0.0f, 0.0f };
 		Vector m_debug_vector2 = { 0.0f, 0.0f, 0.0f };
 
-		Vector m_debug_vector3 = { 1.0f, 1.0f, 1.0f };
-		Vector m_debug_vector4 = { 0.4f, 4.0f, 1.0f };
-		Vector m_debug_vector5 = { 0.0f, -45.0f, 1.0f };
+		Vector m_debug_vector3 = { 0.0f, 0.0f, 0.0f };
+		Vector m_debug_vector4 = { 0.0f, 0.0f, 0.0f };
+		Vector m_debug_vector5 = { 0.0f, 0.0f, 0.0f };
 
 		D3DXMATRIX m_dbg_phone_projection_matrix_offset;
 		D3DXMATRIX m_debug_mtx02;
@@ -102,6 +102,28 @@ namespace gta4
 			std::string_view tss_alphaarg2;
 		};
 		std::vector<visualized_decal_rs_s> visualized_decal_renderstates;
+
+		// --
+
+		float m_dbg_visualize_anti_cull_info_distance = 80.0f;
+		float m_dbg_visualize_anti_cull_info_min_radius = 16.0f;
+		float m_dbg_visualize_anti_cull_info_highlight_line_width = 0.25f;
+		int m_dbg_visualize_anti_cull_highlight = 0;
+		bool m_dbg_visualize_anti_cull_info = false;
+
+		struct visualized_anti_cull_s
+		{
+			Vector pos;
+			float radius = 0.0f;
+			float height = 0.0f;
+			int m_wModelIndex = 0;
+			Vector mins;
+			Vector maxs;
+			bool draw_debug_box = false;
+			bool forced_visible = true;
+		};
+		std::vector<visualized_anti_cull_s> visualized_anti_cull;
+		std::mutex visualized_anti_cull_mutex;
 
 		// --
 

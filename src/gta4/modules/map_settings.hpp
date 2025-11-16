@@ -31,11 +31,21 @@ namespace gta4
 			bool internal__is_hidden = false;
 		};
 
+		struct anti_cull_meshes_s
+		{
+			int distance;
+			std::unordered_set<int> indices;
+			std::string comment;
+
+			std::string _internal_buffer;
+		};
+
 		struct map_settings_s
 		{
 			std::vector<marker_settings_s> map_markers;
 			std::unordered_set<uint64_t> ignored_lights;
 			std::unordered_set<uint64_t> allow_lights;
+			std::vector<anti_cull_meshes_s> anticull_meshes;
 		};
 
 		static map_settings_s& get_map_settings() { return m_map_settings; }

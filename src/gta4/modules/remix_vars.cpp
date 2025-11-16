@@ -1,5 +1,8 @@
 #include "std_include.hpp"
 #include "remix_vars.hpp"
+
+#include "game_settings.hpp"
+#include "imgui.hpp"
 #include "shared/common/remix_api.hpp"
 
 namespace gta4
@@ -536,8 +539,26 @@ namespace gta4
 	// Interpolates all variables on the 'interpolate_stack' and removes them once they reach their goal. \n
 	void remix_vars::on_client_frame()
 	{
+		const auto gs = game_settings::get();
 		if (shared::common::remix_api::is_initialized())
 		{
+			if (game::is_in_game)
+			{
+				translate_and_apply_timecycle_settings();
+
+				// Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start
+				// and we def. need more then 3 samples to get somewhat good looking vehicle lights
+				const auto rtxdi_override_val = gs->remix_override_rtxdi_samplecount.get_as<int>();
+				if (rtxdi_override_val) // override if > 0
+				{
+					static auto rtxdi_samplecount = get_option("rtx.di.initialSampleCount");
+					remix_vars::option_value val { .value = (float)rtxdi_override_val };
+					set_option(rtxdi_samplecount, val);
+				}
+			}
+
+			// --- transitions
+
 			if (!is_paused())
 			{
 				if (!interpolate_stack.empty())
@@ -716,6 +737,220 @@ namespace gta4
 	void xo_vars_clear_transitions_fn()
 	{
 		remix_vars::interpolate_stack.clear();
+	}
+
+
+	// for visualization of values in gui
+#define ASSIGN_IMGUI_VIS_FLOAT(name) \
+		im->m_timecyc_curr_##name = timecycle->##name; \
+		im->m_timecyc_curr_##name##_final = val.value;
+
+			// for visualization of values in gui
+#define ASSIGN_IMGUI_VIS_VEC3(tc_name) \
+		im->m_timecyc_curr_##tc_name##.x = val.vector[0]; \
+		im->m_timecyc_curr_##tc_name##.y = val.vector[1]; \
+		im->m_timecyc_curr_##tc_name##.z = val.vector[2];
+
+		// for visualization of values in gui
+#define ASSIGN_IMGUI_VIS_UNPACKED_COLOR(tc_name, temp_vec) \
+		im->m_timecyc_curr_##tc_name = ##temp_vec; \
+		im->m_timecyc_curr_##tc_name##_final.x = val.vector[0]; \
+		im->m_timecyc_curr_##tc_name##_final.y = val.vector[1]; \
+		im->m_timecyc_curr_##tc_name##_final.z = val.vector[2]; \
+		im->m_timecyc_curr_##tc_name##_final.w = val.vector[3];
+
+	void remix_vars::translate_and_apply_timecycle_settings()
+	{
+		auto unpack_uint32 = [](const uint32_t& in, float* out)
+			{
+				out[0] = static_cast<float>(in >> 16 & 0xFF) / 255.0f;
+				out[1] = static_cast<float>(in >> 8 & 0xFF) / 255.0f;
+				out[2] = static_cast<float>(in >> 0 & 0xFF) / 255.0f;
+				out[3] = static_cast<float>(in >> 24 & 0xFF) / 255.0f;
+			};
+
+		auto mapRange = [](float input, float in_min, float in_max, float out_min, float out_max)
+			{
+				return out_min + (out_max - out_min) * ((input - in_min) / (in_max - in_min));
+			};
+
+		{
+			static auto im = imgui::get();
+			static auto vars = remix_vars::get();
+			static auto gs = game_settings::get();
+			remix_vars::option_value val{};
+
+
+			// TODO! Add defaults for used remix variables in case user disables the saving of ALL remix variables
+
+			//auto first_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8910);
+			//auto third_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8B20);
+
+			game::TimeCycleParams* timecycle = game::m_pCurrentTimeCycleParams_01;
+
+			if (game::m_dwCutsceneState && *game::m_dwCutsceneState > 0) {
+				timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
+			}
+
+			// manual override
+			if (im->m_dbg_used_timecycle >= 0)
+			{
+				switch (im->m_dbg_used_timecycle)
+				{
+				default:
+				case 0:
+					timecycle = game::m_pCurrentTimeCycleParams_01;
+					break;
+
+				case 1:
+					timecycle = game::m_pCurrentTimeCycleParams_02;
+					break;
+
+				case 2:
+					timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
+					break;
+				}
+			}
+
+			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness");
+			if (gs->timecycle_skylight_enabled.get_as<bool>() && rtxSkybrightness)
+			{
+				val.value = timecycle->mSkyLightMultiplier * gs->timecycle_skylight_scalar.get_as<float>();
+				vars->set_option(rtxSkybrightness, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mSkyLightMultiplier);
+			}
+
+
+			static auto rtxBloomBurnIntensity = vars->get_option("rtx.bloom.burnIntensity");
+			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold");
+			if (gs->timecycle_bloom_enabled.get_as<bool>() && rtxBloomBurnIntensity && rtxBloomLuminanceThreshold)
+			{
+				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
+				vars->set_option(rtxBloomBurnIntensity, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mBloomIntensity);
+
+				val.value = timecycle->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
+				vars->set_option(rtxBloomLuminanceThreshold, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mBloomThreshold);
+			}
+
+
+			static auto rtxTonemapColorBalance = vars->get_option("rtx.tonemap.colorBalance");
+			if (gs->timecycle_colorcorrection_enabled.get_as<bool>() && rtxTonemapColorBalance)
+			{
+				Vector temp_color_offset;
+				if (gs->timecycle_colortemp_enabled.get_as<bool>())
+				{
+					const float nrml_temp = std::clamp(timecycle->mTemperature / 15.0f, -1.0f, 1.0f);
+					temp_color_offset.x = nrml_temp * 0.3f;
+					temp_color_offset.y = 0.0f;
+					temp_color_offset.z = -nrml_temp * 0.3f;
+					temp_color_offset *= gs->timecycle_colortemp_influence.get_as<float>();
+					im->m_timecyc_curr_mTemperature = timecycle->mTemperature;
+					im->m_timecyc_curr_mTemperature_offset = temp_color_offset;
+				}
+
+				Vector4D color_correction;
+				unpack_uint32(timecycle->mColorCorrection, &color_correction.x);
+				val.vector[0] = color_correction.x + temp_color_offset.x;
+				val.vector[1] = color_correction.y + temp_color_offset.y;
+				val.vector[2] = color_correction.z + temp_color_offset.z;
+				vars->set_option(rtxTonemapColorBalance, val);
+				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction);
+			}
+
+
+			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation");
+			if (gs->timecycle_desaturation_enabled.get_as<bool>() && rtxTonemapSaturation)
+			{
+				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * mapRange(timecycle->mDesaturationFar, 0.0f, 1.0f, 0.0f, 0.4f);
+				val.value = 1.0f - ((1.0f - timecycle->mDesaturation) * gs->timecycle_desaturation_influence.get_as<float>());
+				val.value -= far_desaturation_influence;
+				vars->set_option(rtxTonemapSaturation, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mDesaturation);
+				im->m_timecyc_curr_mDesaturationFar = timecycle->mDesaturationFar;
+				im->m_timecyc_curr_mDesaturationFar_offset = far_desaturation_influence;
+			}
+
+
+			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias");
+			if (gs->timecycle_gamma_enabled.get_as<bool>() && rtxTonemapExposureBias)
+			{
+				val.value = -(1.0f - timecycle->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
+				vars->set_option(rtxTonemapExposureBias, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mGamma);
+			}
+
+
+			{
+				//val.value = log2(game::m_pCurrentTimeCycleParams->mLumMin * 0.01f) + 4.0f; // +6?m_dbg_timecyc_skylight_scalar
+				//vars->set_option(vars->get_option("rtx.autoExposure.evMinValue"), val);
+
+				//val.value = log2(game::m_pCurrentTimeCycleParams->mLumMax * 0.01f) + 4.0f; // +4?
+				//vars->set_option(vars->get_option("rtx.autoExposure.evMaxValue"), val);
+			}
+
+
+			Vector4D fog_color_density;
+			unpack_uint32(timecycle->mSkyBottomColorFogDensity, &fog_color_density.x);
+			game::helper_timecycle_current_fog_density = fog_color_density.w; // global
+
+			// vis.
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.x = val.vector[0];
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.y = val.vector[1];
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.z = val.vector[2];
+			im->m_timecyc_curr_mSkyBottomColorFogDensity.w = val.vector[3];
+
+			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
+			if (gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
+			{
+				const auto& base_strength = gs->timecycle_fogcolor_base_strength.get_as<float>();
+				const auto& influence = gs->timecycle_fogcolor_influence_scalar.get_as<float>();
+
+				Vector t = fog_color_density * influence;
+				t += base_strength;
+
+				t.Normalize();
+
+				val.vector[0] = t.x;
+				val.vector[1] = t.y;
+				val.vector[2] = t.z;
+
+				//val.vector[0] = base_strength + fog_color_density.x * influence;
+				//val.vector[1] = base_strength + fog_color_density.y * influence;
+				//val.vector[2] = base_strength + fog_color_density.z * influence;
+
+				vars->set_option(rtxVolumetricsSingleScatteringAlbedo, val);
+				ASSIGN_IMGUI_VIS_VEC3(singleScatteringAlbedo);
+			}
+
+			float atmos_height = 0.0f;
+			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters");
+			if (gs->timecycle_skyhorizonheight_enabled.get_as<bool>() && rtxVolumetricsAtmosphereHeightMeters)
+			{
+				atmos_height = timecycle->mSkyHorizonHeight * 100.0f * gs->timecycle_skyhorizonheight_scalar.get_as<float>();
+				val.value = atmos_height;
+				vars->set_option(rtxVolumetricsAtmosphereHeightMeters, val);
+				ASSIGN_IMGUI_VIS_FLOAT(mSkyHorizonHeight);
+			}
+
+			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters");
+			if (gs->timecycle_fogdensity_enabled.get_as<bool>() && rtxVolumetricsTransmittanceMeasurementDistanceMeters)
+			{
+				val.value = mapRange(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.6f)
+					* gs->timecycle_fogdensity_influence_scalar.get_as<float>()
+					+ mapRange(atmos_height, 0.0f, 1000.0f,
+						gs->timecycle_skyhorizonheight_low_transmittance_offset.get_as<float>(),
+						gs->timecycle_skyhorizonheight_high_transmittance_offset.get_as<float>());
+
+				if (val.value < 0.6f) {
+					val.value = 0.6f;
+				}
+
+				vars->set_option(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
+				im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters = val.value;
+			}
+		}
 	}
 
 	remix_vars::remix_vars()

@@ -92,4 +92,51 @@ namespace shared::common::toml_ext
 		toml_str += "\n]";
 		return toml_str;
 	}
+
+	/// Builds a string containing all anti culling elements
+	/// @return the final string in toml format
+	std::string build_anticull_array(const std::vector<gta4::map_settings::anti_cull_meshes_s>& entries)
+	{
+		auto index_count = 0u;
+
+		std::string toml_str = "ANTICULL = [\n"s;
+		for (auto& m : entries)
+		{
+			if (m.indices.empty()) {
+				continue;
+			}
+
+			if (!m.comment.empty()) {
+				toml_str += "\n    # " + m.comment + "\n";
+			}
+
+			toml_str += "    { distance = " + std::to_string(m.distance);
+
+			bool first_hash = true;
+
+			toml_str += ", indices = [\n        ";
+			for (auto& index : m.indices)
+			{
+				if (!first_hash) {
+					toml_str += ", ";
+				}
+				else {
+					first_hash = false;
+				}
+
+				index_count++;
+
+				if (!(index_count % 10)) {
+					toml_str += "\n        ";
+				}
+
+				toml_str += std::to_string(index);
+			}
+
+			toml_str += "\n    ]},\n";
+		}
+
+		toml_str += "]";
+		return toml_str;
+	}
 }

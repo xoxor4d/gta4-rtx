@@ -138,6 +138,51 @@ namespace gta4
 					m_map_settings.allow_lights = toml::get<std::unordered_set<uint64_t>>(allow_lights);
 				}
 			} // end 'ALLOW_LIGHTS'
+
+
+			// ####################
+			// parse 'ANTICULL' table
+			if (config.contains("ANTICULL"))
+			{
+				// #
+				auto process_anticull_entry = [](const toml::value& entry)
+					{
+						std::string temp_comment;
+						if (!entry.comments().empty())
+						{
+							temp_comment = entry.comments().at(0);
+							temp_comment.erase(0, 2); // rem '# '
+						}
+
+						int temp_distance = 0;
+						if (entry.contains("distance")) {
+								temp_distance = to_int(entry.at("distance"), 0);
+						}
+
+						std::unordered_set<int> temp_set;
+						if (entry.contains("indices"))
+						{
+							if (auto& idx = entry.at("indices"); idx.is_array()) {
+								temp_set = toml::get<std::unordered_set<int>>(idx);
+							}
+						}
+
+						m_map_settings.anticull_meshes.emplace_back(
+							anti_cull_meshes_s {
+								.distance = temp_distance,
+								.indices = std::move(temp_set),
+								.comment = std::move(temp_comment)
+							});
+					};
+
+				if (const auto ac = config.at("ANTICULL");
+					!ac.is_empty() && !ac.as_array().empty())
+				{
+					for (const auto& entry : ac.as_array()) {
+						process_anticull_entry(entry);
+					}
+				}
+			} // end 'ANTICULL'
 		}
 
 		catch (const toml::syntax_error& err)

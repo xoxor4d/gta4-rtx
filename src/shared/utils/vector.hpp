@@ -570,6 +570,11 @@
 			return remixapi_Float3D{ x, y, z };
 		}
 
+		D3DXVECTOR3 ToD3DXVector() const
+		{
+			return D3DXVECTOR3 { x, y, z };
+		}
+
 	public:
 		vec_t x, y, z;
 	};

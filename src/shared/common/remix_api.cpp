@@ -174,7 +174,7 @@ namespace shared::common
 				.normalTexture = L"",
 				.tangentTexture = L"",
 				.emissiveTexture = L"",
-				.emissiveIntensity = 0.1f,
+				.emissiveIntensity = 5.0f,
 				.emissiveColorConstant = { 1.0f, 0.0f, 0.0f },
 			};
 			m_bridge.CreateMaterial(&info, &m_debug_line_materials[0]);

@@ -120,6 +120,7 @@ namespace gta4
 
 		//static void				on_map_load(std::string map_name);
 		static void				on_client_frame();
+		static void				translate_and_apply_timecycle_settings();
 
 		struct interpolate_entry_s
 		{
