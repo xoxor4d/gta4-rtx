@@ -90,70 +90,8 @@ namespace gta4
 		game::grcViewport viewport;
 	};
 
-	struct drawableReference
-	{
-		int pDrawable;
-		int pShaderEffect;
-		int field_8;
-		int pPrev;
-		int pNext;
-	};
-
-	// from https://public.sannybuilder.com/gtasa_exe_idb/gta_iv_eflc/
-	struct CEntity
-	{
-		void* vtbl;
-		int field_4;
-		int field_8;
-		int field_C;
-		Vector m_pos;
-		int m_fHeading;                       ///< float
-		D3DXMATRIX* worldTransform;                        ///< pointer to position matrix
-		int m_dwFlags;                        ///< see CFlags
-		///< 0x1 = UsesCollision
-		///< 0x4 = Fixed (frozen)
-		///< 0x8 = FixedWaitingForCollision
-		///< 0x10 = FixedByPhysics
-		///< 0x20 = Visible
-		///< 0x100 = Damaged
-		///< 0x1000 = draw last
-		///< 0x4000000 = Has Physics Inst
-		int m_dwFlags2;                       ///< flags - 2 - lights, 21 - onFire
-		///< 0x40 thru 0x200 (4 bits)
-		///< --> & 0x3C0
-		///< --> object type (2 = playerPed, 4 = ped)
-		///< 0x200000 = OnFire
-		///< 0x400000 = have coords matrix
-		__int16 field_2C;
-		__int16 m_wModelIndex;
-		int m_pReference;
-		drawableReference* m_pDrawableReference;
-		int m_pPhysics;                       ///< phInst *
-		int field_3C;
-		char field_40;
-		char field_41;
-		__int16 field_42;
-		__int16 field_44;
-		__int16 field_46;
-		int m_hInterior;
-		int field_4C;
-		int field_50;                         ///< float
-		int field_54;
-		int field_58;
-		__int16 m_wIplIndex;
-		__int16 field_5E;
-		char field_60;
-		char field_61;
-		char field_62;
-		char m_alpha;
-		int field_64;
-		int field_68;
-		int m_pNetEntity;
-	};
-
-
 	DETOUR_TYPEDEF(static_world_culling_check, BOOL, __thiscall, void* this_ptr, unkown_struct_culling* unk);
-	BOOL __fastcall static_world_culling_check_hk(CEntity* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
+	BOOL __fastcall static_world_culling_check_hk(game::CEntity* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
 	{
 		// this = AVCBuilding : AVCEntity : AUCVirtualBase
 		auto im = imgui::get();
@@ -320,6 +258,72 @@ namespace gta4
 		return static_world_culling_check_og(this_ptr, unk);
 	}
 
+
+
+	int extended_anticull_hk(game::CEntity* ent)
+	{
+		const auto im = imgui::get();
+		const auto gs = game_settings::get();
+
+		if (ent && gs->nocull_extended.get_as<bool>())
+		{
+			if (im->m_dbg_extended_anticull_always_true) {
+				return TRUE;
+			}
+
+			const auto viewport = game::pViewports;
+			if (viewport && viewport->sceneviewport)
+			{
+				// calculate distance to object
+				Vector4D object_origin = {};
+				shared::utils::hook::call_virtual<20, void, Vector4D*>(ent, &object_origin);
+
+				const Vector cam_org = &viewport->sceneviewport->cameraInv.m[3][0];
+				const float dist_sqr = fabs(cam_org.DistToSqr(object_origin)); //
+
+				if (const auto& ms = map_settings::get_map_settings(); !ms.anticull_meshes.empty())
+				{
+					for (const auto& cat : ms.anticull_meshes)
+					{
+						// dist 0 = always active
+						if (!cat.distance || (int)dist_sqr < cat.distance * cat.distance)
+						{
+							if (cat.indices.contains(ent->m_wModelIndex)) {
+								return TRUE;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return FALSE;
+	}
+	
+	__declspec(naked) void extended_anticull_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	esi; // ent
+			call	extended_anticull_hk;
+			add		esp, 4;
+			cmp		eax, 1; // check if returned 1
+			je		SKIP;
+			popad;
+
+			push    ebp;				// og
+			mov     ebp, [esp + 0x18];	// og
+			jmp		game::retn_addr__extended_anti_culling_check_stub;
+
+		SKIP:
+			popad;
+			pop		ebx; // there is one push in front of our hook
+			jmp		game::jmp_addr__extended_anti_culling_check_stub; // 0xAE8735
+		}
+	}
+
+
 	// A general culling function used by lights, npc's and other? things ..
 	int __fastcall FrustumPlanesCheck(game::grcViewport* vp, [[maybe_unused]] void* fastcall_arg, float orgX, float orgY, float orgZ, float distanceToObject, float* outAdjustedNearDistance)
 	{
@@ -452,7 +456,7 @@ namespace gta4
 		}
 	}
 
-
+	// detoured single headlight func to apply same light settings as in dual mode
 	void veh_single_headlight_hk(D3DXMATRIX* some_mtx, float* light_pos, float* light_dir, float* color, float intensity, float radius, [[maybe_unused]] float inner_cone_angle, [[maybe_unused]] float outer_cone_angle, int inter_index, int room_index, int shadow_rel_index, char flag1, char flag2)
 	{
 		const auto im = imgui::get();
@@ -471,10 +475,7 @@ namespace gta4
 			inter_index, room_index, shadow_rel_index, flag1, flag2);
 	}
 
-
-
-
-	// todo create hooks for single light paths to adjust light settings similar to dual
+	// single center headlight to dual headlight
 	void veh_center_rearlight(D3DXMATRIX* some_mtx, D3DXMATRIX* left_light_pos, D3DXMATRIX* right_light_pos, [[maybe_unused]] float* some_vec3, float* color, float intensity, float radius, float inner_cone_angle, float outer_cone_angle, int inter_index, int room_index, int shadow_rel_index, char flag1, char flag2)
 	{
 		//const auto im = imgui::get();
@@ -528,6 +529,7 @@ namespace gta4
 		}
 	}
 
+	// detoured single rearlight func to apply same light settings as in dual mode
 	void veh_single_rearlight_hk(D3DXMATRIX* some_mtx, float* light_pos, [[maybe_unused]] float* og_light_dir, float* color, float intensity, float radius, float inner_cone_angle, float outer_cone_angle, int inter_index, int room_index, int shadow_rel_index, char flag1, char flag2)
 	{
 		//const auto im = imgui::get();
@@ -572,6 +574,10 @@ namespace gta4
 		shared::utils::hook::detour(game::hk_addr__static_world_culling_check_hk, &static_world_culling_check_hk, DETOUR_CAST(static_world_culling_check_og));
 		shared::utils::hook::nop(game::nop_addr__static_world_frustum_patch01, 6); // disable secondary frustum based check for static objects by "returning 2"
 		shared::utils::hook::nop(game::nop_addr__static_world_frustum_patch02, 2); // ^
+
+
+		shared::utils::hook(game::retn_addr__extended_anti_culling_check_stub - 5u, extended_anticull_stub, HOOK_JUMP).install()->quick();
+
 
 		// light culling check 0xABD093 - detour frustum check function
 		shared::utils::hook::detour(game::hk_addr__frustum_check, &FrustumPlanesCheck, nullptr);

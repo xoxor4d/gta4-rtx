@@ -69,6 +69,7 @@ namespace gta4
 		bool m_dbg_skip_draw_indexed_checks = false;
 		bool m_dbg_disable_ignore_baked_lighting_enforcement = false;
 		bool m_dbg_never_cull_statics = false;
+		bool m_dbg_extended_anticull_always_true = false;
 		bool m_dbg_disable_hud_fixup = false;
 
 		int m_dbg_tag_exp_hair_as_index = -1;

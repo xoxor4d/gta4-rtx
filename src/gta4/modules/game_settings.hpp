@@ -396,6 +396,13 @@ namespace gta4
 				20.0f
 			};
 
+			variable nocull_extended = {
+				"nocull_extended",
+				("Extended Anti Culling logic. Rechecks for manually added anti culling meshes added via mapsettings.\n"
+				 "Does not prevent culling if part of the map containing the mesh 'unloads'"),
+				true
+			};
+
 
 			// ----------------------------------
 			// light translation related settings

@@ -109,6 +109,9 @@ namespace gta4::game
 	uint32_t nop_addr__static_world_frustum_patch01 = 0u;
 	uint32_t nop_addr__static_world_frustum_patch02 = 0u;
 
+	uint32_t retn_addr__extended_anti_culling_check_stub = 0u;
+	uint32_t jmp_addr__extended_anti_culling_check_stub = 0u;
+
 	uint32_t hk_addr__on_update_light_list_stub = 0u;
 	uint32_t retn_addr__on_render_light_list_stub = 0u;
 
@@ -478,6 +481,13 @@ namespace gta4::game
 
 		if (const auto offset = shared::utils::mem::find_pattern("75 ? B9 ? ? ? ? 89 4C 24 ? 32 C0", 0, "nop_addr__static_world_frustum_patch02", use_pattern, 0x444C96); offset) {
 			nop_addr__static_world_frustum_patch02 = offset; found_pattern_count++;
+		} total_pattern_count++;
+
+
+		PATTERN_OFFSET_SIMPLE(retn_addr__extended_anti_culling_check_stub, "33 DB 85 ED 0F 8E ? ? ? ? 57", 0, 0xAE8698);
+
+		if (const auto offset = shared::utils::mem::find_pattern("0F 85 ? ? ? ? 53 55 8B 6C 24 ? 33 DB", 0, "jmp_addr__extended_anti_culling_check_stub", use_pattern, 0xAE868C); offset) {
+			jmp_addr__extended_anti_culling_check_stub = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
 		} total_pattern_count++;
 
 

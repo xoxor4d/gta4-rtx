@@ -38,6 +38,7 @@ namespace gta4
 			std::string comment;
 
 			std::string _internal_buffer;
+			std::string _internal_comment_buffer;
 		};
 
 		struct map_settings_s

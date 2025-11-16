@@ -558,6 +558,8 @@ namespace gta4
 			ImGui::Spacing(0, 4);
 
 			ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
+			ImGui::Checkbox("Extended Anticull Always TRUE", &im->m_dbg_extended_anticull_always_true); TT("Always return true when extended anticull is on.");
+
 			ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
 			ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement);
 			TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
@@ -954,6 +956,8 @@ namespace gta4
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Anti Culling of Static Objects ");
 		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("Extended AntiCulling", gs->nocull_extended);
 
 		gamesettings_float_widget("Near: No Culling Until Distance", gs->nocull_dist_near_static, 0.0f, FLT_MAX, 0.5f);
 		
@@ -2155,7 +2159,11 @@ namespace gta4
 					ImGui::DragInt("Distance", &elem.distance);
 
 					SET_CHILD_WIDGET_WIDTH;
-					ImGui::InputText("Comment", &elem.comment);
+					if (ImGui::InputText("Comment", &elem._internal_comment_buffer, ImGuiInputTextFlags_EnterReturnsTrue))
+					{
+						elem.comment = elem._internal_comment_buffer;
+						elem._internal_comment_buffer.clear();
+					}
 
 					ImGui::Spacing(0, 4);
 

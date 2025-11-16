@@ -2,7 +2,6 @@
 
 namespace gta4::game
 {
-	
 	struct geometry
 	{
 		void* vtbl;
@@ -42,6 +41,67 @@ namespace gta4::game
 		char cUnk3;
 		char cUnk4;
 		uint16_t shaderRelatedCount;
+	};
+
+	struct drawableReference
+	{
+		int pDrawable;
+		int pShaderEffect;
+		int field_8;
+		int pPrev;
+		int pNext;
+	};
+
+	// from https://public.sannybuilder.com/gtasa_exe_idb/gta_iv_eflc/
+	struct CEntity
+	{
+		void* vtbl;
+		int field_4;
+		int field_8;
+		int field_C;
+		Vector m_pos;
+		int m_fHeading;                       ///< float
+		D3DXMATRIX* worldTransform;                        ///< pointer to position matrix
+		int m_dwFlags;                        ///< see CFlags
+		///< 0x1 = UsesCollision
+		///< 0x4 = Fixed (frozen)
+		///< 0x8 = FixedWaitingForCollision
+		///< 0x10 = FixedByPhysics
+		///< 0x20 = Visible
+		///< 0x100 = Damaged
+		///< 0x1000 = draw last
+		///< 0x4000000 = Has Physics Inst
+		int m_dwFlags2;                       ///< flags - 2 - lights, 21 - onFire
+		///< 0x40 thru 0x200 (4 bits)
+		///< --> & 0x3C0
+		///< --> object type (2 = playerPed, 4 = ped)
+		///< 0x200000 = OnFire
+		///< 0x400000 = have coords matrix
+		__int16 field_2C;
+		__int16 m_wModelIndex;
+		int m_pReference;
+		drawableReference* m_pDrawableReference;
+		int m_pPhysics;                       ///< phInst *
+		int field_3C;
+		char field_40;
+		char field_41;
+		__int16 field_42;
+		__int16 field_44;
+		__int16 field_46;
+		int m_hInterior;
+		int field_4C;
+		int field_50;                         ///< float
+		int field_54;
+		int field_58;
+		__int16 m_wIplIndex;
+		__int16 field_5E;
+		char field_60;
+		char field_61;
+		char field_62;
+		char m_alpha;
+		int field_64;
+		int field_68;
+		int m_pNetEntity;
 	};
 
 	struct cmdarg

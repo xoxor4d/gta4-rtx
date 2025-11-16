@@ -124,6 +124,9 @@ namespace gta4::game
 	extern uint32_t nop_addr__static_world_frustum_patch01;
 	extern uint32_t nop_addr__static_world_frustum_patch02;
 
+	extern uint32_t retn_addr__extended_anti_culling_check_stub;
+	extern uint32_t jmp_addr__extended_anti_culling_check_stub;
+
 	extern uint32_t hk_addr__on_update_light_list_stub;
 	extern uint32_t retn_addr__on_render_light_list_stub;
 
