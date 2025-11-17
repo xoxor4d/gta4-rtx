@@ -30,6 +30,8 @@ namespace gta4
 		bool m_do_not_pause_on_lost_focus = false;
 		bool m_do_not_pause_on_lost_focus_changed = false;
 
+		bool m_screenshot_mode = false;
+
 		Vector m_debug_vector = { 0.0f, 0.0f, 0.0f };
 		Vector m_debug_vector2 = { 0.0f, 0.0f, 0.0f };
 
@@ -75,6 +77,7 @@ namespace gta4
 		int m_dbg_tag_exp_hair_as_index = -1;
 
 		int m_dbg_used_timecycle = -1;
+		bool m_dbg_debug_single_frame_timecycle_remix_vars = false;
 
 		bool m_dbg_custom_veh_headlight_enabled = false;
 		Vector m_dbg_custom_veh_headlight_color = { 1.0f, 0.0f, 0.0f };

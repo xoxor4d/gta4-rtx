@@ -68,7 +68,6 @@ namespace gta4
 			im->m_do_not_pause_on_lost_focus_changed = false;
 		}
 
-
 		// camera setup
 		{
 			shared::globals::d3d_device->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);

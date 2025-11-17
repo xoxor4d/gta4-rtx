@@ -120,6 +120,15 @@ namespace gta4
 	{
 		if (o && shared::common::remix_api::is_initialized())
 		{
+			if (o->second.current.compare(o->second.type, v))
+			{
+				if (imgui::get()->m_dbg_debug_single_frame_timecycle_remix_vars) {
+					shared::common::log("RemixVars", std::format("Not setting {} because value did not change.", o->first));
+				}
+
+				return false;
+			}
+
 			o->second.current = v;
 
 			if (is_level_setting) {
@@ -156,6 +165,11 @@ namespace gta4
 			if (!var_str.empty())
 			{
 				shared::common::remix_api::get().m_bridge.SetConfigVariable(o->first.c_str(), var_str.c_str());
+
+				if (imgui::get()->m_dbg_debug_single_frame_timecycle_remix_vars) {
+					shared::common::log("RemixVars", std::format("Set {} to {}", o->first, var_str));
+				}
+				
 				return true;
 			}
 

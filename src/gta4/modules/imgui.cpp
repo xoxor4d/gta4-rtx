@@ -114,8 +114,8 @@ namespace gta4
 		ImGui::PopFont();
 
 		ImGui::Spacing(0.0f, 16.0f);
-		CENTER_URL("Github Repository", "https://github.com/xoxor4d/gta4-rtx");
-		CENTER_URL("Github Project Page", "https://xoxor4d.github.io/projects/gta4-rtx");
+		CENTER_URL("GitHub Repository", "https://github.com/xoxor4d/gta4-rtx");
+		CENTER_URL("GitHub Project Page", "https://xoxor4d.github.io/projects/gta4-rtx");
 		CENTER_URL("Latest build", "https://github.com/xoxor4d/gta4-rtx/releases");
 
 		ImGui::Spacing(0.0f, 16.0f);
@@ -142,6 +142,9 @@ namespace gta4
 		CENTER_URL("IV-SDK", "https://github.com/Zolika1351/iv-sdk/");
 		CENTER_URL("IV-SDK-DotNet", "https://github.com/ClonkAndre/IV-SDK-DotNet");
 		CENTER_URL("DayL", "https://www.gtainside.de/de/user/falcogray");
+		CENTER_URL("Entity", "https://www.youtube.com/@paprykszadolowski8796");
+		CENTER_URL("Gabdeg", "https://www.youtube.com/@gabdeg793");
+		CENTER_URL("Hemry", "https://www.youtube.com/@Hemry81");
 
 		ImGui::Spacing(0.0f, 24.0f);
 		ImGui::CenterText("And of course, all my fellow Ko-Fi and Patreon supporters");
@@ -818,6 +821,31 @@ namespace gta4
 		if (ImGui::Checkbox("Do not Pause on Lost Focus", &im->m_do_not_pause_on_lost_focus)) {
 			im->m_do_not_pause_on_lost_focus_changed = true;
 		}
+
+		if (ImGui::Button("Timecycle Vars - Debug Single Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			im->m_dbg_debug_single_frame_timecycle_remix_vars = true;
+		}
+
+		ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
+		if (ImGui::Button("Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 32)))
+		{
+			const auto n = natives::get();
+
+			natives::Ped ped;
+			n->GetPlayerChar(n->GetPlayerId(), &ped);
+
+			n->DisplayRadar(im->m_screenshot_mode);
+
+			if (im->m_screenshot_mode) {
+				n->HideHudAndRadarThisFrame();
+			}
+			
+			n->DisplayHud(im->m_screenshot_mode);
+			n->SetCharVisible(ped, im->m_screenshot_mode);
+
+			im->m_screenshot_mode = !im->m_screenshot_mode;
+		}
+		ImGui::Style_ColorButtonPop();
 	}
 
 	void imgui::tab_dev()
@@ -2771,6 +2799,9 @@ namespace gta4
 		if (im_demo_menu) {
 			ImGui::ShowDemoWindow(&im_demo_menu);
 		}
+
+		// resets after one frame
+		m_dbg_debug_single_frame_timecycle_remix_vars = false;
 
 #define ADD_TAB(NAME, FUNC) \
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0)));			\

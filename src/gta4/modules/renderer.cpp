@@ -1114,7 +1114,7 @@ namespace gta4
 			g_rendered_first_primitive = true;
 		}
 
-		if (!is_initialized()) {
+		if (!is_initialized() || shared::globals::imgui_is_rendering) {
 			return dev->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 		}
 
@@ -1378,7 +1378,7 @@ namespace gta4
 
 	HRESULT renderer::on_draw_indexed_prim(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const INT& BaseVertexIndex, const UINT& MinVertexIndex, const UINT& NumVertices, const UINT& startIndex, const UINT& primCount)
 	{
-		if (!is_initialized()) {
+		if (!is_initialized() || shared::globals::imgui_is_rendering) {
 			return dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 		}
 
@@ -2687,6 +2687,10 @@ namespace gta4
 	void on_add_frontendhelpertext_hk()
 	{
 		static auto im = imgui::get();
+
+		if (im->m_screenshot_mode) {
+			natives::get()->HideHudAndRadarThisFrame();
+		}
 
 		// reset in gta4::on_begin_scene_cb
 		if (g_applied_hud_hack || *game::m_bMobilePhoneActive) {

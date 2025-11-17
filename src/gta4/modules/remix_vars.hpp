@@ -67,6 +67,28 @@ namespace gta4
 			int integer;
 			float value;
 			float vector[4];
+
+			// return true if option_values match
+			bool compare(const OPTION_TYPE& type, const option_value& other, float eps = 1e-6f) const
+			{
+				switch (type)
+				{
+				case OPTION_TYPE_BOOL:    return enabled == other.enabled;
+				case OPTION_TYPE_INT:     return integer == other.integer;
+				case OPTION_TYPE_FLOAT:   return std::abs(value - other.value) <= eps;
+				case OPTION_TYPE_VEC2:
+				case OPTION_TYPE_VEC3:
+					for (int i = 0; i < 3; ++i) 
+					{
+						if (std::abs(vector[i] - other.vector[i]) > eps) {
+							return false;
+						}
+					}
+					return true;
+				default:
+					return false;
+				}
+			}
 		};
 
 		struct option_s
