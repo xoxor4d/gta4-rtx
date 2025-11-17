@@ -80,6 +80,8 @@ namespace gta4
 				shared::globals::d3d_device->SetTransform(D3DTS_PROJECTION, &vp->sceneviewport->proj);
 			}
 		}
+
+		//remix_vars::translate_and_apply_timecycle_settings();
 	}
 
 	// ----

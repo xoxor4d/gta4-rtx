@@ -137,6 +137,7 @@ namespace gta4
 		{
 			uint64_t hash = 0u;
 			Vector pos;
+			game::CLightSource m_def_copy;
 			bool ignored = false; // ignored via map_settings
 			bool allowed_filler = false; // allowed via map_settings (only used with ignore filler lights option)
 			bool is_filler = false;

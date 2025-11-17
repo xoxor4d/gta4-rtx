@@ -31,6 +31,30 @@ namespace gta4
 			bool internal__is_hidden = false;
 		};
 
+		struct light_override_s
+		{
+			Vector pos;
+			Vector dir;
+			Vector color = { 1.0f, 1.0f, 1.0f };
+			float radius = 5.0f;
+			float intensity = 5.0f;
+			float outer_cone_angle = 1.5f;
+			float inner_cone_angle = 0.78f;
+			float volumetric_scale = 1.0f;
+			bool light_type = false;
+			std::string comment;
+
+			bool _use_pos = false;
+			bool _use_dir = false;
+			bool _use_color = false;
+			bool _use_radius = false;
+			bool _use_intensity = false;
+			bool _use_outer_cone_angle = false;
+			bool _use_inner_cone_angle = false;
+			bool _use_volumetric_scale = false;
+			bool _use_light_type = false;
+		};
+
 		struct anti_cull_meshes_s
 		{
 			int distance;
@@ -46,6 +70,7 @@ namespace gta4
 			std::vector<marker_settings_s> map_markers;
 			std::unordered_set<uint64_t> ignored_lights;
 			std::unordered_set<uint64_t> allow_lights;
+			std::unordered_map<uint64_t, light_override_s> light_overrides;
 			std::vector<anti_cull_meshes_s> anticull_meshes;
 		};
 

@@ -70,6 +70,38 @@ ALLOW_LIGHTS = [
 
 
 # ##########################################################################################################################################
+# >> Light Overrides
+# 
+# :: This can be used to override light settings.
+# :: Requires a stable light hash!
+# 
+# :: How to retrieve hashes & create overrides:
+#    > Visualize hashes in 3D Space (GUI -> Map Settings -> Ignore Game Lights -> Draw Hash Visualization)
+#    > Select hash in list and tweak settings. Make sure to export to clipboard when done -> override LIGHT_OVERRIDES with clipboard data
+#
+# ~~ LIGHT_OVERRIDES = [
+#   {          
+#       #                   comment         
+#       hash =              hash of light                                   [uint - hex format]
+#       pos = []            position of light                        [opt.] [3D Vector]
+#       dir = []            direction of light                       [opt.] [3D Vector]
+#       color = []          color of light                           [opt.] [3D Vector]
+#       radius =            radius of light                          [opt.] [Float]
+#       intensity =         intensity of light                       [opt.] [Float]
+#       outer_cone_angle =  outer cone angle of light                [opt.] [Float]
+#       inner_cone_angle =  inner cone angle of light                [opt.] [Float]
+#       volumetric_scale =  volumetric scale of light                [opt.] [Float]
+#       light_type =        0: sphere -- 1: spotlight                [opt.] [Bool]
+#   }, 
+#   { ... },
+# ]      
+
+LIGHT_OVERRIDES = [
+]
+
+
+
+# ##########################################################################################################################################
 # >> Anti Culling Tweaks
 # 
 # :: The anti-cull logic might miss certain meshes (eg. if a skyscraper is made up of multiple smaller meshes) 
@@ -92,7 +124,9 @@ ALLOW_LIGHTS = [
 ANTICULL = [
 
     # skyscrapers
-    { distance = 400, indices = [
-        25679, 26510
+    { distance = 500, indices = [
+        24570, 25679, 26510, 27234, 15048, 27224, 24569, 21376, 19493, 
+        21652, 21400, 21377, 21391, 21218, 19492, 19491, 15424, 15426, 15418, 
+        15417, 15365, 15363
     ]},
 ]

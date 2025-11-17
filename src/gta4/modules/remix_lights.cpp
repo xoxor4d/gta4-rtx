@@ -18,8 +18,15 @@ namespace gta4
 	 */
 	bool remix_lights::spawn_or_update_remix_sphere_light(remix_light_def& light, bool update)
 	{
-		static auto im = imgui::get();
-		static auto gs = game_settings::get();
+		//const auto im = imgui::get();
+		const auto gs = game_settings::get();
+		auto msov = map_settings::get_map_settings().light_overrides;
+		const bool has_override = msov.contains(light.m_hash);
+
+		map_settings::light_override_s* lov = nullptr;
+		if (const auto it = msov.find(light.m_hash); it != msov.end()) {
+			lov = &it->second;
+		}
 
 		if (light.m_handle) {
 			destroy_light(light);
@@ -28,26 +35,29 @@ namespace gta4
 		light.m_updateframe = m_updateframe;
 
 		const auto& def = light.m_def;
+		const auto is_spotlight = def.mType == game::LT_SPOT;
+
 		light.m_ext.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_SPHERE_EXT;
 		light.m_ext.pNext = nullptr;
-		light.m_ext.position = def.mPosition.ToRemixFloat3D();
+		light.m_ext.position = has_override && lov->_use_pos ? lov->pos.ToRemixFloat3D() : def.mPosition.ToRemixFloat3D();
 
 		// scale down lights with larger radii (eg. own vehicle headlight (75 rad))
-		light.m_ext.radius = 20.0f * (1.0f - exp(-light.m_def.mRadius / 20.0f)) * gs->translate_game_light_radius_scalar.get_as<float>() * 0.01f;
-		light.m_ext.shaping_hasvalue = def.mType == game::LT_SPOT;
+		light.m_ext.radius = 20.0f * (1.0f - exp(-(has_override && lov->_use_radius ? lov->radius : light.m_def.mRadius) / 20.0f)) * gs->translate_game_light_radius_scalar.get_as<float>() * 0.01f;
+		light.m_ext.shaping_hasvalue = has_override && lov->_use_light_type ? lov->light_type : is_spotlight;
 		light.m_ext.shaping_value = {};
-		light.m_ext.shaping_value.direction = def.mDirection.ToRemixFloat3D();
+		light.m_ext.shaping_value.direction = has_override && lov->_use_dir ? lov->dir.ToRemixFloat3D() : def.mDirection.ToRemixFloat3D();
 
 		//const float innerConeDegrees = RAD2DEG(def.mOuterConeAngle);  // "outer" param → actual inner cone (smaller)
-		const float outerConeDegrees = RAD2DEG(def.mInnerConeAngle);  // "inner" param → outer cone (larger)
-		const float coneSoftness = std::cos(def.mOuterConeAngle * 0.5f) - std::cos(def.mInnerConeAngle * 0.5f);
+		const float outerConeDegrees = RAD2DEG(has_override /*&& lov->_use_outer_cone_angle*/ ? lov->outer_cone_angle : def.mInnerConeAngle);  // "inner" param → outer cone (larger)
+		const float coneSoftness = std::cos((has_override /*&& lov->_use_inner_cone_angle*/ ? lov->inner_cone_angle : def.mOuterConeAngle) * 0.5f) - std::cos((has_override /*&& lov->_use_outer_cone_angle*/ ? lov->outer_cone_angle : def.mInnerConeAngle) * 0.5f);
 
 		light.m_ext.shaping_value.coneAngleDegrees = outerConeDegrees + gs->translate_game_light_angle_offset.get_as<float>();
 		light.m_ext.shaping_value.coneSoftness = coneSoftness + gs->translate_game_light_softness_offset.get_as<float>();
 		light.m_ext.shaping_value.focusExponent = 0.0f;
 
-		light.m_ext.volumetricRadianceScale = def.mVolumeScale *
-			(def.mType == game::LT_SPOT ? 
+		light.m_ext.volumetricRadianceScale = 
+			   (has_override && lov->_use_volumetric_scale ? lov->volumetric_scale : def.mVolumeScale)
+			* ((has_override && lov->_use_light_type ? lov->light_type : is_spotlight) ?
 				  gs->translate_game_light_spotlight_volumetric_radiance_scale.get_as<float>() 
 				: gs->translate_game_light_spherelight_volumetric_radiance_scale.get_as<float>());
 
@@ -58,24 +68,13 @@ namespace gta4
 			light.m_info.hash = light.m_hash;
 		}
 		
-		light.m_info.radiance = (def.mIntensity * Vector(def.mColor) * gs->translate_game_light_intensity_scalar.get_as<float>()).ToRemixFloat3D();
-
-		// car headlight = 75
-
-		bool ignore = false;
-		/*if (def.mRadius >= 50.0f)
-		{
-			ignore = true;
-		}*/
+		light.m_info.radiance = (
+			  (has_override && lov->_use_intensity ? lov->intensity : def.mIntensity)
+			* (has_override && lov->_use_color ? lov->color : Vector(def.mColor))
+			*  gs->translate_game_light_intensity_scalar.get_as<float>()).ToRemixFloat3D();
 
 		const auto& api = shared::common::remix_api::get();
-
-		bool return_val = true;
-		if (!ignore) {
-			return_val = api.m_bridge.CreateLight(&light.m_info, &light.m_handle) == REMIXAPI_ERROR_CODE_SUCCESS;
-		}
-
-		return return_val;
+		return api.m_bridge.CreateLight(&light.m_info, &light.m_handle) == REMIXAPI_ERROR_CODE_SUCCESS;
 	}
 
 

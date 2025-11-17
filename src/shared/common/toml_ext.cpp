@@ -139,4 +139,60 @@ namespace shared::common::toml_ext
 		toml_str += "]";
 		return toml_str;
 	}
+
+	/// Builds a string containing all anti culling elements
+	/// @return the final string in toml format
+	std::string build_lightweak_array(const std::unordered_map<uint64_t, gta4::map_settings::light_override_s>& entries)
+	{
+		std::string toml_str = "LIGHT_OVERRIDES = [\n"s;
+		for (auto& m : entries)
+		{
+			if (!m.second.comment.empty()) {
+				toml_str += "\n    # " + m.second.comment + "\n";
+			}
+
+			toml_str += "    { hash = " + std::format("0x{:X}", m.first);
+
+			if (m.second._use_pos) {
+				toml_str += ", pos = [" + format_float(m.second.pos.x) + ", " + format_float(m.second.pos.y) + ", " + format_float(m.second.pos.z) + "]";
+			}
+
+			if (m.second._use_dir) {
+				toml_str += ", dir = [" + format_float(m.second.dir.x) + ", " + format_float(m.second.dir.y) + ", " + format_float(m.second.dir.z) + "]";
+			}
+
+			if (m.second._use_color) {
+				toml_str += ", color = [" + format_float(m.second.color.x) + ", " + format_float(m.second.color.y) + ", " + format_float(m.second.color.z) + "]";
+			}
+
+			if (m.second._use_radius) {
+				toml_str += ", radius = " + format_float(m.second.radius);
+			}
+
+			if (m.second._use_intensity) {
+				toml_str += ", intensity = " + format_float(m.second.intensity);
+			}
+
+			if (m.second._use_outer_cone_angle) {
+				toml_str += ", outer_cone_angle = " + format_float(m.second.outer_cone_angle);
+			}
+
+			if (m.second._use_inner_cone_angle) {
+				toml_str += ", inner_cone_angle = " + format_float(m.second.inner_cone_angle);
+			}
+
+			if (m.second._use_volumetric_scale) {
+				toml_str += ", volumetric_scale = " + format_float(m.second.volumetric_scale);
+			}
+
+			if (m.second._use_light_type) {
+				toml_str += ", light_type = " + (m.second.light_type ? "true"s : "false"s);
+			}
+
+			toml_str += " },\n";
+		}
+
+		toml_str += "]";
+		return toml_str;
+	}
 }

@@ -183,6 +183,150 @@ namespace gta4
 					}
 				}
 			} // end 'ANTICULL'
+
+
+			// ####################
+			// parse 'LIGHT_OVERRIDES' table
+			if (config.contains("LIGHT_OVERRIDES"))
+			{
+				// #
+				auto process_light_override_entry = [](const toml::value& entry)
+					{
+						std::uint32_t temp_light_hash = 0u;
+						if (entry.contains("hash")) {
+							temp_light_hash = static_cast<std::uint32_t>(to_uint(entry.at("hash"), 0u));
+						}
+						else
+						{
+							TOML_ERROR("[!] [LIGHT_OVERRIDES] #hash", entry, "LightOverride did not define a hash via 'hash' -> skipping");
+							return;
+						}
+
+						std::string temp_comment;
+						if (!entry.comments().empty())
+						{
+							temp_comment = entry.comments().at(0);
+							temp_comment.erase(0, 2); // rem '# '
+						}
+
+						Vector temp_pos;
+						bool   temp_use_pos = false;
+						if (entry.contains("pos"))
+						{
+							if (const auto& pos = entry.at("pos").as_array(); pos.size() == 3)
+							{
+								temp_pos = { to_float(pos[0]), to_float(pos[1]), to_float(pos[2]) };
+								temp_use_pos = true;
+							}
+							else { TOML_ERROR("[!] [LIGHT_OVERRIDES] #pos", entry.at("pos"), "expected a 3D vector but got => %d ", entry.at("pos").as_array().size()); }
+						}
+
+						Vector temp_dir;
+						bool   temp_use_dir = false;
+						if (entry.contains("dir"))
+						{
+							if (const auto& dir = entry.at("dir").as_array(); dir.size() == 3)
+							{
+								temp_dir = { to_float(dir[0]), to_float(dir[1]), to_float(dir[2]) };
+								temp_use_dir = true;
+							}
+							else { TOML_ERROR("[!] [LIGHT_OVERRIDES] #dir", entry.at("dir"), "expected a 3D vector but got => %d ", entry.at("dir").as_array().size()); }
+						}
+
+						Vector temp_color;
+						bool   temp_use_color = false;
+						if (entry.contains("color"))
+						{
+							if (const auto& color = entry.at("color").as_array(); color.size() == 3) 
+							{
+								temp_color = { to_float(color[0]), to_float(color[1]), to_float(color[2]) };
+								temp_use_color = true;
+							}
+							else { TOML_ERROR("[!] [LIGHT_OVERRIDES] #color", entry.at("color"), "expected a 3D vector but got => %d ", entry.at("color").as_array().size()); }
+						}
+
+						float temp_radius = 0;
+						bool  temp_use_radius = false;
+						if (entry.contains("radius")) 
+						{
+							temp_radius = to_float(entry.at("radius"), 0.0f);
+							temp_use_radius = true;
+						}
+
+						float temp_intensity = 0;
+						bool  temp_use_intensity = false;
+						if (entry.contains("intensity"))
+						{
+							temp_intensity = to_float(entry.at("intensity"), 0.0f);
+							temp_use_intensity = true;
+						}
+
+						float temp_outer_cone_angle = 0;
+						bool  temp_use_outer_cone_angle = false;
+						if (entry.contains("outer_cone_angle"))
+						{
+							temp_outer_cone_angle = to_float(entry.at("outer_cone_angle"), 0.0f);
+							temp_use_outer_cone_angle = true;
+						}
+
+						float temp_inner_cone_angle = 0;
+						bool  temp_use_inner_cone_angle = false;
+						if (entry.contains("inner_cone_angle"))
+						{
+							temp_inner_cone_angle = to_float(entry.at("inner_cone_angle"), 0.0f);
+							temp_use_inner_cone_angle = true;
+						}
+
+						float temp_volumetric_scale = 0;
+						bool  temp_use_volumetric_scale = false;
+						if (entry.contains("volumetric_scale"))
+						{
+							temp_volumetric_scale = to_float(entry.at("volumetric_scale"), 0.0f);
+							temp_use_volumetric_scale = true;
+						}
+
+						bool temp_light_type = false;
+						bool temp_use_light_type = false;
+						if (entry.contains("light_type")) 
+						{
+							temp_light_type = to_bool(entry.at("light_type"), false);
+							temp_use_light_type = true;
+						}
+
+						m_map_settings.light_overrides[temp_light_hash] =
+							light_override_s
+							{
+								.pos = std::move(temp_pos),
+								.dir = std::move(temp_dir),
+								.color = std::move(temp_color),
+								.radius = temp_radius,
+								.intensity = temp_intensity,
+								.outer_cone_angle = temp_outer_cone_angle,
+								.inner_cone_angle = temp_inner_cone_angle,
+								.volumetric_scale = temp_volumetric_scale,
+								.light_type = temp_light_type,
+								.comment = temp_comment,
+
+								._use_pos = temp_use_pos,
+								._use_dir = temp_use_dir,
+								._use_color = temp_use_color,
+								._use_radius = temp_use_radius,
+								._use_intensity = temp_use_intensity,
+								._use_outer_cone_angle = temp_use_outer_cone_angle,
+								._use_inner_cone_angle = temp_use_inner_cone_angle,
+								._use_volumetric_scale = temp_use_volumetric_scale,
+								._use_light_type = temp_use_light_type,
+							};
+					};
+
+				if (const auto lo = config.at("LIGHT_OVERRIDES");
+					!lo.is_empty() && !lo.as_array().empty())
+				{
+					for (const auto& entry : lo.as_array()) {
+						process_light_override_entry(entry);
+					}
+				}
+			} // end 'LIGHT_OVERRIDES'
 		}
 
 		catch (const toml::syntax_error& err)
