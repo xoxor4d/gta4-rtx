@@ -544,7 +544,10 @@ namespace gta4
 		{
 			if (game::is_in_game)
 			{
-				translate_and_apply_timecycle_settings();
+				// called in gta4::on_begin_scene_cb() otherwise
+				if (game_settings::get()->timecycle_set_on_endscene.get_as<bool>()) {
+					translate_and_apply_timecycle_settings();
+				}
 
 				// Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start
 				// and we def. need more then 3 samples to get somewhat good looking vehicle lights

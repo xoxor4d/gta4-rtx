@@ -10,6 +10,45 @@ namespace gta4
 {
 	// ----
 
+	const Vector& remix_lights::get_light_position(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov && lov->_use_pos ? lov->pos : def.mPosition;
+	}
+
+	const Vector& remix_lights::get_light_dir(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov && lov->_use_dir ? lov->dir : def.mDirection;
+	}
+
+	Vector remix_lights::get_light_color(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov && lov->_use_color ? lov->color : Vector(def.mColor);
+	}
+
+	float remix_lights::get_light_radius(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return 20.0f * (1.0f - exp(-(lov && lov->_use_radius ? lov->radius : def.mRadius) / 20.0f));
+	}
+
+	float remix_lights::get_light_intensity(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov && lov->_use_intensity ? lov->intensity : def.mIntensity;
+	}
+
+	float remix_lights::get_light_outer_cone_angle(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov &&  lov->_use_outer_cone_angle ? lov->outer_cone_angle
+			 : lov && !lov->_use_outer_cone_angle && lov->light_type && def.mType != game::LT_SPOT ? lov->outer_cone_angle : def.mInnerConeAngle; // yes
+	}
+
+	float remix_lights::get_light_inner_cone_angle(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov &&  lov->_use_inner_cone_angle ? lov->inner_cone_angle
+			 : lov && !lov->_use_inner_cone_angle && lov->light_type && def.mType != game::LT_SPOT ? lov->inner_cone_angle : def.mOuterConeAngle; // yes
+	}
+
+	float remix_lights::get_light_volumetric_scale(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov && lov->_use_volumetric_scale ? lov->volumetric_scale : def.mVolumeScale; // yes
+	}
+
+	// false = sphere ---- true = spotlight
+	bool remix_lights::get_light_type(const game::CLightSource& def, const map_settings::light_override_s* lov) {
+		return lov && lov->_use_light_type ? lov->light_type : def.mType == game::LT_SPOT; // yes
+	}
+
 	/**
 	 * Spawns or updates a remixApi spherelight
 	 * @param light			The light
@@ -21,7 +60,7 @@ namespace gta4
 		//const auto im = imgui::get();
 		const auto gs = game_settings::get();
 		auto msov = map_settings::get_map_settings().light_overrides;
-		const bool has_override = msov.contains(light.m_hash);
+		//const bool has_override = msov.contains(light.m_hash);
 
 		map_settings::light_override_s* lov = nullptr;
 		if (const auto it = msov.find(light.m_hash); it != msov.end()) {
@@ -35,29 +74,29 @@ namespace gta4
 		light.m_updateframe = m_updateframe;
 
 		const auto& def = light.m_def;
-		const auto is_spotlight = def.mType == game::LT_SPOT;
+		const auto is_spotlight = get_light_type(def, lov); //def.mType == game::LT_SPOT;
 
 		light.m_ext.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_SPHERE_EXT;
 		light.m_ext.pNext = nullptr;
-		light.m_ext.position = has_override && lov->_use_pos ? lov->pos.ToRemixFloat3D() : def.mPosition.ToRemixFloat3D();
+		light.m_ext.position = get_light_position(def, lov).ToRemixFloat3D();//has_override && lov->_use_pos ? lov->pos.ToRemixFloat3D() : def.mPosition.ToRemixFloat3D();
 
 		// scale down lights with larger radii (eg. own vehicle headlight (75 rad))
-		light.m_ext.radius = 20.0f * (1.0f - exp(-(has_override && lov->_use_radius ? lov->radius : light.m_def.mRadius) / 20.0f)) * gs->translate_game_light_radius_scalar.get_as<float>() * 0.01f;
-		light.m_ext.shaping_hasvalue = has_override && lov->_use_light_type ? lov->light_type : is_spotlight;
+		light.m_ext.radius = get_light_radius(def, lov) * gs->translate_game_light_radius_scalar.get_as<float>() * 0.01f; //20.0f * (1.0f - exp(-(has_override && lov->_use_radius ? lov->radius : light.m_def.mRadius) / 20.0f)) * gs->translate_game_light_radius_scalar.get_as<float>() * 0.01f;
+		light.m_ext.shaping_hasvalue = is_spotlight; //has_override && lov->_use_light_type ? lov->light_type : is_spotlight;
 		light.m_ext.shaping_value = {};
-		light.m_ext.shaping_value.direction = has_override && lov->_use_dir ? lov->dir.ToRemixFloat3D() : def.mDirection.ToRemixFloat3D();
+		light.m_ext.shaping_value.direction = get_light_dir(def, lov).ToRemixFloat3D(); //has_override && lov->_use_dir ? lov->dir.ToRemixFloat3D() : def.mDirection.ToRemixFloat3D();
 
 		//const float innerConeDegrees = RAD2DEG(def.mOuterConeAngle);  // "outer" param → actual inner cone (smaller)
-		const float outerConeDegrees = RAD2DEG(has_override /*&& lov->_use_outer_cone_angle*/ ? lov->outer_cone_angle : def.mInnerConeAngle);  // "inner" param → outer cone (larger)
-		const float coneSoftness = std::cos((has_override /*&& lov->_use_inner_cone_angle*/ ? lov->inner_cone_angle : def.mOuterConeAngle) * 0.5f) - std::cos((has_override /*&& lov->_use_outer_cone_angle*/ ? lov->outer_cone_angle : def.mInnerConeAngle) * 0.5f);
+		const float outerConeDegrees = RAD2DEG(get_light_outer_cone_angle(def, lov)); //RAD2DEG(has_override ? lov->outer_cone_angle : def.mInnerConeAngle);  // "inner" param → outer cone (larger)
+		const float coneSoftness = std::cos(get_light_inner_cone_angle(def, lov) * 0.5f) - std::cos(get_light_outer_cone_angle(def, lov) * 0.5f); //std::cos((has_override ? lov->inner_cone_angle : def.mOuterConeAngle) * 0.5f) - std::cos((has_override ? lov->outer_cone_angle : def.mInnerConeAngle) * 0.5f);
 
 		light.m_ext.shaping_value.coneAngleDegrees = outerConeDegrees + gs->translate_game_light_angle_offset.get_as<float>();
 		light.m_ext.shaping_value.coneSoftness = coneSoftness + gs->translate_game_light_softness_offset.get_as<float>();
 		light.m_ext.shaping_value.focusExponent = 0.0f;
 
 		light.m_ext.volumetricRadianceScale = 
-			   (has_override && lov->_use_volumetric_scale ? lov->volumetric_scale : def.mVolumeScale)
-			* ((has_override && lov->_use_light_type ? lov->light_type : is_spotlight) ?
+			   get_light_volumetric_scale(def, lov) //(has_override && lov->_use_volumetric_scale ? lov->volumetric_scale : def.mVolumeScale)
+			*  (is_spotlight ?
 				  gs->translate_game_light_spotlight_volumetric_radiance_scale.get_as<float>() 
 				: gs->translate_game_light_spherelight_volumetric_radiance_scale.get_as<float>());
 
@@ -69,8 +108,8 @@ namespace gta4
 		}
 		
 		light.m_info.radiance = (
-			  (has_override && lov->_use_intensity ? lov->intensity : def.mIntensity)
-			* (has_override && lov->_use_color ? lov->color : Vector(def.mColor))
+			  get_light_intensity(def, lov) //(has_override && lov->_use_intensity ? lov->intensity : def.mIntensity)
+			* get_light_color(def, lov) //(has_override && lov->_use_color ? lov->color : Vector(def.mColor))
 			*  gs->translate_game_light_intensity_scalar.get_as<float>()).ToRemixFloat3D();
 
 		const auto& api = shared::common::remix_api::get();

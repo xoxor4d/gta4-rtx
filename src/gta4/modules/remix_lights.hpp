@@ -1,4 +1,5 @@
 #pragma once
+#include "map_settings.hpp"
 
 namespace gta4
 {
@@ -47,6 +48,16 @@ namespace gta4
 			uint64_t m_hash;
 			std::uint32_t m_updateframe = 0u;
 		};
+
+		static const Vector&	get_light_position(const game::CLightSource& def, const map_settings::light_override_s* lov = nullptr);
+		static const Vector&	get_light_dir(const game::CLightSource& def, const map_settings::light_override_s* lov = nullptr);
+		static Vector			get_light_color(const game::CLightSource & def, const map_settings::light_override_s * lov = nullptr);
+		static float			get_light_radius(const game::CLightSource& def, const map_settings::light_override_s* lov = nullptr);
+		static float			get_light_intensity(const game::CLightSource& def, const map_settings::light_override_s* lov = nullptr);
+		static float			get_light_outer_cone_angle(const game::CLightSource& def, const map_settings::light_override_s* lov= nullptr );
+		static float			get_light_inner_cone_angle(const game::CLightSource& def, const map_settings::light_override_s* lov= nullptr );
+		static float			get_light_volumetric_scale(const game::CLightSource& def, const map_settings::light_override_s* lov= nullptr );
+		static bool				get_light_type(const game::CLightSource& def, const map_settings::light_override_s* lov = nullptr);
 
 		bool spawn_or_update_remix_sphere_light(remix_light_def& light, bool update = false);
 

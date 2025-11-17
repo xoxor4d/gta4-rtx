@@ -81,7 +81,10 @@ namespace gta4
 			}
 		}
 
-		//remix_vars::translate_and_apply_timecycle_settings();
+		// called in remix_vars::on_client_frame() otherwise
+		if (!game_settings::get()->timecycle_set_on_endscene.get_as<bool>()) {
+			remix_vars::translate_and_apply_timecycle_settings();
+		}
 	}
 
 	// ----

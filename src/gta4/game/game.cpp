@@ -11,6 +11,8 @@ namespace gta4::game
 	float helper_timecycle_current_fog_density = 0.0f;
 
 	HMODULE hmodule_fusionfix = nullptr;
+	RECT game_rect = {};
+
 
 
 	// --------------

@@ -769,6 +769,13 @@ namespace gta4
 			// ----------------------------------
 			// timecycle related settings
 
+			variable timecycle_set_on_endscene = {
+				"timecycle_set_on_endscene",
+				("Set timecycle related remix variables on EndScene. Set on BeginScene when false.\n"
+				 "Using BeginScene might get values stuck while EndScene might cause some very minor flickering."),
+				true
+			};
+
 			variable timecycle_wetness_enabled = {
 				"timecycle_wetness_enabled",
 				("Enables material roughness tweaks based on timecycle wetness settings."),

@@ -10,6 +10,7 @@ namespace gta4::game
 	extern float helper_timecycle_current_fog_density;
 
 	extern HMODULE hmodule_fusionfix;
+	extern RECT game_rect;
 
 	// --------------
 	// game variables

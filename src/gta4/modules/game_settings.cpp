@@ -220,6 +220,7 @@ namespace gta4
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 
 				// timecycle related settings
+				ASSIGN(timecycle_set_on_endscene);
 				ASSIGN(timecycle_wetness_enabled);
 				ASSIGN(timecycle_wetness_world_scalar);
 				ASSIGN(timecycle_wetness_world_offset);

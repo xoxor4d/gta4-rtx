@@ -1156,6 +1156,10 @@ namespace gta4
 		ImGui::Unindent(4);
 
 		ImGui::Spacing(0, inbetween_spacing);
+
+		gamesettings_bool_widget("Set TimeCycle Variables on EndScene", gs->timecycle_set_on_endscene);
+
+		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Fog ");
 		ImGui::Spacing(0, 4);
 
@@ -1880,7 +1884,7 @@ namespace gta4
 		ImGui::BeginDisabled(!im->m_dbg_visualize_api_light_hashes);
 		{
 			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("  Draw Distance      ").x);
-			ImGui::DragFloat("  Draw Distance      ", &im->m_dbg_visualize_api_light_hashes_distance, 0.005f, 0.0f, 30.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::DragFloat("  Draw Distance      ", &im->m_dbg_visualize_api_light_hashes_distance, 0.005f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::EndDisabled();
 		}
 
@@ -2233,6 +2237,18 @@ namespace gta4
 						ImGui::DragFloat("Intensity Override", &l.intensity, 0.025f, 0.0f, 0.0f, "%.2f");
 						ImGui::EndDisabled();
 
+						ImGui::Checkbox("##Tweak VolumetricScale", &l._use_volumetric_scale); TT("Tweak VolumetricScale");
+						ImGui::SameLine(0, 6);
+						ImGui::BeginDisabled(!l._use_volumetric_scale);
+						ImGui::DragFloat("VolumetricScale Override", &l.volumetric_scale, 0.025f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+						ImGui::EndDisabled();
+
+						ImGui::Checkbox("##Tweak Light Type", &l._use_light_type); TT("Tweak Light Type");
+						ImGui::SameLine(0, 6);
+						ImGui::BeginDisabled(!l._use_light_type);
+						ImGui::Checkbox("Light Type (False: Sphere -- True: Spot)", &l.light_type);
+						ImGui::EndDisabled();
+
 						ImGui::Checkbox("##Tweak OuterConeAngle", &l._use_outer_cone_angle); TT("Tweak OuterConeAngle");
 						ImGui::SameLine(0, 6);
 						ImGui::BeginDisabled(!l._use_outer_cone_angle);
@@ -2253,18 +2269,6 @@ namespace gta4
 								l.outer_cone_angle = DEG2RAD(temp_inner_angle);
 							}
 						}
-						ImGui::EndDisabled();
-
-						ImGui::Checkbox("##Tweak VolumetricScale", &l._use_volumetric_scale); TT("Tweak VolumetricScale");
-						ImGui::SameLine(0, 6);
-						ImGui::BeginDisabled(!l._use_volumetric_scale);
-						ImGui::DragFloat("VolumetricScale Override", &l.volumetric_scale, 0.025f, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-						ImGui::EndDisabled();
-
-						ImGui::Checkbox("##Tweak Light Type", &l._use_light_type); TT("Tweak Light Type");
-						ImGui::SameLine(0, 6);
-						ImGui::BeginDisabled(!l._use_light_type);
-						ImGui::Checkbox("Light Type (False: Sphere -- True: Spot)", &l.light_type);
 						ImGui::EndDisabled();
 
 						SET_CHILD_WIDGET_WIDTH;
@@ -2525,6 +2529,39 @@ namespace gta4
 		}
 	}
 
+	bool gta4_w2s(const Vector& world_pos, ImVec2& screen_coords)
+	{
+		if (const auto vpscene = game::pViewports; vpscene && vpscene->sceneviewport)
+		{
+			if (shared::globals::d3d_device)
+			{
+				D3DVIEWPORT9 vp;
+				shared::globals::d3d_device->GetViewport(&vp);
+
+				const auto wp = world_pos.ToD3DXVector();
+
+				D3DXVECTOR3 clip_space;
+				D3DXVec3Project( &clip_space, &wp, &vp, &vpscene->sceneviewport->proj,  &vpscene->sceneviewport->view, nullptr );
+
+				if (clip_space.z < 0.0f || clip_space.z > 1.0f) {
+					return false; // behind camera or too far
+				}
+
+				screen_coords.x = clip_space.x;
+				screen_coords.y = clip_space.y;
+
+				// cull off-screen points
+				if (screen_coords.x < 0 || screen_coords.x > vp.Width || screen_coords.y < 0 || screen_coords.y > vp.Height) {
+					return false;
+				}
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void imgui::draw_debug()
 	{
 		static auto im = imgui::get();
@@ -2549,59 +2586,77 @@ namespace gta4
 					{
 						if (fabs(cam_org.DistToSqr(l.second.m_def.mPosition) < draw_dist * draw_dist))
 						{
-							shared::imgui::world_to_screen(l.second.m_def.mPosition, viewport_pos);
+							auto msov = map_settings::get_map_settings().light_overrides;
 
-							bool is_light_hash_stable = im->m_dbg_visualize_api_light_unstable_hashes; // false by default
-							bool is_light_in_vis_list = false;
+							map_settings::light_override_s* lov = nullptr;
+							if (const auto it = msov.find(l.second.m_hash); it != msov.end()) {
+								lov = &it->second;
+							}
 
-							if (!im->m_dbg_visualize_api_light_unstable_hashes)
+							const Vector& light_pos = remix_lights::get_light_position(l.second.m_def, lov);
+
+							//shared::imgui::world_to_screen(l.second.m_def.mPosition, viewport_pos);
+							if (gta4_w2s(light_pos /*l.second.m_def.mPosition*/, viewport_pos))
 							{
-								for (auto& ign : visualized_api_lights)
+								bool is_light_hash_stable = im->m_dbg_visualize_api_light_unstable_hashes; // false by default
+								bool is_light_in_vis_list = false;
+
+								if (!im->m_dbg_visualize_api_light_unstable_hashes)
 								{
-									if (ign.hash == l.second.m_hash) 
+									for (auto& ign : visualized_api_lights)
 									{
-										is_light_in_vis_list = true;
-										ign.ignored = l.second.m_is_ignored; // ignored state might have changed
-										ign.allowed_filler = l.second.m_is_allowed_filler; // ^
-										ign.m_updateframe++;
-										is_light_hash_stable = ign.m_frames_since_addition > 5u;
-										break;
+										if (ign.hash == l.second.m_hash)
+										{
+											is_light_in_vis_list = true;
+											ign.ignored = l.second.m_is_ignored; // ignored state might have changed
+											ign.allowed_filler = l.second.m_is_allowed_filler; // ^
+											ign.m_updateframe++;
+											is_light_hash_stable = ign.m_frames_since_addition > 5u;
+											break;
+										}
 									}
 								}
-							}
 
-							if (!is_light_in_vis_list)
-							{
-								visualized_api_lights.emplace_back(
-									visualized_api_light_s {
-										.hash = l.second.m_hash,
-										.pos = l.second.m_def.mPosition,
-										.m_def_copy = l.second.m_def,
-										.ignored = l.second.m_is_ignored,
-										.allowed_filler = l.second.m_is_allowed_filler,
-										.is_filler = l.second.m_is_filler,
-										.m_updateframe = 0u,
-										.m_frames_since_addition = 0u
+								if (!is_light_in_vis_list)
+								{
+									visualized_api_lights.emplace_back(
+										visualized_api_light_s{
+											.hash = l.second.m_hash,
+											.pos = l.second.m_def.mPosition,
+											.m_def_copy = l.second.m_def,
+											.ignored = l.second.m_is_ignored,
+											.allowed_filler = l.second.m_is_allowed_filler,
+											.is_filler = l.second.m_is_filler,
+											.m_updateframe = 0u,
+											.m_frames_since_addition = 0u
+										}
+									);
+								}
+
+								if (is_light_hash_stable)
+								{
+									const auto radius = remix_lights::get_light_radius(l.second.m_def, lov) * game_settings::get()->translate_game_light_radius_scalar.get_as<float>() * 3.7f; //20.0f * (1.0f - exp(-(l.second.m_def.mRadius) / 20.0f)) * game_settings::get()->translate_game_light_radius_scalar.get_as<float>() * (1.0f + im->m_debug_vector4.y);
+									const auto& color = remix_lights::get_light_color(l.second.m_def, lov);
+
+									ImGui::GetBackgroundDrawList()->AddCircleFilled(viewport_pos, radius, ImColor(color.x, color.y, color.z));
+
+									if (l.second.m_is_ignored)
+									{
+										ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+											ImColor(1.0f, 0.0f, 0.0f, 1.0f), shared::utils::va("    [HASH] %llx\n    ~ IGNORED ~", l.second.m_hash));
 									}
-								);
-							}
+									else if (l.second.m_is_allowed_filler)
+									{
+										ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+											ImColor(0.1f, 0.8f, 0.1f, 1.0f), shared::utils::va("    [HASH] %llx\n~ ALLOWED FILLER ~%s", l.second.m_hash, lov ? "\n    ~ OVERRIDE ~" : ""));
+									}
+									else
+									{
+										ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+											ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("    [HASH] %llx %s", l.second.m_hash, lov ? "\n    ~ OVERRIDE ~" : ""));
+									}
 
-							if (is_light_hash_stable)
-							{
-								if (l.second.m_is_ignored)
-								{
-									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-										ImColor(1.0f, 0.0f, 0.0f, 1.0f), shared::utils::va("[LIGHT-HASH] %llx\n~ IGNORED ~", l.second.m_hash));
-								}
-								else if (l.second.m_is_allowed_filler)
-								{
-									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-										ImColor(0.1f, 0.8f, 0.1f, 1.0f), shared::utils::va("[LIGHT-HASH] %llx\n~ ALLOWED FILLER ~", l.second.m_hash));
-								}
-								else
-								{
-									ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-										ImGui::GetColorU32(ImGuiCol_Text), shared::utils::va("[LIGHT-HASH] %llx", l.second.m_hash));
+									
 								}
 							}
 						}

@@ -98,13 +98,13 @@ bool g_populated_res_table = false;
 
 BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 {
-	RECT rect = {};
+	//RECT rect = {};
 
 	// if manual override via game setting
 	if (gta4::game_settings::get()->manual_game_resolution_enabled.get_as<bool>())
 	{
 		const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
-		rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
+		gta4::game::game_rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
 	}
 	else
 	{
@@ -117,7 +117,7 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 		if (auto modes_ptr = gta4::game::avail_game_resolutions; modes_ptr->modes) // 0x1168BB0
 		{
 			const auto res = modes_ptr->modes[gta4::game::loaded_settings_cfg->resolution_index]; // 0x1160E80
-			rect = { xLeft, yTop, (LONG)res.width, (LONG)res.height };
+			gta4::game::game_rect = { xLeft, yTop, (LONG)res.width, (LONG)res.height };
 		}
 		else
 		{
@@ -125,10 +125,10 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 			{
 				// fallback
 				const auto res_setting = gta4::game_settings::get()->manual_game_resolution.get_as<Vector2D*>();
-				rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
+				gta4::game::game_rect = { xLeft, yTop, static_cast<int>(res_setting->x), static_cast<int>(res_setting->y) };
 			}
 			else {
-				rect = { xLeft, yTop, xRight, yBottom };
+				gta4::game::game_rect = { xLeft, yTop, xRight, yBottom };
 			}
 		}
 	}
@@ -140,7 +140,7 @@ BOOL WINAPI SetRect_hk(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom
 		if (const auto pFusionFix_SetRect = reinterpret_cast<FusionFix_SetRect_RemixFn>(GetProcAddress(gta4::game::hmodule_fusionfix, "SetRect_Remix"));
 			pFusionFix_SetRect) 
 		{
-			pFusionFix_SetRect(rect);
+			pFusionFix_SetRect(gta4::game::game_rect);
 		}
 	}
 	
