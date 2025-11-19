@@ -114,13 +114,14 @@ namespace gta4
 	 * @param o					handle into the options map
 	 * @param v					variable will be set to this value 
 	 * @param is_level_setting	update the reset_level value (used if reset_option() is called with reset_to_level_state)
+	 * @param always			set this option even if the last state equals the new state (value might have changed on remix side - user or programmatically)
 	 * @return					true if successfull
 	 */
-	bool remix_vars::set_option(option_handle o, const option_value& v, const bool is_level_setting)
+	bool remix_vars::set_option(option_handle o, const option_value& v, const bool is_level_setting, const bool always)
 	{
 		if (o && shared::common::remix_api::is_initialized())
 		{
-			if (o->second.current.compare(o->second.type, v))
+			if (!always && o->second.current.compare(o->second.type, v))
 			{
 				if (imgui::get()->m_dbg_debug_single_frame_timecycle_remix_vars) {
 					shared::common::log("RemixVars", std::format("Not setting {} because value did not change.", o->first));
@@ -550,6 +551,8 @@ namespace gta4
 		parse_and_apply_conf_with_lerp(map_name, shared::utils::string_hash64(map_name), EASE_TYPE_SIN_IN, 0.0f, 0.0f);
 	}*/
 
+	std::uint32_t framecounter = 0u;
+
 	// Interpolates all variables on the 'interpolate_stack' and removes them once they reach their goal. \n
 	void remix_vars::on_client_frame()
 	{
@@ -563,14 +566,19 @@ namespace gta4
 					translate_and_apply_timecycle_settings();
 				}
 
-				// Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start
-				// and we def. need more then 3 samples to get somewhat good looking vehicle lights
-				const auto rtxdi_override_val = gs->remix_override_rtxdi_samplecount.get_as<int>();
-				if (rtxdi_override_val) // override if > 0
+				if (framecounter++ > 60)
 				{
-					static auto rtxdi_samplecount = get_option("rtx.di.initialSampleCount");
-					remix_vars::option_value val { .value = (float)rtxdi_override_val };
-					set_option(rtxdi_samplecount, val);
+					framecounter = 0u;
+
+					// Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start
+					// and we def. need more then 3 samples to get somewhat good looking vehicle lights
+					const auto rtxdi_override_val = gs->remix_override_rtxdi_samplecount.get_as<int>();
+					if (rtxdi_override_val) // override if > 0
+					{
+						static auto rtxdi_samplecount = get_option("rtx.di.initialSampleCount");
+						remix_vars::option_value val{ .value = (float)rtxdi_override_val };
+						set_option(rtxdi_samplecount, val, false, true);
+					}
 				}
 			}
 

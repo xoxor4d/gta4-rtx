@@ -507,7 +507,7 @@ namespace gta4
 			{
 				"translate_vehicle_headlight_intensity_scalar",
 				("Scale intensity of vehicle headlights."),
-				1.0f
+				1.2f
 			};
 
 			variable translate_vehicle_headlight_radius_scalar =

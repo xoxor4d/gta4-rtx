@@ -132,7 +132,7 @@ namespace gta4
 
 		static option_handle	get_option(const char*);
 		static option_handle	get_option(const std::string& o);
-		static bool				set_option(option_handle o, const option_value& v, bool is_level_setting = false);
+		static bool				set_option(option_handle o, const option_value& v, bool is_level_setting = false, bool always = false);
 		static bool				reset_option(option_handle o, bool reset_to_level_state = false);
 		static void				reset_all_modified(bool reset_to_level_state = false);
 		static option_value		string_to_option_value(OPTION_TYPE type, const std::string& str);
