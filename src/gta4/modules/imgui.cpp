@@ -1822,11 +1822,16 @@ namespace gta4
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!selection);
 		{
-			/*if (ImGui::Button("TP to Marker")) {
-				interfaces::get()->m_engine->execute_client_cmd_unrestricted(shared::utils::va("sv_cheats 1; noclip; setpos %.2f %.2f %.2f", selection->origin.x, selection->origin.y, selection->origin.z - 40.0f));
+			if (ImGui::Button("TP to Marker")) 
+			{
+				const auto n = natives::get();
+				natives::Ped ped;
+
+				n->GetPlayerChar(n->GetPlayerId(), &ped);
+				n->SetCharCoordinatesNoOffset(ped, selection->origin.x, selection->origin.y, selection->origin.z);
 			}
 
-			ImGui::SameLine();*/
+			ImGui::SameLine();
 
 			Vector player_pos;
 			player_pos = game::FindPlayerCentreOfWorld(&player_pos);
