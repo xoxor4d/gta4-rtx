@@ -14,10 +14,10 @@ namespace gta4
 		if (!gs->render_emissive_surfaces_using_shaders.get_as<bool>())
 		{
 			ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
-			dev->SetRenderState(D3DRS_ZWRITEENABLE, false);
+			dev->SetRenderState(D3DRS_ZWRITEENABLE, im->m_dbg_emissive_ff_worldui_ignore_alpha);
 
 			ctx.save_rs(dev, D3DRS_ZENABLE);
-			dev->SetRenderState(D3DRS_ZENABLE, false);
+			dev->SetRenderState(D3DRS_ZENABLE, im->m_dbg_emissive_ff_worldui_ignore_alpha);
 
 			ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE); 
 			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, im->m_dbg_emissive_ff_with_alphablend);
@@ -36,7 +36,7 @@ namespace gta4
 			dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 
 			ctx.save_rs(dev, D3DRS_SRCBLEND);
-			dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA); // D3DBLEND_ONE
+			dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE); // D3DBLEND_ONE
 
 			ctx.save_rs(dev, D3DRS_DESTBLEND);
 			dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
@@ -52,7 +52,7 @@ namespace gta4
 			//dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 
 			ctx.save_tss(dev, D3DTSS_ALPHAOP);
-			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, im->m_dbg_emissive_ff_worldui_ignore_alpha ? D3DTOP_DISABLE : D3DTOP_MODULATE);
 
 			ctx.save_tss(dev, D3DTSS_ALPHAARG1);
 			dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
@@ -66,6 +66,9 @@ namespace gta4
 
 			if (im->m_dbg_tag_static_emissive_as_index != -1) {
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
+			}
+			else if (im->m_dbg_emissive_ff_worldui_ignore_alpha) {
+				renderer::set_remix_texture_categories(dev, InstanceCategories::WorldUI | InstanceCategories::IgnoreTransparencyLayer);
 			}
 			else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
 				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer /*InstanceCategories::DecalStatic*/);

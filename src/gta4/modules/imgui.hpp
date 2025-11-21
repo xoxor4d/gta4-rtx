@@ -63,7 +63,8 @@ namespace gta4
 		bool m_dbg_do_not_restore_drawcall_context_on_early_out = false;
 		bool m_dbg_disable_ps_for_static = false;
 		int m_dbg_tag_static_emissive_as_index = -1;
-		bool m_dbg_emissive_ff_with_alphablend = true;
+		bool m_dbg_emissive_ff_with_alphablend = false;
+		bool m_dbg_emissive_ff_worldui_ignore_alpha = true;
 
 		//bool m_dbg_emissive_nonalpha_override = false;
 		//float m_dbg_emissive_nonalpha_override_scale = 0.0f;

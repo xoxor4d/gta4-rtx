@@ -721,6 +721,7 @@ namespace gta4
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 			ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, (int)InstanceCategories::Count, "%d", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::Checkbox("FF Emissive: Enable Alphablend on non alpha Emissives", &im->m_dbg_emissive_ff_with_alphablend);
+			ImGui::Checkbox("FF Emissive: Tag as WorldUI + IgnoreTransparencyLayer", &im->m_dbg_emissive_ff_worldui_ignore_alpha);
 			//ImGui::Checkbox("FF Emissive: Enable Emissive Override", &im->m_dbg_emissive_nonalpha_override);
 			//ImGui::DragFloat("FF Emissive: Enable Emissive Override Scale", &im->m_dbg_emissive_nonalpha_override_scale, 0.005f);
 			ImGui::TreePop();
