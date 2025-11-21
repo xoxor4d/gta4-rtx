@@ -2112,7 +2112,14 @@ namespace gta4
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 			}
-		}
+
+			if (im->m_dbg_only_render_static && !g_is_rendering_static) 
+			{
+				ctx.modifiers.do_not_render = true;
+				ctx.modifiers.dual_render = false;
+			}
+
+		} // end imgui-is-rendering
 
 		// ---------
 		// draw
@@ -2805,7 +2812,7 @@ namespace gta4
 		shared::utils::hook(game::hk_addr__post_draw_water, post_water_render_stub, HOOK_JUMP).install()->quick();
 
 		// detect static rendering
-		shared::utils::hook(game::retn_addr__pre_draw_statics - 5u, pre_static_render_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::retn_addr__pre_draw_statics - 5u, pre_static_render_stub, HOOK_JUMP).install()->quick(); // 0x42EBEC
 		shared::utils::hook(game::hk_addr__post_draw_statics, post_static_render_stub, HOOK_JUMP).install()->quick();
 
 		// also considered static

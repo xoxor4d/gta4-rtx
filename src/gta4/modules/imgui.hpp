@@ -47,6 +47,7 @@ namespace gta4
 		bool m_dbg_debug_bool02 = false;
 		int m_dbg_int_01 = 0;
 
+		bool m_dbg_only_render_static = false;
 		bool m_dbg_do_not_render_static = false;
 		bool m_dbg_do_not_render_vehicle = false;
 		bool m_dbg_do_not_render_instances = false;

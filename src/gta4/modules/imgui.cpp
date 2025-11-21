@@ -573,10 +573,11 @@ namespace gta4
 		}
 
 		ImGui::Spacing(0, TREENODE_SPACING);
-		if (ImGui::TreeNode("Do not render ..."))
+		if (ImGui::TreeNode("Do not render / render only ..."))
 		{
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 			ImGui::Checkbox("Do not render Static", &im->m_dbg_do_not_render_static);
+			ImGui::Checkbox("Only render Static", &im->m_dbg_only_render_static);
 			ImGui::Checkbox("Do not render Vehicle", &im->m_dbg_do_not_render_vehicle);
 			ImGui::Checkbox("Do not render Instances", &im->m_dbg_do_not_render_instances);
 			ImGui::Checkbox("Do not render Stencil 0", &im->m_dbg_do_not_render_stencil_zero);
