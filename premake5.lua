@@ -246,3 +246,37 @@ workspace "gta4-rtx"
 		dependencies.projects()
 	group ""
 	
+
+project "installer"
+    kind "ConsoleApp"
+	targetname "GTAIV-Remix-CompMod-Installer"
+    language "C++"
+    cppdialect "C++20"
+    staticruntime "On"
+    targetdir "./bin"
+    
+
+	files {
+		"./src_installer/**.hpp",
+		"./src_installer/**.cpp",
+		"./deps/miniz/miniz.c",
+		"./deps/miniz/miniz.h",
+		"./src_installer/installer.rc"
+	}
+
+	includedirs {
+		"%{prj.location}/src_installer",
+		"./src_installer",
+		"./deps/miniz",
+	}
+
+    filter "configurations:Release*"
+        optimize "Full"
+        flags { "LinkTimeOptimization" }
+	filter {}
+
+	dependencies.imports()
+
+	group "Dependencies"
+		dependencies.projects()
+	group ""
