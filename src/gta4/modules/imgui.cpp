@@ -2,7 +2,6 @@
 #include "imgui.hpp"
 
 #include "game_settings.hpp"
-#include "imgui_internal.h"
 #include "map_settings.hpp"
 #include "natives.hpp"
 #include "remix_lights.hpp"
@@ -747,6 +746,60 @@ namespace gta4
 			ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
 			TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
 				"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
+
+			if (game::weather_type_prev)
+			{
+				switch (*game::weather_type_prev)
+				{
+				case game::WEATHER_EXTRASUNNY:
+					ImGui::TextUnformatted("WeatherPrev: EXTRASUNNY"); break;
+				case game::WEATHER_SUNNY:
+					ImGui::TextUnformatted("WeatherPrev: SUNNY"); break;
+				case game::WEATHER_SUNNY_WINDY:
+					ImGui::TextUnformatted("WeatherPrev: SUNNY_WINDY"); break;
+				case game::WEATHER_CLOUDY:
+					ImGui::TextUnformatted("WeatherPrev: CLOUDY"); break;
+				case game::WEATHER_RAIN:
+					ImGui::TextUnformatted("WeatherPrev: RAIN"); break;
+				case game::WEATHER_DRIZZLE:
+					ImGui::TextUnformatted("WeatherPrev: DRIZZLE"); break;
+				case game::WEATHER_FOGGY:
+					ImGui::TextUnformatted("WeatherPrev: FOGGY"); break;
+				case game::WEATHER_LIGHTNING:
+					ImGui::TextUnformatted("WeatherPrev: LIGHTNING"); break;
+				default:
+					ImGui::TextUnformatted("WeatherPrev: UNKOWN"); break;
+				}
+			}
+
+			if (game::weather_type_new)
+			{
+				switch (*game::weather_type_new)
+				{
+				case game::WEATHER_EXTRASUNNY:
+					ImGui::TextUnformatted("WeatherNew: EXTRASUNNY"); break;
+				case game::WEATHER_SUNNY:
+					ImGui::TextUnformatted("WeatherNew: SUNNY"); break;
+				case game::WEATHER_SUNNY_WINDY:
+					ImGui::TextUnformatted("WeatherNew: SUNNY_WINDY"); break;
+				case game::WEATHER_CLOUDY:
+					ImGui::TextUnformatted("WeatherNew: CLOUDY"); break;
+				case game::WEATHER_RAIN:
+					ImGui::TextUnformatted("WeatherNew: RAIN"); break;
+				case game::WEATHER_DRIZZLE:
+					ImGui::TextUnformatted("WeatherNew: DRIZZLE"); break;
+				case game::WEATHER_FOGGY:
+					ImGui::TextUnformatted("WeatherNew: FOGGY"); break;
+				case game::WEATHER_LIGHTNING:
+					ImGui::TextUnformatted("WeatherNew: LIGHTNING"); break;
+				default:
+					ImGui::TextUnformatted("WeatherNew: UNKOWN"); break;
+				}
+			}
+
+			ImGui::Text("Weather Transition: %.2f", *game::weather_change_value);
+			ImGui::Text("Clock Hour: %d", *game::m_game_clock_hours);
+			ImGui::Text("Clock Minutes: %d", *game::m_game_clock_minutes);
 
 			ImGui::TreePop();
 		}
@@ -1628,7 +1681,7 @@ namespace gta4
 		// MARKER TABLE
 
 		ImGui::TableHeaderDropshadow();
-		if (ImGui::BeginTable("MarkerTable", 9,
+		if (ImGui::BeginTable("MarkerTable", 10,
 			ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_ContextMenuInBody |
 			ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_ScrollY, ImVec2(0, 380)))
 		{
@@ -1641,6 +1694,7 @@ namespace gta4
 			ImGui::TableSetupColumn("Rot", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 180.0f);
 			ImGui::TableSetupColumn("Scale", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 130.0f);
 			ImGui::TableSetupColumn("CullDist", ImGuiTableColumnFlags_NoResize, 60.0f);
+			ImGui::TableSetupColumn("SpawnOn", ImGuiTableColumnFlags_NoResize, 12.0f);
 			ImGui::TableSetupColumn("##Delete", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoReorder | ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoClip, 16.0f);
 			ImGui::TableHeadersRow();
 
@@ -1715,9 +1769,13 @@ namespace gta4
 				ImGui::TableNextColumn(); ImGui::Spacing();
 				ImGui::Text("%.2f, %.2f, %.2f", m.scale.x, m.scale.y, m.scale.z);
 
-				// - scale
+				// - cull dist
 				ImGui::TableNextColumn();
-				ImGui::Text("%.2f", m.cull_distance);
+				ImGui::Text("%.0f", m.cull_distance);
+
+				// - spawn on
+				ImGui::TableNextColumn();
+				ImGui::Text("%s", (m.weather_type != game::WEATHER_NONE || m.from_hour > 0 || m.to_hour > 0) ? "X" : "");
 
 				// delete Button
 				ImGui::TableNextColumn();
@@ -1813,6 +1871,10 @@ namespace gta4
 					.rotation = selection->rotation,
 					.scale = selection->scale,
 					.cull_distance = selection->cull_distance,
+					.weather_type = selection->weather_type,
+					.weather_transition_value = selection->weather_transition_value,
+					.from_hour = selection->from_hour,
+					.to_hour = selection->to_hour,
 					.comment = selection->comment,
 					});
 
@@ -1892,6 +1954,41 @@ namespace gta4
 
 			SET_CHILD_WIDGET_WIDTH;
 			ImGui::DragFloat("Cull Distance", &selection->cull_distance, 0.05f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+
+			ImGui::Spacing(0, 6);
+			ImGui::SeparatorText("  Spawn On:   ");
+			ImGui::Spacing(0, 6);
+
+			SET_CHILD_WIDGET_WIDTH;
+			int curr_weather_selection = selection->weather_type;
+			if (ImGui::Combo("On Weather", &curr_weather_selection, game::eWeatherTypeStr, 9)) 
+			{
+				selection->weather_type = (game::eWeatherType)curr_weather_selection;
+
+				if (curr_weather_selection == game::eWeatherType::WEATHER_NONE) {
+					selection->internal__is_hidden = false;
+				}
+			}
+
+			ImGui::BeginDisabled(selection->weather_type == game::WEATHER_NONE);
+			{
+				SET_CHILD_WIDGET_WIDTH;
+				ImGui::SliderFloat("Weather Transition Value", &selection->weather_transition_value, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				ImGui::EndDisabled();
+			}
+
+			SET_CHILD_WIDGET_WIDTH;
+			int temp_hours[2] = { selection->from_hour, selection->to_hour };
+
+			if (temp_hours[1] < 0) {
+				temp_hours[1] = selection->from_hour + 1 <= 24 ? selection->from_hour + 1 : selection->from_hour - 1;
+			}
+
+			if (ImGui::SliderInt2("Between Hours", temp_hours, -1, 24, "%d", ImGuiSliderFlags_AlwaysClamp))
+			{
+				selection->from_hour = temp_hours[0];
+				selection->to_hour = temp_hours[1];
+			}
 
 			SET_CHILD_WIDGET_WIDTH;
 			ImGui::InputText("Comment", &selection->comment);

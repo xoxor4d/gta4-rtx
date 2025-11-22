@@ -1,4 +1,5 @@
 #pragma once
+#include <gta4/game/structs.hpp>
 namespace gta4
 {
 	class map_settings final : public shared::common::loader::component_module
@@ -25,6 +26,10 @@ namespace gta4
 			Vector rotation = { 0.0f, 0.0f, 0.0f };
 			Vector scale = { 1.0f, 1.0f, 1.0f };
 			float cull_distance = 0.0f; // 0 = no culling
+			game::eWeatherType weather_type = game::WEATHER_NONE;
+			float weather_transition_value = 0.2f;
+			int from_hour = -1;
+			int to_hour = -1;
 			std::string comment;
 
 			std::uint32_t internal__frames_until_next_vis_check = 0u;

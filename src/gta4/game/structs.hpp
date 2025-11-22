@@ -224,6 +224,33 @@ namespace gta4::game
 
 
 	// https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix
+
+	enum eWeatherType : uint32_t
+	{
+		WEATHER_EXTRASUNNY,
+		WEATHER_SUNNY,
+		WEATHER_SUNNY_WINDY,
+		WEATHER_CLOUDY,
+		WEATHER_RAIN,
+		WEATHER_DRIZZLE,
+		WEATHER_FOGGY,
+		WEATHER_LIGHTNING,
+		WEATHER_NONE
+	};
+
+	inline const char* eWeatherTypeStr[] =
+	{
+		"WEATHER_EXTRASUNNY",
+		"WEATHER_SUNNY",
+		"WEATHER_SUNNY_WINDY",
+		"WEATHER_CLOUDY",
+		"WEATHER_RAIN",
+		"WEATHER_DRIZZLE",
+		"WEATHER_FOGGY",
+		"WEATHER_LIGHTNING",
+		"WEATHER_NONE"
+	};
+
 	struct grmShaderInfo_Parameter
 	{
 		char nbType;

@@ -36,17 +36,70 @@ namespace gta4
 
 		for (auto& m : msettings.map_markers)
 		{
-			if (m.cull_distance > 0.0f)
+			const bool needs_vis_check =
+				   m.weather_type != game::WEATHER_NONE
+				|| m.from_hour >= 0 && m.to_hour >= 0
+				|| m.cull_distance > 0.0f;
+
+			if (needs_vis_check)
 			{
 				if (m.internal__frames_until_next_vis_check > 0u) {
 					m.internal__frames_until_next_vis_check--;
 				}
 				else
 				{
-					m.internal__is_hidden = fabs(m.origin.DistTo(player_pos)) > m.cull_distance;
 					m.internal__frames_until_next_vis_check = DISTANCE_CHECK_FRAME_INTERVAL; // reset
+
+					bool spawned_on_weather = false;
+					if (m.weather_type != game::WEATHER_NONE)
+					{
+						// not the target weather
+						if (m.weather_type != *game::weather_type_new) {
+							m.internal__is_hidden = true;
+						}
+
+						// target weather, check if transition value is larger than target value
+						else if (*game::weather_type_prev == *game::weather_type_new
+							|| *game::weather_change_value > m.weather_transition_value)
+						{
+							m.internal__is_hidden = false;
+							spawned_on_weather = true;
+						}
+					}
+
+					// only check time if weather has not triggered spawning
+					if (!spawned_on_weather && (m.from_hour >= 0 && m.to_hour >= 0))
+					{
+						const auto& hour = *game::m_game_clock_hours;
+						const bool wraps_midnight = m.from_hour > m.to_hour;
+
+						if (!wraps_midnight) {
+							m.internal__is_hidden = !(hour >= m.from_hour && hour < m.to_hour);
+						}
+						else {
+							m.internal__is_hidden = !((hour >= m.from_hour) || (hour < m.to_hour));
+						}
+					}
+
+					// cull dist last check
+					if (m.cull_distance > 0.0f) {
+						m.internal__is_hidden = fabs(m.origin.DistTo(player_pos)) > m.cull_distance;
+					}
 				}
 			}
+
+			//// cull dist last check
+			//if (m.cull_distance > 0.0f)
+			//{
+			//	if (m.internal__frames_until_next_vis_check > 0u) {
+			//		m.internal__frames_until_next_vis_check--;
+			//	}
+			//	else
+			//	{
+			//		m.internal__is_hidden = fabs(m.origin.DistTo(player_pos)) > m.cull_distance;
+			//		m.internal__frames_until_next_vis_check = DISTANCE_CHECK_FRAME_INTERVAL; // reset
+			//	}
+			//}
 
 			if (m.internal__is_hidden) {
 				continue;

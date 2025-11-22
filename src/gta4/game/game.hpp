@@ -44,6 +44,9 @@ namespace gta4::game
 	extern currentViewport_ptr* pCurrentViewport;
 	extern D3DXMATRIX* pCurrentWorldTransform;
 
+	extern eWeatherType* weather_type_prev;
+	extern eWeatherType* weather_type_new;
+	extern float* weather_change_value;
 	extern float* pTimeCycleWetnessChange;
 	extern float* pTimeCycleWetness;
 	extern float* pTimeCycleSpecularOffset;
@@ -51,6 +54,8 @@ namespace gta4::game
 	extern TimeCycleParams* m_pCurrentTimeCycleParams_01;
 	extern TimeCycleParams* m_pCurrentTimeCycleParams_02;
 	extern TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene;
+	extern uint8_t* m_game_clock_hours;
+	extern uint8_t* m_game_clock_minutes;
 
 	//extern CLightSource* m_renderLights;
 	//extern std::uint32_t* m_numRenderLights;

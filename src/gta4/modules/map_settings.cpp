@@ -90,6 +90,56 @@ namespace gta4
 									temp_cull_distance = to_float(entry.at("cull_distance"), 0.0f);
 								}
 
+								// optional
+								game::eWeatherType temp_weather = game::WEATHER_NONE;
+								float temp_weather_transition_value = 0.2f;
+								int temp_from_hour = -1;
+								int temp_to_hour = -1;
+
+								if (entry.contains("spawn_on"))
+								{
+									const auto& spawn_on = entry.at("spawn_on");
+
+									// optional
+									if (spawn_on.contains("weather") && spawn_on.at("weather").is_string())
+									{
+										const auto& weather_str = spawn_on.at("weather").as_string();
+
+										if (weather_str == "EXTRASUNNY") {
+											temp_weather = game::WEATHER_EXTRASUNNY;
+										} else if (weather_str == "SUNNY") {
+											temp_weather = game::WEATHER_SUNNY;
+										} else if (weather_str == "SUNNY_WINDY") {
+											temp_weather = game::WEATHER_SUNNY_WINDY;
+										} else if (weather_str == "CLOUDY") {
+											temp_weather = game::WEATHER_CLOUDY;
+										} else if (weather_str == "RAIN") {
+											temp_weather = game::WEATHER_RAIN;
+										} else if (weather_str == "DRIZZLE") {
+											temp_weather = game::WEATHER_DRIZZLE;
+										} else if (weather_str == "FOGGY") {
+											temp_weather = game::WEATHER_FOGGY;
+										} else if (weather_str == "LIGHTNING") {
+											temp_weather = game::WEATHER_LIGHTNING;
+										}
+									}
+
+									// optional
+									if (spawn_on.contains("weather_transition_value")) {
+										temp_weather_transition_value = to_float(spawn_on.at("weather_transition_value"), 0.2f);
+									}
+
+									// optional
+									if (spawn_on.contains("between_hours")) 
+									{
+										if (const auto hours = spawn_on.at("between_hours"); hours.is_array() && hours.as_array().size() == 2u)
+										{
+											temp_from_hour = to_int(hours.as_array()[0], -1);
+											temp_to_hour = to_int(hours.as_array()[1], -1);
+										}
+									}
+								}
+
 								m_map_settings.map_markers.emplace_back(
 									marker_settings_s
 									{
@@ -98,6 +148,10 @@ namespace gta4
 										.rotation = temp_rotation,
 										.scale = temp_scale,
 										.cull_distance = temp_cull_distance,
+										.weather_type = temp_weather,
+										.weather_transition_value = temp_weather_transition_value,
+										.from_hour = temp_from_hour,
+										.to_hour = temp_to_hour,
 										.comment = std::move(temp_comment),
 										.internal__frames_until_next_vis_check = static_cast<uint32_t>(temp_marker_index % remix_markers::DISTANCE_CHECK_FRAME_INTERVAL),
 									});

@@ -20,7 +20,7 @@ namespace gta4
 
 		static void draw_nocull_markers();
 
-		static constexpr uint32_t DISTANCE_CHECK_FRAME_INTERVAL = 120;
+		static constexpr uint32_t DISTANCE_CHECK_FRAME_INTERVAL = 30;
 
 	private:
 		bool m_initialized = false;

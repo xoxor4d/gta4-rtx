@@ -6,12 +6,17 @@
 #
 # ~~ Parameters
 #   {          
-#       #                   comment         
-#       marker_num =        num of marker                                                           [int 0-inf]
-#       position = []       position of the marker mesh                                             [3D Vector]
-#       rotation = []       rotation of the marker mesh                                             [3D Vector]
-#       scale = []          scale of the marker mesh                                                [3D Vector]
-#       cull_distance =     disable drawing of marker mesh after this distance from the player      [Float]
+#       #                                   comment         
+#       marker_num =                        num of marker                                                           [Int 0-Inf]
+#       position = []                       position of the marker mesh                                             [3D Vector]
+#       rotation = []                       rotation of the marker mesh                                             [3D Vector]
+#       scale = []                          scale of the marker mesh                                                [3D Vector]
+#       cull_distance =                     disable drawing of marker mesh after this distance from the player      [Float]
+#       spawn_on = {
+#           weather = "TYPE"                only spawn marker when THIS weather is active                           [STRING] - [EXTRASUNNY, SUNNY, SUNNY_WINDY, CLOUDY, RAIN, DRIZZLE, FOGGY, LIGHTNING]
+#           weather_transition_value =      transition value the weather needs to be at for the marker to show      [Float 0-1] 
+#           between_hours = [from, to]      only spawn marker between certain hours (from-to)                       [2D Int]
+#       }
 #   }, 
 #   { ... },
 

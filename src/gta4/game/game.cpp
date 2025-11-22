@@ -43,6 +43,9 @@ namespace gta4::game
 	currentViewport_ptr* pCurrentViewport = nullptr;
 	D3DXMATRIX* pCurrentWorldTransform = nullptr;
 
+	eWeatherType* weather_type_prev = nullptr;
+	eWeatherType* weather_type_new = nullptr;
+	float* weather_change_value = nullptr;
 	float* pTimeCycleWetnessChange = nullptr;
 	float* pTimeCycleWetness = nullptr;
 	float* pTimeCycleSpecularOffset = nullptr;
@@ -50,6 +53,8 @@ namespace gta4::game
 	TimeCycleParams* m_pCurrentTimeCycleParams_01 = nullptr;
 	TimeCycleParams* m_pCurrentTimeCycleParams_02 = nullptr;
 	TimeCycleParams* m_pCurrentTimeCycleParams_Cutscene = nullptr;
+	uint8_t* m_game_clock_hours = nullptr;
+	uint8_t* m_game_clock_minutes = nullptr;
 
 	//CLightSource* m_renderLights = nullptr;
 	//std::uint32_t* m_numRenderLights = nullptr;
@@ -189,6 +194,11 @@ namespace gta4::game
 			(var) = offset; found_pattern_count++; \
 		} total_pattern_count++;
 
+#define PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(var, type, pattern, byte_offset, static_addr) \
+		if (const auto offset = shared::utils::mem::find_pattern(##pattern, byte_offset, #var, use_pattern, static_addr); offset) { \
+			(var) = (type)*(DWORD*)offset; found_pattern_count++; \
+		} total_pattern_count++;
+
 	// init any adresses here
 	void init_game_addresses()
 	{
@@ -280,6 +290,18 @@ namespace gta4::game
 		} total_pattern_count++;
 
 		//
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(weather_type_prev, eWeatherType*, "A1 ? ? ? ? 8B 0D ? ? ? ? F3 0F 10 1D", 1, 0x9AFB6F);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(weather_type_new, eWeatherType*, "8B 0D ? ? ? ? F3 0F 10 1D ? ? ? ? F3 0F 5C 1D", 2, 0x9AFB74);
+
+		if (const auto offset = shared::utils::mem::find_pattern("A3 ? ? ? ? 8B 44 24 ? A3 ? ? ? ? 8B 44 24 ? A3 ? ? ? ? A1", 0, "m_game_clock_hours", use_pattern, 0x9CB46D); offset) 
+		{
+			found_pattern_count += 2u;
+			m_game_clock_hours = (uint8_t*)*(DWORD*)(offset + 1u);
+			m_game_clock_minutes = (uint8_t*)*(DWORD*)(offset + 10u);
+		} total_pattern_count += 2u;
+
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(weather_change_value, float*, "F3 0F 10 0D ? ? ? ? 8B 15 ? ? ? ? 0F 2F C1", 4, 0xA2E7E8);
+
 		if (const auto offset = shared::utils::mem::find_pattern("F3 0F 10 05 ? ? ? ? 56 57 ? ? ? C1 E7", 4, "pTimeCycleCurrentWetness", use_pattern, 0x986CBC); offset) {
 			pTimeCycleWetnessChange = (float*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
