@@ -593,14 +593,14 @@ namespace gta4
 			{
 				"emissive_night_surfaces_emissive_scalar",
 				("Scale emissive strength of every surface using a shader ending on 'emissivenight.fxc'"),
-				0.2f
+				0.25f
 			};
 
 			variable emissive_surfaces_emissive_scalar =
 			{
 				"emissive_surfaces_emissive_scalar",
 				("Scale emissive strength of every surface using a shader ending on 'emissive.fxc'"),
-				0.8f
+				0.15f
 			};
 
 			variable emissive_strong_surfaces_emissive_scalar =
