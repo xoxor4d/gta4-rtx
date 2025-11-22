@@ -881,26 +881,30 @@ namespace gta4
 			im->m_dbg_debug_single_frame_timecycle_remix_vars = true;
 		}
 
-		ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-		if (ImGui::Button("Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 32)))
+		ImGui::BeginDisabled(!game::is_in_game);
 		{
-			const auto n = natives::get();
+			ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
+			if (ImGui::Button("Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 32)))
+			{
+				const auto n = natives::get();
 
-			natives::Ped ped;
-			n->GetPlayerChar(n->GetPlayerId(), &ped);
+				natives::Ped ped;
+				n->GetPlayerChar(n->GetPlayerId(), &ped);
 
-			n->DisplayRadar(im->m_screenshot_mode);
+				n->DisplayRadar(im->m_screenshot_mode);
 
-			if (im->m_screenshot_mode) {
-				n->HideHudAndRadarThisFrame();
+				if (im->m_screenshot_mode) {
+					n->HideHudAndRadarThisFrame();
+				}
+
+				n->DisplayHud(im->m_screenshot_mode);
+				n->SetCharVisible(ped, im->m_screenshot_mode);
+
+				im->m_screenshot_mode = !im->m_screenshot_mode;
 			}
-			
-			n->DisplayHud(im->m_screenshot_mode);
-			n->SetCharVisible(ped, im->m_screenshot_mode);
-
-			im->m_screenshot_mode = !im->m_screenshot_mode;
+			ImGui::Style_ColorButtonPop();
+			ImGui::EndDisabled();
 		}
-		ImGui::Style_ColorButtonPop();
 	}
 
 	void imgui::tab_dev()
