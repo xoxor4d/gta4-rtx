@@ -67,7 +67,7 @@ namespace gta4
 			}
 		}
 
-		if (shared::globals::imgui_menu_open)
+		if (shared::globals::imgui_menu_open || imgui::get()->m_freecam_mode)
 		{
 			//auto& io = ImGui::GetIO();
 			ImGui_ImplWin32_WndProcHandler(shared::globals::main_window, message_type, wparam, lparam);
@@ -488,7 +488,7 @@ namespace gta4
 		{
 		case StatObj::Mode::Single:
 			ImGui::Text("%s", name);
-			ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.5f);
+			ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.65f);
 			ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
 			ImGui::Text("%d total", stat.get_total());
 			ImGui::PopFont();
@@ -496,7 +496,7 @@ namespace gta4
 
 		case StatObj::Mode::ConditionalCheck:
 			ImGui::Text("%s", name);
-			ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.5f);
+			ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.65f);
 			ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
 			ImGui::Text("%d total, %d successful", stat.get_total(), stat.get_successful());
 			ImGui::PopFont();
@@ -877,14 +877,20 @@ namespace gta4
 			im->m_do_not_pause_on_lost_focus_changed = true;
 		}
 
+#if DEBUG
 		if (ImGui::Button("Timecycle Vars - Debug Single Frame", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			im->m_dbg_debug_single_frame_timecycle_remix_vars = true;
 		}
+#endif
+
+		ImGui::Spacing(0, 6);
+		ImGui::SeparatorText("    Screenshot Mode     ");
+		ImGui::Spacing(0, 2);
 
 		ImGui::BeginDisabled(!game::is_in_game);
 		{
 			ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 32)))
+			if (ImGui::Button("Toggle Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
 			{
 				const auto n = natives::get();
 
@@ -898,11 +904,48 @@ namespace gta4
 				}
 
 				n->DisplayHud(im->m_screenshot_mode);
-				n->SetCharVisible(ped, im->m_screenshot_mode);
+
+				if (im->m_screenshot_mode_hide_player) {
+					n->SetCharVisible(ped, im->m_screenshot_mode);
+				} else {
+					n->SetCharVisible(ped, true);
+				}
 
 				im->m_screenshot_mode = !im->m_screenshot_mode;
 			}
 			ImGui::Style_ColorButtonPop();
+
+			ImGui::Checkbox("Hide Player", &im->m_screenshot_mode_hide_player);
+
+			// ---
+
+			ImGui::Spacing(0, 6);
+			ImGui::SeparatorText("    FreeCam     ");
+			ImGui::Spacing(0, 2);
+			ImGui::CenterText("WASD: Forward & Strafing      Q/E: Down & Up");
+			ImGui::CenterText("Shift/Space: Speedup & Slowdown");
+			ImGui::Spacing(0, 4);
+
+			ImGui::Style_ColorButtonPush(im->m_freecam_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
+			if (ImGui::Button("FreeCam Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			{
+				const auto n = natives::get();
+
+				natives::Ped ped;
+				n->GetPlayerChar(n->GetPlayerId(), &ped);
+
+				if (!n->IsCharSittingInAnyCar(ped))
+				{
+					im->m_freecam_mode = !im->m_freecam_mode;
+					n->SetCharCollision(ped, !im->m_freecam_mode);
+				}
+			} TT("Enable FreeCam Mode - Not available when sitting in a car!");
+			ImGui::Style_ColorButtonPop();
+
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::DragFloat("FreeCam Upward Offset", &im->m_freecam_up_offset, 0.0001f, 0, 0, "%.5f");
 			ImGui::EndDisabled();
 		}
 	}
@@ -921,14 +964,14 @@ namespace gta4
 		{
 			static float cont_debug_height = 0.0f;
 			cont_debug_height = ImGui::Widget_ContainerWithCollapsingTitle("DEBUG Section", cont_debug_height, 
-				dev_debug_container, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+				dev_debug_container, false, ICON_FA_TERMINAL, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 //#endif
 
 		{
 			static float cont_other_height = 0.0f;
 			cont_other_height = ImGui::Widget_ContainerWithCollapsingTitle("Other Settings", cont_other_height,
-				dev_other_container, false, ICON_FA_MEMORY, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+				dev_other_container, true, ICON_FA_MEMORY, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 	}
 

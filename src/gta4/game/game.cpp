@@ -102,6 +102,8 @@ namespace gta4::game
 	uint32_t func_addr__on_sky_render_stub = 0u;
 	uint32_t retn_addr__on_sky_render_stub = 0u;
 
+	uint32_t hk_addr__on_cgame_process_hk = 0u;
+
 	uint32_t retn_addr__on_add_frontendhelpertext_stub = 0u;
 	uint32_t func_addr__add_renderfontbufferdc = 0u;
 	uint32_t func_addr__frontendhelpertext_add_drawcmd = 0u;
@@ -470,6 +472,8 @@ namespace gta4::game
 			retn_addr__on_sky_render_stub = offset; found_pattern_count++;
 		} total_pattern_count++;
 
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__on_cgame_process_hk, "E8 ? ? ? ? 83 C4 ? B9 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? E8", 0, 0x59D7FC);
 
 		PATTERN_OFFSET_SIMPLE(retn_addr__on_add_frontendhelpertext_stub, "81 EC ? ? ? ? 53 56 8B 35 ? ? ? ? 57 85 F6", 0, 0x8B6C86);
 		PATTERN_OFFSET_SIMPLE(func_addr__add_renderfontbufferdc, "56 57 E8 ? ? ? ? 8B F0 8B CE", 0, 0x923950);

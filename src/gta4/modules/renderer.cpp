@@ -2693,7 +2693,11 @@ namespace gta4
 
 	void on_add_frontendhelpertext_hk()
 	{
-		static auto im = imgui::get();
+		const auto im = imgui::get();
+
+		if (!game::is_in_game) {
+			return;
+		}
 
 		if (im->m_screenshot_mode) {
 			natives::get()->HideHudAndRadarThisFrame();

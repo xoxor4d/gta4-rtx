@@ -116,6 +116,8 @@ namespace gta4::game
 	extern uint32_t func_addr__on_sky_render_stub;
 	extern uint32_t retn_addr__on_sky_render_stub;
 
+	extern uint32_t hk_addr__on_cgame_process_hk;
+
 	extern uint32_t retn_addr__on_add_frontendhelpertext_stub;
 	extern uint32_t func_addr__add_renderfontbufferdc;
 	extern uint32_t func_addr__frontendhelpertext_add_drawcmd;

@@ -31,6 +31,13 @@ namespace gta4
 		bool m_do_not_pause_on_lost_focus_changed = false;
 
 		bool m_screenshot_mode = false;
+		bool m_screenshot_mode_hide_player = true;
+		bool m_freecam_mode = false;
+		float m_freecam_fwd_speed = 0.5f;
+		float m_freecam_rt_speed = 0.2f;
+		float m_freecam_up_speed = 0.2f;
+		float m_freecam_up_offset = -0.0007f;
+		//std::uint32_t m_freecam_framecount = 0u;
 
 		Vector m_debug_vector = { 0.0f, 0.0f, 0.0f };
 		Vector m_debug_vector2 = { 0.0f, 0.0f, 0.0f };
