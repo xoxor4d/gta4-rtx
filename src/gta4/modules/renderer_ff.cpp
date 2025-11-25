@@ -83,7 +83,18 @@ namespace gta4
 			if (!ctx.info.shaderconst_uses_emissive_multiplier /*|| im->m_dbg_emissive_nonalpha_override*/)
 			{
 				renderer::set_remix_modifier(dev, RemixModifier::EmissiveScalar);
-				renderer::set_remix_emissive_intensity(dev, gs->emissive_generic_scale.get_as<float>() /*im->m_dbg_emissive_nonalpha_override_scale*/);
+
+				if (ctx.info.preset_index == GTA_EMISSIVENIGHT || ctx.info.preset_index == GTA_EMISSIVENIGHT_ALPHA)
+				{
+					if (*game::m_game_clock_hours <= 6 || *game::m_game_clock_hours >= 19) {
+						renderer::set_remix_emissive_intensity(dev, gs->emissive_generic_scale.get_as<float>());
+					} else {
+						renderer::set_remix_emissive_intensity(dev, 0.0f);
+					}
+				}
+				else {
+					renderer::set_remix_emissive_intensity(dev, gs->emissive_generic_scale.get_as<float>() /*im->m_dbg_emissive_nonalpha_override_scale*/);
+				}
 			}
 		}
 	}
@@ -145,6 +156,8 @@ namespace gta4
 			else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
 				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer /*InstanceCategories::DecalStatic*/);
 			}
+
+
 
 			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha); 
 			ctx.modifiers.allow_vertex_colors = true;
