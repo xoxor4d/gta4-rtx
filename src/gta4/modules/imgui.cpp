@@ -889,72 +889,6 @@ namespace gta4
 			im->m_dbg_debug_single_frame_timecycle_remix_vars = true;
 		}
 #endif
-
-		ImGui::Spacing(0, 6);
-		ImGui::SeparatorText("    Screenshot Mode     ");
-		ImGui::Spacing(0, 2);
-
-		ImGui::BeginDisabled(!game::is_in_game);
-		{
-			ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("Toggle Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
-			{
-				const auto n = natives::get();
-
-				natives::Ped ped;
-				n->GetPlayerChar(n->GetPlayerId(), &ped);
-
-				n->DisplayRadar(im->m_screenshot_mode);
-
-				if (im->m_screenshot_mode) {
-					n->HideHudAndRadarThisFrame();
-				}
-
-				n->DisplayHud(im->m_screenshot_mode);
-
-				if (im->m_screenshot_mode_hide_player) {
-					n->SetCharVisible(ped, im->m_screenshot_mode);
-				} else {
-					n->SetCharVisible(ped, true);
-				}
-
-				im->m_screenshot_mode = !im->m_screenshot_mode;
-			}
-			ImGui::Style_ColorButtonPop();
-
-			ImGui::Checkbox("Hide Player", &im->m_screenshot_mode_hide_player);
-
-			// ---
-
-			ImGui::Spacing(0, 6);
-			ImGui::SeparatorText("    FreeCam     ");
-			ImGui::Spacing(0, 2);
-			ImGui::CenterText("WASD: Forward & Strafing      Q/E: Down & Up");
-			ImGui::CenterText("Shift/Space: Speedup & Slowdown");
-			ImGui::Spacing(0, 4);
-
-			ImGui::Style_ColorButtonPush(im->m_freecam_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("FreeCam Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
-			{
-				const auto n = natives::get();
-
-				natives::Ped ped;
-				n->GetPlayerChar(n->GetPlayerId(), &ped);
-
-				if (!n->IsCharSittingInAnyCar(ped))
-				{
-					im->m_freecam_mode = !im->m_freecam_mode;
-					n->SetCharCollision(ped, !im->m_freecam_mode);
-				}
-			} TT("Enable FreeCam Mode - Not available when sitting in a car!");
-			ImGui::Style_ColorButtonPop();
-
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::DragFloat("FreeCam Upward Offset", &im->m_freecam_up_offset, 0.0001f, 0, 0, "%.5f");
-			ImGui::EndDisabled();
-		}
 	}
 
 	void imgui::tab_dev()
@@ -1588,6 +1522,90 @@ namespace gta4
 		ImGui::Spacing(0, inbetween_spacing);
 		/*ImGui::SeparatorText(" Huh ");
 		ImGui::Spacing(0, 8);*/
+	}
+
+	void quicksettings_util_container()
+	{
+		const auto& im = imgui::get();
+
+		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText("    Screenshot Mode     ");
+		ImGui::Spacing(0, 2);
+
+		ImGui::BeginDisabled(!game::is_in_game);
+		{
+			ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
+			if (ImGui::Button("Toggle Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			{
+				const auto n = natives::get();
+
+				natives::Ped ped;
+				n->GetPlayerChar(n->GetPlayerId(), &ped);
+
+				n->DisplayRadar(im->m_screenshot_mode);
+
+				if (im->m_screenshot_mode) {
+					n->HideHudAndRadarThisFrame();
+				}
+
+				n->DisplayHud(im->m_screenshot_mode);
+
+				if (im->m_screenshot_mode_hide_player) {
+					n->SetCharVisible(ped, im->m_screenshot_mode);
+				}
+				else {
+					n->SetCharVisible(ped, true);
+				}
+
+				im->m_screenshot_mode = !im->m_screenshot_mode;
+			}
+			ImGui::Style_ColorButtonPop();
+
+			ImGui::Checkbox("Hide Player", &im->m_screenshot_mode_hide_player);
+
+			// ---
+
+			ImGui::Spacing(0, 6);
+			ImGui::SeparatorText("    FreeCam     ");
+			ImGui::Spacing(0, 2);
+			ImGui::CenterText("WASD: Forward & Strafing      Q/E: Down & Up");
+			ImGui::CenterText("Shift/Space: Speedup & Slowdown");
+			ImGui::Spacing(0, 4);
+
+			ImGui::Style_ColorButtonPush(im->m_freecam_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
+			if (ImGui::Button("FreeCam Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			{
+				const auto n = natives::get();
+
+				natives::Ped ped;
+				n->GetPlayerChar(n->GetPlayerId(), &ped);
+
+				if (!n->IsCharSittingInAnyCar(ped))
+				{
+					im->m_freecam_mode = !im->m_freecam_mode;
+					n->SetCharCollision(ped, !im->m_freecam_mode);
+				}
+			} TT("Enable FreeCam Mode - Not available when sitting in a car!");
+			ImGui::Style_ColorButtonPop();
+
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::DragFloat("FreeCam Upward Offset", &im->m_freecam_up_offset, 0.0001f, 0, 0, "%.5f");
+			ImGui::EndDisabled();
+		}
+	}
+
+	void imgui::tab_utilities()
+	{
+		const auto& im = imgui::get();
+
+		// utilities
+		{
+			static float cont_quick_utilities_height = 0.0f;
+			cont_quick_utilities_height = ImGui::Widget_ContainerWithCollapsingTitle("Utilities", cont_quick_utilities_height, quicksettings_util_container,
+				true, ICON_FA_TERMINAL, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
 	}
 
 	void imgui::tab_gamesettings()
@@ -3034,6 +3052,7 @@ namespace gta4
 			ImGui::PopStyleVar(1);
 			ADD_TAB("Game Settings", tab_gamesettings);
 			ADD_TAB("Map Settings", tab_map_settings);
+			ADD_TAB("Utilities", tab_utilities);
 			ADD_TAB("Dev", tab_dev);
 			ADD_TAB("About", tab_about);
 			ImGui::EndTabBar();
