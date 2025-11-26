@@ -1,4 +1,4 @@
-#include "std_include.hpp"
+﻿#include "std_include.hpp"
 #include "renderer.hpp"
 
 #include "d3d9ex.hpp"
@@ -119,7 +119,7 @@ namespace gta4
 	// - uses RS_211_ROUGHNESS_ZNORMAL
 	// - uses RS_212_ROUGHNESS_BLEND
 	// ~ req. runtime changes
-	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width)
+	/*void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width)
 	{
 		set_remix_modifier(dev, RemixModifier::RoughnessScalar);
 
@@ -129,7 +129,88 @@ namespace gta4
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, *reinterpret_cast<DWORD*>(&roughness_scalar));
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_211_ROUGHNESS_ZNORMAL, *reinterpret_cast<DWORD*>(&max_z));
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_212_ROUGHNESS_BLEND, *reinterpret_cast<DWORD*>(&blend_width));
+	}*/
+
+	//void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width)
+	//{
+	//	set_remix_modifier(dev, RemixModifier::RoughnessScalar);
+
+	//	// Pack 3 parameters into one float: scalar + (max_z * 0.001) + (blend_width * 0.000001)
+	//	// Clamp values: scalar (0-10), max_z (0-1), blend_width (0-1)
+	//	const float clampedScalar = std::clamp(roughness_scalar, 0.0f, 10.0f);
+	//	const float clampedMaxZ = std::clamp(max_z, 0.0f, 1.0f);
+	//	const float clampedBlendWidth = std::clamp(blend_width, 0.0f, 1.0f);
+	//	float packedValue = clampedScalar + (clampedMaxZ * 0.001f) + (clampedBlendWidth * 0.000001f);
+
+	//	dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
+	//	dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, *reinterpret_cast<DWORD*>(&packedValue));
+	//}
+
+	//void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width, float param4)
+	//{
+	//	set_remix_modifier(dev, RemixModifier::RoughnessScalar);
+
+	//	// Bit packing helper: encode a float value into n bits
+	//	auto encodeRange = [](float v, int bits, float maxRange) -> uint16_t {
+	//		int maxVal = (1 << bits) - 1;
+	//		float normalized = std::clamp(v, 0.0f, maxRange) / maxRange;
+	//		return uint16_t(std::round(normalized * maxVal));
+	//		};
+
+	//	// Pack wetnessParams1 (lower 16 bits): scalar(6) + max_z(5) + blend_width(5) = 16 bits
+	//	uint16_t scalarBits = encodeRange(roughness_scalar, 6, 10.0f);      // 6 bits: 0-63 → 0-10
+	//	uint16_t maxZBits = encodeRange(max_z, 5, 1.0f);                     // 5 bits: 0-31 → 0-1
+	//	uint16_t blendWidthBits = encodeRange(blend_width, 5, 1.0f);         // 5 bits: 0-31 → 0-1
+	//	uint16_t wetnessParams1 = (scalarBits << 10) | (maxZBits << 5) | blendWidthBits;
+
+	//	// Pack wetnessParams2 (upper 16 bits): 4th parameter
+	//	// Assuming param4 is 0-1 range, using all 16 bits for full precision
+	//	// If you need a different range, adjust maxRange accordingly
+	//	uint16_t wetnessParams2 = encodeRange(param4, 16, 1.0f); // 16 bits: 0-65535 → 0-1
+
+	//	// Pack into DWORD: lower 16 bits = wetnessParams1, upper 16 bits = wetnessParams2
+	//	uint32_t packedDword = (uint32_t(wetnessParams2) << 16) | uint32_t(wetnessParams1);
+
+	//	dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
+	//	dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, packedDword);
+	//}
+
+
+
+	
+
+	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width, float param4, uint8_t flags)
+	{
+		set_remix_modifier(dev, RemixModifier::RoughnessScalar);
+
+		// Bit packing helper: encode a float value into n bits
+		auto encodeRange = [](float v, int bits, float maxRange) -> uint16_t {
+			int maxVal = (1 << bits) - 1;
+			float normalized = std::clamp(v, 0.0f, maxRange) / maxRange;
+			return uint16_t(std::round(normalized * maxVal));
+			};
+
+		// Pack wetnessParams1 (lower 16 bits): scalar(6) + max_z(5) + blend_width(5) = 16 bits
+		uint16_t scalarBits = encodeRange(roughness_scalar, 6, 10.0f);      // 6 bits: 0-63 → 0-10
+		uint16_t maxZBits = encodeRange(max_z, 5, 1.0f);                     // 5 bits: 0-31 → 0-1
+		uint16_t blendWidthBits = encodeRange(blend_width, 5, 1.0f);         // 5 bits: 0-31 → 0-1
+		uint16_t wetnessParams1 = (scalarBits << 10) | (maxZBits << 5) | blendWidthBits;
+
+		// Pack wetnessParams2 (upper 16 bits): lower 8 bits = param4 (0-10), upper 8 bits = flags
+		// Lower 8 bits: param4 as 8-bit value (0-255 → 0-10 range, used as raindrop scale multiplier)
+		// Don't scale on client side - send 0-10 range directly, shader will decode it
+		uint16_t param4Bits = encodeRange(param4, 8, 10.0f); // 8 bits: 0-255 → 0-10
+		// Upper 8 bits: flags (directly pack uint8_t flags into upper 8 bits)
+		uint16_t flagsBits = uint16_t(flags) << 8; // Shift flags to upper 8 bits
+		uint16_t wetnessParams2 = param4Bits | flagsBits;
+
+		// Pack into DWORD: lower 16 bits = wetnessParams1, upper 16 bits = wetnessParams2
+		uint32_t packedDword = (uint32_t(wetnessParams2) << 16) | uint32_t(wetnessParams1);
+
+		dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, packedDword);
 	}
+
 
 	// ---
 
@@ -264,7 +345,11 @@ namespace gta4
 		renderer::set_remix_roughness_scalar(dev,
 			gs->timecycle_wetness_vehicle_scalar.get_as<float>(),
 			gs->timecycle_wetness_vehicle_z_normal.get_as<float>(),
-			gs->timecycle_wetness_vehicle_blending.get_as<float>());
+			gs->timecycle_wetness_vehicle_blending.get_as<float>(),
+			gs->timecycle_wetness_vehicle_raindrop_scalar.get_as<float>(),
+			gs->timecycle_wetness_vehicle_raindrop_enable.get_as<bool>() 
+				? renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES
+				: renderer::WETNESS_FLAG_NONE);
 	}
 
 	void handle_vehicle_dirt_roughness_when_wet(IDirect3DDevice9* dev, [[maybe_unused]] const drawcall_mod_context& ctx)
@@ -882,8 +967,17 @@ namespace gta4
 								{
 								case GTA_EMISSIVENIGHT_ALPHA:
 								case GTA_EMISSIVENIGHT:
-									renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
-										*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_night_surfaces_emissive_scalar.get_as<float>());
+
+									if (*game::m_game_clock_hours <= 6 || *game::m_game_clock_hours >= 19) {
+										renderer::set_remix_emissive_intensity(shared::globals::d3d_device, *constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_night_surfaces_emissive_scalar.get_as<float>());
+									}
+									else {
+										renderer::set_remix_emissive_intensity(shared::globals::d3d_device, 0.0f);
+									}
+
+									//renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
+									//	*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_night_surfaces_emissive_scalar.get_as<float>());
+
 									break;
 
 								default:
@@ -900,6 +994,17 @@ namespace gta4
 										*constant_data_struct->constants[dataPoolIndex].float_arr * gs->emissive_strong_surfaces_emissive_scalar.get_as<float>()/*, true*/);
 									break;
 								}
+							}
+							else if (register_num == 51u && (pidx == GTA_EMISSIVENIGHT || pidx == GTA_EMISSIVENIGHT_ALPHA))
+							{
+								ctx.info.shaderconst_uses_emissive_multiplier = true;
+
+								Vector4D color = constant_data_struct->constants[dataPoolIndex].float_arr;
+
+								ctx.info.device_ptr->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(color.x, color.y, color.z, color.w));
+								ctx.info.device_ptr->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+								ctx.info.device_ptr->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+								ctx.info.device_ptr->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 							}
 						}
 
@@ -2085,11 +2190,33 @@ namespace gta4
 							ctx.modifiers.is_vehicle_wet = true;
 							handle_vehicle_roughness_when_wet(dev, ctx);
 						}
-						else {
+						else 
+						{
+							const float rain_size = pidx == GTA_PED_REFLECT ? gs->timecycle_wetness_ped_raindrop_scalar.get_as<float>() : gs->timecycle_wetness_world_raindrop_scalar.get_as<float>();
+							uint8_t rain_flags = WETNESS_FLAG_NONE;
+
+							if (pidx == GTA_PED_REFLECT)
+							{
+								if (gs->timecycle_wetness_ped_raindrop_enable.get_as<bool>()) {
+									rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES;
+								}
+							}
+							else // world surfs
+							{
+								if (gs->timecycle_wetness_world_raindrop_enable.get_as<bool>()) {
+									rain_flags |= WETNESS_FLAG_ENABLE_RAINDROPS;
+								}
+
+								if (gs->timecycle_wetness_world_puddles_enable.get_as<bool>()) {
+									rain_flags |= WETNESS_FLAG_ENABLE_PUDDLES;
+								}
+							}
+							
 							set_remix_roughness_scalar(dev, 
 								scalar, 
 								gs->timecycle_wetness_world_z_normal.get_as<float>(), 
-								gs->timecycle_wetness_world_blending.get_as<float>());
+								gs->timecycle_wetness_world_blending.get_as<float>(),
+								rain_size, rain_flags);
 						}
 					}
 

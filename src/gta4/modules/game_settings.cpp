@@ -226,9 +226,20 @@ namespace gta4
 				ASSIGN(timecycle_wetness_world_offset);
 				ASSIGN(timecycle_wetness_world_z_normal);
 				ASSIGN(timecycle_wetness_world_blending);
+				ASSIGN(timecycle_wetness_world_puddles_enable);
+				ASSIGN(timecycle_wetness_world_raindrop_enable);
+				ASSIGN(timecycle_wetness_world_raindrop_scalar);
+
+				ASSIGN(timecycle_wetness_ped_raindrop_enable);
+				ASSIGN(timecycle_wetness_ped_raindrop_scalar);
+				
 				ASSIGN(timecycle_wetness_vehicle_scalar);
 				ASSIGN(timecycle_wetness_vehicle_z_normal);
 				ASSIGN(timecycle_wetness_vehicle_blending);
+
+				ASSIGN(timecycle_wetness_vehicle_raindrop_enable);
+				ASSIGN(timecycle_wetness_vehicle_raindrop_scalar);
+				
 				ASSIGN(timecycle_wetness_vehicle_dirt_intensity_scalar);
 				ASSIGN(timecycle_wetness_vehicle_dirt_roughness_scalar);
 				ASSIGN(timecycle_wetness_vehicle_dirt_z_normal);

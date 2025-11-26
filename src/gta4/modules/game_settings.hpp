@@ -786,7 +786,7 @@ namespace gta4
 			{
 				"timecycle_wetness_world_scalar",
 				("Scales the weather wetness value (ranges from 0-1). Final value is clamped to 0-1. Increasing this will mostly affect damper weather states"),
-				1.8f
+				2.4f
 			};
 
 			variable timecycle_wetness_world_offset =
@@ -808,6 +808,40 @@ namespace gta4
 				"timecycle_wetness_world_blending",
 				("Defines the blending strength used to go from original roughness to adjusted roughness."),
 				0.65f
+			};
+
+			variable timecycle_wetness_world_puddles_enable = {
+				"timecycle_wetness_world_puddles_enable",
+				("Enables Puddle logic on World Surfaces."),
+				true
+			};
+
+			variable timecycle_wetness_world_raindrop_enable = {
+				"timecycle_wetness_world_raindrop_enable",
+				("Enables Raindrop logic on World Surfaces."),
+				true
+			};
+
+			variable timecycle_wetness_world_raindrop_scalar =
+			{
+				"timecycle_wetness_world_raindrop_scalar",
+				"Scale of raindrops on World Surfaces",
+				0.23f
+			};
+
+			// -----
+
+			variable timecycle_wetness_ped_raindrop_enable = {
+				"timecycle_wetness_ped_raindrop_enable",
+				("Enables Raindrop logic on Supported Ped Surfaces."),
+				false
+			};
+
+			variable timecycle_wetness_ped_raindrop_scalar =
+			{
+				"timecycle_wetness_ped_raindrop_scalar",
+				"Scale of raindrops on Supported Ped Surfaces",
+				5.0f
 			};
 
 			// -----
@@ -832,6 +866,20 @@ namespace gta4
 				"timecycle_wetness_vehicle_blending",
 				("Defines the blending strength used to go from original roughness to adjusted roughness."),
 				1.0f
+			};
+
+
+			variable timecycle_wetness_vehicle_raindrop_enable = {
+				"timecycle_wetness_vehicle_raindrop_enable",
+				("Enables Raindrop logic on Vehicles."),
+				false
+			};
+
+			variable timecycle_wetness_vehicle_raindrop_scalar =
+			{
+				"timecycle_wetness_vehicle_raindrop_scalar",
+				"Scale of raindrops on vehicles",
+				0.15f
 			};
 
 

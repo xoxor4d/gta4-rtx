@@ -87,6 +87,9 @@ namespace gta4
 		int m_dbg_used_timecycle = -1;
 		bool m_dbg_debug_single_frame_timecycle_remix_vars = false;
 
+		bool m_dbg_global_wetness_override = false;
+		float m_dbg_global_wetness = 0.0f;
+
 		bool m_dbg_custom_veh_headlight_enabled = false;
 		Vector m_dbg_custom_veh_headlight_color = { 1.0f, 0.0f, 0.0f };
 

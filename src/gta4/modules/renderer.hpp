@@ -589,7 +589,21 @@ namespace gta4
 
 		static void set_remix_modifier(IDirect3DDevice9* dev, RemixModifier mod);
 		static void set_remix_emissive_intensity(IDirect3DDevice9* dev, float intensity, bool no_overrides = false);
-		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f);
+
+		enum eWetnessFlags : uint8_t
+		{
+			WETNESS_FLAG_ENABLE_PUDDLES = 1 << 0,
+			WETNESS_FLAG_ENABLE_RAINDROPS = 1 << 1,				// either expensive or normal raindrops
+			WETNESS_FLAG_USE_TEXTURE_COORDINATES = 1 << 2,
+			WETNESS_FLAG_ENABLE_EXP_RAINSDROPS = 1 << 3,		// either expensive or normal raindrops
+			WETNESS_FLAG_TEMP_04 = 1 << 4,
+			WETNESS_FLAG_TEMP_05 = 1 << 5,
+			WETNESS_FLAG_TEMP_06 = 1 << 6,
+			WETNESS_FLAG_TEMP_07 = 1 << 7,
+			WETNESS_FLAG_NONE = 0u
+		};
+
+		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float param4 = 0.0f, uint8_t flags = WETNESS_FLAG_NONE);
 
 		static void set_remix_temp_float01(IDirect3DDevice9* dev, float value);
 		static void set_remix_temp_float01_pack_two_halfs(IDirect3DDevice9* dev, float value_low, float value_high);

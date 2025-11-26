@@ -801,6 +801,13 @@ namespace gta4
 			ImGui::Text("Clock Hour: %d", *game::m_game_clock_hours);
 			ImGui::Text("Clock Minutes: %d", *game::m_game_clock_minutes);
 
+			ImGui::Checkbox("Override Global Wetness Scale", &im->m_dbg_global_wetness_override);
+			ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
+			{
+				ImGui::SliderFloat("Global Wetness", &im->m_dbg_global_wetness, 0, 1, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				ImGui::EndDisabled();
+			}
+
 			ImGui::TreePop();
 		}
 
@@ -1504,23 +1511,61 @@ namespace gta4
 			gamesettings_bool_widget("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_wetness_enabled.get_as<bool>());
 			{
-				gamesettings_float_widget("World: Wetness Scalar", gs->timecycle_wetness_world_scalar, 0.0f, 0.0f, 0.005f);
-				gamesettings_float_widget("World: Additional Wetness Offset", gs->timecycle_wetness_world_offset, 0.0f, 0.0f, 0.005f);
-				gamesettings_float_widget("World: Min Surface Z-Normal", gs->timecycle_wetness_world_z_normal, 0.0f, 1.0f, 0.005f);
-				gamesettings_float_widget("World: Blending Strength", gs->timecycle_wetness_world_blending, 0.0f, 1.0f, 0.005f);
+				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+				ImGui::TextUnformatted("  World  ");
+				ImGui::PopFont();
+				ImGui::PushID("world");
+				gamesettings_float_widget("Wetness Scalar", gs->timecycle_wetness_world_scalar, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("Additional Wetness Offset", gs->timecycle_wetness_world_offset, 0.0f, 0.0f, 0.005f);
+				gamesettings_float_widget("Min Surface Z-Normal", gs->timecycle_wetness_world_z_normal, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Blending Strength", gs->timecycle_wetness_world_blending, 0.0f, 1.0f, 0.005f);
+
+				gamesettings_bool_widget("Enable Puddles", gs->timecycle_wetness_world_puddles_enable);
+				gamesettings_bool_widget("Enable World Raindrops", gs->timecycle_wetness_world_raindrop_enable);
+				gamesettings_float_widget("World Raindrop Scale", gs->timecycle_wetness_world_raindrop_scalar, 0.0f, 10.0f, 0.005f);
+				ImGui::PopID();
+
 
 				ImGui::Spacing(0, inbetween_spacing);
+				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+				ImGui::TextUnformatted("  Ped Wetness  ");
+				ImGui::PopFont();
+				ImGui::Spacing(0, 4);
 
-				gamesettings_float_widget("Vehicle: Wetness Scalar", gs->timecycle_wetness_vehicle_scalar, 0.0f, 1.0f, 0.005f);
-				gamesettings_float_widget("Vehicle: Min Surface Z-Normal", gs->timecycle_wetness_vehicle_z_normal, 0.0f, 1.0f, 0.005f);
-				gamesettings_float_widget("Vehicle: Blending Strength", gs->timecycle_wetness_vehicle_blending, 0.0f, 1.0f, 0.005f);
+				ImGui::PushID("ped");
+				gamesettings_bool_widget("Enable Ped Raindrops", gs->timecycle_wetness_ped_raindrop_enable);
+				gamesettings_float_widget("Ped Raindrop Scale", gs->timecycle_wetness_ped_raindrop_scalar, 0.0f, 10.0f, 0.005f);
+				ImGui::PopID();
+
 
 				ImGui::Spacing(0, inbetween_spacing);
+				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+				ImGui::TextUnformatted("  Vehicle Wetness  ");
+				ImGui::PopFont();
+				ImGui::Spacing(0, 4);
 
-				gamesettings_float_widget("Vehicle Dirt: Intensity Scalar", gs->timecycle_wetness_vehicle_dirt_intensity_scalar, 0.0f, 1.0f, 0.005f);
-				gamesettings_float_widget("Vehicle Dirt: Wetness Scalar", gs->timecycle_wetness_vehicle_dirt_roughness_scalar, 0.0f, 1.0f, 0.005f);
-				gamesettings_float_widget("Vehicle Dirt: Min Surface Z-Normal", gs->timecycle_wetness_vehicle_dirt_z_normal, 0.0f, 1.0f, 0.005f);
-				gamesettings_float_widget("Vehicle Dirt: Blending Strength", gs->timecycle_wetness_vehicle_dirt_blending, 0.0f, 1.0f, 0.005f);
+				ImGui::PushID("vehicle");
+				gamesettings_float_widget("Vehicle Wetness Scalar", gs->timecycle_wetness_vehicle_scalar, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Min Surface Z-Normal", gs->timecycle_wetness_vehicle_z_normal, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Blending Strength", gs->timecycle_wetness_vehicle_blending, 0.0f, 1.0f, 0.005f);
+
+				gamesettings_bool_widget("Enable Vehicle Raindrops", gs->timecycle_wetness_vehicle_raindrop_enable);
+				gamesettings_float_widget("Vehicle Raindrop Scale", gs->timecycle_wetness_vehicle_raindrop_scalar, 0.0f, 10.0f, 0.005f);
+				ImGui::PopID();
+
+
+				ImGui::Spacing(0, inbetween_spacing);
+				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+				ImGui::TextUnformatted("  Vehicle Dirt Wetness ");
+				ImGui::PopFont();
+				ImGui::Spacing(0, 4);
+
+				ImGui::PushID("vehicledirt");
+				gamesettings_float_widget("Intensity Scalar", gs->timecycle_wetness_vehicle_dirt_intensity_scalar, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Wetness Scalar", gs->timecycle_wetness_vehicle_dirt_roughness_scalar, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Min Surface Z-Normal", gs->timecycle_wetness_vehicle_dirt_z_normal, 0.0f, 1.0f, 0.005f);
+				gamesettings_float_widget("Blending Strength", gs->timecycle_wetness_vehicle_dirt_blending, 0.0f, 1.0f, 0.005f);
+				ImGui::PopID();
 
 				ImGui::EndDisabled();
 			}
