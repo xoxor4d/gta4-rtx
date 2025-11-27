@@ -1344,7 +1344,7 @@ namespace gta4
 			gamesettings_bool_widget("Enable ColorCorrection Logic", gs->timecycle_colorcorrection_enabled);
 			ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
 			{
-				gamesettings_bool_widget("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled);
+				gamesettings_float_widget("ColorCorrection Influence", gs->timecycle_colorcorrection_influence, 0.0f, 15.0f, 0.005f);
 
 				ImGui::TextDisabled("Timecycle mColorCorrection: [ %.2f, %.2f, %.2f ]",
 					im->m_timecyc_curr_mColorCorrection.x,
@@ -1358,12 +1358,16 @@ namespace gta4
 					im->m_timecyc_curr_mColorCorrection_final.z);
 				ImGui::PopFont();
 
+				ImGui::Spacing(0, 4);
+
 				ImGui::BeginDisabled(!gs->timecycle_colorcorrection_enabled.get_as<bool>());
 				{
+					gamesettings_bool_widget("Enable ColorTemperature Logic", gs->timecycle_colortemp_enabled);
+					gamesettings_float_widget("ColorTemperature Value", gs->timecycle_colortemp_value, 0.0f, 15.0f, 0.005f);
 					gamesettings_float_widget("ColorTemperature Influence", gs->timecycle_colortemp_influence, 0.0f, 0.0f, 0.005f);
 
-					ImGui::TextDisabled("Timecycle mTemperature: [ %.2f ]",
-						im->m_timecyc_curr_mTemperature);
+					//ImGui::TextDisabled("Timecycle mTemperature: [ %.2f ]",
+					//	im->m_timecyc_curr_mTemperature);
 					ImGui::TextDisabled("ColorTemp Offset applied to rtxTonemapColorBalance: [ %.2f, %.2f, %.2f ]",
 						im->m_timecyc_curr_mTemperature_offset.x,
 						im->m_timecyc_curr_mTemperature_offset.y,
@@ -1439,14 +1443,16 @@ namespace gta4
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Weather ");
-		ImGui::Spacing(0, 4);
+		ImGui::Spacing(0, inbetween_spacing);
 
 		{
 			gamesettings_bool_widget("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled);
+			ImGui::Spacing(0, inbetween_spacing);
+
 			ImGui::BeginDisabled(!gs->timecycle_wetness_enabled.get_as<bool>());
 			{
-				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-				ImGui::TextUnformatted("  World  ");
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextUnformatted("::  World");
 				ImGui::PopFont();
 				ImGui::PushID("world");
 				gamesettings_float_widget("Wetness Scalar", gs->timecycle_wetness_world_scalar, 0.0f, 0.0f, 0.005f);
@@ -1461,8 +1467,8 @@ namespace gta4
 
 
 				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-				ImGui::TextUnformatted("  Ped Wetness  ");
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextUnformatted("::  Ped Wetness");
 				ImGui::PopFont();
 				ImGui::Spacing(0, 4);
 
@@ -1473,8 +1479,8 @@ namespace gta4
 
 
 				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-				ImGui::TextUnformatted("  Vehicle Wetness  ");
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextUnformatted("::  Vehicle Wetness");
 				ImGui::PopFont();
 				ImGui::Spacing(0, 4);
 
@@ -1489,8 +1495,8 @@ namespace gta4
 
 
 				ImGui::Spacing(0, inbetween_spacing);
-				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-				ImGui::TextUnformatted("  Vehicle Dirt Wetness ");
+				ImGui::PushFont(shared::imgui::font::BOLD);
+				ImGui::TextUnformatted("::  Vehicle Dirt Wetness");
 				ImGui::PopFont();
 				ImGui::Spacing(0, 4);
 

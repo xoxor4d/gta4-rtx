@@ -342,14 +342,21 @@ namespace gta4
 	void handle_vehicle_roughness_when_wet(IDirect3DDevice9* dev, [[maybe_unused]] const drawcall_mod_context& ctx)
 	{
 		const auto gs = game_settings::get();
+
+		uint8_t rain_flags = renderer::WETNESS_FLAG_NONE;
+		if (gs->timecycle_wetness_vehicle_raindrop_enable.get_as<bool>())
+		{
+			if (*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING) {
+				rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES;
+			}
+		}
+
 		renderer::set_remix_roughness_scalar(dev,
 			gs->timecycle_wetness_vehicle_scalar.get_as<float>(),
 			gs->timecycle_wetness_vehicle_z_normal.get_as<float>(),
 			gs->timecycle_wetness_vehicle_blending.get_as<float>(),
 			gs->timecycle_wetness_vehicle_raindrop_scalar.get_as<float>(),
-			gs->timecycle_wetness_vehicle_raindrop_enable.get_as<bool>() 
-				? renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES
-				: renderer::WETNESS_FLAG_NONE);
+			rain_flags);
 	}
 
 	void handle_vehicle_dirt_roughness_when_wet(IDirect3DDevice9* dev, [[maybe_unused]] const drawcall_mod_context& ctx)
@@ -2139,7 +2146,7 @@ namespace gta4
 				}
 			}
 
-			if (gs->timecycle_wetness_enabled.get_as<bool>() && *game::pTimeCycleWetnessChange > 0.0f)
+			if ((gs->timecycle_wetness_enabled.get_as<bool>() && *game::pTimeCycleWetnessChange > 0.0f) || im->m_dbg_global_wetness_override)
 			{
 				// check for stencil
 				DWORD stencil_ref = 0u, stencil_enabled = 0u;
@@ -2177,13 +2184,17 @@ namespace gta4
 						};
 
 					const float wetness_value = get_wetness();
-					if (wetness_value > 0.0f)
+					if (wetness_value > 0.0f || im->m_dbg_global_wetness_override)
 					{
 						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_world_scalar.get_as<float>(), 0.0f, 1.0f);
 						float scalar = 1.0f - adjusted_wetness;
 						scalar += gs->timecycle_wetness_world_offset.get_as<float>();
 						scalar = std::clamp(scalar * 0.8f, 0.0f, 1.0f);
 						scalar = scalar < 0.0f ? 0.0f : scalar;
+
+						if (im->m_dbg_global_wetness_override) {
+							scalar = std::clamp((1.0f - im->m_dbg_global_wetness), 0.0f, 1.0f);
+						}
 
 						if (g_is_rendering_vehicle)
 						{
@@ -2197,14 +2208,20 @@ namespace gta4
 
 							if (pidx == GTA_PED_REFLECT)
 							{
-								if (gs->timecycle_wetness_ped_raindrop_enable.get_as<bool>()) {
-									rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES;
+								if (gs->timecycle_wetness_ped_raindrop_enable.get_as<bool>()) 
+								{
+									if (*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING) {
+										rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES;
+									}
 								}
 							}
 							else // world surfs
 							{
-								if (gs->timecycle_wetness_world_raindrop_enable.get_as<bool>()) {
-									rain_flags |= WETNESS_FLAG_ENABLE_RAINDROPS;
+								if (gs->timecycle_wetness_world_raindrop_enable.get_as<bool>()) 
+								{
+									if (*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING) {
+										rain_flags |= WETNESS_FLAG_ENABLE_RAINDROPS;
+									}
 								}
 
 								if (gs->timecycle_wetness_world_puddles_enable.get_as<bool>()) {

@@ -257,7 +257,9 @@ namespace gta4
 				ASSIGN(timecycle_skylight_enabled);
 				ASSIGN(timecycle_skylight_scalar);
 				ASSIGN(timecycle_colorcorrection_enabled);
+				ASSIGN(timecycle_colorcorrection_influence);
 				ASSIGN(timecycle_colortemp_enabled);
+				ASSIGN(timecycle_colortemp_value);
 				ASSIGN(timecycle_colortemp_influence);
 				ASSIGN(timecycle_desaturation_enabled);
 				ASSIGN(timecycle_desaturation_influence);

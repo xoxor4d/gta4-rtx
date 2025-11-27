@@ -996,16 +996,28 @@ namespace gta4
 				true
 			};
 
+			variable timecycle_colorcorrection_influence = {
+				"timecycle_colorcorrection_influence",
+				("Controls how much the timecycle color correction variable influences 'rtx.tonemap.colorBalance'"),
+				1.0f
+			};
+
 			variable timecycle_colortemp_enabled = {
 				"timecycle_colortemp_enabled",
-				("Enables influence of color temperature on 'rtx.tonemap.colorBalance' based on timecycle settings."),
+				("Enables influence of color temperature on 'rtx.tonemap.colorBalance'. NOT based on timecycle setting."),
 				true
+			};
+
+			variable timecycle_colortemp_value = {
+				"timecycle_colortemp_value",
+				("Base colortemp value used for calculations."),
+				11.2f
 			};
 
 			variable timecycle_colortemp_influence = {
 				"timecycle_colortemp_influence",
-				("Controls how much the colortemp timecycle variable influences 'rtx.tonemap.colorBalance'"),
-				0.8f
+				("Controls how much the timecycle_colortemp_value variable influences 'rtx.tonemap.colorBalance'"),
+				0.15f
 			};
 
 			// -----

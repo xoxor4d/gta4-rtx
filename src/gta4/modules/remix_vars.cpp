@@ -866,17 +866,23 @@ namespace gta4
 				Vector temp_color_offset;
 				if (gs->timecycle_colortemp_enabled.get_as<bool>())
 				{
-					const float nrml_temp = std::clamp(timecycle->mTemperature / 15.0f, -1.0f, 1.0f);
+					const float nrml_temp = std::clamp(gs->timecycle_colortemp_value.get_as<float>() /*timecycle->mTemperature*/ / 15.0f, -1.0f, 1.0f);
 					temp_color_offset.x = nrml_temp * 0.3f;
 					temp_color_offset.y = 0.0f;
 					temp_color_offset.z = -nrml_temp * 0.3f;
 					temp_color_offset *= gs->timecycle_colortemp_influence.get_as<float>();
-					im->m_timecyc_curr_mTemperature = timecycle->mTemperature;
+					//im->m_timecyc_curr_mTemperature = timecycle->mTemperature;
 					im->m_timecyc_curr_mTemperature_offset = temp_color_offset;
 				}
 
 				Vector4D color_correction;
 				unpack_uint32(timecycle->mColorCorrection, &color_correction.x);
+
+				const auto& cc_influence = gs->timecycle_colorcorrection_influence.get_as<float>();
+				color_correction.x *= cc_influence;
+				color_correction.y *= cc_influence;
+				color_correction.z *= cc_influence;
+
 				val.vector[0] = color_correction.x + temp_color_offset.x;
 				val.vector[1] = color_correction.y + temp_color_offset.y;
 				val.vector[2] = color_correction.z + temp_color_offset.z;
