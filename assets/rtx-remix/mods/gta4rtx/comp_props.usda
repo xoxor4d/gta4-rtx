@@ -1,0 +1,141 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_65B43D0B3BCDFA45"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.445
+            }
+        }
+
+        over "mat_81B6BB36FC19E7AC"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.84999996
+            }
+        }
+
+        over "mat_0A7D427A284550DB"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.185
+                custom float inputs:reflection_roughness_constant = 0.42
+            }
+        }
+
+        over "mat_07E03D2F688A6140" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.33
+                custom float inputs:thin_wall_thickness = 0.2
+                custom bool inputs:thin_walled = 1
+                custom color3f inputs:transmittance_color = (0.7241693, 0.8671056, 0.87644786)
+                custom float inputs:transmittance_measurement_distance = 0.1
+                custom asset inputs:transmittance_texture = @./assets/helper/imperfections/glass_trans.a.rtex.dds@
+                custom bool inputs:use_diffuse_layer = 0
+            }
+        }
+
+        over "mat_36B8E51F320EB50B"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.11
+            }
+        }
+
+        over "mat_B9E74750A024C8FE"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.83
+            }
+        }
+
+        over "mat_E8B560FBA6991BD0" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.5
+                custom float inputs:thin_wall_thickness = 1.5
+                custom bool inputs:thin_walled = 1
+            }
+        }
+
+        over "mat_0C08453B49AD01A5"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/prop_textures/small_props/0C08453B49AD01A5_pisswasser/0C08453B49AD01A5_albedo.a.rtex.dds@
+                custom float inputs:metallic_constant = 0.099999994
+                custom asset inputs:reflectionroughness_texture = @./assets/prop_textures/small_props/0C08453B49AD01A5_pisswasser/0C08453B49AD01A5_roughness.r.rtex.dds@
+                custom float inputs:subsurface_measurement_distance = 3.6
+                custom color3f inputs:subsurface_single_scattering_albedo = (1, 0.99999, 0.99999)
+                custom asset inputs:subsurface_single_scattering_texture = @@
+                custom asset inputs:subsurface_thickness_texture = @./assets/prop_textures/small_props/0C08453B49AD01A5_pisswasser/0C08453B49AD01A5_trans.a.rtex.dds@
+                custom color3f inputs:subsurface_transmittance_color = (0.1342556, 0.52616423, 0.9150579)
+                custom asset inputs:subsurface_transmittance_texture = @@
+                custom float inputs:subsurface_volumetric_anisotropy = 0.99
+            }
+        }
+
+        over "mat_04EA53916EB64F77"
+        {
+            over "Shader"
+            {
+                custom asset inputs:reflectionroughness_texture = @@
+            }
+        }
+
+        over "mat_E55A6418E43672EC"
+        {
+            over "Shader"
+            {
+                custom bool inputs:blend_enabled = 0
+                custom int inputs:blend_type = 0
+                asset inputs:diffuse_texture = @./assets/prop_textures/small_props/E55A6418E43672EC_wine_bleuterd/E55A6418E43672EC.a.rtex.dds@
+                custom asset inputs:metallic_texture = @./assets/prop_textures/small_props/E55A6418E43672EC_wine_bleuterd/E55A6418E43672EC_metalness.m.rtex.dds@
+                custom float inputs:opacity_constant = 1
+                custom asset inputs:reflectionroughness_texture = @./assets/prop_textures/small_props/E55A6418E43672EC_wine_bleuterd/E55A6418E43672EC_roughness.r.rtex.dds@
+                custom bool inputs:subsurface_diffusion_profile = 0
+                custom float inputs:subsurface_measurement_distance = 4.96
+                custom color3f inputs:subsurface_single_scattering_albedo = (1, 0.99999, 0.99999)
+                custom asset inputs:subsurface_thickness_texture = @./assets/prop_textures/small_props/E55A6418E43672EC_wine_bleuterd/E55A6418E43672EC_trans_mask.a.rtex.dds@
+                custom color3f inputs:subsurface_transmittance_color = (0.04925391, 0.48026893, 0.9111969)
+                custom float inputs:subsurface_volumetric_anisotropy = 0.99
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_D5B0C59CB73658C5" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.6
+                custom float inputs:thin_wall_thickness = 1.5
+                custom bool inputs:thin_walled = 1
+            }
+        }
+    }
+
+    over "meshes"
+    {
+    }
+}
+

@@ -1,0 +1,34 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_5572E9B90F662D44"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/prop_textures/seats/tlad_safehouse_couch/iv_tlad_bar_couch_padded_albedo.a.rtex.dds@
+                custom float inputs:displace_in = 0.01
+                custom float inputs:displace_out = 0.02
+                custom asset inputs:height_texture = @./assets/prop_textures/seats/tlad_safehouse_couch/iv_tlad_bar_couch_padded_height.h.rtex.dds@
+                custom asset inputs:metallic_texture = @./assets/prop_textures/seats/tlad_safehouse_couch/iv_tlad_bar_couch_padded_metalness.m.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/prop_textures/seats/tlad_safehouse_couch/iv_tlad_bar_couch_padded_normal_dx_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/prop_textures/seats/tlad_safehouse_couch/iv_tlad_bar_couch_padded_roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_FA247E77440ACC97"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/prop_textures/lamps/tlad_safehouse_hanging_fabric/Fabric_Jute_001_basecolor.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/prop_textures/lamps/tlad_safehouse_hanging_fabric/Fabric_Jute_001_normal_OTH_Normal.n.rtex.dds@
+            }
+        }
+    }
+}
+

@@ -3,17 +3,24 @@
     customLayerData = {
         string lightspeed_game_name = "GTAIV"
         string lightspeed_layer_type = "replacement"
+        dictionary lightspeed_mod_dependencies = {
+        }
         string lightspeed_mod_name = "gta4rtx"
-        string lightspeed_mod_notes = "early access"
-        string lightspeed_mod_version = "0.8.3"
+        string lightspeed_mod_notes = """made for the gta4 compatibility mod: github.com/xoxor4d/gta4-rtx
+patreon.com/xoxor4d"""
+        string lightspeed_mod_version = "1.0.0"
     }
     subLayers = [
+        @./hq_world.usda@,
+        @./hq_props.usda@,
         @./comp_world.usda@,
+        @./comp_props.usda@,
         @./comp_water.usda@,
         @./comp_cars.usda@,
         @./comp_peds.usda@,
         @./comp_vehicle.usda@,
-        @./comp_effects.usda@
+        @./comp_effects.usda@,
+        @./comp_markers.usda@
     ]
     timeCodesPerSecond = 24
     upAxis = "Y"
@@ -65,18 +72,73 @@ over "RootNode"
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
             }
         }
-    }
 
-    over "Looks"
-    {
-        over "mat_20AC3E374E816D9A"
+        over "mesh_215CD62CAB0D7A28"
         {
-            over "Shader"
+            def SphereLight "SphereLight_06" (
+                prepend apiSchemas = ["ShapingAPI"]
+            )
             {
-                custom bool inputs:blend_enabled = 0
-                custom int inputs:blend_type = 0
-                custom float inputs:reflection_roughness_constant = 1
-                custom bool inputs:use_legacy_alpha_state = 0
+                float3[] extent = [(-500, -500, -500), (500, 500, 500)]
+                color3f inputs:color = (1, 0.99999, 0.99999)
+                float inputs:colorTemperature = 5580
+                bool inputs:enableColorTemperature = 1
+                float inputs:exposure = 0
+                float inputs:intensity = 250
+                float inputs:radius = 0.06
+                float inputs:shaping:cone:angle = 180
+                float inputs:shaping:cone:softness
+                float inputs:shaping:focus
+                color3f inputs:shaping:focusTint
+                asset inputs:shaping:ies:file
+                double3 xformOp:rotateXYZ = (90, 0, 90)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (1.402077691233444, -13.65386962890625, 2.0362781633616223)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+
+            def SphereLight "SphereLight_07" (
+                prepend apiSchemas = ["ShapingAPI"]
+            )
+            {
+                float3[] extent = [(-500, -500, -500), (500, 500, 500)]
+                color3f inputs:color = (1, 0.99999, 0.99999)
+                float inputs:colorTemperature = 5580
+                bool inputs:enableColorTemperature = 1
+                float inputs:exposure = 0
+                float inputs:intensity = 250
+                float inputs:radius = 0.12
+                float inputs:shaping:cone:angle = 180
+                float inputs:shaping:cone:softness
+                float inputs:shaping:focus
+                color3f inputs:shaping:focusTint
+                asset inputs:shaping:ies:file
+                double3 xformOp:rotateXYZ = (90, 0, 90)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (15.2784423828125, -5.8837890625, 1.7093149698210262)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+
+            def SphereLight "SphereLight_08" (
+                prepend apiSchemas = ["ShapingAPI"]
+            )
+            {
+                float3[] extent = [(-500, -500, -500), (500, 500, 500)]
+                color3f inputs:color = (1, 0.99999, 0.99999)
+                float inputs:colorTemperature = 5580
+                bool inputs:enableColorTemperature = 1
+                float inputs:exposure = 0
+                float inputs:intensity = 150
+                float inputs:radius = 0.12
+                float inputs:shaping:cone:angle = 180
+                float inputs:shaping:cone:softness
+                float inputs:shaping:focus
+                color3f inputs:shaping:focusTint
+                asset inputs:shaping:ies:file
+                double3 xformOp:rotateXYZ = (90, 0, 90)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (13.48779296875, 0.466033935546875, 2.563400476018547)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
             }
         }
     }

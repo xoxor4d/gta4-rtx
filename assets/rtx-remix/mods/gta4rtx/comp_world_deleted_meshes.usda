@@ -1,0 +1,17 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "meshes"
+    {
+        over "mesh_34D293D7F918E497" (
+            references = None
+        )
+        {
+        }
+    }
+}
+

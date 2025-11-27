@@ -1,0 +1,28 @@
+#usda 1.0
+(
+    defaultPrim = "Looks"
+    endTimeCode = 100
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 24
+    upAxis = "Y"
+)
+
+def Scope "Looks"
+{
+    def Material "mat_AperturePBR_Opacity"
+    {
+        token outputs:mdl:displacement.connect = </Looks/mat_AperturePBR_Opacity/Shader.outputs:out>
+        token outputs:mdl:surface.connect = </Looks/mat_AperturePBR_Opacity/Shader.outputs:out>
+        token outputs:mdl:volume.connect = </Looks/mat_AperturePBR_Opacity/Shader.outputs:out>
+
+        def Shader "Shader"
+        {
+            uniform token info:implementationSource = "sourceAsset"
+            uniform asset info:mdl:sourceAsset = @AperturePBR_Opacity.mdl@
+            uniform token info:mdl:sourceAsset:subIdentifier = "AperturePBR_Opacity"
+            token outputs:out
+        }
+    }
+}
+

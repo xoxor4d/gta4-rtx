@@ -55,6 +55,20 @@ over "RootNode"
                 custom float inputs:reflection_roughness_constant = 1
             }
         }
+
+        over "mat_7E13FA6BAB24A0D5"
+        {
+            over "Shader"
+            {
+                custom bool inputs:blend_enabled = 1
+                custom int inputs:blend_type = 0
+                asset inputs:diffuse_texture = @./assets/effects/raindrops/7E13FA6BAB24A0D5_alpha4x.a.rtex.dds@
+                custom float inputs:metallic_constant = 0.04
+                custom asset inputs:normalmap_texture = @./assets/effects/raindrops/7E13FA6BAB24A0D5_normal_ogl_OTH_Normal.n.rtex.dds@
+                custom float inputs:reflection_roughness_constant = 0
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
     }
 }
 

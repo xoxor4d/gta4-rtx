@@ -1,0 +1,21 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_A455095B5519B798"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/world_textures/interiors/tlad_safehouse/A455095B5519B798_bath_walls/iv_tlad_safehouse_bath_dirt_albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/world_textures/interiors/tlad_safehouse/A455095B5519B798_bath_walls/iv_tlad_safehouse_bath_dirt_normal_dx_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/interiors/tlad_safehouse/A455095B5519B798_bath_walls/iv_tlad_safehouse_bath_dirt_roughness.r.rtex.dds@
+            }
+        }
+    }
+}
+

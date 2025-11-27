@@ -117,8 +117,10 @@ over "RootNode"
                             {
                                 over "Shader"
                                 {
-                                    custom color3f inputs:diffuse_color_constant = (0.4015444, 0.38541582, 0.348832)
+                                    custom bool inputs:blend_enabled = 0
+                                    custom color3f inputs:diffuse_color_constant = (0.000001, 9.999969e-7, 9.9999e-7)
                                     custom float inputs:reflection_roughness_constant = 1
+                                    custom bool inputs:use_legacy_alpha_state = 0
                                 }
                             }
                         }
@@ -132,67 +134,8 @@ over "RootNode"
                             {
                                 float3 xformOp:rotateXYZ = (0, 0, 0)
                                 float3 xformOp:scale = (1, 1, 1)
-                                double3 xformOp:translate = (-9.725553695716371e-14, -8.635692185787747e-7, 6.485294695617766)
+                                double3 xformOp:translate = (-9.725553695716371e-14, -8.635692185787747e-7, 6.1)
                                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
-                            }
-                        }
-                    }
-                }
-            }
-
-            def Xform "ref_4a3148be103b4d9e915c76b84261d1fb" (
-                prepend references = @./assets/helper/square_plane.usda@
-            )
-            {
-                custom bool IsRemixRef = 1
-                double3 xformOp:rotateXYZ = (0, 0, 0)
-                double3 xformOp:scale = (1, 1, 1)
-                double3 xformOp:translate = (0, 0, 0)
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
-
-                over "XForms"
-                {
-                    float3 xformOp:rotateXYZ = (90, 0, 0)
-                    float3 xformOp:scale = (0.2, 0.2, 0.2)
-                    double3 xformOp:translate = (0, -7.105427357601002e-15, -89)
-                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
-
-                    over "World"
-                    {
-                        over "Plane"
-                        {
-                            over "Plane" (
-                                prepend apiSchemas = ["MaterialBindingAPI"]
-                            )
-                            {
-                                rel material:binding = </RootNode/meshes/mesh_8B353B870DF5A16C/ref_4a3148be103b4d9e915c76b84261d1fb/XForms/World/Plane/Plane/Looks> (
-                                    bindMaterialAs = "strongerThanDescendants"
-                                )
-                                float3 xformOp:rotateXYZ = (0, 0, 0)
-                                float3 xformOp:scale = (1, 1, 1)
-                                double3 xformOp:translate = (0, -3.0916653448453957e-7, 2.3218013237029576)
-                                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
-
-                                def Material "Looks"
-                                {
-                                    token outputs:mdl:displacement.connect = </RootNode/meshes/mesh_8B353B870DF5A16C/ref_4a3148be103b4d9e915c76b84261d1fb/XForms/World/Plane/Plane/Looks/Shader.outputs:out>
-                                    token outputs:mdl:surface.connect = </RootNode/meshes/mesh_8B353B870DF5A16C/ref_4a3148be103b4d9e915c76b84261d1fb/XForms/World/Plane/Plane/Looks/Shader.outputs:out>
-                                    token outputs:mdl:volume.connect = </RootNode/meshes/mesh_8B353B870DF5A16C/ref_4a3148be103b4d9e915c76b84261d1fb/XForms/World/Plane/Plane/Looks/Shader.outputs:out>
-
-                                    def Shader "Shader"
-                                    {
-                                        uniform token info:implementationSource = "sourceAsset"
-                                        uniform asset info:mdl:sourceAsset = @AperturePBR_Translucent.mdl@
-                                        uniform token info:mdl:sourceAsset:subIdentifier = "AperturePBR_Translucent"
-                                        custom float inputs:ior_constant = 1.3
-                                        custom float inputs:thin_wall_thickness = 50
-                                        custom bool inputs:thin_walled = 1
-                                        custom color3f inputs:transmittance_color = (0.9607843, 0.94509804, 0.93333334)
-                                        token outputs:out (
-                                            renderType = "material"
-                                        )
-                                    }
-                                }
                             }
                         }
                     }

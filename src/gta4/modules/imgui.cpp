@@ -1604,7 +1604,7 @@ namespace gta4
 
 	void imgui::tab_utilities()
 	{
-		const auto& im = imgui::get();
+		//const auto& im = imgui::get();
 
 		// utilities
 		{

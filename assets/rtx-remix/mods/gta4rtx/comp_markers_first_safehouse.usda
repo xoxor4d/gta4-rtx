@@ -1,0 +1,33 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "meshes"
+    {
+        over "mesh_83F5F10943D2CC47"
+        {
+            def Xform "ref_ab8e6faea6224cfaa0c477109c2bea17" (
+                prepend references = @./assets/props/xor/Xoxor.usda@
+            )
+            {
+                custom bool IsRemixRef = 1
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                over "Xoxor4d_001"
+                {
+                    float3 xformOp:rotateXYZ = (0, 0, 57.969326)
+                    float3 xformOp:scale = (0.2, 0.2, 0.2)
+                    double3 xformOp:translate = (-5.157810307213595, -1.2039943726441038, -0.04616546630859375)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+            }
+        }
+    }
+}
+

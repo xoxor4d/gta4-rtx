@@ -12,6 +12,17 @@ over "RootNode"
         )
         {
         }
+
+        over "mat_319F79650928D261"
+        {
+            over "Shader"
+            {
+                custom color3f inputs:transmittance_color = (1, 0.99999, 0.99999)
+                custom float inputs:transmittance_measurement_distance = 1
+                custom asset inputs:transmittance_texture = @./assets/vehicle/glass/319F79650928D261_vehglass_transmissive.a.rtex.dds@
+                custom bool inputs:use_diffuse_layer = 1
+            }
+        }
     }
 }
 

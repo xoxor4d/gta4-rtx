@@ -1,0 +1,50 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "meshes"
+    {
+        over "mesh_A0206EC8C89CDD45"
+        {
+            def Xform "ref_31c21ea6e5cb42a08533233fe7ee7ac3" (
+                prepend references = @./assets/building_proxies/downtown/skyscrapers/m300_skyscraper01.usd@
+            )
+            {
+                custom bool IsRemixRef = 1
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                over "XForms"
+                {
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (1, 1, 1)
+                    double3 xformOp:translate = (0, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "root"
+                    {
+                        float3 xformOp:scale = (1, 1, 1)
+                        uniform token[] xformOpOrder = ["xformOp:scale"]
+
+                        over "skyscraper01"
+                        {
+                            over "skyscraper01_m"
+                            {
+                                float3 xformOp:rotateXYZ = (0, 0, -89.99999)
+                                float3 xformOp:scale = (0.9999999, 0.9999999, 1)
+                                double3 xformOp:translate = (53.08682296307266, -7.202825335340094, 99.43690071661717)
+                                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

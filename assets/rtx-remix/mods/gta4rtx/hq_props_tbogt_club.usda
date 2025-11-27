@@ -1,0 +1,29 @@
+#usda 1.0
+(
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_04EA53916EB64F77"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/prop_textures/tables/04EA53916EB64F77_tbogt_club_table/04EA53916EB64F77_albedo.a.rtex.dds@
+                custom asset inputs:metallic_texture = @@
+                custom asset inputs:normalmap_texture = @@
+                custom asset inputs:reflectionroughness_texture = @./assets/helper/imperfections/smudges_med_roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_424AE61676088AC3"
+        {
+            over "Shader"
+            {
+            }
+        }
+    }
+}
+

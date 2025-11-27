@@ -11,23 +11,10 @@ over "RootNode"
         {
             over "Shader"
             {
+                asset inputs:diffuse_texture = @./assets/npc/nico/nico_pants_Albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/Nico_teeth_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.97499996
-            }
-        }
-
-        over "mat_2D570E6F191B1EF0"
-        {
-            over "Shader"
-            {
-                custom float inputs:reflection_roughness_constant = 0.65999997
-            }
-        }
-
-        over "mat_561F46F3E151F5EB"
-        {
-            over "Shader"
-            {
-                custom float inputs:reflection_roughness_constant = 0.765
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_pants_Roughness.r.rtex.dds@
             }
         }
 
@@ -35,7 +22,19 @@ over "RootNode"
         {
             over "Shader"
             {
-                custom float inputs:reflection_roughness_constant = 0.60499996
+                asset inputs:diffuse_texture = @./assets/npc/nico/nico_head_Albedo.a.rtex.dds@
+                custom float inputs:metallic_constant = 0
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/nico_head_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_head_Roughness.r.rtex.dds@
+                custom bool inputs:subsurface_diffusion_profile = 1
+                custom float inputs:subsurface_max_sample_radius = 15
+                custom float inputs:subsurface_measurement_distance = 0
+                custom color3f inputs:subsurface_radius = (1, 0.9999944, 0.99999)
+                custom float inputs:subsurface_radius_scale = 5
+                custom asset inputs:subsurface_radius_texture = @./assets/npc/nico/670AFD5EEA859579_sss.a.rtex.dds@
+                custom color3f inputs:subsurface_transmittance_color = (0.9034749, 0.90346587, 0.90346587)
+                custom asset inputs:subsurface_transmittance_texture = @./assets/npc/nico/670AFD5EEA859579_sss_col.a.rtex.dds@
+                custom float inputs:subsurface_volumetric_anisotropy = 0
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }
@@ -48,8 +47,15 @@ over "RootNode"
                 custom int inputs:alpha_test_type = 0
                 custom bool inputs:blend_enabled = 1
                 custom int inputs:blend_type = 4
+                asset inputs:diffuse_texture = @./assets/npc/vlad/vlad_hair_col.a.rtex.dds@
                 custom bool inputs:inverted_blend = 0
+                custom asset inputs:normalmap_texture = @./assets/npc/vlad/vlad_hair_000_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.8
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/vlad/vlad_hair_000_roughness.r.rtex.dds@
+                custom bool inputs:subsurface_diffusion_profile = 0
+                custom float inputs:subsurface_radius_scale = 0
+                custom asset inputs:subsurface_radius_texture = @@
+                custom asset inputs:subsurface_transmittance_texture = @@
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }
@@ -58,7 +64,9 @@ over "RootNode"
         {
             over "Shader"
             {
+                custom asset inputs:normalmap_texture = @./assets/npc/vlad/vlad_head_000_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.44
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/vlad/vlad_head_000_roughness.r.rtex.dds@
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }
@@ -67,6 +75,15 @@ over "RootNode"
         {
             over "Shader"
             {
+                asset inputs:diffuse_texture = @./assets/npc/mallorie/7B67C61D3893974E _albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/mallorie/7B67C61D3893974E normal_dx_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/mallorie/7B67C61D3893974E_02_roughness.r.rtex.dds@
+                custom bool inputs:subsurface_diffusion_profile = 1
+                custom float inputs:subsurface_max_sample_radius = 15
+                custom float inputs:subsurface_radius_scale = 5
+                custom color3f inputs:subsurface_single_scattering_albedo = (0.55598456, 0.555979, 0.555979)
+                custom color3f inputs:subsurface_transmittance_color = (0.5289575, 0.5289522, 0.5289522)
+                custom asset inputs:subsurface_transmittance_texture = @./assets/npc/mallorie/7B67C61D3893974E _albedo.a.rtex.dds@
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }
@@ -75,8 +92,13 @@ over "RootNode"
         {
             over "Shader"
             {
-                custom float inputs:metallic_constant = 0.089999996
+                custom bool inputs:blend_enabled = 0
+                asset inputs:diffuse_texture = @./assets/npc/mallorie/54F90E39A0F9356A_albedo.a.rtex.dds@
+                custom float inputs:metallic_constant = 0.12
+                custom asset inputs:normalmap_texture = @./assets/npc/mallorie/mallorie_hair_000_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.37
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/mallorie/54F90E39A0F9356A_roughness.r.rtex.dds@
+                custom bool inputs:use_legacy_alpha_state = 0
             }
         }
 
@@ -84,7 +106,10 @@ over "RootNode"
         {
             over "Shader"
             {
+                asset inputs:diffuse_texture = @./assets/npc/roman/uppr_diff_001_a_uni_2xx.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/roman/roman_jacket_001_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.935
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/roman/roman_jacket_001_02_roughness.r.rtex.dds@
             }
         }
 
@@ -92,7 +117,9 @@ over "RootNode"
         {
             over "Shader"
             {
+                custom asset inputs:normalmap_texture = @./assets/npc/roman/roman_pants_001_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.82
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/roman/roman_pants_001_roughness.r.rtex.dds@
             }
         }
 
@@ -109,7 +136,9 @@ over "RootNode"
         {
             over "Shader"
             {
+                custom asset inputs:normalmap_texture = @./assets/npc/vlad/vlad_jacket_000_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.935
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/vlad/vlad_jacket_000_roughness.r.rtex.dds@
             }
         }
 
@@ -117,7 +146,9 @@ over "RootNode"
         {
             over "Shader"
             {
+                custom asset inputs:normalmap_texture = @./assets/npc/vlad/vlad_pants_000_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.91999996
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/vlad/vlad_pants_000_roughness.r.rtex.dds@
             }
         }
 
@@ -134,7 +165,9 @@ over "RootNode"
         {
             over "Shader"
             {
+                custom asset inputs:normalmap_texture = @./assets/npc/mallorie/mallorie_lower_000_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.88
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/mallorie/mallorie_lower_000_roughness.r.rtex.dds@
             }
         }
 
@@ -142,7 +175,9 @@ over "RootNode"
         {
             over "Shader"
             {
+                custom asset inputs:normalmap_texture = @./assets/npc/mallorie/mallorie_upper_000_normal_dx_OTH_Normal.n.rtex.dds@
                 custom float inputs:reflection_roughness_constant = 0.98999995
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/mallorie/mallorie_upper_000_roughness.r.rtex.dds@
             }
         }
 
@@ -163,6 +198,148 @@ over "RootNode"
                 custom float inputs:reflection_roughness_constant = 0.22999999
             }
         }
+
+        over "mat_1962ACA01D05E68D"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/mallorie/1962ACA01D05E68D_albedo.a.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/mallorie/1962ACA01D05E68D_roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_2D570E6F191B1EF0"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/nico/nico_jacket_Albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/nico_jacket_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_jacket_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_A107A10309E6D36A"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/nico/nico_feet_Albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/nico_feet_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_feet_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_561F46F3E151F5EB"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/nico/nico_hands_Albedo.a.rtex.dds@
+                custom asset inputs:metallic_texture = @@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/nico_hands_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_hands_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_5F645B52CB69F855"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/nico/Nico_teeth_Albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/Nico_teeth_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/Nico_teeth_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_20AC3E374E816D9A"
+        {
+            over "Shader"
+            {
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/nico_hair_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_hair_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_A8D3331F0F9EA1C3"
+        {
+            over "Shader"
+            {
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_C73DACD54E38E12F"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/roman/C73DACD54E38E12F_2xx.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/roman/roman_head_000_normal_dx_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/roman/roman_head_000_roughness.r.rtex.dds@
+                custom bool inputs:subsurface_diffusion_profile = 1
+                custom float inputs:subsurface_radius_scale = 6.24
+                custom asset inputs:subsurface_radius_texture = @./assets/npc/roman/C73DACD54E38E12F_sss.a.rtex.dds@
+                custom asset inputs:subsurface_transmittance_texture = @./assets/npc/roman/C73DACD54E38E12F_2xx.a.rtex.dds@
+            }
+        }
+
+        over "mat_76A940134AF38DA5"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/nico/Nico_teeth_Albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/Nico_teeth_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/Nico_teeth_Roughness.r.rtex.dds@
+                custom bool inputs:subsurface_diffusion_profile = 1
+                custom color3f inputs:subsurface_radius = (0.8069498, 0.8069417, 0.8069417)
+                custom float inputs:subsurface_radius_scale = 2.08
+                custom color3f inputs:subsurface_single_scattering_albedo = (0.9034749, 0.118602864, 0.118602864)
+                custom color3f inputs:subsurface_transmittance_color = (0.95752895, 0.95751935, 0.95751935)
+            }
+        }
+
+        over "mat_13E207DF02C388AA"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/nico/nico_hands_Albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/nico_hands_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_hands_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_D043CB3E57E9FE6B"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.445
+            }
+        }
+
+        over "mat_1097F3B66CE49E00"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/npc/nico/Nico_teeth_Albedo.a.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/Nico_teeth_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/Nico_teeth_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_A222F52533DD372B"
+        {
+            over "Shader"
+            {
+                custom asset inputs:normalmap_texture = @./assets/npc/nico/nico_hands_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/npc/nico/nico_hands_Roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_BDE8D4732791302D"
+        {
+            over "Shader"
+            {
+                custom asset inputs:normalmap_texture = @@
+                custom asset inputs:reflectionroughness_texture = @@
+            }
+        }
     }
 
     over "meshes"
@@ -173,6 +350,22 @@ over "RootNode"
             {
                 custom uniform bool remix_category:alpha_blend_to_cutout = 0
                 custom uniform bool remix_category:decal_Static = 0
+            }
+        }
+
+        over "mesh_3BDC2674594EA11E"
+        {
+            over "mesh"
+            {
+                custom uniform bool remix_category:alpha_blend_to_cutout = 1
+            }
+        }
+
+        over "mesh_03A5D6F3777EB402"
+        {
+            over "mesh"
+            {
+                custom uniform bool remix_category:alpha_blend_to_cutout = 1
             }
         }
     }

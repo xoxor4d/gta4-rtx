@@ -1,0 +1,10 @@
+#usda 1.0
+(
+    subLayers = [
+        @./comp_markers_tlad.usda@,
+        @./comp_markers_first_safehouse.usda@,
+        @./comp_markers_downtown_skyscraper.usda@
+    ]
+    upAxis = "Z"
+)
+

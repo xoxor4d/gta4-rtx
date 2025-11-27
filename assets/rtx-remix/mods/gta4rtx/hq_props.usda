@@ -1,0 +1,28 @@
+#usda 1.0
+(
+    subLayers = [
+        @./hq_props_tlad_safehouse.usda@,
+        @./hq_props_tbogt_club.usda@
+    ]
+    upAxis = "Z"
+)
+
+over "RootNode"
+{
+    over "Looks"
+    {
+        over "mat_BFABFDB1AFCC0D93"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/prop_textures/office/BFABFDB1AFCC0D93/iv_office_metalthing_albedo.a.rtex.dds@
+                custom float inputs:displace_in = 0
+                custom asset inputs:height_texture = @@
+                custom asset inputs:metallic_texture = @./assets/prop_textures/office/BFABFDB1AFCC0D93/iv_office_metalthing_metalness.m.rtex.dds@
+                custom asset inputs:normalmap_texture = @./assets/prop_textures/office/BFABFDB1AFCC0D93/iv_office_metalthing_normal_dx_OTH_Normal.n.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/prop_textures/office/BFABFDB1AFCC0D93/iv_office_metalthing_roughness.r.rtex.dds@
+            }
+        }
+    }
+}
+
