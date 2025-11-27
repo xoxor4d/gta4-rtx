@@ -140,6 +140,9 @@ int main()
 
 
 	// extract comp files
+	static const wchar_t* zip_prefix = L"GTAIV-Remix-CompatibilityMod";
+	std::filesystem::path found_zip;
+
 	auto installer_path = []()
 		{
 			wchar_t buf[MAX_PATH] = { 0 };
@@ -147,8 +150,29 @@ int main()
 			return std::filesystem::path(buf).parent_path();
 		};
 
-    const auto zip_path = (installer_path() / L"GTAIV-Remix-CompatibilityMod.zip").string();
-	if (!extract_zip(zip_path, game_dir, "GTAIV-Remix-CompatibilityMod")) 
+	for (const auto& entry : std::filesystem::directory_iterator(installer_path()))
+	{
+		if (!entry.is_regular_file()) {
+			continue;
+		}
+
+		const auto& p = entry.path();
+
+		if (p.extension() == L".zip" && p.stem().wstring().starts_with(zip_prefix))
+		{
+			found_zip = p;
+			break;  // take the first match
+		}
+	}
+
+	if (found_zip.empty()) {
+		std::cout << "[ERR] Could not find any zip starting with 'GTAIV-Remix-CompatibilityMod'.\n";
+		return 0;
+	}
+
+	std::cout << "Extracting zip ...\n";
+
+	if (!extract_zip(found_zip.string(), game_dir, "GTAIV-Remix-CompatibilityMod"))
 	{
 		std::cout << "[ERR] Failed to extract 'GTAIV-Remix-CompatibilityMod' files from 'GTAIV-Remix-CompatibilityMod.zip'\n";
 		std::cout << "> Aborting installation. Please extract files manually.\n";
@@ -158,7 +182,7 @@ int main()
 
 	// extract fullscreen or windowed files
 	std::string windowed_or_fullscreen_path = fullscreen ? "_installer_options/mode_fullscreen/" : "_installer_options/mode_windowed/";
-	if (!extract_zip(zip_path, game_dir, windowed_or_fullscreen_path)) {
+	if (!extract_zip(found_zip.string(), game_dir, windowed_or_fullscreen_path)) {
 		std::cout << "[ERR] Failed to extract '" << windowed_or_fullscreen_path << "' files from 'GTAIV-Remix-CompatibilityMod.zip'\n";
 	}
 
@@ -168,8 +192,13 @@ int main()
     {
         if (has_fusion_fix) 
 		{
-            DeleteFileA((game_dir + "\\vulkan.dll").c_str());
-			std::cout << "Deleted 'vulkan.dll'\n";
+			if (MoveFileExA(
+				(game_dir + "\\vulkan.dll").c_str(),
+				(game_dir + "\\vulkan.dll.originalFF").c_str(),
+				MOVEFILE_REPLACE_EXISTING))
+			{
+				std::cout << "Renamed 'vulkan.dll' to 'vulkan.dll.originalFF'\n";
+			}
 
 			if (MoveFileExA(
 				(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.asi").c_str(),
@@ -196,7 +225,7 @@ int main()
 			}
         }
 
-        if (!extract_zip(zip_path, game_dir, "_installer_options/FusionFix_RTXRemixFork/")) {
+        if (!extract_zip(found_zip.string(), game_dir, "_installer_options/FusionFix_RTXRemixFork/")) {
 			std::cout << "[ERR] Failed to extract '_installer_options/FusionFix_RTXRemixFork/' files from 'GTAIV-Remix-CompatibilityMod.zip'\n";
         }
     }
