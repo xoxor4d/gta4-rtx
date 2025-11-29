@@ -43,7 +43,9 @@ bool extract_zip(const std::string & zip_path, const std::string & target_dir, c
 	}
 
 	bool result = true;
-	for (mz_uint i = 0u; i < mz_zip_reader_get_num_files(&zip); i++)
+	mz_uint file_count = mz_zip_reader_get_num_files(&zip);
+	
+	for (mz_uint i = 0u; i < file_count; i++)
 	{
 		mz_zip_archive_file_stat stat;
 		if (!mz_zip_reader_file_stat(&zip, i, &stat)) {
@@ -65,7 +67,25 @@ bool extract_zip(const std::string & zip_path, const std::string & target_dir, c
 		}
 
 		std::filesystem::path out_path = std::filesystem::path(target_dir) / entry_path;
-		create_directories(out_path.parent_path());
+		
+		// Validate output path to prevent directory traversal
+		std::filesystem::path canonical_target = std::filesystem::canonical(std::filesystem::path(target_dir));
+		std::filesystem::path canonical_output = std::filesystem::absolute(out_path);
+		if (!canonical_output.native().starts_with(canonical_target.native())) {
+			continue; // Skip paths outside target directory
+		}
+
+		try {
+			create_directories(out_path.parent_path());
+		} catch (const std::exception&) {
+			MessageBoxA(nullptr, ("Failed to create directory: " + out_path.parent_path().string()).c_str(), "Error", MB_ICONERROR);
+			result = false;
+			continue;
+		}
+
+		if (i > 0 && (i % 30 == 0)) {
+			Sleep(10);
+		}
 
 		if (!mz_zip_reader_extract_to_file(&zip, i, out_path.string().c_str(), 0))
 		{
@@ -80,6 +100,8 @@ bool extract_zip(const std::string & zip_path, const std::string & target_dir, c
 
 int main()
 {
+	Sleep(200);
+	
 	std::cout << "Select the GTAIV directory by selecting your GTAIV.exe ...\n";
 	Sleep(500);
 
@@ -92,6 +114,13 @@ int main()
 	}
 
     const std::string game_dir = std::filesystem::path(gtaiv_exe_path).parent_path().string();
+	
+	// Validate game directory exists
+	if (!std::filesystem::exists(game_dir) || !std::filesystem::is_directory(game_dir)) {
+		MessageBoxA(nullptr, "Invalid game directory selected.", "Error", MB_ICONERROR);
+		return 1;
+	}
+	
 	std::cout << "Using Path: '" << game_dir << "'\n\n";
 	std::cout << "Checking for FusionFix presence ...\n";
 	Sleep(500);
@@ -167,10 +196,19 @@ int main()
 
 	if (found_zip.empty()) {
 		std::cout << "[ERR] Could not find any zip starting with 'GTAIV-Remix-CompatibilityMod'.\n";
-		return 0;
+		MessageBoxA(nullptr, "Could not find 'GTAIV-Remix-CompatibilityMod.zip' in the installer directory.", "Error", MB_ICONERROR);
+		return 1;
+	}
+	
+	// Validate zip file exists and is readable
+	if (!std::filesystem::exists(found_zip) || !std::filesystem::is_regular_file(found_zip)) {
+		std::cout << "[ERR] Found zip file but it is not accessible: " << found_zip.string() << "\n";
+		MessageBoxA(nullptr, "The zip file found is not accessible.", "Error", MB_ICONERROR);
+		return 1;
 	}
 
 	std::cout << "Extracting zip ...\n";
+	Sleep(100); // Small delay before extraction
 
 	if (!extract_zip(found_zip.string(), game_dir, "GTAIV-Remix-CompatibilityMod"))
 	{
@@ -179,17 +217,21 @@ int main()
 		return 0;
 	}
 
+	Sleep(100); // Small delay between extractions
 
 	// extract fullscreen or windowed files
 	std::string windowed_or_fullscreen_path = fullscreen ? "_installer_options/mode_fullscreen/" : "_installer_options/mode_windowed/";
 	if (!extract_zip(found_zip.string(), game_dir, windowed_or_fullscreen_path)) {
 		std::cout << "[ERR] Failed to extract '" << windowed_or_fullscreen_path << "' files from 'GTAIV-Remix-CompatibilityMod.zip'\n";
 	}
+	
+	Sleep(100); // Small delay before next operation
 
 
     // install FusionFix fork if requested
     if (opt_install_fusion_fix_fork)
     {
+		Sleep(100); // Small delay before FusionFix installation
         if (has_fusion_fix) 
 		{
 			if (MoveFileExA(
@@ -199,6 +241,7 @@ int main()
 			{
 				std::cout << "Renamed 'vulkan.dll' to 'vulkan.dll.originalFF'\n";
 			}
+			Sleep(25);
 
 			if (MoveFileExA(
 				(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.asi").c_str(),
@@ -207,6 +250,7 @@ int main()
 			{
 				std::cout << "Renamed 'GTAIV.EFLC.FusionFix.asi' to 'GTAIV.EFLC.FusionFix.asi.originalFF'\n";
 			}
+			Sleep(25);
 
 			if (MoveFileExA(
 				(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.cfg").c_str(),
@@ -215,6 +259,7 @@ int main()
 			{
 				std::cout << "Renamed 'GTAIV.EFLC.FusionFix.cfg' to 'GTAIV.EFLC.FusionFix.cfg.originalFF'\n";
 			}
+			Sleep(25);
 
 			if (MoveFileExA(
 				(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.ini").c_str(),
@@ -223,6 +268,7 @@ int main()
 			{
 				std::cout << "Renamed 'GTAIV.EFLC.FusionFix.ini' to 'GTAIV.EFLC.FusionFix.ini.originalFF'\n";
 			}
+			Sleep(25);
         }
 
         if (!extract_zip(found_zip.string(), game_dir, "_installer_options/FusionFix_RTXRemixFork/")) {

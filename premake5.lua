@@ -261,7 +261,8 @@ project "installer"
 		"./src_installer/**.cpp",
 		"./deps/miniz/miniz.c",
 		"./deps/miniz/miniz.h",
-		"./src_installer/installer.rc"
+		"./src_installer/installer.rc",
+		"./src_installer/installer.manifest"
 	}
 
 	includedirs {
@@ -274,6 +275,11 @@ project "installer"
         optimize "Full"
         flags { "LinkTimeOptimization" }
 	filter {}
+	
+	-- Disable automatic manifest generation (we embed it via resource file)
+	linkoptions {
+		"/MANIFEST:NO"
+	}
 
 	dependencies.imports()
 

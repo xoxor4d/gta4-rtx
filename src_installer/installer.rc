@@ -1,6 +1,7 @@
 #include <windows.h>
 
 1 ICON "installer.ico"
+1 RT_MANIFEST "installer.manifest"
 1 VERSIONINFO
 FILEVERSION     1,0,0,0
 PRODUCTVERSION  1,0,0,0
@@ -9,11 +10,15 @@ BEGIN
     BEGIN
         BLOCK "040904B0"           // en-US, UTF-16
         BEGIN
-            VALUE "FileDescription", "GTAIV RTX Remix CompMod Installer"
-            VALUE "FileVersion", "1.0"
-            VALUE "ProductName", "GTAIV RTX Remix CompMod"
+            VALUE "FileDescription", "GTAIV RTX Remix Compatibility Mod Installer"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "ProductName", "GTAIV RTX Remix Compatibility Mod"
+            VALUE "ProductVersion", "1.0.0.0"
             VALUE "OriginalFilename", "GTAIV-Remix-CompMod-Installer.exe"
             VALUE "CompanyName", "#xoxor4d"
+            VALUE "LegalCopyright", "Copyright (C) #xoxor4d"
+            VALUE "InternalName", "GTAIV-Remix-CompMod-Installer"
+            VALUE "Comments", "Installer for GTAIV RTX Remix Compatibility Mod"
         END
     END
     BLOCK "VarFileInfo"
