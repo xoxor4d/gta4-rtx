@@ -10,9 +10,13 @@ Compatible with __Grand Theft Auto IV: The Complete Edition (1.2.0.59)__
 If you want to support my work,   
 consider buying me a [Coffee](https://ko-fi.com/xoxor4d) or by becoming a [Patreon](https://patreon.com/xoxor4d)
 
+
+Feel free to join the discord server: https://discord.gg/FMnfhpfZy9
+
 <br>
 
 ![img](.github/img/overview.jpg)
+
 </div>
 
 <div align="center" markdown="1"> 
@@ -21,6 +25,7 @@ consider buying me a [Coffee](https://ko-fi.com/xoxor4d) or by becoming a [Patre
 
 __[Overview](#overview)__  
 __[Installing](#installing)__   
+__[Uninstalling](#uninstalling)__   
 __[Usage](#usage)__   
 __[Compiling](#compiling)__   
 
@@ -93,11 +98,16 @@ and with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader
 ## Installing
 - Grab the latest [Release](https://github.com/xoxor4d/gta4-rtx/releases) and follow the instructions found there
 
-
 > [!IMPORTANT]  
 > __Usage with Fusion Fix:__
 > - The original, unmodified version might cause a few issues / instability. I've made a fork of FF specifically for RTX-Remix.
 > - https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix/tree/feature/rtx-remix
+
+<br>
+
+## Uninstalling
+- Deleting the `d3d9.dll` and `a_gta4-rtx.asi` should be enough
+- Re-install the official FusionFix mod if you used the custom Fork
 
 <br>
 <br>
