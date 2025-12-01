@@ -1,4 +1,4 @@
-﻿#include "std_include.hpp"
+#include "std_include.hpp"
 #include "renderer.hpp"
 
 #include "d3d9ex.hpp"
@@ -2034,7 +2034,8 @@ namespace gta4
 				ctx.modifiers.do_not_render = true;
 			}
 
-			if (gs->render_emissive_surfaces_using_shaders.get_as<bool>())
+			// debug
+			if (im->m_dbg_render_emissives_with_shaders)
 			{
 				if (pidx == GTA_EMISSIVE			 || pidx == GTA_EMISSIVENIGHT		|| pidx == GTA_EMISSIVESTRONG ||
 					pidx == GTA_GLASS_EMISSIVE		 || pidx == GTA_GLASS_EMISSIVENIGHT	|| pidx == GTA_EMISSIVENIGHT_ALPHA ||
@@ -2043,8 +2044,8 @@ namespace gta4
 					if (im->m_dbg_tag_static_emissive_as_index != -1) {
 						set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
 					}
-					else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
-						set_remix_texture_categories(dev, InstanceCategories::DecalStatic /*InstanceCategories::IgnoreTransparencyLayer*/); //1 << im->m_dbg_tag_emissivenight_as_index);
+					else if (im->m_dbg_render_emissives_with_shaders_tag_as_decal) {
+						set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
 					}
 
 					render_with_ff = false;

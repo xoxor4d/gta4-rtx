@@ -189,8 +189,6 @@ namespace gta4
 				// emissive related settings
 				ASSIGN(vehicle_lights_emissive_scalar);
 				ASSIGN(vehicle_lights_dual_render_proxy_texture);
-				ASSIGN(render_emissive_surfaces_using_shaders);
-				ASSIGN(assign_decal_category_to_emissive_surfaces);
 				ASSIGN(emissive_night_surfaces_emissive_scalar);
 				ASSIGN(emissive_surfaces_emissive_scalar);
 				ASSIGN(emissive_strong_surfaces_emissive_scalar);

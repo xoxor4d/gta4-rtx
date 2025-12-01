@@ -574,21 +574,6 @@ namespace gta4
 				false
 			};
 
-			variable render_emissive_surfaces_using_shaders =
-			{
-				"render_emissive_surfaces_using_shaders",
-				("Enabling this will render all surfaces using a shader ending on 'emissivenight/emissive/strong' via shaders instead of fixed function."),
-				false
-			};
-
-			variable assign_decal_category_to_emissive_surfaces =
-			{
-				"assign_decal_category_to_emissive_surfaces",
-				("This automatically assigns the 'Decal' texture category (remix) to every surface using a shader ending on 'emissivenight/emissive/strong'\n"
-				 "This reduces flickering and z-fighting."),
-				true
-			};
-
 			variable emissive_night_surfaces_emissive_scalar =
 			{
 				"emissive_night_surfaces_emissive_scalar",
@@ -614,7 +599,7 @@ namespace gta4
 			{
 				"emissive_generic_scale",
 				("Some emissive surfaces do not use the emissiveMultiplier shader constant. These will use this constant."),
-				0.4f
+				1.6f
 			};
 
 			variable phone_emissive_override = {

@@ -721,8 +721,10 @@ namespace gta4
 			ImGui::SliderInt("Tag EmissiveNight Surfaces as Category ..", &im->m_dbg_tag_static_emissive_as_index, -1, (int)InstanceCategories::Count, "%d", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::Checkbox("FF Emissive: Enable Alphablend on non alpha Emissives", &im->m_dbg_emissive_ff_with_alphablend);
 			ImGui::Checkbox("FF Emissive: Tag as WorldUI + IgnoreTransparencyLayer", &im->m_dbg_emissive_ff_worldui_ignore_alpha);
-			//ImGui::Checkbox("FF Emissive: Enable Emissive Override", &im->m_dbg_emissive_nonalpha_override);
-			//ImGui::DragFloat("FF Emissive: Enable Emissive Override Scale", &im->m_dbg_emissive_nonalpha_override_scale, 0.005f);
+
+			ImGui::Checkbox("Render Emissives using Shaders", &im->m_dbg_render_emissives_with_shaders);
+			ImGui::Checkbox("Tag Emissives drawn by Shaders as Decal", &im->m_dbg_render_emissives_with_shaders_tag_as_decal);
+
 			ImGui::TreePop();
 		}
 
@@ -1188,9 +1190,6 @@ namespace gta4
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" World ");
 		ImGui::Spacing(0, 8);
-
-		gamesettings_bool_widget("Render Emissive Surfaces using Shaders", gs->render_emissive_surfaces_using_shaders);
-		gamesettings_bool_widget("Assign Decal Texture Category to Emissive Surfaces", gs->assign_decal_category_to_emissive_surfaces);
 
 		gamesettings_float_widget("EmissiveNight Surfaces Scalar", gs->emissive_night_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
 		gamesettings_float_widget("Emissive Surfaces Scalar", gs->emissive_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);

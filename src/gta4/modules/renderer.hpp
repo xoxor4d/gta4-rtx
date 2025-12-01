@@ -606,10 +606,7 @@ namespace gta4
 		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float param4 = 0.0f, uint8_t flags = WETNESS_FLAG_NONE);
 
 		static void set_remix_temp_float01(IDirect3DDevice9* dev, float value);
-		static void set_remix_temp_float01_pack_two_halfs(IDirect3DDevice9* dev, float value_low, float value_high);
 		static void set_remix_temp_float02(IDirect3DDevice9* dev,  float value);
-		static void set_remix_temp_float02_pack_two_halfs(IDirect3DDevice9* dev, float value_low, float value_high);
-		static void set_remix_temp_float03_pack_four(IDirect3DDevice9* dev, float v1, float v2, float v3, float v4);
 		static void set_remix_texture_categories(IDirect3DDevice9* dev, const InstanceCategories& cat);
 		static void set_remix_texture_hash(IDirect3DDevice9* dev, const std::uint32_t& hash);
 

@@ -8,10 +8,10 @@ namespace gta4
 {
 	void renderer_ff::on_ff_emissives(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
-		static auto im = imgui::get();
-		static auto gs = game_settings::get();
+		const auto im = imgui::get();
+		const auto gs = game_settings::get();
 
-		if (!gs->render_emissive_surfaces_using_shaders.get_as<bool>())
+		if (!im->m_dbg_render_emissives_with_shaders)
 		{
 			ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
 			dev->SetRenderState(D3DRS_ZWRITEENABLE, im->m_dbg_emissive_ff_worldui_ignore_alpha);
@@ -70,8 +70,8 @@ namespace gta4
 			else if (im->m_dbg_emissive_ff_worldui_ignore_alpha) {
 				renderer::set_remix_texture_categories(dev, InstanceCategories::WorldUI | InstanceCategories::IgnoreTransparencyLayer);
 			}
-			else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
-				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer /*InstanceCategories::DecalStatic*/);
+			else if (im->m_dbg_render_emissives_with_shaders_tag_as_decal) {
+				renderer::set_remix_texture_categories(dev, InstanceCategories::WorldUI /*InstanceCategories::DecalStatic*/);
 			}
 
 			//if (!im->m_dbg_debug_bool02)
@@ -101,10 +101,10 @@ namespace gta4
 
 	void renderer_ff::on_ff_emissives_alpha(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
-		static auto im = imgui::get();
-		static auto gs = game_settings::get();
+		const auto im = imgui::get();
+		//const auto gs = game_settings::get();
 
-		if (!gs->render_emissive_surfaces_using_shaders.get_as<bool>())
+		if (!im->m_dbg_render_emissives_with_shaders)
 		{
 			ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
 			dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
@@ -153,9 +153,9 @@ namespace gta4
 			if (im->m_dbg_tag_static_emissive_as_index != -1) {
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
 			}
-			else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
-				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer /*InstanceCategories::DecalStatic*/);
-			}
+			/*else if (gs->assign_decal_category_to_emissive_surfaces.get_as<bool>()) {
+				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer);
+			}*/
 
 
 

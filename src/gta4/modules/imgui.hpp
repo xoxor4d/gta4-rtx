@@ -71,16 +71,16 @@ namespace gta4
 		int m_dbg_tag_static_emissive_as_index = -1;
 		bool m_dbg_emissive_ff_with_alphablend = false;
 		bool m_dbg_emissive_ff_worldui_ignore_alpha = true;
-
-		//bool m_dbg_emissive_nonalpha_override = false;
-		//float m_dbg_emissive_nonalpha_override_scale = 0.0f;
-		//bool m_dbg_vehglass_disable_alphablend = true;
+		bool m_dbg_render_emissives_with_shaders = false; // was game setting 'render_emissive_surfaces_using_shaders'
+		bool m_dbg_render_emissives_with_shaders_tag_as_decal = true; // was game setting 'assign_decal_category_to_emissive_surfaces'
 
 		bool m_dbg_skip_draw_indexed_checks = false;
 		bool m_dbg_disable_ignore_baked_lighting_enforcement = false;
 		bool m_dbg_never_cull_statics = false;
 		bool m_dbg_extended_anticull_always_true = false;
 		bool m_dbg_disable_hud_fixup = false;
+		bool m_dbg_disable_global_uv_anims = false;
+		bool m_dbg_disable_omm_override_on_alpha_uv_anims = false;
 
 		int m_dbg_tag_exp_hair_as_index = -1;
 
