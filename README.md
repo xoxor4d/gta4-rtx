@@ -117,7 +117,12 @@ and with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader
 - Press `F4` to open the in-game gui for some compatibility tweaks or debug settings
 - If you notice heavy stuttering, launch the game with the included `_LaunchWithProcessorAffinity_2Cores_GTA4.bat`.  
   Doing this will assign 2 cores to GTA4 and the rest to Remix. If you want a 50/50 split, use `_LaunchWithProcessorAffinity_Half_GTA4__Half_Remix.bat`
+
 <br>
+
+> [!TIP]  
+> **More in-depth guides, information about usage and remix runtime changes can be found in the [[Wiki]](https://github.com/xoxor4d/gta4-rtx/wiki)**
+
 <br>
 
 ## Compiling
