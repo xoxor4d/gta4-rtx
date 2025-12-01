@@ -566,6 +566,10 @@ namespace gta4
 			ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement);
 			TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
 
+			ImGui::Checkbox("Disable Global UV Animations", &im->m_dbg_disable_global_uv_anims);
+			ImGui::Checkbox("Disable OMM Override on Alphatested UV Anims", &im->m_dbg_disable_omm_override_on_alpha_uv_anims);
+			TT("Disables automatic ignore OMM tagging on alphatested emissive surfaces with animated UVs");
+
 			//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
 
 			ImGui::TreePop();

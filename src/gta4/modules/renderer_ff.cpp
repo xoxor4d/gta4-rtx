@@ -6,6 +6,38 @@
 
 namespace gta4
 {
+	void handle_global_uv_anims(IDirect3DDevice9* dev, drawcall_mod_context& ctx, bool is_alpha_blended = false)
+	{
+		const auto im = imgui::get();
+
+		if (ctx.info.has_global_anim_uv1 && ctx.info.has_global_anim_uv2 && !im->m_dbg_disable_global_uv_anims)
+		{
+			renderer::set_remix_modifier(dev, RemixModifier::UseGlobalUVs);
+
+			ctx.save_rs(dev, RS_211_FREE);
+			ctx.save_rs(dev, RS_212_FREE);
+			ctx.save_rs(dev, RS_213_FREE);
+			ctx.save_rs(dev, RS_214_FREE);
+			ctx.save_rs(dev, RS_215_FREE);
+			ctx.save_rs(dev, RS_216_FREE);
+
+			dev->SetRenderState((D3DRENDERSTATETYPE)RS_211_FREE, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv0.x));
+			dev->SetRenderState((D3DRENDERSTATETYPE)RS_212_FREE, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv0.y));
+			dev->SetRenderState((D3DRENDERSTATETYPE)RS_213_FREE, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv0.z));
+
+			dev->SetRenderState((D3DRENDERSTATETYPE)RS_214_FREE, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv1.x));
+			dev->SetRenderState((D3DRENDERSTATETYPE)RS_215_FREE, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv1.y));
+			dev->SetRenderState((D3DRENDERSTATETYPE)RS_216_FREE, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv1.z));
+
+			if (   !im->m_dbg_disable_omm_override_on_alpha_uv_anims && is_alpha_blended
+				&& ctx.info.global_anim_uv0 != Vector(1.0f, 0.0f, 0.0f) 
+				&& ctx.info.global_anim_uv1 != Vector(0.0f, 1.0f, 0.0f)) 
+			{
+				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap); // OMM prevents animation
+			}
+		}
+	}
+
 	void renderer_ff::on_ff_emissives(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
 		const auto im = imgui::get();
@@ -63,6 +95,9 @@ namespace gta4
 			//float intensity = ctx.info.shaderconst_emissive_intensity;
 			//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
 			//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(intensity, intensity, intensity, intensity));
+
+			// animate UVs if mesh has correct shader params
+			handle_global_uv_anims(dev, ctx);
 
 			if (im->m_dbg_tag_static_emissive_as_index != -1) {
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
@@ -149,6 +184,9 @@ namespace gta4
 
 			//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR); 
 			//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(intensity, intensity, intensity, intensity));
+
+			// animate UVs if mesh has correct shader params
+			handle_global_uv_anims(dev, ctx, true);
 
 			if (im->m_dbg_tag_static_emissive_as_index != -1) {
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));

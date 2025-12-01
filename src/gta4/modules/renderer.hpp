@@ -28,7 +28,7 @@ namespace gta4
 		extern void init_texture_addons(bool release = false);
 	}
 
-	enum class RemixModifier : std::uint32_t
+	enum class RemixModifier : std::uint8_t
 	{
 		None = 0,
 		EmissiveScalar = 1 << 0,
@@ -37,6 +37,27 @@ namespace gta4
 		DecalDirt = 1 << 3,
 		RemoveVertexColorKeepAlpha = 1 << 4,
 		VehicleDecalDirt = 1 << 5,
+		UseGlobalUVs = 1 << 6,
+	};
+
+	enum remix_custom_rs
+	{
+		RS_42_TEXTURE_CATEGORY = 42,
+		RS_149_REMIX_MODIFIER = 149,
+		RS_150_TEXTURE_HASH = 150,
+		RS_169_EMISSIVE_SCALE = 169,
+		RS_177_DECAL_DIRT_CONTRAST = 177,
+		RS_210_WETNESS_PARAMS_PACKED = 210,
+		RS_211_FREE = 211,
+		RS_212_FREE = 212,
+		RS_213_FREE = 213,
+		RS_214_FREE = 214,
+		RS_215_FREE = 215,
+		RS_216_FREE = 216,
+		RS_217_FREE = 217,
+		RS_218_FREE = 218,
+		RS_219_FREE = 219,
+		RS_220_FREE = 220,
 	};
 
 	constexpr RemixModifier operator|(RemixModifier lhs, RemixModifier rhs) {
@@ -490,6 +511,11 @@ namespace gta4
 			bool checked_for_gta_rmptfx_litsprite_shader = false; // true if shader check was performed
 			bool is_bink = false;
 
+			bool has_global_anim_uv1 = false;
+			bool has_global_anim_uv2 = false;
+			Vector global_anim_uv0;
+			Vector global_anim_uv1;
+
 			float shaderconst_emissive_intensity = 0.0f;
 			bool shaderconst_uses_emissive_multiplier = false;
 
@@ -515,6 +541,11 @@ namespace gta4
 				is_gta_rmptfx_litsprite_shader = false;
 				checked_for_gta_rmptfx_litsprite_shader = false;
 				is_bink = false;
+
+				has_global_anim_uv1 = false;
+				has_global_anim_uv2 = false;
+				global_anim_uv0.Zero();
+				global_anim_uv1.Zero();
 
 				shaderconst_emissive_intensity = 0.0f;
 				shaderconst_uses_emissive_multiplier = false;
@@ -603,7 +634,7 @@ namespace gta4
 			WETNESS_FLAG_NONE = 0u
 		};
 
-		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float param4 = 0.0f, uint8_t flags = WETNESS_FLAG_NONE);
+		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float raindrop_scale = 0.0f, uint8_t flags = WETNESS_FLAG_NONE);
 
 		static void set_remix_temp_float01(IDirect3DDevice9* dev, float value);
 		static void set_remix_temp_float02(IDirect3DDevice9* dev,  float value);

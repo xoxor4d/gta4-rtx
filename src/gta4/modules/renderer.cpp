@@ -1,4 +1,4 @@
-#include "std_include.hpp"
+﻿#include "std_include.hpp"
 #include "renderer.hpp"
 
 #include "d3d9ex.hpp"
@@ -69,25 +69,7 @@ namespace gta4
 
 	// ----
 
-	enum remix_custom_rs
-	{
-		RS_42_TEXTURE_CATEGORY		= 42,
-		RS_149_REMIX_MODIFIER		= 149,
-		RS_150_TEXTURE_HASH			= 150,
-		RS_169_EMISSIVE_SCALE		= 169,
-		RS_177_DECAL_DIRT_CONTRAST	= 177,
-		RS_210_ROUGHNESS_SCALAR		= 210,
-		RS_211_ROUGHNESS_ZNORMAL	= 211,
-		RS_212_ROUGHNESS_BLEND		= 212,
-		RS_213_FREE					= 213,
-		RS_214_FREE					= 214,
-		RS_215_FREE					= 215,
-		RS_216_FREE					= 216,
-		RS_217_FREE					= 217,
-		RS_218_FREE					= 218,
-		RS_219_FREE					= 219,
-		RS_220_FREE					= 220,
-	};
+	
 
 	// Uses unused Renderstate 149 to set per drawcall modifiers
 	// ~ req. runtime changes
@@ -114,101 +96,42 @@ namespace gta4
 		set_remix_temp_float01(dev, intensity);
 	}
 
-	// RemixModifier::RoughnessScalar to tweak the roughness of remix materials (legacy/opaque)
-	// - uses RS_210_ROUGHNESS_SCALAR
-	// - uses RS_211_ROUGHNESS_ZNORMAL
-	// - uses RS_212_ROUGHNESS_BLEND
-	// ~ req. runtime changes
-	/*void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width)
+	/// Modifies roughness / wetness on a per drawcall level
+	/// @param roughness_scalar		scales final roughness (after sampling roughness texture)
+	/// @param max_z				determines if a surface can get wet based on its z normal (orientation)
+	/// @param blend_width			the blending width going from unmodified roughness to scaled roughness when max_z is hit
+	/// @param raindrop_scale		scale of raindrops (if enabled via flags)
+	/// @param flags				renderer::eWetnessFlags - additional modifiers
+	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width, float raindrop_scale, uint8_t flags)
 	{
 		set_remix_modifier(dev, RemixModifier::RoughnessScalar);
 
-		dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
-		dc_ctx.save_rs(dev, RS_211_ROUGHNESS_ZNORMAL);
-		dc_ctx.save_rs(dev, RS_212_ROUGHNESS_BLEND);
-		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, *reinterpret_cast<DWORD*>(&roughness_scalar));
-		dev->SetRenderState((D3DRENDERSTATETYPE)RS_211_ROUGHNESS_ZNORMAL, *reinterpret_cast<DWORD*>(&max_z));
-		dev->SetRenderState((D3DRENDERSTATETYPE)RS_212_ROUGHNESS_BLEND, *reinterpret_cast<DWORD*>(&blend_width));
-	}*/
-
-	//void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width)
-	//{
-	//	set_remix_modifier(dev, RemixModifier::RoughnessScalar);
-
-	//	// Pack 3 parameters into one float: scalar + (max_z * 0.001) + (blend_width * 0.000001)
-	//	// Clamp values: scalar (0-10), max_z (0-1), blend_width (0-1)
-	//	const float clampedScalar = std::clamp(roughness_scalar, 0.0f, 10.0f);
-	//	const float clampedMaxZ = std::clamp(max_z, 0.0f, 1.0f);
-	//	const float clampedBlendWidth = std::clamp(blend_width, 0.0f, 1.0f);
-	//	float packedValue = clampedScalar + (clampedMaxZ * 0.001f) + (clampedBlendWidth * 0.000001f);
-
-	//	dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
-	//	dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, *reinterpret_cast<DWORD*>(&packedValue));
-	//}
-
-	//void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width, float param4)
-	//{
-	//	set_remix_modifier(dev, RemixModifier::RoughnessScalar);
-
-	//	// Bit packing helper: encode a float value into n bits
-	//	auto encodeRange = [](float v, int bits, float maxRange) -> uint16_t {
-	//		int maxVal = (1 << bits) - 1;
-	//		float normalized = std::clamp(v, 0.0f, maxRange) / maxRange;
-	//		return uint16_t(std::round(normalized * maxVal));
-	//		};
-
-	//	// Pack wetnessParams1 (lower 16 bits): scalar(6) + max_z(5) + blend_width(5) = 16 bits
-	//	uint16_t scalarBits = encodeRange(roughness_scalar, 6, 10.0f);      // 6 bits: 0-63 → 0-10
-	//	uint16_t maxZBits = encodeRange(max_z, 5, 1.0f);                     // 5 bits: 0-31 → 0-1
-	//	uint16_t blendWidthBits = encodeRange(blend_width, 5, 1.0f);         // 5 bits: 0-31 → 0-1
-	//	uint16_t wetnessParams1 = (scalarBits << 10) | (maxZBits << 5) | blendWidthBits;
-
-	//	// Pack wetnessParams2 (upper 16 bits): 4th parameter
-	//	// Assuming param4 is 0-1 range, using all 16 bits for full precision
-	//	// If you need a different range, adjust maxRange accordingly
-	//	uint16_t wetnessParams2 = encodeRange(param4, 16, 1.0f); // 16 bits: 0-65535 → 0-1
-
-	//	// Pack into DWORD: lower 16 bits = wetnessParams1, upper 16 bits = wetnessParams2
-	//	uint32_t packedDword = (uint32_t(wetnessParams2) << 16) | uint32_t(wetnessParams1);
-
-	//	dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
-	//	dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, packedDword);
-	//}
-
-
-
-	
-
-	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width, float param4, uint8_t flags)
-	{
-		set_remix_modifier(dev, RemixModifier::RoughnessScalar);
-
-		// Bit packing helper: encode a float value into n bits
-		auto encodeRange = [](float v, int bits, float maxRange) -> uint16_t {
-			int maxVal = (1 << bits) - 1;
-			float normalized = std::clamp(v, 0.0f, maxRange) / maxRange;
-			return uint16_t(std::round(normalized * maxVal));
+		// encode a float value into n bits
+		auto encode_range = [](const float& v, const int& bits, const float& max_range) -> uint16_t
+			{
+				const int max_val = (1 << bits) - 1;
+				const float normalized = std::clamp(v, 0.0f, max_range) / max_range;
+				return uint16_t(std::round(normalized * max_val));
 			};
 
-		// Pack wetnessParams1 (lower 16 bits): scalar(6) + max_z(5) + blend_width(5) = 16 bits
-		uint16_t scalarBits = encodeRange(roughness_scalar, 6, 10.0f);      // 6 bits: 0-63 → 0-10
-		uint16_t maxZBits = encodeRange(max_z, 5, 1.0f);                     // 5 bits: 0-31 → 0-1
-		uint16_t blendWidthBits = encodeRange(blend_width, 5, 1.0f);         // 5 bits: 0-31 → 0-1
-		uint16_t wetnessParams1 = (scalarBits << 10) | (maxZBits << 5) | blendWidthBits;
+		// pack wetness_params1 (lower 16 bits): scalar(6) + max_z(5) + blend_width(5) = 16 bits
+		const uint16_t scalar_bits = encode_range(roughness_scalar, 6, 10.0f);      // 6 bits: 0-63 → 0-10
+		const uint16_t max_z_bits = encode_range(max_z, 5, 1.0f);                     // 5 bits: 0-31 → 0-1
+		const uint16_t blend_width_bits = encode_range(blend_width, 5, 1.0f);         // 5 bits: 0-31 → 0-1
+		const uint16_t wetness_params1 = (scalar_bits << 10) | (max_z_bits << 5) | blend_width_bits;
 
-		// Pack wetnessParams2 (upper 16 bits): lower 8 bits = param4 (0-10), upper 8 bits = flags
-		// Lower 8 bits: param4 as 8-bit value (0-255 → 0-10 range, used as raindrop scale multiplier)
-		// Don't scale on client side - send 0-10 range directly, shader will decode it
-		uint16_t param4Bits = encodeRange(param4, 8, 10.0f); // 8 bits: 0-255 → 0-10
-		// Upper 8 bits: flags (directly pack uint8_t flags into upper 8 bits)
-		uint16_t flagsBits = uint16_t(flags) << 8; // Shift flags to upper 8 bits
-		uint16_t wetnessParams2 = param4Bits | flagsBits;
+		// pack wetness_params2 (upper 16 bits):
+		// lower 8 bits = raindrop_scale (0-10)
+		// upper 8 bits = flags
+		const uint16_t raindrop_scale_bits = encode_range(raindrop_scale, 8, 10.0f);
+		const uint16_t wetness_modifier_bits = uint16_t(flags) << 8; // shift flags to upper 8 bits
+		const uint16_t wetness_params2 = raindrop_scale_bits | wetness_modifier_bits;
 
-		// Pack into DWORD: lower 16 bits = wetnessParams1, upper 16 bits = wetnessParams2
-		uint32_t packedDword = (uint32_t(wetnessParams2) << 16) | uint32_t(wetnessParams1);
+		// pack into DWORD: lower 16 bits = wetness_params1, upper 16 bits = wetness_params2
+		uint32_t packedDword = (uint32_t(wetness_params2) << 16) | uint32_t(wetness_params1);
 
-		dc_ctx.save_rs(dev, RS_210_ROUGHNESS_SCALAR);
-		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_ROUGHNESS_SCALAR, packedDword);
+		dc_ctx.save_rs(dev, RS_210_WETNESS_PARAMS_PACKED);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_WETNESS_PARAMS_PACKED, packedDword);
 	}
 
 
@@ -756,6 +679,21 @@ namespace gta4
 							// gSuperAlpha constant
 							float constant[4] = { *constant_data_struct->constants[dataPoolIndex].float_arr + gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float>(), 0.0f, 0.0f, 0.0f };
 							game_device->SetVertexShaderConstantF(register_num, constant, 1);
+						}
+						else if (register_num == 208u || register_num == 209u && (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVE_ALPHA))
+						{
+							if (register_num == 208u) {
+								ctx.info.has_global_anim_uv1 = true;
+							} else if(register_num == 209u) {
+								ctx.info.has_global_anim_uv2 = true;
+							}
+
+							auto& v = register_num == 208u ? ctx.info.global_anim_uv0 : ctx.info.global_anim_uv1;
+							v.x = constant_data_struct->constants[dataPoolIndex].float_arr[0];
+							v.y = constant_data_struct->constants[dataPoolIndex].float_arr[1];
+							v.z = constant_data_struct->constants[dataPoolIndex].float_arr[2];
+
+							game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count* game::pShaderConstFloatCountMap[type]);
 						}
 						else {
 							game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
