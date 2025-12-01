@@ -1,0 +1,20 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Types": {
+                    "Hio_StbImage" : {
+                        "bases": ["HioImage"],
+                        "imageTypes": ["bmp", "jpg", "jpeg", "png", "tga", "hdr"],
+                        "precedence": 2
+                    }
+                }
+            },
+            "LibraryPath": "../../hio.dll",
+            "Name": "hio",
+            "ResourcePath": "resources",
+            "Root": "..",
+            "Type": "library"
+        }
+    ]
+}

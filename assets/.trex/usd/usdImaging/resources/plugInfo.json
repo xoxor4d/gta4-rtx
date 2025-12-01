@@ -1,0 +1,276 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "SdfMetadata": {
+                    "faceIndexPrimvar": {
+                        "appliesTo": [
+                            "attributes"
+                        ],
+                        "default": "ptexFaceIndex",
+                        "documentation": "Specifies an array of face indices used for ptex mapping",
+                        "type": "token"
+                    },
+                    "faceOffsetPrimvar": {
+                        "appliesTo": [
+                            "attributes"
+                        ],
+                        "default": "ptexFaceOffset",
+                        "documentation": "Specifies the ptex face index offset for aggregated ptex files",
+                        "type": "token"
+                    },
+                    "uvPrimvar": {
+                        "appliesTo": [
+                            "attributes"
+                        ],
+                        "default": "",
+                        "documentation": "Specifies the UV primvar for texture mapping",
+                        "type": "token"
+                    }
+                },
+                "Types": {
+                    "UsdImagingBasisCurvesAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "BasisCurves"
+                    },
+                    "UsdImagingCameraAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Camera"
+                    },
+                    "UsdImagingCapsuleAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Capsule"
+                    },
+                    "UsdImagingCollectionAPIAdapter" : {
+                        "bases": ["UsdImagingAPISchemaAdapter"],
+                        "isInternal": true,
+                        "apiSchemaName": "CollectionAPI"
+                    },
+                    "UsdImagingConeAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Cone"
+                    },
+                    "UsdImagingCoordSysAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "coordSys"
+                    },
+                    "UsdImagingCubeAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Cube"
+                    },
+                    "UsdImagingCylinderAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Cylinder"
+                    },
+                    "UsdImagingHermiteCurvesAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "HermiteCurves"
+                    },
+                    "UsdImagingMaterialAdapter" : {
+                        "bases": ["UsdImagingPrimAdapter"],
+                        "isInternal": true,
+                        "primTypeName": "Material"
+                    },
+                    "UsdImagingMaterialBindingAPIAdapter" : {
+                        "bases": ["UsdImagingAPISchemaAdapter"],
+                        "isInternal": true,
+                        "apiSchemaName": "MaterialBindingAPI"
+                    },
+                    "UsdImagingMeshAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Mesh"
+                    },
+                    "UsdImagingNurbsCurvesAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "NurbsCurves"
+                    },
+                    "UsdImagingNurbsPatchAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "NurbsPatch"
+                    },
+                    "UsdImagingPlaneAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Plane"
+                    },
+                    "UsdImagingPointsAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Points"
+                    },
+                    "UsdImagingPointInstancerAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PointInstancer"
+                    },
+                    "UsdImagingSphereAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Sphere"
+                    },
+                    "UsdImagingRenderSettingsAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "RenderSettings"
+                    },
+                    "UsdImagingSampleFilterAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrSampleFilterPluginBase",
+                        "includeDerivedPrimTypes" : true 
+                    },
+                    "UsdImagingVolumeAdapter": {
+                        "bases": [
+                            "UsdImagingGprimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "Volume"
+                    },
+                    "UsdImagingLightAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "LightAPI",
+                        "includeDerivedPrimTypes" : true 
+                    },
+                    "UsdImagingLightAPIAdapter": {
+                        "bases": [
+                            "UsdImagingAPISchemaAdapter"
+                        ],
+                        "isInternal": true,
+                        "apiSchemaName": "LightAPI"
+                    },
+                    "UsdImagingLightFilterAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "LightFilter",
+                        "includeDerivedPrimTypes" : true 
+                    },
+                    "UsdImagingDomeLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "DomeLight"
+                    },
+                    "UsdImagingRectLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "RectLight"
+                    },
+                    "UsdImagingSphereLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "SphereLight"
+                    },
+                    "UsdImagingCylinderLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "CylinderLight"
+                    },
+                    "UsdImagingDiskLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "DiskLight"
+                    },
+                    "UsdImagingDistantLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "DistantLight"
+                    },
+                    "UsdImagingPluginLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PluginLight"
+                    },
+                    "UsdImagingGeometryLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "GeometryLight"
+                    },
+                    "UsdImagingPortalLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PortalLight"
+                    },
+                    "UsdImagingPluginLightFilterAdapter": {
+                        "bases": [
+                            "UsdImagingLightFilterAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PluginLightFilter"
+                    }
+                }
+            },
+            "LibraryPath": "../../usdImaging.dll",
+            "Name": "usdImaging",
+            "ResourcePath": "resources",
+            "Root": "..",
+            "Type": "library"
+        }
+    ]
+}

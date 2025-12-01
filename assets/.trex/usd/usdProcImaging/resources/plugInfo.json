@@ -1,0 +1,22 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Types": {
+                    
+                    "UsdProcImagingGenerativeProceduralAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ], 
+                        "primTypeName": "GenerativeProcedural"
+                    }
+                }
+            }, 
+            "LibraryPath": "../../usdProcImaging.dll", 
+            "Name": "usdProcImaging", 
+            "ResourcePath": "resources", 
+            "Root": "..", 
+            "Type": "library"
+        }
+    ]
+}

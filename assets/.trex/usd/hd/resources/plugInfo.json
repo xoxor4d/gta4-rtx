@@ -1,0 +1,12 @@
+{
+    "Plugins": [
+        {
+            "Info": {},
+            "LibraryPath": "../../hd.dll",
+            "Name": "hd",
+            "ResourcePath": "resources",
+            "Root": "..",
+            "Type": "library"
+        }
+    ]
+}

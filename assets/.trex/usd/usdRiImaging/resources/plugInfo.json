@@ -1,0 +1,36 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Types": {
+                    "UsdRiImagingPxrBarnLightFilterAdapter": {
+                        "bases": [
+                            "UsdImagingLightFilterAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrBarnLightFilter"
+                    },
+                    "UsdRiImagingPxrIntMultLightFilterAdapter": {
+                        "bases": [
+                            "UsdImagingLightFilterAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrIntMultLightFilter"
+                    },
+                    "UsdRiImagingPxrRodLightFilterAdapter": {
+                        "bases": [
+                            "UsdImagingLightFilterAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrRodLightFilter"
+                    }
+                }
+            },
+            "LibraryPath": "../../usdRiImaging.dll",
+            "Name": "usdRiImaging",
+            "ResourcePath": "resources",
+            "Root": "..",
+            "Type": "library"
+        }
+    ]
+}
