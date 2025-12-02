@@ -115,7 +115,7 @@ namespace gta4
 			};
 
 		// pack wetness_params1 (lower 16 bits): scalar(6) + max_z(5) + blend_width(5) = 16 bits
-		const uint16_t scalar_bits = encode_range(roughness_scalar, 6, 10.0f);      // 6 bits: 0-63 → 0-10
+		const uint16_t scalar_bits = encode_range(roughness_scalar + 2.0f, 6, 4.0f);  // 6 bits: 0-63 → 0-4 (remapping -2 to +2 to 0-4 -> undo on runtime side)
 		const uint16_t max_z_bits = encode_range(max_z, 5, 1.0f);                     // 5 bits: 0-31 → 0-1
 		const uint16_t blend_width_bits = encode_range(blend_width, 5, 1.0f);         // 5 bits: 0-31 → 0-1
 		const uint16_t wetness_params1 = (scalar_bits << 10) | (max_z_bits << 5) | blend_width_bits;
@@ -262,6 +262,26 @@ namespace gta4
 
 	// ----
 
+	bool should_apply_heavy_raindrops()
+	{
+		if ((*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN && *game::weather_change_value < 0.6f) || *game::weather_type_new == game::eWeatherType::WEATHER_RAIN
+			|| (*game::weather_type_prev == game::eWeatherType::WEATHER_LIGHTNING && *game::weather_change_value < 0.6f) || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	bool should_apply_light_raindrops()
+	{
+		if ((*game::weather_type_prev == game::eWeatherType::WEATHER_DRIZZLE && *game::weather_change_value < 0.4f) || (*game::weather_type_new == game::eWeatherType::WEATHER_DRIZZLE && *game::weather_change_value > 0.4f)) {
+			return true;
+		}
+
+		return false;
+	}
+
 	void handle_vehicle_roughness_when_wet(IDirect3DDevice9* dev, [[maybe_unused]] const drawcall_mod_context& ctx)
 	{
 		const auto gs = game_settings::get();
@@ -269,8 +289,12 @@ namespace gta4
 		uint8_t rain_flags = renderer::WETNESS_FLAG_NONE;
 		if (gs->timecycle_wetness_vehicle_raindrop_enable.get_as<bool>())
 		{
-			if (*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING) {
-				rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES;
+			if (should_apply_heavy_raindrops())
+			{
+				rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINDROPS | renderer::WETNESS_FLAG_USE_LOCAL_COORDINATES;
+			}
+			else if (should_apply_light_raindrops()) {
+				rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINDROPS | renderer::WETNESS_FLAG_USE_LOCAL_COORDINATES | renderer::WETNESS_FLAG_RAINDROPS_HALF_DENSITY;
 			}
 		}
 
@@ -382,7 +406,6 @@ namespace gta4
 		renderer::set_remix_modifier(dev, RemixModifier::VehicleDecalDirt);
 		renderer::set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
 	}
-	
 
 	// ----
 
@@ -673,12 +696,26 @@ namespace gta4
 
 							game_device->SetVertexShaderConstantF(0, newWorld, 4);
 							modified_world_matrix = true;
-						}
-						else*/ if ((register_num == 69u || register_num == 70u) && ctx.info.is_gta_rmptfx_litsprite_shader)
+						}*/
+
+						if ((register_num == 69u || register_num == 70u) 
+							&& pidx == -1 
+							&& (g_is_rendering_fx_instance || g_is_rendering_fx)) // constantly need to check
 						{
-							// gSuperAlpha constant
-							float constant[4] = { *constant_data_struct->constants[dataPoolIndex].float_arr + gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float>(), 0.0f, 0.0f, 0.0f };
-							game_device->SetVertexShaderConstantF(register_num, constant, 1);
+							if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
+							{
+								im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check(true);
+								ctx.info.is_gta_rmptfx_litsprite_shader = true;
+
+								// gSuperAlpha constant
+								float constant[4] = { *constant_data_struct->constants[dataPoolIndex].float_arr * gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float>(), 0.0f, 0.0f, 0.0f };
+								game_device->SetVertexShaderConstantF(register_num, constant, 1);
+							}
+							else
+							{
+								// stock
+								game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
+							}
 						}
 						else if (register_num == 208u || register_num == 209u && (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVE_ALPHA))
 						{
@@ -695,6 +732,7 @@ namespace gta4
 
 							game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count* game::pShaderConstFloatCountMap[type]);
 						}
+
 						else {
 							game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
 						}
@@ -777,9 +815,9 @@ namespace gta4
 			}
 
 			else if ((g_is_rendering_fx_instance || g_is_rendering_fx) 
-				&& !ctx.info.checked_for_gta_rmptfx_litsprite_shader)
+				&& !ctx.info.is_gta_rmptfx_litsprite_shader /*!ctx.info.checked_for_gta_rmptfx_litsprite_shader*/) // constantly need to check but no need if VS already checked this
 			{
-				ctx.info.checked_for_gta_rmptfx_litsprite_shader = true;
+				//ctx.info.checked_for_gta_rmptfx_litsprite_shader = true;
 
 				if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
 				{
@@ -2095,7 +2133,8 @@ namespace gta4
 				// surface can get wet if stencil = 0
 				if (stencil_enabled && stencil_ref == 0
 					|| (g_is_rendering_vehicle && !(pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2))
-					|| pidx == GTA_PED_REFLECT)
+					|| pidx == GTA_PED_REFLECT
+					|| pidx == GTA_VEHICLE_VEHGLASS)
 				{
 					auto get_wetness = []()
 						{
@@ -2135,7 +2174,7 @@ namespace gta4
 							scalar = std::clamp((1.0f - im->m_dbg_global_wetness), 0.0f, 1.0f);
 						}
 
-						if (g_is_rendering_vehicle)
+						if (g_is_rendering_vehicle || pidx == GTA_VEHICLE_VEHGLASS)
 						{
 							ctx.modifiers.is_vehicle_wet = true;
 							handle_vehicle_roughness_when_wet(dev, ctx);
@@ -2149,8 +2188,8 @@ namespace gta4
 							{
 								if (gs->timecycle_wetness_ped_raindrop_enable.get_as<bool>()) 
 								{
-									if (*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING) {
-										rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINSDROPS | renderer::WETNESS_FLAG_USE_TEXTURE_COORDINATES;
+									if (should_apply_heavy_raindrops()) {
+										rain_flags |= renderer::WETNESS_FLAG_ENABLE_EXP_RAINDROPS | renderer::WETNESS_FLAG_USE_LOCAL_COORDINATES;
 									}
 								}
 							}
@@ -2158,8 +2197,11 @@ namespace gta4
 							{
 								if (gs->timecycle_wetness_world_raindrop_enable.get_as<bool>()) 
 								{
-									if (*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING) {
+									if (should_apply_heavy_raindrops()) {
 										rain_flags |= WETNESS_FLAG_ENABLE_RAINDROPS;
+									}
+									else if (*game::weather_type_prev == game::WEATHER_DRIZZLE || *game::weather_type_new == game::WEATHER_DRIZZLE) {
+										rain_flags |= WETNESS_FLAG_ENABLE_RAINDROPS | renderer::WETNESS_FLAG_RAINDROPS_HALF_DENSITY;
 									}
 								}
 

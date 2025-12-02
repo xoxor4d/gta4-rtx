@@ -625,9 +625,9 @@ namespace gta4
 		{
 			WETNESS_FLAG_ENABLE_PUDDLES = 1 << 0,
 			WETNESS_FLAG_ENABLE_RAINDROPS = 1 << 1,				// either expensive or normal raindrops
-			WETNESS_FLAG_USE_TEXTURE_COORDINATES = 1 << 2,
-			WETNESS_FLAG_ENABLE_EXP_RAINSDROPS = 1 << 3,		// either expensive or normal raindrops
-			WETNESS_FLAG_TEMP_04 = 1 << 4,
+			WETNESS_FLAG_USE_LOCAL_COORDINATES = 1 << 2,		// uses world position but transformed to object local space
+			WETNESS_FLAG_ENABLE_EXP_RAINDROPS = 1 << 3,			// either expensive or normal raindrops
+			WETNESS_FLAG_RAINDROPS_HALF_DENSITY = 1 << 4,
 			WETNESS_FLAG_TEMP_05 = 1 << 5,
 			WETNESS_FLAG_TEMP_06 = 1 << 6,
 			WETNESS_FLAG_TEMP_07 = 1 << 7,

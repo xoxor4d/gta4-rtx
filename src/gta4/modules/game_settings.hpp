@@ -156,6 +156,30 @@ namespace gta4
 				out += "# Type: " + std::string(this->get_str_type()) + " || Default: " + std::string(this->get_str_value(true));
 				return out;
 			}
+
+			const bool& _bool(const bool default_value = false) const
+			{
+				assert(m_type == var_type_boolean && "Type mismatch: expected boolean");
+				return !default_value ? m_var.boolean : m_var_default.boolean;
+			}
+
+			const bool* _bool(const bool default_value = false)
+			{
+				assert(m_type == var_type_boolean && "Type mismatch: expected boolean");
+				return &(!default_value ? m_var.boolean : m_var_default.boolean);
+			}
+
+			const float& _float(const bool default_value = false) const
+			{
+				assert(m_type == var_type_value && "Type mismatch: expected float");
+				return !default_value ? m_var.value[0] : m_var_default.value[0];
+			}
+
+			const float* _float(const bool default_value = false)
+			{
+				assert(m_type == var_type_value && "Type mismatch: expected float");
+				return !default_value ? m_var.value : m_var_default.value;
+			}
 	
 			template <typename T>
 			T get_as(bool default_val = false)
@@ -295,7 +319,7 @@ namespace gta4
 					write_toml();
 				}
 			}
-	
+
 			const char* m_name;
 			const char* m_desc;
 	
@@ -747,7 +771,7 @@ namespace gta4
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",
 				("Scale alpha of gta_rmptfx_litsprite"),
-				5.0f
+				1.0f
 			};
 
 
@@ -819,14 +843,14 @@ namespace gta4
 			variable timecycle_wetness_ped_raindrop_enable = {
 				"timecycle_wetness_ped_raindrop_enable",
 				("Enables Raindrop logic on Supported Ped Surfaces."),
-				false
+				true
 			};
 
 			variable timecycle_wetness_ped_raindrop_scalar =
 			{
 				"timecycle_wetness_ped_raindrop_scalar",
 				"Scale of raindrops on Supported Ped Surfaces",
-				5.0f
+				3.0f
 			};
 
 			// -----
@@ -857,14 +881,14 @@ namespace gta4
 			variable timecycle_wetness_vehicle_raindrop_enable = {
 				"timecycle_wetness_vehicle_raindrop_enable",
 				("Enables Raindrop logic on Vehicles."),
-				false
+				true
 			};
 
 			variable timecycle_wetness_vehicle_raindrop_scalar =
 			{
 				"timecycle_wetness_vehicle_raindrop_scalar",
 				"Scale of raindrops on vehicles",
-				0.15f
+				1.6f
 			};
 
 
