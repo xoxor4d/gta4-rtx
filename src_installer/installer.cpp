@@ -126,13 +126,23 @@ int main()
 	Sleep(500);
 
 
-    // check if FusionFix exists
+    // check if any FusionFix version exists
     const bool has_fusion_fix = file_exists(game_dir + "\\d3d9.dll") &&
-								file_exists(game_dir + "\\vulkan.dll") &&
 								file_exists(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.asi");
 
+	// check if original FusionFix version exists
+	const bool has_original_fusion_fix = has_fusion_fix && file_exists(game_dir + "\\vulkan.dll");
+
+	// check if comp mod and remix are installed -> update
+	const bool has_remix_comp_mod = file_exists(game_dir + "\\d3d9.dll") &&
+									file_exists(game_dir + "\\a_gta4-rtx.asi");
+
+	if (has_remix_comp_mod) {
+		std::cout << "Detected another version of the RTX Remix Compatibility Mod. Updating ... \n";
+	}
+
     bool opt_install_fusion_fix_fork = false;
-    if (has_fusion_fix)
+    if (has_original_fusion_fix)
     {
 		const auto res = MessageBoxA(nullptr, "FusionFix detected. Replace with a fork specifically tailored for RTX Remix? (Recommended)", "FusionFix", MB_YESNO | MB_ICONQUESTION);
         opt_install_fusion_fix_fork = (res == IDYES);
@@ -145,28 +155,32 @@ int main()
     }
     else
     {
-        const auto res = MessageBoxA(nullptr, "Install FusionFix fork specifically tailored for RTX Remix? (Recommended)", "FusionFix", MB_YESNO | MB_ICONQUESTION);
-        opt_install_fusion_fix_fork = res == IDYES;
-		std::cout << (opt_install_fusion_fix_fork ? "Installing FusionFix RTXRemix Fork." : "Not installing FusionFix RTXRemix Fork.") << "\n\n";
+		if (!has_remix_comp_mod || !has_fusion_fix)
+		{
+			const auto res = MessageBoxA(nullptr, "Install FusionFix fork specifically tailored for RTX Remix? (Recommended)", "FusionFix", MB_YESNO | MB_ICONQUESTION);
+			opt_install_fusion_fix_fork = res == IDYES;
+			std::cout << (opt_install_fusion_fix_fork ? "Installing FusionFix RTXRemix Fork." : "Not installing FusionFix RTXRemix Fork.") << "\n\n";
+		}
     }
-	
 
 	// ask for fullscreen / windowed
 	bool fullscreen = true;
-	if (const auto res = MessageBoxA(nullptr, "Setup GTA IV to run in fullscreen/borderless mode?\n(Choose No if you want to run the game in windowed mode)", "Display mode", MB_YESNO | MB_ICONQUESTION))
+
+	if (!has_remix_comp_mod)
 	{
-		if (res == IDNO) {
-			fullscreen = false;
+		if (const auto res = MessageBoxA(nullptr, "Setup GTA IV to run in fullscreen/borderless mode?\n(Choose No if you want to run the game in windowed mode)", "Display mode", MB_YESNO | MB_ICONQUESTION))
+		{
+			if (res == IDNO) {
+				fullscreen = false;
+			}
+			else {
+				std::cout << "If you are having trouble with launching the game in fullscreen:\n> Go into 'rtx_comp/game_settings.toml'\n> Set 'manual_game_resolution_enabled' to 'true'\n> Set your desired resolution via 'manual_game_resolution'\n\n";
+			}
 		}
-		else {
-			std::cout << "If you are having trouble with launching the game in fullscreen:\n> Go into 'rtx_comp/game_settings.toml'\n> Set 'manual_game_resolution_enabled' to 'true'\n> Set your desired resolution via 'manual_game_resolution'\n\n";
-		}
+
+		// steam launch args warning
+		MessageBoxA(nullptr, "Make sure to remove ALL launch arguments from Steam properties for GTA IV!\n", "IMPORTANT", MB_OK | MB_ICONWARNING);
 	}
-
-
-    // steam launch args warning
-	MessageBoxA(nullptr, "Make sure to remove ALL launch arguments from Steam properties for GTA IV!\n", "IMPORTANT", MB_OK | MB_ICONWARNING);
-
 
 	// extract comp files
 	static const wchar_t* zip_prefix = L"GTAIV-Remix-CompatibilityMod";
@@ -194,14 +208,16 @@ int main()
 		}
 	}
 
-	if (found_zip.empty()) {
+	if (found_zip.empty()) 
+	{
 		std::cout << "[ERR] Could not find any zip starting with 'GTAIV-Remix-CompatibilityMod'.\n";
 		MessageBoxA(nullptr, "Could not find 'GTAIV-Remix-CompatibilityMod.zip' in the installer directory.", "Error", MB_ICONERROR);
 		return 1;
 	}
 	
 	// Validate zip file exists and is readable
-	if (!std::filesystem::exists(found_zip) || !std::filesystem::is_regular_file(found_zip)) {
+	if (!std::filesystem::exists(found_zip) || !std::filesystem::is_regular_file(found_zip)) 
+	{
 		std::cout << "[ERR] Found zip file but it is not accessible: " << found_zip.string() << "\n";
 		MessageBoxA(nullptr, "The zip file found is not accessible.", "Error", MB_ICONERROR);
 		return 1;
@@ -219,20 +235,22 @@ int main()
 
 	Sleep(100); // Small delay between extractions
 
-	// extract fullscreen or windowed files
-	std::string windowed_or_fullscreen_path = fullscreen ? "_installer_options/mode_fullscreen/" : "_installer_options/mode_windowed/";
-	if (!extract_zip(found_zip.string(), game_dir, windowed_or_fullscreen_path)) {
-		std::cout << "[ERR] Failed to extract '" << windowed_or_fullscreen_path << "' files from 'GTAIV-Remix-CompatibilityMod.zip'\n";
-	}
-	
-	Sleep(100); // Small delay before next operation
+	if (!has_remix_comp_mod)
+	{
+		// extract fullscreen or windowed files
+		std::string windowed_or_fullscreen_path = fullscreen ? "_installer_options/mode_fullscreen/" : "_installer_options/mode_windowed/";
+		if (!extract_zip(found_zip.string(), game_dir, windowed_or_fullscreen_path)) {
+			std::cout << "[ERR] Failed to extract '" << windowed_or_fullscreen_path << "' files from 'GTAIV-Remix-CompatibilityMod.zip'\n";
+		}
 
+		Sleep(100); // Small delay before next operation
+	}
 
     // install FusionFix fork if requested
     if (opt_install_fusion_fix_fork)
     {
 		Sleep(100); // Small delay before FusionFix installation
-        if (has_fusion_fix) 
+        if (has_original_fusion_fix) 
 		{
 			if (MoveFileExA(
 				(game_dir + "\\vulkan.dll").c_str(),
@@ -276,11 +294,13 @@ int main()
         }
     }
 
-
-    // DX9 June 2010 runtime
-    if (MessageBoxA(nullptr, "It's recommended to install Microsoft DirectX June 2010 Redistributable.\nDo you want to open a link to the installer?\n(https://www.microsoft.com/en-us/download/details.aspx?id=8109)", "DirectX Runtime", MB_YESNO | MB_ICONQUESTION) == IDYES) {
-        ShellExecuteA(nullptr, "open", "https://www.microsoft.com/en-us/download/details.aspx?id=8109", nullptr, nullptr, SW_SHOWNORMAL);
-    }
+	if (!has_remix_comp_mod)
+	{
+		// DX9 June 2010 runtime
+		if (MessageBoxA(nullptr, "It's recommended to install Microsoft DirectX June 2010 Redistributable.\nDo you want to open a link to the installer?\n(https://www.microsoft.com/en-us/download/details.aspx?id=8109)", "DirectX Runtime", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+			ShellExecuteA(nullptr, "open", "https://www.microsoft.com/en-us/download/details.aspx?id=8109", nullptr, nullptr, SW_SHOWNORMAL);
+		}
+	}
 
 	std::cout << "If you run into issues, please create an issue on the GitHub repository.\n> Please include the external console log when the game starts\n> The log files from 'rtx-remix/logs'\n> A short description and anything else that might help to identify the issue.\n";
 
