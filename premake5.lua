@@ -275,11 +275,8 @@ project "installer"
         optimize "Full"
         flags { "LinkTimeOptimization" }
 	filter {}
-	
-	-- Disable automatic manifest generation (we embed it via resource file)
-	linkoptions {
-		"/MANIFEST:NO"
-	}
+
+	flags { "NoManifest" }     -- prevents VS/mt.exe from generating its own
 
 	dependencies.imports()
 

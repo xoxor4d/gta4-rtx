@@ -978,8 +978,11 @@ namespace ImGui
 
 			Indent(child_indent);
 			PushClipRect(min, max, true);
-			if (callback) {
+			if (callback) 
+			{
+				Indent(4);
 				callback();
+				Unindent(4);
 			}
 			PopClipRect();
 			Unindent(child_indent);

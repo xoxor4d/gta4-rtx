@@ -69,6 +69,128 @@ over "RootNode"
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }
+
+        over "mat_00000000CB37BB8B"
+        {
+            over "Shader"
+            {
+                custom bool inputs:blend_enabled = 0
+                custom int inputs:blend_type = 3
+                custom color3f inputs:diffuse_color_constant = (0.74903476, 0.74902725, 0.74902725)
+                asset inputs:diffuse_texture = @@
+                custom color3f inputs:emissive_color_constant = (0.8108108, 0.8108027, 0.8108027)
+                custom float inputs:emissive_intensity = 10
+                custom asset inputs:emissive_mask_texture = @@
+                custom bool inputs:enable_emission = 1
+                custom float inputs:metallic_constant = 0
+                custom float inputs:reflection_roughness_constant = 1
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+    }
+
+    over "meshes"
+    {
+        over "mesh_EB0056806A777DCA" (
+            references = None
+        )
+        {
+            def Xform "ref_329309ab3d0a405b95c2f0d288f96bf9" (
+                prepend references = @./assets/helper/square_plane.usda@
+            )
+            {
+                custom bool IsRemixRef = 1
+                double3 xformOp:rotateXYZ = (0, 0, 0)
+                double3 xformOp:scale = (1, 1, 1)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                over "XForms"
+                {
+                    float3 xformOp:rotateXYZ = (-90, 0, 0)
+                    float3 xformOp:scale = (1, 1, 1)
+                    double3 xformOp:translate = (0, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "World"
+                    {
+                        over "Plane"
+                        {
+                            float3 xformOp:rotateXYZ = (90, -0, 0)
+                            float3 xformOp:scale = (6, 6, 6)
+                            double3 xformOp:translate = (0, 0, 0)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                            over "Plane" (
+                                prepend apiSchemas = ["ParticleSystemAPI"]
+                            )
+                            {
+                                bool primvars:particle:alignParticlesToVelocity = 1
+                                uniform token primvars:particle:billboardType = "FaceCamera_UpAxisLocked"
+                                float primvars:particle:collisionRestitution = 0
+                                float primvars:particle:collisionThickness = 0.001
+                                bool primvars:particle:enableCollisionDetection = 1
+                                bool primvars:particle:enableMotionTrail = 1
+                                float primvars:particle:gravityForce = -250
+                                bool primvars:particle:hideEmitter = 1
+                                float primvars:particle:initialVelocityConeAngleDegrees = 15
+                                float primvars:particle:initialVelocityFromMotion = 1
+                                float primvars:particle:initialVelocityFromNormal = 500
+                                int primvars:particle:maxNumParticles = 14000
+                                float primvars:particle:maxTimeToLive = 7
+                                float primvars:particle:minTimeToLive = 6
+                                float primvars:particle:motionTrailMultiplier = 2
+                                float primvars:particle:spawnRatePerSecond = 1300
+                            }
+                        }
+                    }
+
+                    over "AssetImporter"
+                    {
+                        over "Looks"
+                        {
+                            over "Plane__"
+                            {
+                                over "Shader"
+                                {
+                                    custom bool inputs:blend_enabled = 1
+                                    custom asset inputs:diffuse_texture = @./assets/effects/rain/raindrop.a.rtex.dds@
+                                    custom color3f inputs:emissive_color_constant = (0.8880309, 0.888022, 0.888022)
+                                    custom float inputs:emissive_intensity = 0.01
+                                    custom bool inputs:enable_emission = 1
+                                    custom float inputs:metallic_constant = 0
+                                    custom float inputs:reflection_roughness_constant = 1
+                                    custom bool inputs:use_legacy_alpha_state = 0
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    over "instances"
+    {
+        over "inst_EB0056806A777DCA_0"
+        {
+            over "ref_0914b28fe4664de79342fdc08ee92ffb"
+            {
+                over "XForms"
+                {
+                    over "root"
+                    {
+                        over "rain_drop"
+                        {
+                            over "rain_drop"
+                            {
+                                token visibility = "invisible"
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

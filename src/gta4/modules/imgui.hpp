@@ -71,8 +71,14 @@ namespace gta4
 		int m_dbg_tag_static_emissive_as_index = -1;
 		bool m_dbg_emissive_ff_with_alphablend = false;
 		bool m_dbg_emissive_ff_worldui_ignore_alpha = true;
+		bool m_dbg_emissive_ff_do_not_render = false;
+		bool m_dbg_emissive_ff_alphablend_do_not_render = false;
+		bool m_dbg_emissive_ff_alphablend_test1 = false;
+		bool m_dbg_emissive_ff_alphablend_enable_alphablend = true;
 		bool m_dbg_render_emissives_with_shaders = false; // was game setting 'render_emissive_surfaces_using_shaders'
 		bool m_dbg_render_emissives_with_shaders_tag_as_decal = true; // was game setting 'assign_decal_category_to_emissive_surfaces'
+
+
 
 		bool m_dbg_skip_draw_indexed_checks = false;
 		bool m_dbg_disable_ignore_baked_lighting_enforcement = false;
@@ -430,6 +436,7 @@ namespace gta4
 	private:
 		void tab_about();
 		void tab_dev();
+		void tab_wip();
 		void tab_utilities();
 		void tab_gamesettings();
 		void tab_map_settings();

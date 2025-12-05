@@ -163,7 +163,7 @@ namespace gta4
 				return !default_value ? m_var.boolean : m_var_default.boolean;
 			}
 
-			const bool* _bool(const bool default_value = false)
+			const bool* _bool_ptr(const bool default_value = false)
 			{
 				assert(m_type == var_type_boolean && "Type mismatch: expected boolean");
 				return &(!default_value ? m_var.boolean : m_var_default.boolean);
@@ -175,7 +175,7 @@ namespace gta4
 				return !default_value ? m_var.value[0] : m_var_default.value[0];
 			}
 
-			const float* _float(const bool default_value = false)
+			const float* _float_ptr(const bool default_value = false)
 			{
 				assert(m_type == var_type_value && "Type mismatch: expected float");
 				return !default_value ? m_var.value : m_var_default.value;
@@ -626,6 +626,23 @@ namespace gta4
 				1.6f
 			};
 
+			variable emissive_alpha_blend_hack = 
+			{
+				"emissive_alpha_blend_hack",
+				("Assign WorldUI and DecalStatic to AlphaBlended Emissives.\n"
+				 "Fixes aliasing induced by RR Particle Mode. Enables RR Particle Mode when on.\n"
+				 "Disables RR Particle Mode when off (not recommended)"),
+				true
+			};
+
+			variable emissive_alpha_blend_hack_scale =
+			{
+				"emissive_alpha_blend_hack_scale",
+				("AlphaBlended Emissive Surface that are tagged as 'Decal' are less emissive\n"
+				 "so we have to increase their emissive intensity to compensate for that."),
+				4.0f
+			};
+
 			variable phone_emissive_override = {
 				"phone_emissive_override",
 				("Automatically tags phone related meshes as world-ui and adjusts the emissive scale.\n"
@@ -765,13 +782,19 @@ namespace gta4
 				true
 			};
 
-
 			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",
 				("Scale alpha of gta_rmptfx_litsprite"),
-				1.0f
+				1.5f
+			};
+
+			variable rain_particle_system_enabled =
+			{
+				"rain_particle_system_enabled",
+				("Enable rain handled by a remix particle system. Has limited collision detection - can still rain 'inside' - WIP"),
+				true
 			};
 
 

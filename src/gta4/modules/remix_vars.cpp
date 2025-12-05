@@ -579,6 +579,12 @@ namespace gta4
 						remix_vars::option_value val{ .value = (float)rtxdi_override_val };
 						set_option(rtxdi_samplecount, val, false, true);
 					}
+
+					// particle mode is disabled by default (rtx.conf), enable if alpha emissive hack is on
+					static auto rr_particle_mode = get_option("rtx.rayreconstruction.particleBufferMode");
+					rr_particle_mode->second.type = OPTION_TYPE::OPTION_TYPE_INT; // float by default
+					remix_vars::option_value val { .integer = (gs->emissive_alpha_blend_hack._bool() ? 1 : 0) };
+					set_option(rr_particle_mode, val, false, gs->emissive_alpha_blend_hack._bool()); // only override constantly when hack is enabled
 				}
 			}
 

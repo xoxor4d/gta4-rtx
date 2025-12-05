@@ -193,6 +193,8 @@ namespace gta4
 				ASSIGN(emissive_surfaces_emissive_scalar);
 				ASSIGN(emissive_strong_surfaces_emissive_scalar);
 				ASSIGN(emissive_generic_scale);
+				ASSIGN(emissive_alpha_blend_hack);
+				ASSIGN(emissive_alpha_blend_hack_scale);
 				ASSIGN(phone_emissive_override);
 				ASSIGN(phone_emissive_scalar);
 
@@ -215,7 +217,9 @@ namespace gta4
 				ASSIGN(npc_expensive_hair_alpha_testing);
 				ASSIGN(npc_expensive_hair_alpha_cutout_value);
 				ASSIGN(override_water_texture_hash);
+
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
+				ASSIGN(rain_particle_system_enabled);
 
 				// timecycle related settings
 				ASSIGN(timecycle_set_on_endscene);

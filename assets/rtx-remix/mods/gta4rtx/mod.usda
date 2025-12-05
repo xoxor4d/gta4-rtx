@@ -8,7 +8,7 @@
         string lightspeed_mod_name = "gta4rtx"
         string lightspeed_mod_notes = """made for the gta4 compatibility mod: github.com/xoxor4d/gta4-rtx
 patreon.com/xoxor4d"""
-        string lightspeed_mod_version = "1.0.0"
+        string lightspeed_mod_version = "1.1.0"
     }
     subLayers = [
         @./hq_world.usda@,
@@ -139,6 +139,25 @@ over "RootNode"
                 double3 xformOp:scale = (1, 1, 1)
                 double3 xformOp:translate = (13.48779296875, 0.466033935546875, 2.563400476018547)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            }
+        }
+
+        over "mesh_A2574290006CB62E"
+        {
+            over "mesh"
+            {
+                custom uniform bool remix_category:alpha_blend_to_cutout = 1
+            }
+        }
+    }
+
+    over "Looks"
+    {
+        over "mat_71BF6BFD101768A5"
+        {
+            over "Shader"
+            {
+                custom bool inputs:use_legacy_alpha_state = 0
             }
         }
     }

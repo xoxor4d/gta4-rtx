@@ -510,7 +510,8 @@ namespace gta4
 
 	void dev_debug_container()
 	{
-		static const auto& im = imgui::get();
+		const auto& im = imgui::get();
+		const auto& gs = game_settings::get();
 
 #ifdef LOG_SHADERPRESETS
 		if (ImGui::Button("Copy Shader PresetLog to Clipboard", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
@@ -727,7 +728,13 @@ namespace gta4
 			ImGui::Checkbox("FF Emissive: Tag as WorldUI + IgnoreTransparencyLayer", &im->m_dbg_emissive_ff_worldui_ignore_alpha);
 
 			ImGui::Checkbox("Render Emissives using Shaders", &im->m_dbg_render_emissives_with_shaders);
-			ImGui::Checkbox("Tag Emissives drawn by Shaders as Decal", &im->m_dbg_render_emissives_with_shaders_tag_as_decal);
+			ImGui::Checkbox("Tag Emissives drawn by Shaders as Decal/WorldUI", &im->m_dbg_render_emissives_with_shaders_tag_as_decal);
+
+			ImGui::Checkbox("Do Not Render FF Emissives", &im->m_dbg_emissive_ff_do_not_render);
+			ImGui::Checkbox("Do Not Render FF Alphablended Emissives", &im->m_dbg_emissive_ff_alphablend_do_not_render);
+
+			ImGui::Checkbox("FF Alphablended Emissives Assign IgnoreTransparency", &im->m_dbg_emissive_ff_alphablend_test1);
+			ImGui::Checkbox("FF Alphablended Emissives Alphablend", &im->m_dbg_emissive_ff_alphablend_enable_alphablend);
 
 			ImGui::TreePop();
 		}
@@ -1105,6 +1112,10 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		gamesettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
+
+		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("Enable Rain - Remix Particle System", gs->rain_particle_system_enabled);
 	}
 
 #define CLEAR_CACHE_CHECK(B, FN) \
@@ -1199,6 +1210,12 @@ namespace gta4
 		gamesettings_float_widget("Emissive Surfaces Scalar", gs->emissive_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
 		gamesettings_float_widget("EmissiveStrong Surfaces Scalar", gs->emissive_strong_surfaces_emissive_scalar, 0.0f, 1000.0f, 0.001f);
 		gamesettings_float_widget("Generic Emissive Scale", gs->emissive_generic_scale, 0.0f, 1000.0f, 0.001f);
+		gamesettings_bool_widget("AlphaBlended Emissives Hack", gs->emissive_alpha_blend_hack);
+		ImGui::BeginDisabled(!gs->emissive_alpha_blend_hack._bool());
+		{
+			gamesettings_float_widget("AlphaBlended Emissives Hack Scale", gs->emissive_alpha_blend_hack_scale, 0.0f, 100.0f, 0.001f);
+			ImGui::EndDisabled();
+		}
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Phone ");
@@ -1446,7 +1463,7 @@ namespace gta4
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Weather ");
-		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::Spacing(0, 4);
 
 		{
 			gamesettings_bool_widget("Enable Weather Wetness Logic", gs->timecycle_wetness_enabled);
@@ -1532,6 +1549,97 @@ namespace gta4
 		/*ImGui::SeparatorText(" Huh ");
 		ImGui::Spacing(0, 8);*/
 	}
+
+	void wip_gs_container()
+	{
+		//const auto& im = imgui::get();
+		const auto& gs = game_settings::get();
+		const float inbetween_spacing = 8.0f;
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Emissives ");
+		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("AlphaBlended Emissives Hack", gs->emissive_alpha_blend_hack);
+		ImGui::BeginDisabled(!gs->emissive_alpha_blend_hack._bool());
+		{
+			gamesettings_float_widget("AlphaBlended Emissives Hack Scale", gs->emissive_alpha_blend_hack_scale, 0.0f, 100.0f, 0.001f);
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Weather ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::BeginDisabled(!gs->timecycle_wetness_enabled.get_as<bool>());
+		{
+			ImGui::PushFont(shared::imgui::font::BOLD);
+			ImGui::TextUnformatted("::  World");
+			ImGui::PopFont();
+			ImGui::PushID("world");
+			gamesettings_bool_widget("Enable Puddles", gs->timecycle_wetness_world_puddles_enable);
+			gamesettings_bool_widget("Enable World Raindrops", gs->timecycle_wetness_world_raindrop_enable);
+			gamesettings_float_widget("World Raindrop Scale", gs->timecycle_wetness_world_raindrop_scalar, 0.0f, 10.0f, 0.005f);
+			ImGui::PopID();
+
+
+			ImGui::Spacing(0, inbetween_spacing);
+			ImGui::PushFont(shared::imgui::font::BOLD);
+			ImGui::TextUnformatted("::  Ped Wetness");
+			ImGui::PopFont();
+			ImGui::Spacing(0, 4);
+
+			ImGui::PushID("ped");
+			gamesettings_bool_widget("Enable Ped Raindrops", gs->timecycle_wetness_ped_raindrop_enable);
+			gamesettings_float_widget("Ped Raindrop Scale", gs->timecycle_wetness_ped_raindrop_scalar, 0.0f, 10.0f, 0.005f);
+			ImGui::PopID();
+
+
+			ImGui::Spacing(0, inbetween_spacing);
+			ImGui::PushFont(shared::imgui::font::BOLD);
+			ImGui::TextUnformatted("::  Vehicle Wetness");
+			ImGui::PopFont();
+			ImGui::Spacing(0, 4);
+
+			ImGui::PushID("vehicle");
+			gamesettings_bool_widget("Enable Vehicle Raindrops", gs->timecycle_wetness_vehicle_raindrop_enable);
+			gamesettings_float_widget("Vehicle Raindrop Scale", gs->timecycle_wetness_vehicle_raindrop_scalar, 0.0f, 10.0f, 0.005f);
+			ImGui::PopID();
+
+			ImGui::EndDisabled();
+		}
+
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Effects ");
+		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("Enable Rain - Remix Particle System", gs->rain_particle_system_enabled);
+
+		ImGui::Spacing(0, 4);
+	}
+
+	void imgui::tab_wip()
+	{
+		ImGui::Spacing(0, 4);
+		ImGui::Indent(4);
+		ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+		ImGui::TextUnformatted("Note:");
+		ImGui::PopFont();
+		ImGui::TextWrapped(
+			"Options listed here are still WIP, might cause problems, instability or reduce Performance.");
+		ImGui::Unindent(4);
+		ImGui::Spacing(0, 16);
+
+		// gs
+		{
+			static float cont_quick_utilities_height = 0.0f;
+			cont_quick_utilities_height = ImGui::Widget_ContainerWithCollapsingTitle("Game Settings", cont_quick_utilities_height, wip_gs_container,
+				true, ICON_FA_CAMERA, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+	}
+
+	// -----------
 
 	void quicksettings_util_container()
 	{
@@ -3059,6 +3167,7 @@ namespace gta4
 		{
 			ImGui::PopStyleColor();
 			ImGui::PopStyleVar(1);
+			ADD_TAB("WIP", tab_wip);
 			ADD_TAB("Game Settings", tab_gamesettings);
 			ADD_TAB("Map Settings", tab_map_settings);
 			ADD_TAB("Utilities", tab_utilities);

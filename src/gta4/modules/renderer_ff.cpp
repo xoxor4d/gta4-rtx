@@ -43,6 +43,12 @@ namespace gta4
 		const auto im = imgui::get();
 		const auto gs = game_settings::get();
 
+		if (im->m_dbg_emissive_ff_do_not_render) 
+		{
+			ctx.modifiers.do_not_render = true;
+			return;
+		}
+
 		if (!im->m_dbg_render_emissives_with_shaders)
 		{
 			ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
@@ -137,7 +143,13 @@ namespace gta4
 	void renderer_ff::on_ff_emissives_alpha(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
 		const auto im = imgui::get();
-		//const auto gs = game_settings::get();
+		const auto gs = game_settings::get();
+
+		if (im->m_dbg_emissive_ff_alphablend_do_not_render)
+		{
+			ctx.modifiers.do_not_render = true;
+			return;
+		}
 
 		if (!im->m_dbg_render_emissives_with_shaders)
 		{
@@ -148,7 +160,7 @@ namespace gta4
 			dev->SetRenderState(D3DRS_ZENABLE, FALSE);
 
 			ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, im->m_dbg_emissive_ff_alphablend_enable_alphablend); // TRUE
 
 			ctx.save_rs(dev, D3DRS_BLENDOP);
 			dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
@@ -195,7 +207,17 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer);
 			}*/
 
+			else if (gs->emissive_alpha_blend_hack._bool())
+			{
+				renderer::set_remix_texture_categories(dev, InstanceCategories::WorldUI | InstanceCategories::DecalStatic);
 
+				renderer::set_remix_modifier(dev, RemixModifier::EmissiveScalar);
+				renderer::set_remix_emissive_intensity(dev, ctx.info.shaderconst_emissive_intensity * gs->emissive_alpha_blend_hack_scale._float());
+			}
+
+			else if (im->m_dbg_emissive_ff_alphablend_test1) {
+				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer);
+			}
 
 			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha); 
 			ctx.modifiers.allow_vertex_colors = true;

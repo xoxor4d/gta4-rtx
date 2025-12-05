@@ -26,6 +26,14 @@ over "RootNode"
         )
         {
         }
+
+        over "mesh_A2574290006CB62E"
+        {
+            over "mesh"
+            {
+                custom uniform bool remix_category:decal_Static = 0
+            }
+        }
     }
 
     over "instances"
