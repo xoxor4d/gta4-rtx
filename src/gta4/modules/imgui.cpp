@@ -511,7 +511,7 @@ namespace gta4
 	void dev_debug_container()
 	{
 		const auto& im = imgui::get();
-		const auto& gs = game_settings::get();
+		//const auto& gs = game_settings::get();
 
 #ifdef LOG_SHADERPRESETS
 		if (ImGui::Button("Copy Shader PresetLog to Clipboard", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
