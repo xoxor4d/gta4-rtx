@@ -917,6 +917,11 @@ namespace gta4
 								ctx.info.ps_const_74_veh_dirt.z = constant_data_struct->constants[dataPoolIndex].float_arr[2];
 								ctx.info.ps_const_74_veh_dirt.w = constant_data_struct->constants[dataPoolIndex].float_arr[3];
 							}
+							/*else if (pidx == GTA_VEHICLE_VEHGLASS && (register_num == 76u)) // or 77
+							{
+								renderer::set_remix_emissive_intensity(shared::globals::d3d_device,
+									*constant_data_struct->constants[dataPoolIndex].float_arr * im->m_debug_vector3.x);
+							}*/
 						}
 
 						else if (register_num == 66u && pidx == GTA_RADAR) {
@@ -2091,14 +2096,14 @@ namespace gta4
 					}
 				}
 
-				if (pidx == GTA_VEHICLE_VEHGLASS)
-				{
-					//if (im->m_dbg_vehglass_disable_alphablend)
-					{
-						ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-						dev->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
-					}
-				}
+				//if (pidx == GTA_VEHICLE_VEHGLASS)
+				//{
+				//	//if (im->m_dbg_vehglass_disable_alphablend)
+				//	{
+				//		ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				//		dev->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
+				//	}
+				//}
 			}
 
 			
@@ -2524,7 +2529,7 @@ namespace gta4
 
 
 
-		if (ctx.modifiers.tri_render)
+		if (ctx.modifiers.tri_render && !im->m_dbg_do_not_render_tri_surface)
 		{
 			if (ctx.modifiers.tri_render_texture)
 			{

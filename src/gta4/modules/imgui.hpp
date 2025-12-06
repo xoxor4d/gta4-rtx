@@ -64,6 +64,7 @@ namespace gta4
 		bool m_dbg_do_not_render_prims_with_vertexshader = false;
 		bool m_dbg_do_not_render_indexed_prims_with_vertexshader = false;
 		bool m_dbg_do_not_render_water = false;
+		bool m_dbg_do_not_render_tri_surface = false;
 		bool m_dbg_toggle_ff = false;
 		bool m_dbg_do_not_restore_drawcall_context = false;
 		bool m_dbg_do_not_restore_drawcall_context_on_early_out = false;

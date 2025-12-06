@@ -103,6 +103,9 @@ namespace gta4::game
 	typedef	void* (__cdecl* AddSingleVehicleLight_t)(D3DXMATRIX* some_mtx, float* light_pos, float* light_dir, float* color, float intensity, float radius, float inner_cone_angle, float outer_cone_angle, int interIndex, int roomindex, int shadowRelIndex, char light_flag_0x4, char light_flag_0x400);
 		extern AddSingleVehicleLight_t AddSingleVehicleLight;
 
+	typedef	void* (__cdecl* AddSceneLight_t)(int unk_flag, game::eLightType type, int flag, float* dir, float* otherdir, float* pos, float* color, float intensity, int tex_hash, int txd_hash, float radius, float inner_cone, float outer_cone, int inter_index, int room_index, int shadow_rel_index);
+		extern AddSceneLight_t AddSceneLight;
+
 	// --------------
 	// game asm offsets
 
@@ -170,6 +173,8 @@ namespace gta4::game
 
 	extern uint32_t hk_addr__vehicle_center_rearlight;
 	extern uint32_t hk_addr__vehicle_single_rearlight;
+	extern uint32_t hk_addr__vehicle_vshaped_sirens_fake_light;
+	extern uint32_t hk_addr__vehicle_vshaped_sirens_vlight;
 
 	extern uint32_t hk_addr__frustum_check;
 

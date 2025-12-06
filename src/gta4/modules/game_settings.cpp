@@ -186,6 +186,14 @@ namespace gta4
 				ASSIGN(translate_vehicle_rearlight_outer_cone_angle_offset);
 				ASSIGN(translate_vehicle_rearlight_direction_offset);
 
+				ASSIGN(translate_vehicle_fake_siren_z_offset);
+				ASSIGN(translate_vehicle_fake_siren_intensity_offset);
+				ASSIGN(translate_vehicle_fake_siren_radius_offset);
+
+				ASSIGN(translate_vehicle_vsirens_make_spotlight);
+				ASSIGN(translate_vehicle_vsirens_intensity_offset);
+				ASSIGN(translate_vehicle_vsirens_radius_offset);
+
 				// emissive related settings
 				ASSIGN(vehicle_lights_emissive_scalar);
 				ASSIGN(vehicle_lights_dual_render_proxy_texture);

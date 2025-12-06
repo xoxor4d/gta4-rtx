@@ -86,6 +86,7 @@ namespace gta4::game
 	getNativeAddress_t getNativeAddress = nullptr;
 	PopulateAvailResolutionsArray_t PopulateAvailResolutionsArray = nullptr;
 	AddSingleVehicleLight_t AddSingleVehicleLight = nullptr;
+	AddSceneLight_t AddSceneLight = nullptr;
 
 
 
@@ -156,6 +157,8 @@ namespace gta4::game
 
 	uint32_t hk_addr__vehicle_center_rearlight = 0u;
 	uint32_t hk_addr__vehicle_single_rearlight = 0u;
+	uint32_t hk_addr__vehicle_vshaped_sirens_fake_light = 0u;
+	uint32_t hk_addr__vehicle_vshaped_sirens_vlight = 0u;
 
 	uint32_t hk_addr__frustum_check = 0u;
 
@@ -427,6 +430,10 @@ namespace gta4::game
 			AddSingleVehicleLight = (AddSingleVehicleLight_t)offset; found_pattern_count++;
 		} total_pattern_count++;
 
+		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? F3 0F 10 05 ? ? ? ? 81 EC ? ? ? ? 0F 2F 45 ? 56 57 0F 83", 0, "AddSceneLight", use_pattern, 0xABCCD0); offset) {
+			AddSceneLight = (AddSceneLight_t)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 		// end GAME_FUNCTIONS
 #pragma endregion
 
@@ -614,6 +621,19 @@ namespace gta4::game
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_center_rearlight, "8D 44 24 ? 50 FF 75 ? E8 ? ? ? ? 83 C4 ? 5F 5E 8B E5 5D C2 ? ? 83 FF ? 0F 84 ? ? ? ? 80 7D ? ? 0F 85 ? ? ? ? F3 0F 10 05", 0, 0xA4336E);
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_single_rearlight, "F3 0F 59 05 ? ? ? ? F3 0F 59 05 ? ? ? ? ? ? ? ? ? 68", 0x26, 0xA43407); // dest addr: 0xA4342D
 
+		if (const auto offset = shared::utils::mem::find_pattern("8B 44 24 ? 48 46", 0x22F, "hk_addr__vehicle_vshaped_sirens_fake_light", use_pattern, 0xA40ADB); offset) 
+		{
+			// making sure that this a call
+			if (*reinterpret_cast<BYTE*>(offset) == 0xE8)
+			{
+				hk_addr__vehicle_vshaped_sirens_fake_light = offset;
+				found_pattern_count++;
+			}
+		} total_pattern_count++;
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_vshaped_sirens_vlight, "E8 ? ? ? ? 83 C4 ? EB ? 8B 7C 24 ? 51", 0x0, 0xA40AAA);
+
+		// E8 ? ? ? ? 83 C4 ? EB ? 8B 7C 24 ? 51
 
 
 		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, "hk_addr__frustum_check", use_pattern, 0x431E40); offset) {

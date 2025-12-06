@@ -28,6 +28,9 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 	ImGui::SetCursorForCenteredText((text));	\
 	ImGui::TextURL((text), (link), true);
 
+#define CLEAR_CACHE_CHECK(B, FN) \
+	(B) = (FN) ? true : (B);
+
 constexpr float TREENODE_SPACING = 6.0f;
 constexpr float TREENODE_SPACING_INSIDE = 6.0f;
 
@@ -591,6 +594,7 @@ namespace gta4
 			ImGui::Checkbox("Do not render Prims with VS", &im->m_dbg_do_not_render_prims_with_vertexshader);
 			ImGui::Checkbox("Do not render Indexed Prims with VS", &im->m_dbg_do_not_render_indexed_prims_with_vertexshader);
 			ImGui::Checkbox("Do not render Water", &im->m_dbg_do_not_render_water);
+			ImGui::Checkbox("Do not render Tri Surfaces", &im->m_dbg_do_not_render_tri_surface);
 
 			ImGui::TreePop();
 		}
@@ -1118,9 +1122,6 @@ namespace gta4
 		gamesettings_bool_widget("Enable Rain - Remix Particle System", gs->rain_particle_system_enabled);
 	}
 
-#define CLEAR_CACHE_CHECK(B, FN) \
-	(B) = (FN) ? true : (B);
-
 	void gamesettings_light_container()
 	{
 		//static const auto& im = imgui::get();
@@ -1160,6 +1161,8 @@ namespace gta4
 		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Headlight Intensity Scalar", gs->translate_vehicle_headlight_intensity_scalar, 0.0f, 0.0f, 0.005f));
 		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Headlight Radius Scalar", gs->translate_vehicle_headlight_radius_scalar, 0.0f, 0.0f, 0.005f));
 
+		ImGui::Spacing(0, 4);
+
 		CLEAR_CACHE_CHECK(clear,gamesettings_float_widget("Rearlight Intensity Scalar", gs->translate_vehicle_rearlight_intensity_scalar, 0.0f, 0.0f, 0.005f));
 		CLEAR_CACHE_CHECK(clear,gamesettings_float_widget("Rearlight Radius Scalar", gs->translate_vehicle_rearlight_radius_scalar, 0.0f, 0.0f, 0.005f));
 		CLEAR_CACHE_CHECK(clear,gamesettings_float_widget("Rearlight Inner ConeAngle Offset", gs->translate_vehicle_rearlight_inner_cone_angle_offset, 0.0f, 0.0f, 0.005f));
@@ -1170,6 +1173,16 @@ namespace gta4
 			CLEAR_CACHE_CHECK(clear, ImGui::DragFloat3("Rearlight Direction Offset", gs_var_ptr, 0.005f, 0.0f, 0.0f, "%.2f"));
 			TT(gs->translate_vehicle_rearlight_direction_offset.get_tooltip_string().c_str());
 		}
+
+		ImGui::Spacing(0, 4);
+
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Fake Siren Light Z Offset", gs->translate_vehicle_fake_siren_z_offset, 0.0f, 0.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Fake Siren Light Intensity Offset", gs->translate_vehicle_fake_siren_intensity_offset, 0.0f, 0.0f, 0.01f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Fake Siren Light Radius Offset", gs->translate_vehicle_fake_siren_radius_offset, 0.0f, 0.0f, 0.01f));
+
+		CLEAR_CACHE_CHECK(clear, gamesettings_bool_widget("V-Siren Make Spotlight", gs->translate_vehicle_vsirens_make_spotlight));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("V-Siren Light Intensity Offset", gs->translate_vehicle_vsirens_intensity_offset, 0.0f, 0.0f, 0.01f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("V-Siren Light Radius Offset", gs->translate_vehicle_vsirens_radius_offset, 0.0f, 0.0f, 0.01f));
 
 		if (clear) {
 			remix_lights::clear_light_cache();
@@ -1184,8 +1197,6 @@ namespace gta4
 
 		gamesettings_float_widget("No Culling Until Distance", gs->nocull_dist_lights, 0.0f, 500.0f, 0.5f);
 	}
-
-#undef CLEAR_CACHE_CHECK
 
 	void gamesettings_emissive_container()
 	{
@@ -1615,6 +1626,25 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		gamesettings_bool_widget("Enable Rain - Remix Particle System", gs->rain_particle_system_enabled);
+
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Vehicle Lights ");
+		ImGui::Spacing(0, 4);
+
+		bool clear = false;
+
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Fake Siren Light Z Offset", gs->translate_vehicle_fake_siren_z_offset, 0.0f, 0.0f, 0.005f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Fake Siren Light Intensity Offset", gs->translate_vehicle_fake_siren_intensity_offset, 0.0f, 0.0f, 0.01f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("Fake Siren Light Radius Offset", gs->translate_vehicle_fake_siren_radius_offset, 0.0f, 0.0f, 0.01f));
+
+		CLEAR_CACHE_CHECK(clear, gamesettings_bool_widget("V-Siren Make Spotlight", gs->translate_vehicle_vsirens_make_spotlight));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("V-Siren Light Intensity Offset", gs->translate_vehicle_vsirens_intensity_offset, 0.0f, 0.0f, 0.01f));
+		CLEAR_CACHE_CHECK(clear, gamesettings_float_widget("V-Siren Light Radius Offset", gs->translate_vehicle_vsirens_radius_offset, 0.0f, 0.0f, 0.01f));
+
+		if (clear) {
+			remix_lights::clear_light_cache();
+		}
 
 		ImGui::Spacing(0, 4);
 	}

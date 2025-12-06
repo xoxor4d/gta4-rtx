@@ -578,6 +578,48 @@ namespace gta4
 				0.0f, 0.0f, -0.2f
 			};
 
+			// ---
+
+			variable translate_vehicle_fake_siren_z_offset =
+			{
+				"translate_vehicle_fake_siren_z_offset",
+				("Z Offset applied to the fake siren light that is way above the vehicle"),
+				-1.3f
+			};
+
+			variable translate_vehicle_fake_siren_intensity_offset =
+			{
+				"translate_vehicle_fake_siren_intensity_offset",
+				("Intensity offset applied to the fake siren light that is way above the vehicle"),
+				0.0f
+			};
+
+			variable translate_vehicle_fake_siren_radius_offset =
+			{
+				"translate_vehicle_fake_siren_radius_offset",
+				("Radius offset applied to the fake siren light that is way above the vehicle"),
+				0.0f
+			};
+
+			variable translate_vehicle_vsirens_make_spotlight =
+			{
+				"translate_vehicle_vsirens_make_spotlight",
+				("Use spotlights on v-siren lights"),
+				true
+			};
+		
+			variable translate_vehicle_vsirens_intensity_offset =
+			{
+				"translate_vehicle_vsirens_intensity_offset",
+				("Intensity offset (in game units) applied to the v-siren lights inside the actual sirens"),
+				20.0f
+			};
+			variable translate_vehicle_vsirens_radius_offset =
+			{
+				"translate_vehicle_vsirens_radius_offset",
+				("Radius offset (in game units) applied to the v-siren lights inside the actual sirens"),
+				25.0f
+			};
 
 			// ----------------------------------
 			// emissive related settings

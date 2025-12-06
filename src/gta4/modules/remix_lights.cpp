@@ -357,11 +357,11 @@ namespace gta4
 				bool touched_light = false;
 				if (auto it = m_active_lights.find(hash); it != m_active_lights.end()) 
 				{
-					bool should_update = im->m_dbg_visualize_api_light_hashes; // always update if in vis mode
+					bool should_update = im->m_dbg_visualize_api_light_hashes || it->second.m_def.mFlags & 0x400; // always update if in vis mode
 					it->second.m_is_filler = is_filler_light;
 
 					// check if most important properties changed - position unchanged as matched a hash
-					if (compare_dynamic_light_without_position(def, it->second.m_def)) {
+					if (!should_update && compare_dynamic_light_without_position(def, it->second.m_def)) {
 						it->second.m_updateframe = m_updateframe; // light is up to date
 					}
 					else 
@@ -391,6 +391,11 @@ namespace gta4
 					// search for light with very very similar settings, then check if within a certain distance comp. to last state
 					for (auto& l : m_active_lights) 
 					{
+						// do not try to match an existing light if flag 0x400 (always update)
+						if (l.second.m_def.mFlags & 0x400) {
+							continue;
+						}
+
 						if (l.second.m_updateframe != m_updateframe && // do not recheck already updated lights
 							compare_dynamic_light_without_position(def, l.second.m_def, 0.05f))
 						{
