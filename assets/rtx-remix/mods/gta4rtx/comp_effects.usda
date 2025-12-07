@@ -134,7 +134,7 @@ over "RootNode"
                                 float primvars:particle:gravityForce = -250
                                 bool primvars:particle:hideEmitter = 1
                                 float primvars:particle:initialVelocityConeAngleDegrees = 15
-                                float primvars:particle:initialVelocityFromMotion = 1
+                                float primvars:particle:initialVelocityFromMotion = 0.15
                                 float primvars:particle:initialVelocityFromNormal = 500
                                 int primvars:particle:maxNumParticles = 14000
                                 float primvars:particle:maxSpawnSize = 5
@@ -214,7 +214,7 @@ over "RootNode"
                                 float primvars:particle:gravityForce = -250
                                 bool primvars:particle:hideEmitter = 1
                                 float primvars:particle:initialVelocityConeAngleDegrees = 5
-                                float primvars:particle:initialVelocityFromMotion = 1
+                                float primvars:particle:initialVelocityFromMotion = 0.15
                                 float primvars:particle:initialVelocityFromNormal = 300
                                 int primvars:particle:maxNumParticles = 7000
                                 float primvars:particle:maxSpawnSize = 5
