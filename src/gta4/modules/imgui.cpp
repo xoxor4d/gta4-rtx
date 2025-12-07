@@ -840,7 +840,11 @@ namespace gta4
 
 			ImGui::Checkbox("Debug Bool 1", &im->m_dbg_debug_bool01);
 			ImGui::Checkbox("Debug Bool 2", &im->m_dbg_debug_bool02);
-			ImGui::DragInt("Debug Int 1", &im->m_dbg_int_01, 0.005f);
+			ImGui::Checkbox("Debug Bool 3", &im->m_dbg_debug_bool03);
+			ImGui::Checkbox("Debug Bool 4", &im->m_dbg_debug_bool04);
+			ImGui::Checkbox("Debug Bool 5", &im->m_dbg_debug_bool05);
+			ImGui::DragInt("Debug Int 1", &im->m_dbg_int_01, 0.01f);
+			ImGui::DragInt("Debug Int 2", &im->m_dbg_int_02, 0.01f);
 			ImGui::TreePop();
 		}
 

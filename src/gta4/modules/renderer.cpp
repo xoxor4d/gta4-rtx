@@ -2133,12 +2133,27 @@ namespace gta4
 				// check for stencil
 				DWORD stencil_ref = 0u, stencil_enabled = 0u;
 				dev->GetRenderState(D3DRS_STENCILREF, &stencil_ref);
-				dev->GetRenderState(D3DRS_STENCILENABLE, &stencil_enabled);
+				dev->GetRenderState(D3DRS_STENCILENABLE, &stencil_enabled); 
 
+				//DWORD stencil_mask = 0u, stencil_writemask = 0u;
+				//dev->GetRenderState(D3DRS_STENCILMASK, &stencil_mask);
+				//dev->GetRenderState(D3DRS_STENCILWRITEMASK, &stencil_writemask);
+
+				bool allow_wet = false;
+
+				// allow outside decals to become wet
+				if ((pidx == GTA_DECAL || pidx == GTA_SPEC_DECAL) && stencil_ref != 8) {
+					allow_wet = true;
+				}
+
+				// only peds to get wet outdoors
+				if (pidx == GTA_PED_REFLECT && stencil_ref == 129) {
+					allow_wet = true;
+				}
+				
 				// surface can get wet if stencil = 0
-				if (stencil_enabled && stencil_ref == 0
+				if (allow_wet || stencil_enabled && stencil_ref == 0
 					|| (g_is_rendering_vehicle && !(pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2))
-					|| pidx == GTA_PED_REFLECT
 					|| pidx == GTA_VEHICLE_VEHGLASS)
 				{
 					auto get_wetness = []()
