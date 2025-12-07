@@ -156,7 +156,7 @@ over "RootNode"
                                     custom bool inputs:blend_enabled = 1
                                     custom asset inputs:diffuse_texture = @./assets/effects/rain/raindrop.a.rtex.dds@
                                     custom color3f inputs:emissive_color_constant = (0.8880309, 0.888022, 0.888022)
-                                    custom float inputs:emissive_intensity = 0.01
+                                    custom float inputs:emissive_intensity = 0.07
                                     custom bool inputs:enable_emission = 1
                                     custom float inputs:metallic_constant = 0
                                     custom float inputs:reflection_roughness_constant = 1
