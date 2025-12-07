@@ -8,7 +8,7 @@ set "DLL2=a_gta4-rtx.asi"
 REM check current status of files
 set "STATUS=unknown"
 if exist "%DLL1%" if exist "%DLL2%" set "STATUS=enabled"
-if exist "%DLL1%.off" if exist "%DLL2%.off" set "STATUS=disabled"
+if exist "%DLL1%.REMIX_OFF" if exist "%DLL2%.REMIX_OFF" set "STATUS=disabled"
 
 echo Current mod status: %STATUS%
 echo.
@@ -16,7 +16,7 @@ echo.
 REM
 if "%STATUS%"=="unknown" (
     echo Error: DLL files are in an inconsistent state.
-    echo Please ensure both files exist with either .dll or .dll.off extensions.
+    echo Please ensure both files exist with either .dll or .dll.REMIX_OFF extensions.
     pause
     exit /b
 )
@@ -40,12 +40,12 @@ goto :PROMPT
 
 :PROCESS
 if "%ACTION%"=="disable" (
-    ren "%DLL1%" "d3d9.dll.off"
-    ren "%DLL2%" "a_gta4-rtx.asi.off"
+    ren "%DLL1%" "d3d9.dll.REMIX_OFF"
+    ren "%DLL2%" "a_gta4-rtx.asi.REMIX_OFF"
     echo Mod has been disabled
 ) else (
-    ren "%DLL1%.off" "d3d9.dll"
-    ren "%DLL2%.off" "a_gta4-rtx.asi"
+    ren "%DLL1%.REMIX_OFF" "d3d9.dll"
+    ren "%DLL2%.REMIX_OFF" "a_gta4-rtx.asi"
     echo Mod has been enabled
 )
 
