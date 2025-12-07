@@ -4,6 +4,7 @@
 #include "game_settings.hpp"
 #include "imgui.hpp"
 #include "map_settings.hpp"
+#include "natives.hpp"
 #include "renderer.hpp"
 
 namespace gta4
@@ -51,6 +52,12 @@ namespace gta4
 
 		if (gs->rain_particle_system_enabled._bool())
 		{
+			const auto n = natives::get();
+
+			if (n->IsInteriorScene()) {
+				return;
+			}
+
 			// save & restore after drawing
 			IDirect3DVertexShader9* og_vs = nullptr;
 			dev->GetVertexShader(&og_vs);
@@ -73,13 +80,21 @@ namespace gta4
 				if (vp->sceneviewport)
 				{
 					Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
-					cam_org.z += (20.0f + (float)imgui::get()->m_dbg_int_01);
+					cam_org.z += 20.0f; //+ (float)imgui::get()->m_dbg_int_01;
 					draw_single_marker(dev, 9001, cam_org, Vector(0.0f, 0.0f, 0.0f), Vector(1.0f, 1.0f, 1.0f));
 				}
 			}
 
-			// TODO: handle light-rain
-			// if ((*game::weather_type_prev == game::eWeatherType::WEATHER_DRIZZLE && *game::weather_change_value < 0.4f) || (*game::weather_type_new == game::eWeatherType::WEATHER_DRIZZLE && *game::weather_change_value > 0.4f))
+			else if ((*game::weather_type_prev == game::eWeatherType::WEATHER_DRIZZLE && *game::weather_change_value < 0.4f) || (*game::weather_type_new == game::eWeatherType::WEATHER_DRIZZLE && *game::weather_change_value > 0.4f))
+			{
+				const auto vp = game::pViewports;
+				if (vp->sceneviewport)
+				{
+					Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
+					cam_org.z += 20.0f; 
+					draw_single_marker(dev, 9002, cam_org, Vector(0.0f, 0.0f, 0.0f), Vector(1.0f, 1.0f, 1.0f));
+				}
+			}
 
 			// ----
 
