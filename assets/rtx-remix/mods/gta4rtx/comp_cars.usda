@@ -11,7 +11,7 @@ over "RootNode"
         {
             over "Shader"
             {
-                custom float inputs:metallic_constant = 0.36499998
+                custom float inputs:metallic_constant = 0
                 custom float inputs:reflection_roughness_constant = 0.044999998
             }
         }
@@ -20,7 +20,6 @@ over "RootNode"
         {
             over "Shader"
             {
-                custom float inputs:metallic_constant = 0.325
                 custom float inputs:reflection_roughness_constant = 0.125
             }
         }
@@ -53,8 +52,7 @@ over "RootNode"
         {
             over "Shader"
             {
-                custom float inputs:metallic_constant = 0.285
-                custom float inputs:reflection_roughness_constant = 0.024999999
+                custom float inputs:reflection_roughness_constant = 0.05
             }
         }
 
@@ -80,8 +78,7 @@ over "RootNode"
         {
             over "Shader"
             {
-                custom float inputs:metallic_constant = 0.04
-                custom float inputs:reflection_roughness_constant = 0.055
+                custom float inputs:reflection_roughness_constant = 0.085
             }
         }
 
@@ -95,6 +92,14 @@ over "RootNode"
                 custom bool inputs:preload_textures = 1
                 custom float inputs:thin_wall_thickness = 0
                 custom bool inputs:thin_walled = 1
+            }
+        }
+
+        over "mat_000000005A439A28"
+        {
+            over "Shader"
+            {
+                custom bool inputs:use_legacy_alpha_state = 0
             }
         }
     }
