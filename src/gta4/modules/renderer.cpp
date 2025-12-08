@@ -7,6 +7,7 @@
 #include "natives.hpp"
 #include "remix_markers.hpp"
 #include "renderer_ff.hpp"
+#include "shared/common/flags.hpp"
 
 namespace gta4
 {
@@ -1469,6 +1470,9 @@ namespace gta4
 		return hr;
 	}
 
+	std::uint32_t g_model_hash = 0u;
+	std::uint32_t g_model_reference = 0u;
+
 	HRESULT renderer::on_draw_indexed_prim(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const INT& BaseVertexIndex, const UINT& MinVertexIndex, const UINT& NumVertices, const UINT& startIndex, const UINT& primCount)
 	{
 		if (!is_initialized() || shared::globals::imgui_is_rendering) {
@@ -1538,6 +1542,17 @@ namespace gta4
 
 			// make VS use the correct matrix (if Use World Transforms is enabled in remix)
 			dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
+
+			if (static auto debug_model_hash = shared::common::flags::has_flag("debug_model_hash"); debug_model_hash)
+			{
+				Vector model_pos = {
+					game::pCurrentWorldTransform->m[3][0], game::pCurrentWorldTransform->m[3][1], game::pCurrentWorldTransform->m[3][2]
+				};
+
+				if (im->m_dbg_visualize_model_hashes_info && g_model_hash) {
+					imgui::get()->visualized_model_hashes.emplace_back(model_pos, g_model_hash, g_model_reference);
+				}
+			}
 
 			if (viewport && viewport->wp)
 			{
@@ -2935,6 +2950,141 @@ namespace gta4
 		}
 	}
 
+
+	// -----
+	// only active when launched with 'debug_model_hash' flag 
+
+	void grab_model_hash_from_basemodel(const game::CBaseModelInfo* mdl)
+	{
+		if (mdl) {
+			g_model_hash = mdl->m_dwModel;
+		}
+	}
+
+	void clear_global_model_hash()
+	{
+		g_model_hash = 0u;
+	}
+
+	// check if CEntity args and assign global
+	int on_rmcdrawable_draw_hk(DWORD arg4, DWORD arg5)
+	{
+		// both not zero but both the same -> modified caller which pushes the CEntity
+		if (arg4 && arg5 && arg4 == arg5)
+		{
+			const auto ent = reinterpret_cast<gta4::game::CEntity*>(arg4);
+			if (const auto basemodel = game::g_modelPointers[ent->m_pReference01]; basemodel) 
+			{
+				g_model_hash = basemodel->m_dwModel;
+				g_model_reference = ent->m_pReference01;
+			}
+
+			return 1;
+		}
+
+		return 0;
+	}
+
+	// CEntity might be passed in arg4+5 
+	// -> check -> grab model hash -> restore args
+	__declspec (naked) void on_rmcdrawable_draw__grab_model_hash_stub()
+	{
+		__asm
+		{
+			pushad;
+			push    dword ptr[esp + 0x30]; // arg5 - normally + 0x10 but we are after pushad
+			push    dword ptr[esp + 0x30]; // arg4
+
+			call	on_rmcdrawable_draw_hk;
+			add		esp, 8;
+
+			cmp		eax, 1;  
+			je		CLEANUP;	// if we detected our custom "marker"
+			popad;
+
+			push    dword ptr[esp + 0x10];
+			add     ecx, 0x10;
+			push    dword ptr[esp + 0x10];
+			jmp		game::hk_addr__rmcdrawable_grab_model_hash_retn_addr; // 0x6A1D1B
+
+		CLEANUP:
+			popad;
+			push    0;			// both args would normally be 0 but we pushed the CEntity ptr -> restore
+			add     ecx, 0x10;
+			push    0;			// ^
+			jmp		game::hk_addr__rmcdrawable_grab_model_hash_retn_addr; // 0x6A1D1B
+		}
+	}
+
+	// clear global after rendering
+	__declspec (naked) void on_rmcdrawable_draw__clear_global_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	clear_global_model_hash;
+			popad;
+
+			retn    0x10;
+		}
+	}
+
+#if 0 // also working but I'd rather not touch the func at all
+	__declspec (naked) void on_draw_entities_grab_basemodel_stub()
+	{
+		static uint32_t retn_addr = 0x8DCC09;
+		__asm
+		{
+			//mov         eax, dword ptr[eax * 4 + 0x1295CD8];
+
+			mov		edi, game::g_modelPointersAddr; // we need to move it into a reg. first
+			mov		eax, dword ptr[eax * 4 + edi];
+
+			pushad;
+			push	eax;
+			call	grab_model_hash_from_basemodel;
+			add		esp, 4;
+			popad;
+
+			jmp		retn_addr;
+		}
+	}
+#endif
+
+	//
+
+	__declspec (naked) void on_draw_dyn_objects__grab_model_hash_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	eax;
+			call	grab_model_hash_from_basemodel;
+			add		esp, 4;
+			popad;
+
+			mov     ebp, [eax + 8];
+			test    ebp, ebp;
+			jmp		game::hk_addr__dyn_obj_grab_model_hash_retn_addr; // 0x8DE1CD
+		}
+	}
+
+	__declspec (naked) void on_draw_dyn_objects__clear_global_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	clear_global_model_hash;
+			popad;
+
+			pop     ebp;
+			add     esp, 0x10;
+			retn;
+		}
+	}
+
+	// ---
+
 	renderer::renderer()
 	{
 		p_this = this;
@@ -2968,7 +3118,7 @@ namespace gta4
 		shared::utils::hook(game::retn_addr__pre_entity_surfs_stub - 5u, pre_entity_surfs_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__post_entity_surfs_stub, post_entity_surfs_stub, HOOK_JUMP).install()->quick();
 
-		// detect vehicle rendering - CDrawFrag
+		// detect vehicle rendering - CDrawFrag .. 0x8DE2BC - could grab basemodel or fragtype to differentiate between models
 		shared::utils::hook(game::retn_addr__pre_vehicle_surfs_stub - 5u, pre_vehicle_surfs_stub, HOOK_JUMP).install()->quick(); // 0x8DCDA1
 		shared::utils::hook(game::hk_addr__post_vehicle_surfs_stub, post_vehicle_surfs_stub, HOOK_JUMP).install()->quick();
 
@@ -2994,6 +3144,29 @@ namespace gta4
 		shared::utils::hook::nop(game::retn_addr__pre_draw_fx - 7u, 7); // 0x6035BD
 		shared::utils::hook(game::retn_addr__pre_draw_fx - 7u, pre_draw_fx_stub, HOOK_JUMP).install()->quick(); // 0x6035BD --- retn to (0x6035C4 .. sig addr)
 		shared::utils::hook(game::hk_addr__post_draw_fx, post_draw_fx_stub, HOOK_JUMP).install()->quick(); // 0x60361C
+
+		// hooking highly speculative functions (prefetch - µops and chaching) so guard it behind a flag and only use these when actually needed
+		if (shared::common::flags::has_flag("debug_model_hash"))
+		{
+			// pass the CEntity pointer along into 'rmcDrawable::Draw'
+			// we do this without hooking because the function is highly speculative and instruction caching and µops are at play here 
+			shared::utils::hook::set(game::hk_addr__on_draw_entities_mod_fn_args, 0x56, 0x56); // push esi two times (arg4 & 5) (CEntity) instead of two zero's (0x8DCD49)
+			shared::utils::hook::nop(game::hk_addr__rmcdrawable_grab_model_hash, 7); // 0x6A1D10
+			shared::utils::hook(game::hk_addr__rmcdrawable_grab_model_hash, on_rmcdrawable_draw__grab_model_hash_stub, HOOK_JUMP).install()->quick(); // check if arg4/5 contain the CEntity ptr
+			shared::utils::hook(game::hk_addr__rmcdrawable_grab_model_hash + 0x1B, on_rmcdrawable_draw__clear_global_stub, HOOK_JUMP).install()->quick(); // clear global helper var (0x6A1D2B)
+
+			// same as the above (also needs on_rmcdrawable_draw__clear_global_stub) but I'd rather not touch the function at all
+			//shared::utils::hook::nop(0x8DCC02, 7);
+			//shared::utils::hook(0x8DCC02, on_draw_entities_grab_basemodel_stub, HOOK_JUMP).install()->quick();
+
+			// --
+
+			// similar but for dynamic objects - this is prob. not safe and also a speculative function
+			shared::utils::hook(game::hk_addr__dyn_obj_grab_model_hash_retn_addr - 5u, on_draw_dyn_objects__grab_model_hash_stub, HOOK_JUMP).install()->quick(); // 0x8DE1C8
+			shared::utils::hook(game::hk_addr__dyn_obj_clear_hash01, on_draw_dyn_objects__clear_global_stub, HOOK_JUMP).install()->quick(); // 0x8DE2C3
+			shared::utils::hook(game::hk_addr__dyn_obj_clear_hash02, on_draw_dyn_objects__clear_global_stub, HOOK_JUMP).install()->quick(); // 0x8DE298 
+			shared::utils::hook(game::hk_addr__dyn_obj_clear_hash03, on_draw_dyn_objects__clear_global_stub, HOOK_JUMP).install()->quick(); // 0x8DE437
+		}
 
 		// -----
 		m_initialized = true;

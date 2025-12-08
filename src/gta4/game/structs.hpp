@@ -2,6 +2,32 @@
 
 namespace gta4::game
 {
+	struct sysArray
+	{
+		int pData;
+		__int16 wCount;
+		__int16 wSize;
+	};
+
+	struct pgBase
+	{
+	    void* vtbl;
+	    int m_pBlockMap;
+	};
+
+	struct Matrix34
+	{
+		Vector a;
+		int pad0;
+		Vector b;
+		int pad1;
+		Vector c;
+		int pad2;
+		Vector d;
+		int pad3;
+	};
+
+
 	struct geometry
 	{
 		void* vtbl;
@@ -79,7 +105,9 @@ namespace gta4::game
 		///< 0x400000 = have coords matrix
 		__int16 field_2C;
 		__int16 m_wModelIndex;
-		int m_pReference;
+		//int m_pReference;
+		std::uint16_t m_pReference01;
+		std::uint16_t m_pReference02;
 		drawableReference* m_pDrawableReference;
 		int m_pPhysics;                       ///< phInst *
 		int field_3C;
@@ -103,6 +131,7 @@ namespace gta4::game
 		int field_68;
 		int m_pNetEntity;
 	};
+	STATIC_ASSERT_OFFSET(CEntity, m_pReference01, 0x30);
 
 	struct cmdarg
 	{
@@ -320,6 +349,200 @@ namespace gta4::game
 
 	// ------
 
+	struct DNameNode
+	{
+		int field_0;
+		int field_4;
+	};
+
+	struct fragType_obj1
+	{
+		sysArray field_0;
+		int field_8;
+		int field_C;
+		int m_pEvtSet;
+		DNameNode field_14[20];
+		int field_B4;
+		int field_B8;                         ///< float
+		int field_BC;
+		int field_C0;
+		int field_C4;
+		char field_C8;
+		char field_C9;
+		char field_CA;
+		char field_CB;
+	};
+
+	struct fragType
+	{
+		pgBase __parent;
+		int field_8[6];
+		Vector4D m_vCentreOfMass;
+		Vector4D field_30;
+		Vector4D m_vUnbrokenCGOffset;
+		Vector4D m_vDampingLinearC;
+		Vector4D m_vDampingLinearV;
+		Vector4D m_vDampingLinearV2;
+		Vector4D m_vDampingAngularC;
+		Vector4D m_vDampingAngularV;
+		Vector4D m_vDampingAngularV2;
+		int field_B0;                         // pointer
+		int m_pDrawable;                      // pgPtr<fragDrawable>
+		int field_B8;                         // pointer
+		int field_BC;                         // pointer
+		int field_C0;
+		int padding_for_child;
+		/*__declspec(align(8))*/ int m_pChild;    // pgPtr<fragTypeChild>
+		int field_CC;                         // pointer
+		int m_ppGroups;                       // pointer
+		int m_ppChildren;                     // pointer to array of pointers
+		sysArray field_D8;
+		int field_E0;                         // pointer
+		int field_E4;                         // pointer to phArchetype subclass
+		int field_E8;                         // pointer to phArchetype subclass
+		int field_EC;                         // pgPtr<phBound>
+		int field_F0;                         // pointer
+		int field_F4;                         // pointer
+		int field_F8;                         // pointer
+		int m_pSelfCollisionsIndices1;        // pointer
+		int m_pSelfCollisionsIndices2;        // pointer
+		int m_dwModelIndex;
+		int m_pCollisionEvents;               // pointer to evtSet
+		fragType_obj1 field_10C;              // initialized from m_pCollisionEvents
+		int m_pFrame;                         // pointer to crFrame
+		int field_1DC;                        // pointer
+		int field_1E0;                        // pointer
+		int field_1E4;                        // pointer
+		int m_nEstimatedCacheSize;
+		int m_nEstimatedArticulatedCacheSize;
+		char m_nbSelfCollisionCount;
+		char m_nbSelfCollisionCountAllocated;
+		char m_nbGroupCount;
+		char field_1F3;
+		char field_1F4;							// nbFragTypeGroupCount ?
+		char m_bDamageRegions;
+		char field_1F6;
+		char m_dwFlags;							// flags:
+												// disappearsWhenDead = 1
+												// cloneBoundPartsInCache = 8,
+												// forceLoadCommonDrawable = 0x20
+		char m_nbEntityClass;
+		char m_bBecomeRope;
+		char m_nArtAssetID;
+		char m_bAttachBottomEnd;
+		int field_1FC;
+		int m_fMinMoveForce;					// float
+		int field_204;							// pointer
+		int field_208;
+		int field_20C;
+	};
+
+	struct gtaFragType
+	{
+		fragType __parent;
+		sysArray m_aLightAttrs;
+		int field_218;
+		int field_21C;
+	};
+
+	struct rmcDrawableBase
+	{
+		int pad1;
+		int pad2;
+		int m_pShaderGroup;
+	};
+
+	struct grmModel
+	{
+		void* vtbl;
+		sysArray m_geometries;
+		int field_C;                          // pointer (skin related data ?)
+		int m_pwShaderMappings;               // pointer (materials)
+		char m_nbOffsetCount;                 // skin offset count ?
+		char m_bSkinned;
+		char field_16;
+		char field_17;
+		char field_18;
+		char m_bHaveOffsetCount;
+		__int16 m_wShaderMappingCount;
+	};
+
+	struct grmLodGroup
+	{
+		Vector4D m_vCenter;
+		Vector4D m_vAabbMin;
+		Vector4D m_vaabbMax;
+		int m_models[4];                      // pgObjectArray<grmModel> *
+		int field_40[4];                      // float
+		int m_dwShaderUseMask[4];
+		int m_fRadius;
+		int field_64;
+		int field_68;
+		int field_6C;
+	};
+
+	struct rmcDrawable
+	{
+		rmcDrawableBase __parent;
+		int m_pSkeleton;
+		grmLodGroup m_lodGroup;
+	};
+
+	struct fragDrawable
+	{
+		rmcDrawable __parent;
+		Matrix34 field_80;
+		int field_C0;                         ///< pgPtr<phBound>
+		sysArray field_C4;
+		int field_CC;                         ///< pointer
+		__int16 field_D0;
+		char field_D2;
+		char field_D3;
+		int m_pBoneTag;
+		int field_D8;
+		int field_DC;
+		int m_pszSkeletonType;                ///< pointer
+		int field_E4;                         ///< pgPtr<{pgPtr<?>, pgPtr<?>}>
+		sysArray m_animations;                ///< pgObjectArray<fragAnimation>
+		int field_F0;
+	};
+
+	struct fragDrawable_w
+	{
+		fragDrawable* ptr;
+	};
+
+	struct CBaseModelInfo
+	{
+		void* __parent;
+		int m_pArchetype;
+		gtaFragType* m_pFragType;
+		fragDrawable_w* m_pDrawableRef;
+		Vector m_vCenter;
+		float m_fRadius;
+		Vector m_vAabbMin;
+		float m_fDrawDistance;
+		Vector m_vAabbMax;
+		int m_dwModel;
+		int m_dwFlags;          // 0x8 = have drawable
+								// 0x40 = explosion attr
+								// 0x200 = audio attr
+								// 0x2000 = spawn point
+								// 0x10000 = ladder info
+		int m_dwRefCount;
+		__int16 m_wTxdId;
+		__int16 m_wFirst2dfxRef;
+		__int16 m_wAmatCount;
+		__int16 m_wFirstAmatID;
+		__int16 field_50;
+		__int16 m_wBoundId;
+		__int16 m_wLodId;
+		__int16 m_wAnimationId;
+		__int16 m_wBlendshapeId;
+		char m_nb2dEffectCount;
+		char field_5B;
+		int field_5C;
+	};
 
 
 	struct sceneviewport_s

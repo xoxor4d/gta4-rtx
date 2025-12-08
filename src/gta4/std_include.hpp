@@ -70,6 +70,7 @@ constexpr auto COMP_MOD_VERSION_PATCH = 0;
 #include "../shared/common/console.hpp"
 #include "../shared/common/loader.hpp"
 #include "game/structs.hpp"
+#include "game/model_hashes.hpp"
 #include "game/game.hpp"
 #include "gta4.hpp"
 

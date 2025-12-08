@@ -7,6 +7,7 @@
 #include "remix_lights.hpp"
 #include "remix_vars.hpp"
 #include "renderer.hpp"
+#include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
 #include "shared/common/toml_ext.hpp"
 #include "shared/imgui/imgui_helper.hpp"
@@ -749,8 +750,20 @@ namespace gta4
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 			ImGui::Checkbox("Visualize Decal Renderstates", &im->m_dbg_visualize_decal_renderstates); TT("Visualize renderstates of nearby decal surfaces.");
 
+			if (static auto debug_model_hash = shared::common::flags::has_flag("debug_model_hash"); debug_model_hash)
+			{
+				ImGui::Spacing(0, 4);
+
+				ImGui::Checkbox("Visualize Model Hashes", &im->m_dbg_visualize_model_hashes_info);
+				ImGui::DragFloat("Visualize Model Hashes Dist", &im->m_dbg_visualize_model_hashes_distance, 0.1f);
+				ImGui::DragFloat("Visualize Model Hashes Min Radius", &im->m_dbg_visualize_model_hashes_min_radius, 0.1f);
+				ImGui::DragFloat("Visualize Model Hashes Max Radius", &im->m_dbg_visualize_model_hashes_max_radius, 0.1f);
+			}
+
 			ImGui::Spacing(0, 4);
 			ImGui::SliderInt("Tag Exp Hair Surfaces as Category ..", &im->m_dbg_tag_exp_hair_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
+
+
 
 			ImGui::TreePop();
 		}
@@ -2710,7 +2723,7 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		ImGui::Checkbox("Visualize Anti Culling Info", &im->m_dbg_visualize_anti_cull_info); TT("Visualize Anti Culling Info");
-		ImGui::DragFloat("Info Distance", &im->m_dbg_visualize_anti_cull_info_distance, 0.05f);  TT("Only draw mesh vis. up until this distance.");
+		//ImGui::DragFloat("Info Distance", &im->m_dbg_visualize_anti_cull_info_distance, 0.05f);  TT("Only draw mesh vis. up until this distance.");
 		ImGui::DragFloat("Info Min Radius", &im->m_dbg_visualize_anti_cull_info_min_radius, 0.05f); TT("A mesh needs to have at least this radius to be visualized.");
 		ImGui::DragInt("Highlight Mesh with Index", &im->m_dbg_visualize_anti_cull_highlight); TT("Draw bounding box around mesh with this index.");
 		ImGui::DragFloat("Highlight Line Width", &im->m_dbg_visualize_anti_cull_info_highlight_line_width, 0.05f); TT("Line width for bounding box.");
@@ -2922,7 +2935,7 @@ namespace gta4
 		}
 	}
 
-	bool gta4_w2s(const Vector& world_pos, ImVec2& screen_coords)
+	bool w2s(const Vector& world_pos, ImVec2& screen_coords, bool allow_offscreen = false)
 	{
 		if (const auto vpscene = game::pViewports; vpscene && vpscene->sceneviewport)
 		{
@@ -2943,9 +2956,12 @@ namespace gta4
 				screen_coords.x = clip_space.x;
 				screen_coords.y = clip_space.y;
 
-				// cull off-screen points
-				if (screen_coords.x < 0 || screen_coords.x > vp.Width || screen_coords.y < 0 || screen_coords.y > vp.Height) {
-					return false;
+				if (!allow_offscreen)
+				{
+					// cull off-screen points
+					if (screen_coords.x < 0 || screen_coords.x > vp.Width || screen_coords.y < 0 || screen_coords.y > vp.Height) {
+						return false;
+					}
 				}
 
 				return true;
@@ -2954,6 +2970,47 @@ namespace gta4
 
 		return false;
 	}
+
+	void w2s_draw_sphere(const Vector& world_pos, const Vector& cam_right, float radius, ImU32 color)
+	{
+		ImVec2 screen_pos;
+		if (!w2s(world_pos, screen_pos)) {
+			return;
+		}
+
+		// Project a point offset by radius along +X to determine on-screen radius
+		//Vector offset_pos = world_pos + Vector(radius, 0.f, 0.f);
+		Vector offset_pos = world_pos + cam_right * radius;
+
+		ImVec2 screen_edge;
+		if (!w2s(offset_pos, screen_edge, true)) {
+			return;
+		}
+
+		const float dx = screen_edge.x - screen_pos.x;
+		const float dy = screen_edge.y - screen_pos.y;
+		const float screen_radius = std::sqrt(dx * dx + dy * dy);
+
+		ImGui::GetBackgroundDrawList()->AddCircle(screen_pos, screen_radius, color, 32, 1.0f);
+	}
+
+	ImU32 get_color_for_hash(uint32_t hash)
+	{
+		hash ^= hash >> 17;
+		hash *= 0xED5AD4BB;
+		hash ^= hash >> 11;
+		hash *= 0xAC4C1B51;
+		hash ^= hash >> 15;
+		hash *= 0x31848BAB;
+		hash ^= hash >> 14;
+
+		const int r = (hash & 0xFF);
+		const int g = ((hash >> 8) & 0xFF);
+		const int b = ((hash >> 16) & 0xFF);
+		const int a = 255;
+
+		return IM_COL32(r, g, b, a);
+	};
 
 	void imgui::draw_debug()
 	{
@@ -2987,9 +3044,7 @@ namespace gta4
 							}
 
 							const Vector& light_pos = remix_lights::get_light_position(l.second.m_def, lov);
-
-							//shared::imgui::world_to_screen(l.second.m_def.mPosition, viewport_pos);
-							if (gta4_w2s(light_pos /*l.second.m_def.mPosition*/, viewport_pos))
+							if (w2s(light_pos, viewport_pos))
 							{
 								bool is_light_hash_stable = im->m_dbg_visualize_api_light_unstable_hashes; // false by default
 								bool is_light_in_vis_list = false;
@@ -3090,20 +3145,21 @@ namespace gta4
 				{
 					if (fabs(cam_org.DistToSqr(l.pos) < draw_dist * draw_dist))
 					{
-						shared::imgui::world_to_screen(l.pos, viewport_pos);
+						if (w2s(l.pos, viewport_pos))
+						{
+							std::ostringstream oss;
+							oss << "[ALPHABLEND] " << (l.rs_alpha_blending ? "true" : "false") << "\n"
+								<< "[BLEND_OP] " << l.rs_blendop << "\n"
+								<< "[SRC_BLEND] " << l.rs_srcblend << "\n"
+								<< "[DEST_BLEND] " << l.rs_destblend << "\n"
+								<< "[ALPHA_OP] " << l.tss_alphaop << "\n"
+								<< "[ALPHA_ARG1] " << l.tss_alphaarg1 << "\n"
+								<< "[ALPHA_ARG2] " << l.tss_alphaarg2;
 
-						std::ostringstream oss;
-						oss << "[ALPHABLEND] " << (l.rs_alpha_blending ? "true" : "false") << "\n"
-							<< "[BLEND_OP] " << l.rs_blendop << "\n"
-							<< "[SRC_BLEND] " << l.rs_srcblend << "\n"
-							<< "[DEST_BLEND] " << l.rs_destblend << "\n"
-							<< "[ALPHA_OP] " << l.tss_alphaop << "\n"
-							<< "[ALPHA_ARG1] " << l.tss_alphaarg1 << "\n"
-							<< "[ALPHA_ARG2] " << l.tss_alphaarg2;
-
-						ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-							ImGui::GetColorU32(ImGuiCol_Text), 
-							oss.str().c_str());
+							ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+								ImGui::GetColorU32(ImGuiCol_Text),
+								oss.str().c_str());
+						}
 					}
 				}
 
@@ -3119,30 +3175,98 @@ namespace gta4
 				//const float draw_dist = im->m_dbg_visualize_anti_cull_info_distance;
 
 				ImVec2 viewport_pos = {};
-				const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
+				//const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
 
 				for (auto& l : visualized_anti_cull)
 				{
 					//if (fabs(cam_org.DistToSqr(l.pos) < draw_dist * draw_dist))
 					{
-						shared::imgui::world_to_screen(l.pos, viewport_pos);
+						if (w2s(l.pos, viewport_pos))
+						{
+							std::ostringstream oss;
+							oss << "R: " << std::format("{:.2f}", l.radius) << "\n"
+								<< "H: " << std::format("{:.2f}", l.height) << "\n"
+								<< "ID: " << std::to_string(l.m_wModelIndex);
 
-						std::ostringstream oss;
-						oss << "R: " << std::format("{:.2f}", l.radius) << "\n"
-							<< "H: " << std::format("{:.2f}", l.height) << "\n"
-							<< "ID: " << std::to_string(l.m_wModelIndex);
+							ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
+								l.forced_visible ? ImGui::GetColorU32(ImVec4(0.3f, 0.8f, 0.2f, 1.0f)) : ImGui::GetColorU32(ImGuiCol_Text),
+								oss.str().c_str());
 
-						ImGui::GetBackgroundDrawList()->AddText(viewport_pos, 
-							l.forced_visible ? ImGui::GetColorU32(ImVec4(0.3f, 0.8f, 0.2f, 1.0f)) : ImGui::GetColorU32(ImGuiCol_Text),
-							oss.str().c_str());
-
-						if (l.draw_debug_box) {
-							shared::common::remix_api::get().debug_draw_box(l.mins, l.maxs, im->m_dbg_visualize_anti_cull_info_highlight_line_width, shared::common::remix_api::DEBUG_REMIX_LINE_COLOR::GREEN);
+							if (l.draw_debug_box) {
+								shared::common::remix_api::get().debug_draw_box(l.mins, l.maxs, im->m_dbg_visualize_anti_cull_info_highlight_line_width, shared::common::remix_api::DEBUG_REMIX_LINE_COLOR::GREEN);
+							}
 						}
 					}
 				}
 
 				visualized_anti_cull.clear();
+			}
+		}
+
+		if (static auto debug_model_hash = shared::common::flags::has_flag("debug_model_hash"); debug_model_hash)
+		{
+			if (m_dbg_visualize_model_hashes_info)
+			{
+				const auto vp = game::pViewports;
+				if (vp->sceneviewport)
+				{
+					ImVec2 viewport_pos = {};
+					const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
+
+					for (auto& m : visualized_model_hashes)
+					{
+						if (fabs(cam_org.DistToSqr(m.pos) < im->m_dbg_visualize_model_hashes_distance * im->m_dbg_visualize_model_hashes_distance))
+						{
+							if (w2s(m.pos, viewport_pos))
+							{
+								const ImU32 color = get_color_for_hash(m.hash);
+								bool vis_hash = true;
+
+								if (m.model_reference)
+								{
+									if (const game::CBaseModelInfo* basemodel = game::g_modelPointers[m.model_reference]; basemodel)
+									{
+										Vector cam_right(
+											vp->sceneviewport->cameraInv.m[0][0],
+											vp->sceneviewport->cameraInv.m[0][1],
+											vp->sceneviewport->cameraInv.m[0][2]
+										);
+
+										const auto& min = im->m_dbg_visualize_model_hashes_min_radius;
+										const auto& max = im->m_dbg_visualize_model_hashes_max_radius;
+
+										const auto has_min = min > 0.0f;
+										const auto has_max = max > 0.0f;
+										const auto fits_min = has_min && basemodel->m_fRadius > min;
+										const auto fits_max = has_max && basemodel->m_fRadius < max;
+
+										if (has_min && !fits_min || has_max && !fits_max) {
+											vis_hash = false;
+										}
+										else {
+											w2s_draw_sphere(m.pos, cam_right, basemodel->m_fRadius, color);
+										}
+									}
+								}
+
+								if (vis_hash)
+								{
+									std::ostringstream oss;
+									oss << "HASH: " << std::format("0x{:08X}", m.hash);
+
+									const auto it = game::g_modelHashToName.find(m.hash);
+									if (it != game::g_modelHashToName.end()) {
+										oss << "\nNAME: " << it->second;
+									}
+
+									ImGui::GetBackgroundDrawList()->AddText(viewport_pos, color, oss.str().c_str());
+								}
+							}
+						}
+					}
+
+					visualized_model_hashes.clear();
+				}
 			}
 		}
 	}

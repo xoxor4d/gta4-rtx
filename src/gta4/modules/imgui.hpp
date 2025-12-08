@@ -153,6 +153,22 @@ namespace gta4
 
 		// --
 
+		float m_dbg_visualize_model_hashes_distance = 80.0f;
+		float m_dbg_visualize_model_hashes_min_radius = 0.0f;
+		float m_dbg_visualize_model_hashes_max_radius = 0.0f;
+		bool m_dbg_visualize_model_hashes_info = false;
+
+		struct visualized_model_hashes_s
+		{
+			Vector pos;
+			uint32_t hash;
+			uint32_t model_reference;
+		};
+		std::vector<visualized_model_hashes_s> visualized_model_hashes;
+		std::mutex visualized_model_hashes_mutex;
+
+		// --
+
 		bool m_dbg_ignore_lights_with_flag_logic = false;
 		int m_dbg_ignore_lights_with_flag_01 = 0;
 		bool m_dbg_ignore_lights_with_flag_add_second_flag = false;

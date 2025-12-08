@@ -87,6 +87,9 @@ namespace gta4::game
 	extern uint32_t* d3d9_adapter_index;
 
 	extern bool* m_bMobilePhoneActive;
+	
+	extern DWORD g_modelPointersAddr;
+	extern CBaseModelInfo** g_modelPointers;
 
 	// --------------
 	// game functions
@@ -207,6 +210,15 @@ namespace gta4::game
 
 	extern uint32_t cond_jmp_addr__skip_deferred_light_rendering01;
 	extern uint32_t cond_jmp_addr__skip_deferred_light_rendering02;
+
+	extern uint32_t hk_addr__on_draw_entities_mod_fn_args;
+	extern uint32_t hk_addr__rmcdrawable_grab_model_hash;
+	extern uint32_t hk_addr__rmcdrawable_grab_model_hash_retn_addr;
+
+	extern uint32_t hk_addr__dyn_obj_grab_model_hash_retn_addr;
+	extern uint32_t hk_addr__dyn_obj_clear_hash01;
+	extern uint32_t hk_addr__dyn_obj_clear_hash02;
+	extern uint32_t hk_addr__dyn_obj_clear_hash03;
 
 	// ---
 

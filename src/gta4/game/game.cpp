@@ -79,6 +79,9 @@ namespace gta4::game
 
 	bool* m_bMobilePhoneActive = nullptr;
 
+	DWORD g_modelPointersAddr = 0u;
+	CBaseModelInfo** g_modelPointers = nullptr;
+
 	// --------------
 	// game functions
 
@@ -191,6 +194,15 @@ namespace gta4::game
 
 	uint32_t cond_jmp_addr__skip_deferred_light_rendering01 = 0u;
 	uint32_t cond_jmp_addr__skip_deferred_light_rendering02 = 0u;
+
+	uint32_t hk_addr__on_draw_entities_mod_fn_args = 0u;
+	uint32_t hk_addr__rmcdrawable_grab_model_hash = 0u;
+	uint32_t hk_addr__rmcdrawable_grab_model_hash_retn_addr = 0u;
+
+	uint32_t hk_addr__dyn_obj_grab_model_hash_retn_addr = 0u;
+	uint32_t hk_addr__dyn_obj_clear_hash01 = 0u;
+	uint32_t hk_addr__dyn_obj_clear_hash02 = 0u;
+	uint32_t hk_addr__dyn_obj_clear_hash03 = 0u;
 
 	// --------------
 
@@ -405,6 +417,13 @@ namespace gta4::game
 
 		if (const auto offset = shared::utils::mem::find_pattern("C6 05 ? ? ? ? ? C6 05 ? ? ? ? ? C7 05 ? ? ? ? ? ? ? ? ? ? 6A", 2, "m_bMobilePhoneActive", use_pattern, 0x5BF958); offset) {
 			m_bMobilePhoneActive = (bool*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("8B 04 85 ? ? ? ? 85 C0 0F 84 ? ? ? ? 8B 78", 3, "g_modelPointers", use_pattern, 0x8DCC02); offset) 
+		{
+			g_modelPointersAddr = *(DWORD*)offset;
+			g_modelPointers = (CBaseModelInfo**)*(DWORD*)offset; 
+			found_pattern_count++;
 		} total_pattern_count++;
 
 		// end GAME_VARIABLES
@@ -671,6 +690,27 @@ namespace gta4::game
 
 		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__skip_deferred_light_rendering01, "0F 8E ? ? ? ? 83 C7 ? 89 7C 24 ? 8B 47", 0, 0x928AE5);
 		PATTERN_OFFSET_SIMPLE(cond_jmp_addr__skip_deferred_light_rendering02, "56 8B F1 FF 76 ? FF 76 ? E8", 0, 0x8DCBC0);
+
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__on_draw_entities_mod_fn_args, "50 50 0F B6 46 ? 50 8D 44 24 ? 50 8B CF", 0, 0x8DCD49);
+		if (const auto offset = shared::utils::mem::find_pattern("? ? ? ? ? ? 33 C0 C7 86 ? ? ? ? ? ? ? ? 89 86 ? ? ? ? C7 86", 2, "hk_addr__rmcdrawable_grab_model_hash", use_pattern, 0x633994); offset) 
+		{
+			// offset = fragDrawable vtbl
+			uint8_t* vtbl_addr = (uint8_t*)*(DWORD*)offset; // fragDrawable vtbl (should be 0xFE2534)
+				     vtbl_addr += 0x20;						// draw fn
+			hk_addr__rmcdrawable_grab_model_hash = *(DWORD*)vtbl_addr; // get addr of draw fn (should end up as 0x6A1D10)
+			hk_addr__rmcdrawable_grab_model_hash_retn_addr = hk_addr__rmcdrawable_grab_model_hash + 0xB;
+			found_pattern_count++;
+		} total_pattern_count++;
+
+		
+		PATTERN_OFFSET_SIMPLE(hk_addr__dyn_obj_grab_model_hash_retn_addr, "0F 84 ? ? ? ? 53 8B 9D ? ? ? ? 56", 0, 0x8DE1CD);
+		PATTERN_OFFSET_SIMPLE(hk_addr__dyn_obj_clear_hash01, "5D 83 C4 ? C3 8B 4C 24 ? F3 0F 10 49", 0, 0x8DE2C3);
+		PATTERN_OFFSET_SIMPLE(hk_addr__dyn_obj_clear_hash02, "5D 83 C4 ? C3 ? ? ? ? A1", 0, 0x8DE298);
+
+		if (hk_addr__dyn_obj_grab_model_hash_retn_addr) {
+			hk_addr__dyn_obj_clear_hash03 = shared::utils::mem::resolve_relative_jump_address(hk_addr__dyn_obj_grab_model_hash_retn_addr, 6u, 2u); found_pattern_count++;
+		} total_pattern_count++;
 
 		// end GAME_ASM_OFFSETS
 #pragma endregion
