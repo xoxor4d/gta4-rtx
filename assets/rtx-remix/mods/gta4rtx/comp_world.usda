@@ -522,6 +522,135 @@ over "RootNode"
                 custom bool inputs:use_legacy_alpha_state = 0
             }
         }
+
+        over "mat_505F852A4E16C024" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:ior_constant = 1.2
+                custom asset inputs:normalmap_texture = @./assets/world_textures/glass/505F852A4E16C024/505F852A4E16C024_normal_dx_OTH_Normal.n.rtex.dds@
+                custom float inputs:thin_wall_thickness = 10
+                custom bool inputs:thin_walled = 1
+                custom color3f inputs:transmittance_color = (0.96138996, 0.9613803, 0.9613803)
+                custom float inputs:transmittance_measurement_distance = 1
+                custom asset inputs:transmittance_texture = @./assets/world_textures/glass/505F852A4E16C024/505F852A4E16C024_transmission.a.rtex.dds@
+                custom bool inputs:use_diffuse_layer = 0
+            }
+        }
+
+        over "mat_4176FC5F7E15C720"
+        {
+            over "Shader"
+            {
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/glass/4176FC5F7E15C720/4176FC5F7E15C720_roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_C6E4114DED118177"
+        {
+            over "Shader"
+            {
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/glass/C6E4114DED118177/C6E4114DED118177_roughness.r.rtex.dds@
+            }
+        }
+
+        over "mat_43ABA64B81CDFDD9" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:thin_wall_thickness = 2
+                custom bool inputs:thin_walled = 1
+                custom asset inputs:transmittance_texture = @./assets/world_textures/glass/43ABA64B81CDFDD9/43ABA64B81CDFDD9_transmission.a.rtex.dds@
+                custom bool inputs:use_diffuse_layer = 0
+            }
+        }
+
+        over "mat_2FB2F1A533F09A0F"
+        {
+            over "Shader"
+            {
+                custom float inputs:reflection_roughness_constant = 0.21499999
+                custom bool inputs:use_legacy_alpha_state = 0
+            }
+        }
+
+        over "mat_A92D98212C514DC3"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.7
+                custom float inputs:reflection_roughness_constant = 0.56
+            }
+        }
+
+        over "mat_0A18C9CDFCE0E828"
+        {
+            over "Shader"
+            {
+                custom float inputs:metallic_constant = 0.65
+                custom float inputs:reflection_roughness_constant = 0.585
+            }
+        }
+
+        over "mat_79D2E9717C4D48BE" (
+            references = @./materials/AperturePBR_Translucent.usda@</Looks/mat_AperturePBR_Translucent>
+        )
+        {
+            over "Shader"
+            {
+                custom float inputs:thin_wall_thickness = 2
+                custom bool inputs:thin_walled = 1
+                custom color3f inputs:transmittance_color = (0.85852927, 0.9115902, 0.9150579)
+                custom float inputs:transmittance_measurement_distance = 1
+            }
+        }
+
+        over "mat_691AA73CDB142EB4"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/am_pkslpe_windowc_tilable_albedo.a.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/am_pkslpe_windowc_tilable.a.rtex_r.dds@
+            }
+        }
+
+        over "mat_FBAB45A584C4DBDE"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/FBAB45A584C4DBDE_albedo.a.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/FBAB45A584C4DBDE_r.dds@
+            }
+        }
+
+        over "mat_E14B2A36D9C90107"
+        {
+            over "Shader"
+            {
+                asset inputs:diffuse_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/E14B2A36D9C90107_albedo.a.rtex.dds@
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/E14B2A36D9C90107_r.dds@
+            }
+        }
+
+        over "mat_A6B93F7747F8A99D"
+        {
+            over "Shader"
+            {
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/am_pkslpe_lime_1_r.dds@
+            }
+        }
+
+        over "mat_2802B4454740FA01"
+        {
+            over "Shader"
+            {
+                custom asset inputs:reflectionroughness_texture = @./assets/world_textures/glass/FBAB45A584C4DBDE_E14B2A36D9C90107/am_pkslpe_bstonetop_r.dds@
+            }
+        }
     }
 
     over "meshes"
@@ -598,6 +727,12 @@ over "RootNode"
             {
                 custom uniform bool remix_category:ignore_lights = 1
             }
+        }
+
+        over "mesh_1766CA18B8E0BE63" (
+            references = None
+        )
+        {
         }
     }
 }
