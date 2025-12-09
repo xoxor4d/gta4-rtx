@@ -395,7 +395,7 @@ namespace gta4
 			{
 				"nocull_dist_far_static",
 				("Distance (radius around player) were an object radius is checked against the 'nocull_radius_far_static' setting. Objects with larger radii will NOT get culled."),
-				1000.0f
+				500.0f
 			};
 
 			variable nocull_radius_far_static =
@@ -829,7 +829,7 @@ namespace gta4
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",
 				("Scale alpha of gta_rmptfx_litsprite"),
-				1.5f
+				1.0f
 			};
 
 			variable rain_particle_system_enabled =

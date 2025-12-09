@@ -73,6 +73,8 @@ namespace gta4
 
 			// ----
 
+			const bool is_night = *game::m_game_clock_hours <= 5 || *game::m_game_clock_hours >= 20;
+
 			if ((*game::weather_type_prev == game::eWeatherType::WEATHER_RAIN && *game::weather_change_value < 0.6f) || *game::weather_type_new == game::eWeatherType::WEATHER_RAIN
 				|| (*game::weather_type_prev == game::eWeatherType::WEATHER_LIGHTNING && *game::weather_change_value < 0.6f) || *game::weather_type_new == game::eWeatherType::WEATHER_LIGHTNING)
 			{
@@ -81,7 +83,10 @@ namespace gta4
 				{
 					Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
 					cam_org.z += 20.0f; //+ (float)imgui::get()->m_dbg_int_01;
-					draw_single_marker(dev, 9001, cam_org, Vector(0.0f, 0.0f, 0.0f), Vector(1.0f, 1.0f, 1.0f));
+
+					// #9001 at day and 9003 at night (we need to adjust emissiveness and metalness to make it more or less visible)
+					const int marker_num = !is_night ? 9001 : 9003;
+					draw_single_marker(dev, marker_num, cam_org, Vector(0.0f, 0.0f, 0.0f), Vector(1.0f, 1.0f, 1.0f));
 				}
 			}
 
@@ -92,7 +97,10 @@ namespace gta4
 				{
 					Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
 					cam_org.z += 20.0f; 
-					draw_single_marker(dev, 9002, cam_org, Vector(0.0f, 0.0f, 0.0f), Vector(1.0f, 1.0f, 1.0f));
+
+					// #9002 at day and 9004 at night (we need to adjust emissiveness and metalness to make it more or less visible)
+					const int marker_num = !is_night ? 9002 : 9004;
+					draw_single_marker(dev, marker_num, cam_org, Vector(0.0f, 0.0f, 0.0f), Vector(1.0f, 1.0f, 1.0f));
 				}
 			}
 
