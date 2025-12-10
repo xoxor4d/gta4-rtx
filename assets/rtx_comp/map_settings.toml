@@ -30,6 +30,18 @@ MARKER = [
 
     # tlad safehouse
     { marker_num = 570, position = [-1721.77, 347.40, 26.00], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 50.00 },
+
+    # downtown skyscrapers shadowcasters 01
+    { marker_num = 300, position = [-57.10, 594.42, 74.78], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 600.00 },
+
+    # downtown skyscrapers shadowcasters 02
+    { marker_num = 301, position = [-215.06, 381.53, 87.49], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 600.00 },
+
+    # downtown skyscrapers shadowcasters 03
+    { marker_num = 302, position = [-281.44, -0.08, 104.94], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 600.00 },
+
+    # downtown skyscrapers shadowcasters 04
+    { marker_num = 303, position = [-50.80, -561.45, 64.70], rotation = [0.00, 0.00, 0.00], scale = [1.00, 1.00, 1.00], cull_distance = 800.00 },
 ]
 
 
@@ -49,7 +61,9 @@ MARKER = [
 # ]                                                                                              
 
 IGNORE_LIGHTS = [
-    0x32734E7F
+    0x32734E7F, 0x79B4AF95, 0xDA6E0F5A, 0x403E165F, 0x8207760C, 0x74D3E6F, 0x2BF21803, 0xB9B7A3F3, 0x352AEAAC, 
+    0xDF6EE45C, 0x2CCE00DE, 0x32AE2E4D, 0x9EC26F3E, 0x445F053B, 0x9ECD1EF7, 0x84CD9FFE, 0xDE7EFC36, 0xFF9457D5, 0x25EE6A9E, 
+    0x4C61B845
 ]
 
 
@@ -102,6 +116,12 @@ ALLOW_LIGHTS = [
 # ]      
 
 LIGHT_OVERRIDES = [
+    { hash = 0x36B52713, pos = [892.45, -504.40, 17.94], radius = 6.17, intensity = 8.68 },
+    { hash = 0xA4D59F91, pos = [895.80, -493.90, 20.68], radius = 6.80, intensity = 2.39 },
+    { hash = 0xC5A12985, pos = [888.69, -503.36, 22.17], radius = 5.95, intensity = 9.55 },
+    { hash = 0x28B1B6E6, pos = [895.82, -493.93, 20.62], color = [0.88, 0.82, 0.44], radius = 3.40, intensity = 46.10 },
+    { hash = 0xBCB9080D, pos = [885.61, -499.77, 20.68], radius = 13.38, intensity = 2.00 },
+    { hash = 0x124330B1, pos = [895.77, -496.50, 20.67], color = [0.97, 0.90, 0.58], radius = 5.30, intensity = 4.00 },
 ]
 
 
