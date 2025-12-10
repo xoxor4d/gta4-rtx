@@ -253,6 +253,15 @@ int main()
         if (has_original_fusion_fix) 
 		{
 			if (MoveFileExA(
+				(game_dir + "\\update").c_str(),
+				(game_dir + "\\update_originalFF").c_str(),
+				MOVEFILE_REPLACE_EXISTING))
+			{
+				std::cout << "Renamed 'update' folder to 'update_originalFF'\n";
+			}
+			Sleep(25);
+
+			if (MoveFileExA(
 				(game_dir + "\\vulkan.dll").c_str(),
 				(game_dir + "\\vulkan.dll.originalFF").c_str(),
 				MOVEFILE_REPLACE_EXISTING))
