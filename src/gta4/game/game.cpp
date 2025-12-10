@@ -118,13 +118,6 @@ namespace gta4::game
 	uint32_t retn_addr__pre_vehicle_surfs_stub = 0u;
 	uint32_t hk_addr__post_vehicle_surfs_stub = 0u;
 
-	uint32_t hk_addr__static_world_culling_check_hk = 0u;
-	uint32_t nop_addr__static_world_frustum_patch01 = 0u;
-	uint32_t nop_addr__static_world_frustum_patch02 = 0u;
-
-	uint32_t retn_addr__extended_anti_culling_check_stub = 0u;
-	uint32_t jmp_addr__extended_anti_culling_check_stub = 0u;
-
 	uint32_t hk_addr__on_update_light_list_stub = 0u;
 	uint32_t retn_addr__on_render_light_list_stub = 0u;
 
@@ -163,10 +156,15 @@ namespace gta4::game
 	uint32_t hk_addr__vehicle_vshaped_sirens_fake_light = 0u;
 	uint32_t hk_addr__vehicle_vshaped_sirens_vlight = 0u;
 
+	uint32_t hk_addr__static_world_culling_check_hk = 0u;
+	uint32_t nop_addr__static_world_frustum_patch01 = 0u;
+	uint32_t nop_addr__static_world_frustum_patch02 = 0u;
+	uint32_t retn_addr__extended_anti_culling_check_stub = 0u;
+	uint32_t jmp_addr__extended_anti_culling_check_stub = 0u;
 	uint32_t hk_addr__frustum_check = 0u;
+	uint32_t retn_addr__frustum_check_interior_objs = 0u;
 
 	uint32_t hk_addr__prevent_game_input_func = 0u;
-
 	uint32_t nop_addr__always_draw_game_in_menus = 0u;
 
 	uint32_t nop_addr__disable_unused_rendering_01 = 0u;
@@ -524,26 +522,6 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
-		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 83 EC ? 56 8B F1 ? ? 8B 40 ? FF D0 ? ? ? ? ? ? 8D 4C 24 ? 51 8B CE FF 50 ? F3 0F 10 44 24 ? 8B 4D", 
-			0, "hk_addr__static_world_culling_check_hk", use_pattern, 0xA31C20); offset) {
-			hk_addr__static_world_culling_check_hk = offset; found_pattern_count++;
-		} total_pattern_count++;
-
-		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? 66 83 7F ? ? 75 ? B9", 0, "nop_addr__static_world_frustum_patch01", use_pattern, 0x444C8B); offset) {
-			nop_addr__static_world_frustum_patch01 = offset; found_pattern_count++;
-		} total_pattern_count++;
-
-		if (const auto offset = shared::utils::mem::find_pattern("75 ? B9 ? ? ? ? 89 4C 24 ? 32 C0", 0, "nop_addr__static_world_frustum_patch02", use_pattern, 0x444C96); offset) {
-			nop_addr__static_world_frustum_patch02 = offset; found_pattern_count++;
-		} total_pattern_count++;
-
-
-		PATTERN_OFFSET_SIMPLE(retn_addr__extended_anti_culling_check_stub, "33 DB 85 ED 0F 8E ? ? ? ? 57", 0, 0xAE8698);
-
-		if (const auto offset = shared::utils::mem::find_pattern("0F 85 ? ? ? ? 53 55 8B 6C 24 ? 33 DB", 0, "jmp_addr__extended_anti_culling_check_stub", use_pattern, 0xAE868C); offset) {
-			jmp_addr__extended_anti_culling_check_stub = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
-		} total_pattern_count++;
-
 
 		/*if (const auto offset = shared::utils::mem::find_pattern("B9 ? ? ? ? 89 15 ? ? ? ? A3", 21, "hk_addr__on_update_light_list_stub", use_pattern, 0xABED11); offset) {
 			hk_addr__on_update_light_list_stub = offset; found_pattern_count++;
@@ -652,15 +630,22 @@ namespace gta4::game
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_vshaped_sirens_vlight, "E8 ? ? ? ? 83 C4 ? EB ? 8B 7C 24 ? 51", 0x0, 0xA40AAA);
 
-		// E8 ? ? ? ? 83 C4 ? EB ? 8B 7C 24 ? 51
 
 
-		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, "hk_addr__frustum_check", use_pattern, 0x431E40); offset) {
-			hk_addr__frustum_check = offset; found_pattern_count++;
+		PATTERN_OFFSET_SIMPLE(hk_addr__static_world_culling_check_hk, "55 8B EC 83 E4 ? 83 EC ? 56 8B F1 ? ? 8B 40 ? FF D0 ? ? ? ? ? ? 8D 4C 24 ? 51 8B CE FF 50 ? F3 0F 10 44 24 ? 8B 4D", 0, 0xA31C20);
+		PATTERN_OFFSET_SIMPLE(nop_addr__static_world_frustum_patch01, "0F 84 ? ? ? ? 66 83 7F ? ? 75 ? B9", 0, 0x444C8B);
+		PATTERN_OFFSET_SIMPLE(nop_addr__static_world_frustum_patch02, "75 ? B9 ? ? ? ? 89 4C 24 ? 32 C0", 0, 0x444C96);
+		PATTERN_OFFSET_SIMPLE(retn_addr__extended_anti_culling_check_stub, "33 DB 85 ED 0F 8E ? ? ? ? 57", 0, 0xAE8698);
+
+		if (const auto offset = shared::utils::mem::find_pattern("0F 85 ? ? ? ? 53 55 8B 6C 24 ? 33 DB", 0, "jmp_addr__extended_anti_culling_check_stub", use_pattern, 0xAE868C); offset) {
+			jmp_addr__extended_anti_culling_check_stub = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
 		} total_pattern_count++;
 
-		PATTERN_OFFSET_SIMPLE(hk_addr__prevent_game_input_func, "53 8A 5C 24 ? 8A CB", 0, 0x69F0C0);
+		PATTERN_OFFSET_SIMPLE(hk_addr__frustum_check, "55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, 0x431E40);
+		PATTERN_OFFSET_SIMPLE(retn_addr__frustum_check_interior_objs, "? ? ? ? F3 0F 10 50 ? ? ? ? ? F3 0F 5C 51 ? F3 0F 10 49", 0, 0xA0FCF9);
 
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__prevent_game_input_func, "53 8A 5C 24 ? 8A CB", 0, 0x69F0C0);
 		PATTERN_OFFSET_SIMPLE(nop_addr__always_draw_game_in_menus, "83 FE ? 75 ? FF 35 ? ? ? ? E8 ? ? ? ? 83 C4 ? 85 C0 79", 0, 0x5C278A);
 
 		// --

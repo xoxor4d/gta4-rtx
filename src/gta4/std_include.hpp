@@ -1,7 +1,7 @@
 #pragma once
 
 constexpr auto COMP_MOD_VERSION_MAJOR = 1;
-constexpr auto COMP_MOD_VERSION_MINOR = 0;
+constexpr auto COMP_MOD_VERSION_MINOR = 1;
 constexpr auto COMP_MOD_VERSION_PATCH = 0;
 
 //#define LOG_SHADERPRESETS

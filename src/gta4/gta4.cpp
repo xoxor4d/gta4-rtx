@@ -263,7 +263,7 @@ namespace gta4
 	}
 
 
-
+	// extended anti culling for objects defined via map_settings
 	int extended_anticull_hk(game::CEntity* ent)
 	{
 		const auto im = imgui::get();
@@ -329,19 +329,21 @@ namespace gta4
 
 
 	// A general culling function used by lights, npc's and other? things ..
-	int __fastcall FrustumPlanesCheck(game::grcViewport* vp, [[maybe_unused]] void* fastcall_arg, float orgX, float orgY, float orgZ, float distanceToObject, float* outAdjustedNearDistance)
+	int __fastcall frustum_planes_check_hk(game::grcViewport* vp, [[maybe_unused]] void* fastcall_arg, float orgX, float orgY, float orgZ, float distanceToObject, float* outAdjustedNearDistance)
 	{
 		// do not cull if near enough
 		if (const auto vpscene = game::pViewports; vpscene->sceneviewport)
 		{
-			const float anti_cull_dist = game_settings::get()->nocull_dist_lights.get_as<float>();
+			if (const float& anti_cull_dist = game_settings::get()->nocull_dist_lights._float(); 
+				anti_cull_dist > 0.0f)
+			{
+				const Vector cam_org = &vpscene->sceneviewport->cameraInv.m[3][0];
+				const float dist_sqr = fabs(cam_org.DistToSqr(Vector(orgX, orgY, orgZ)));
 
-			const Vector cam_org = &vpscene->sceneviewport->cameraInv.m[3][0];
-			const float dist_sqr = fabs(cam_org.DistToSqr(Vector(orgX, orgY, orgZ)));
-
-			// do not cull if near
-			if (dist_sqr < anti_cull_dist * anti_cull_dist) {
-				return 2;
+				// do not cull if near
+				if (dist_sqr < anti_cull_dist * anti_cull_dist) {
+					return 2;
+				}
 			}
 		}
 
@@ -387,6 +389,49 @@ namespace gta4
 
 		return 0;
 	}
+
+	// --
+
+	int frustum_panes_check_interior_helper(const game::CRenderPhase_frustum* frustum, const Vector* obj_pos)
+	{
+		if (const float& nocull_dist_sphere_interior = game_settings::get()->nocull_dist_sphere_interior._float();
+			nocull_dist_sphere_interior > 0.0f)
+		{
+			const float dist_sqr = fabs(frustum->viewpos.DistToSqr(*obj_pos));
+
+			// do not cull if near
+			if (dist_sqr < nocull_dist_sphere_interior * nocull_dist_sphere_interior) {
+				return 1;
+			}
+		}
+
+		return 0;
+	}
+
+	__declspec(naked) void frustum_planes_check_interior_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	eax; // obj pos
+			push	ecx; // CRenderPhase_frustum
+			call	frustum_panes_check_interior_helper;
+			add		esp, 8;
+			cmp		eax, 1;
+			je		SKIP; // jump (force render) if returned 1
+			popad;
+
+			movss   xmm0, dword ptr[ecx + 0x10]; // og
+			jmp		game::retn_addr__frustum_check_interior_objs; // stock culling check - 0xA0FCF9
+
+		SKIP:
+			popad;
+			mov     al, 0; // no cull
+			retn    8;
+		}
+	}
+
+	// ---
 
 	typedef void(__cdecl ProcessGameInput_t)(bool);
 	ProcessGameInput_t* ProcessGameInput_og = nullptr;
@@ -625,12 +670,14 @@ namespace gta4
 		shared::utils::hook::nop(game::nop_addr__static_world_frustum_patch01, 6); // disable secondary frustum based check for static objects by "returning 2"
 		shared::utils::hook::nop(game::nop_addr__static_world_frustum_patch02, 2); // ^
 
-
-		shared::utils::hook(game::retn_addr__extended_anti_culling_check_stub - 5u, extended_anticull_stub, HOOK_JUMP).install()->quick();
-
+		// extended anti culling for objects defined via map_settings - helpful for multi-story buildings where each story is a single obj
+		shared::utils::hook(game::retn_addr__extended_anti_culling_check_stub - 5u, extended_anticull_stub, HOOK_JUMP).install()->quick(); // 0xAE8735
 
 		// light culling check 0xABD093 - detour frustum check function
-		shared::utils::hook::detour(game::hk_addr__frustum_check, &FrustumPlanesCheck, nullptr);
+		shared::utils::hook::detour(game::hk_addr__frustum_check, &frustum_planes_check_hk, nullptr); // 0x431E40
+
+		// reduce interior culling
+		shared::utils::hook::detour(game::retn_addr__frustum_check_interior_objs - 5u, &frustum_planes_check_interior_stub, nullptr); // 0xA0FCF9
 
 		// -----
 		// disable unused rendering

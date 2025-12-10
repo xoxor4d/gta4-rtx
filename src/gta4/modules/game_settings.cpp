@@ -160,6 +160,7 @@ namespace gta4
 				ASSIGN(nocull_radius_far_static);
 				ASSIGN(nocull_height_far_static);
 				ASSIGN(nocull_dist_lights);
+				ASSIGN(nocull_dist_sphere_interior);
 				ASSIGN(nocull_extended);
 
 				// light translation related settings

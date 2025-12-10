@@ -559,9 +559,22 @@ namespace gta4::game
 		char pad_0x0210[0x5F4]; //0x0210
 	};
 
+	class g_viewports2_sub
+	{
+	public:
+		sceneviewport_s* ortho; //0x0000 
+		sceneviewport_s * game3dscene; //0x0004 
+		sceneviewport_s* radar; //0x0008 
+		sceneviewport_s* mobile; //0x000C 
+		char pad_0x0010[0x34]; //0x0010
+	}; //Size=0x0044
+
 	struct g_viewports2
 	{
-		char pad_0x0000[0x10]; //0x0000
+		g_viewports2_sub* subviewports; //0x0000 
+		char pad_0x0004[0x4]; //0x0004
+		void* N00000003; //0x0008 
+		char pad_0x000C[0x4]; //0x000C
 		sceneviewport_s* sceneviewport; //0x0010 
 		char pad_0x0014[0x2C]; //0x0014
 	}; //Size=0x0040
@@ -612,14 +625,24 @@ namespace gta4::game
 		char pad_0x0360[420];
 	};
 
-	struct CRenderphase
+	struct CRenderPhase_frustum
 	{
-		DWORD dword0;
-		BYTE gap4[24];
-		BYTE byte1C;
-		BYTE gap1D[147];
-		grcViewport grcviewportB0;
-		grcViewport grcviewportB1;
+		Vector viewpos;
+		float pad;
+		float plane0[4];
+		float plane1[4];
+		float plane2[4];
+		float plane3[4];
+		float plane4[4];
+	};
+
+	struct CRenderPhase_struct
+	{
+		void* vtbl;
+		char pad_0x0004[76];
+		CRenderPhase_frustum frustum;
+		grcViewport viewport_0xB0;
+		grcViewport grcviewport;
 		BYTE ga[100];
 		int unk;
 	};

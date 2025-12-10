@@ -1058,28 +1058,6 @@ namespace gta4
 			ImGui::EndDisabled();
 		}
 
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Anti Culling of Static Objects ");
-		ImGui::Spacing(0, 4);
-
-		gamesettings_bool_widget("Extended AntiCulling", gs->nocull_extended);
-
-		gamesettings_float_widget("Near: No Culling Until Distance", gs->nocull_dist_near_static, 0.0f, FLT_MAX, 0.5f);
-		
-		ImGui::Spacing(0, inbetween_spacing);
-
-		// ----
-
-		gamesettings_float_widget("Near to Medium Cascade: Medium Distance", gs->nocull_dist_medium_static, 0.0f, FLT_MAX, 0.5f);
-		gamesettings_float_widget("Near to Medium Cascade: Min. Object Radius", gs->nocull_radius_medium_static, 0.0f, FLT_MAX, 0.5f);
-
-		ImGui::Spacing(0, inbetween_spacing);
-
-		// ----
-
-		gamesettings_float_widget("Medium to Far Cascade: Far Distance", gs->nocull_dist_far_static, 0.0f, FLT_MAX, 0.5f);
-		gamesettings_float_widget("Medium to Far Cascade: Min. Object Radius", gs->nocull_radius_far_static, 0.0f, FLT_MAX, 0.5f);
-		gamesettings_float_widget("Medium to Far Cascade: Min. Object Height", gs->nocull_height_far_static, 0.0f, FLT_MAX, 0.5f);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Vehicle Dirt ");
@@ -1137,6 +1115,49 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		gamesettings_bool_widget("Enable Rain - Remix Particle System", gs->rain_particle_system_enabled);
+
+		ImGui::Spacing(0, 4);
+	}
+
+	void gamesettings_culling_container()
+	{
+		static const auto& gs = game_settings::get();
+		const float inbetween_spacing = 8.0f;
+
+		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" Anti Culling of Static Objects ");
+		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("Extended AntiCulling", gs->nocull_extended);
+
+		gamesettings_float_widget("Near: No Culling Until Distance", gs->nocull_dist_near_static, 0.0f, FLT_MAX, 0.5f);
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		// ----
+
+		gamesettings_float_widget("Near to Medium Cascade: Medium Distance", gs->nocull_dist_medium_static, 0.0f, FLT_MAX, 0.5f);
+		gamesettings_float_widget("Near to Medium Cascade: Min. Object Radius", gs->nocull_radius_medium_static, 0.0f, FLT_MAX, 0.5f);
+
+		ImGui::Spacing(0, inbetween_spacing);
+
+		// ----
+
+		gamesettings_float_widget("Medium to Far Cascade: Far Distance", gs->nocull_dist_far_static, 0.0f, FLT_MAX, 0.5f);
+		gamesettings_float_widget("Medium to Far Cascade: Min. Object Radius", gs->nocull_radius_far_static, 0.0f, FLT_MAX, 0.5f);
+		gamesettings_float_widget("Medium to Far Cascade: Min. Object Height", gs->nocull_height_far_static, 0.0f, FLT_MAX, 0.5f);
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::Separator();
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Other No-Cull Settings");
+		ImGui::Spacing(0, 4);
+
+		gamesettings_float_widget("Light Distance", gs->nocull_dist_lights, 0.0f, 500.0f, 0.5f);
+		gamesettings_float_widget("Interior Object Distance", gs->nocull_dist_sphere_interior, 0.0f, 500.0f, 0.5f);
+
+		ImGui::Spacing(0, 4);
 	}
 
 	void gamesettings_light_container()
@@ -1205,14 +1226,7 @@ namespace gta4
 			remix_lights::clear_light_cache();
 		}
 
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::Separator();
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Anti Culling of Lights ");
 		ImGui::Spacing(0, 4);
-
-		gamesettings_float_widget("No Culling Until Distance", gs->nocull_dist_lights, 0.0f, 500.0f, 0.5f);
 	}
 
 	void gamesettings_emissive_container()
@@ -1255,6 +1269,8 @@ namespace gta4
 			gamesettings_float_widget("Phone Emissive Scalar", gs->phone_emissive_scalar, 0.0f, 20.0f);
 			ImGui::EndDisabled();
 		}
+
+		ImGui::Spacing(0, 4);
 	}
 
 	void gamesettings_timecycle_container()
@@ -1558,13 +1574,15 @@ namespace gta4
 				ImGui::EndDisabled();
 			}
 		}
+
+		ImGui::Spacing(0, 4);
 	}
 
 	void gamesettings_other_container()
 	{
 		//static const auto& im = imgui::get();
 		static const auto& gs = game_settings::get();
-		const float inbetween_spacing = 8.0f;
+		//const float inbetween_spacing = 8.0f;
 
 		ImGui::Spacing(0, 4);
 		ImGui::SeparatorText(" Remix ");
@@ -1573,9 +1591,7 @@ namespace gta4
 		ImGui::DragInt("RTXDI Initial Sample Count Override", gs->remix_override_rtxdi_samplecount.get_as<int*>(), 0.01f);
 		TT(gs->remix_override_rtxdi_samplecount.get_tooltip_string().c_str());
 
-		ImGui::Spacing(0, inbetween_spacing);
-		/*ImGui::SeparatorText(" Huh ");
-		ImGui::Spacing(0, 8);*/
+		ImGui::Spacing(0, 4);
 	}
 
 	void wip_gs_container()
@@ -1789,6 +1805,13 @@ namespace gta4
 			static float cont_gs_renderer_height = 0.0f;
 			cont_gs_renderer_height = ImGui::Widget_ContainerWithCollapsingTitle("Rendering Related Settings", cont_gs_renderer_height, 
 				gamesettings_rendering_container, false, ICON_FA_CAMERA, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
+		}
+
+		// culling related
+		{
+			static float cont_gs_renderer_height = 0.0f;
+			cont_gs_renderer_height = ImGui::Widget_ContainerWithCollapsingTitle("Culling Settings", cont_gs_renderer_height,
+				gamesettings_culling_container, false, ICON_FA_TV, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// light related

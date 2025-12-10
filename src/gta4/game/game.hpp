@@ -134,13 +134,6 @@ namespace gta4::game
 	extern uint32_t retn_addr__pre_vehicle_surfs_stub;
 	extern uint32_t hk_addr__post_vehicle_surfs_stub;
 
-	extern uint32_t hk_addr__static_world_culling_check_hk;
-	extern uint32_t nop_addr__static_world_frustum_patch01;
-	extern uint32_t nop_addr__static_world_frustum_patch02;
-
-	extern uint32_t retn_addr__extended_anti_culling_check_stub;
-	extern uint32_t jmp_addr__extended_anti_culling_check_stub;
-
 	extern uint32_t hk_addr__on_update_light_list_stub;
 	extern uint32_t retn_addr__on_render_light_list_stub;
 
@@ -179,7 +172,15 @@ namespace gta4::game
 	extern uint32_t hk_addr__vehicle_vshaped_sirens_fake_light;
 	extern uint32_t hk_addr__vehicle_vshaped_sirens_vlight;
 
+	extern uint32_t hk_addr__static_world_culling_check_hk;
+	extern uint32_t nop_addr__static_world_frustum_patch01;
+	extern uint32_t nop_addr__static_world_frustum_patch02;
+
+	extern uint32_t retn_addr__extended_anti_culling_check_stub;
+	extern uint32_t jmp_addr__extended_anti_culling_check_stub;
+
 	extern uint32_t hk_addr__frustum_check;
+	extern uint32_t retn_addr__frustum_check_interior_objs;
 
 	extern uint32_t hk_addr__prevent_game_input_func;
 
