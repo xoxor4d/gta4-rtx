@@ -2157,7 +2157,7 @@ namespace gta4
 				bool allow_wet = false;
 
 				// allow outside decals to become wet
-				if ((pidx == GTA_DECAL || pidx == GTA_SPEC_DECAL) && stencil_ref != 8) {
+				if ((pidx == GTA_DECAL || pidx == GTA_SPEC_DECAL || pidx == GTA_NORMAL_DECAL || pidx == GTA_NORMAL_SPEC_DECAL || pidx == GTA_DECAL_GLUE) && stencil_ref != 8) {
 					allow_wet = true;
 				}
 
