@@ -575,6 +575,8 @@ namespace gta4
 			ImGui::Checkbox("Disable OMM Override on Alphatested UV Anims", &im->m_dbg_disable_omm_override_on_alpha_uv_anims);
 			TT("Disables automatic ignore OMM tagging on alphatested emissive surfaces with animated UVs");
 
+			ImGui::Checkbox("Disable Water Worldpos Logic", &im->m_dbg_disable_water_worldpos_logic);
+
 			//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
 
 			ImGui::TreePop();
@@ -1039,6 +1041,23 @@ namespace gta4
 
 		gamesettings_bool_widget("Load ColorMaps Only", gs->load_colormaps_only);
 
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Water ");
+		ImGui::Spacing(0, 4);
+
+		gamesettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
+		gamesettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
+
+		{
+			const auto gs_var_ptr = gs->water_texture_uv_scale.get_as<float*>();
+			ImGui::DragFloat("Water Texture Scale", gs_var_ptr, 0.001f, 0.00001f, 100.0f, "%.4f");
+			TT(gs->water_texture_uv_scale.get_tooltip_string().c_str());
+		}
+
+		gamesettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
+
+
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Foliage ");
 		ImGui::Spacing(0, 4);
@@ -1046,6 +1065,7 @@ namespace gta4
 		gamesettings_bool_widget("Fixed function Trees", gs->fixed_function_trees);
 		gamesettings_float_widget("Tree Alpha Cutout Value", gs->tree_foliage_alpha_cutout_value, 0.0f, 20.0f);
 		//gamesettings_float_widget("Grass Alpha Cutout Value", gs->grass_foliage_alpha_cutout_value, 0.0f, 20.0f);
+
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Hair ");
@@ -1085,6 +1105,7 @@ namespace gta4
 	
 			ImGui::EndDisabled();
 		}
+
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Vehicle Livery ");

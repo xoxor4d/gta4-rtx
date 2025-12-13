@@ -28,7 +28,7 @@ namespace gta4
 		extern void init_texture_addons(bool release = false);
 	}
 
-	enum class RemixModifier : std::uint8_t
+	enum class RemixModifier : std::uint16_t
 	{
 		None = 0,
 		EmissiveScalar = 1 << 0,
@@ -37,7 +37,16 @@ namespace gta4
 		DecalDirt = 1 << 3,
 		RemoveVertexColorKeepAlpha = 1 << 4,
 		VehicleDecalDirt = 1 << 5,
-		UseGlobalUVs = 1 << 6,
+		UseGlobalUVs = 1 << 6, // use gta4's global uv constant to animate uvs
+		Translucent_WorldposAsUVs = 1 << 7, // use worldpos instead of surface uvs
+		Translucent_FadeNormalUntilDist = 1 << 8,
+		Free09 = 1 << 9,
+		Free10 = 1 << 10,
+		Free11 = 1 << 11,
+		Free12 = 1 << 12,
+		Free13 = 1 << 13,
+		Free14 = 1 << 14,
+		Free15 = 1 << 15,
 	};
 
 	enum remix_custom_rs
@@ -48,10 +57,10 @@ namespace gta4
 		RS_169_EMISSIVE_SCALE = 169,
 		RS_177_DECAL_DIRT_CONTRAST = 177,
 		RS_210_WETNESS_PARAMS_PACKED = 210,
-		RS_211_FREE = 211,
-		RS_212_FREE = 212,
-		RS_213_FREE = 213,
-		RS_214_FREE = 214,
+		RS_211_FREE = 211, // [UseGlobalUVs] globUV0.x || [Translucent_WorldposAsUVs] worldPos UV scalar
+		RS_212_FREE = 212, // [UseGlobalUVs] globUV0.y || [Translucent_FadeNormalUntilDist] fadeout normal
+		RS_213_FREE = 213, // [UseGlobalUVs] globUV1.x
+		RS_214_FREE = 214, // [UseGlobalUVs] globUV1.y
 		RS_215_FREE = 215,
 		RS_216_FREE = 216,
 		RS_217_FREE = 217,
@@ -635,6 +644,8 @@ namespace gta4
 		};
 
 		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float raindrop_scale = 0.0f, uint8_t flags = WETNESS_FLAG_NONE);
+		static void set_remix_use_worldpos_instead_of_surface_uvs(IDirect3DDevice9* dev, float scale = 0.01f);
+		static void set_remix_translucent_fade_out_normal_after_distance(IDirect3DDevice9* dev, float distance);
 
 		static void set_remix_temp_float01(IDirect3DDevice9* dev, float value);
 		static void set_remix_temp_float02(IDirect3DDevice9* dev,  float value);

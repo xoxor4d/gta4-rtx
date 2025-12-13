@@ -135,6 +135,26 @@ namespace gta4
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_WETNESS_PARAMS_PACKED, packedDword);
 	}
 
+	/// Makes remix use world positions instead of surface UV's
+	/// @param scale	worldpos * scale
+	void renderer::set_remix_use_worldpos_instead_of_surface_uvs(IDirect3DDevice9* dev, float scale)
+	{
+		set_remix_modifier(dev, RemixModifier::Translucent_WorldposAsUVs);
+
+		dc_ctx.save_rs(dev, RS_211_FREE);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_211_FREE, *reinterpret_cast<DWORD*>(&scale));
+	}
+
+	/// Fades the normal strength from current to 0 after distance
+	/// @param distance	world scale distance after which normal strength will be 0
+	void renderer::set_remix_translucent_fade_out_normal_after_distance(IDirect3DDevice9* dev, float distance)
+	{
+		set_remix_modifier(dev, RemixModifier::Translucent_FadeNormalUntilDist);
+
+		dc_ctx.save_rs(dev, RS_212_FREE);
+		dev->SetRenderState((D3DRENDERSTATETYPE)RS_212_FREE, *reinterpret_cast<DWORD*>(&distance));
+	}
+
 
 	// ---
 
@@ -1313,11 +1333,49 @@ namespace gta4
 					set_remix_texture_hash(dev, shared::utils::string_hash32("water"));
 				}
 
+				if (!im->m_dbg_disable_water_worldpos_logic) {
+					set_remix_use_worldpos_instead_of_surface_uvs(dev, 0.01f * gs->water_texture_uv_scale._float());
+				}
+
+				if (gs->water_texture_normal_fadeout_distance._float() > 0.0f) {
+					set_remix_translucent_fade_out_normal_after_distance(dev, gs->water_texture_normal_fadeout_distance._float());
+				}
+
+				if (gs->water_apply_animated_water_category._bool()) {
+					set_remix_texture_categories(dev, InstanceCategories::AnimatedWater);
+				}
+
+				
+				// TODO: raindrops on water
+				/*{
+					const float rain_size = im->m_debug_vector3.x;
+					uint8_t rain_flags = WETNESS_FLAG_NONE;
+
+					{
+						if (im->m_dbg_debug_bool01)
+						{
+							if (should_apply_heavy_raindrops()) {
+								rain_flags |= WETNESS_FLAG_ENABLE_RAINDROPS;
+							}
+							else if (*game::weather_type_prev == game::WEATHER_DRIZZLE || *game::weather_type_new == game::WEATHER_DRIZZLE) {
+								rain_flags |= WETNESS_FLAG_ENABLE_RAINDROPS | renderer::WETNESS_FLAG_RAINDROPS_HALF_DENSITY;
+							}
+						}
+
+					}
+
+					set_remix_roughness_scalar(dev,
+						1.0f,
+						im->m_debug_vector3.y,
+						im->m_debug_vector3.z,
+						rain_size, rain_flags);
+				}*/
+
 #if 0			// test - water UV's are always 0 - could be fixed in 0xAD8960 but no impr.
 				{
 					D3DXMATRIX texMatrix;
 					D3DXMatrixIdentity(&texMatrix);  // Start with identity
-					D3DXMatrixScaling(&texMatrix, imgui::get()->m_debug_vector2.x, imgui::get()->m_debug_vector2.y, 1.0f);
+					D3DXMatrixScaling(&texMatrix, imgui::get()->m_debug_vector2.y, imgui::get()->m_debug_vector2.z, 1.0f);
 					ctx.set_texture_transform(shared::globals::d3d_device, &texMatrix);
 
 					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
@@ -1328,8 +1386,11 @@ namespace gta4
 					dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
 					dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
 
-					ctx.save_texture(dev, 0);
-					dev->SetTexture(0, tex_addons::veh_light_ems_glass);
+					if (im->m_dbg_debug_bool01)
+					{
+						ctx.save_texture(dev, 0);
+						dev->SetTexture(0, tex_addons::veh_light_ems_glass);
+					}
 				}
 #endif
 
@@ -3167,6 +3228,9 @@ namespace gta4
 			shared::utils::hook(game::hk_addr__dyn_obj_clear_hash02, on_draw_dyn_objects__clear_global_stub, HOOK_JUMP).install()->quick(); // 0x8DE298 
 			shared::utils::hook(game::hk_addr__dyn_obj_clear_hash03, on_draw_dyn_objects__clear_global_stub, HOOK_JUMP).install()->quick(); // 0x8DE437
 		}
+
+		// hook static water rendering func to fix UVs
+		// AD8960
 
 		// -----
 		m_initialized = true;

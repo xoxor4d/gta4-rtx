@@ -225,7 +225,11 @@ namespace gta4
 				ASSIGN(grass_foliage_alpha_cutout_value);
 				ASSIGN(npc_expensive_hair_alpha_testing);
 				ASSIGN(npc_expensive_hair_alpha_cutout_value);
+
 				ASSIGN(override_water_texture_hash);
+				ASSIGN(water_apply_animated_water_category);
+				ASSIGN(water_texture_uv_scale);
+				ASSIGN(water_texture_normal_fadeout_distance);
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 				ASSIGN(rain_particle_system_enabled);

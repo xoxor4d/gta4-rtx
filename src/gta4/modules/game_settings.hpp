@@ -831,6 +831,28 @@ namespace gta4
 				true
 			};
 
+			variable water_apply_animated_water_category =
+			{
+				"water_apply_animated_water_category",
+				("This automatically assigns remix' animated water category to all water surfaces. Causes issues with RR!"),
+				false
+			};
+
+			variable water_texture_uv_scale =
+			{
+				"water_texture_uv_scale",
+				("Water surfaces use world positions instead of surface UVs. This can be used to scale the applied texture."),
+				3.0f
+			};
+
+			variable water_texture_normal_fadeout_distance =
+			{
+				"water_texture_normal_fadeout_distance",
+				("This will fade out the normal strength over the specified distance where it reaches 0. 0.0 to disable."),
+				600.0f
+			};
+
+
 			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =
 			{
