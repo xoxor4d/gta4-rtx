@@ -219,6 +219,11 @@ extern "C" {
     // Default: false. Use VkSwapchainKHR to present frame into HWND.
     remixapi_Bool       forceNoVkSwapchain;
     remixapi_Bool       editorModeEnabled;
+    // With this disabled, the user must fetch the GUI buffer using 
+    // the, remixapi_dxvk_CopyRenderingOutputType, api with the, 
+    // remixapi_dxvk_CopyRenderingOutputType, field set to: 'REMIXAPI_DXVK_COPY_RENDERING_OUTPUT_TYPE_GUI'
+    // Otherwise the GUI will be drawn in the final color buffer.
+    remixapi_Bool       combineGuiInFinalColor;
   } remixapi_StartupInfo;
 
   typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_Startup)(const remixapi_StartupInfo* info);
@@ -466,32 +471,34 @@ extern "C" {
   } remixapi_InstanceInfoObjectPickingEXT;
 
   typedef enum remixapi_InstanceCategoryBit {
-    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_UI                  = 1 << 0,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_MATTE               = 1 << 1,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_SKY                       = 1 << 2,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE                    = 1 << 3,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_LIGHTS             = 1 << 4,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ANTI_CULLING       = 1 << 5,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_MOTION_BLUR        = 1 << 6,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_OPACITY_MICROMAP   = 1 << 7,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_HIDDEN                    = 1 << 8,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE                  = 1 << 9,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_BEAM                      = 1 << 10,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_STATIC              = 1 << 11,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_DYNAMIC             = 1 << 12,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_SINGLE_OFFSET       = 1 << 13,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_NO_OFFSET           = 1 << 14,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_ALPHA_BLEND_TO_CUTOUT     = 1 << 15,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_TERRAIN                   = 1 << 16,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_ANIMATED_WATER            = 1 << 17,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_UI = 1 << 0,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_MATTE = 1 << 1,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_SKY = 1 << 2,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE = 1 << 3,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_LIGHTS = 1 << 4,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ANTI_CULLING = 1 << 5,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_MOTION_BLUR = 1 << 6,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_OPACITY_MICROMAP = 1 << 7,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_HIDDEN = 1 << 8,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE = 1 << 9,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_BEAM = 1 << 10,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_STATIC = 1 << 11,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_DYNAMIC = 1 << 12,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_SINGLE_OFFSET = 1 << 13,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_NO_OFFSET = 1 << 14,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_ALPHA_BLEND_TO_CUTOUT = 1 << 15,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_TERRAIN = 1 << 16,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_ANIMATED_WATER = 1 << 17,
     REMIXAPI_INSTANCE_CATEGORY_BIT_THIRD_PERSON_PLAYER_MODEL = 1 << 18,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_THIRD_PERSON_PLAYER_BODY  = 1 << 19,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_BAKED_LIGHTING     = 1 << 20,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ALPHA_CHANNEL      = 1 << 21,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_THIRD_PERSON_PLAYER_BODY = 1 << 19,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_BAKED_LIGHTING = 1 << 20,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ALPHA_CHANNEL = 1 << 21,
     REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_TRANSPARENCY_LAYER = 1 << 22,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE_EMITTER          = 1 << 23,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_SMOOTH_NORMALS            = 1 << 24,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DISABLE_BACKFACE_CULLING  = 1 << 25,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE_EMITTER = 1 << 23,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_SMOOTH_NORMALS = 1 << 24,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_HAIR_CARDS = 1 << 25,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_VIEW_MODEL = 1 << 26,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DISABLE_BACKFACE_CULLING = 1 << 27,
   } remixapi_InstanceCategoryBit;
 
   typedef uint32_t remixapi_InstanceCategoryFlags;
@@ -849,6 +856,7 @@ extern "C" {
     REMIXAPI_DXVK_COPY_RENDERING_OUTPUT_TYPE_DEPTH = 1,
     REMIXAPI_DXVK_COPY_RENDERING_OUTPUT_TYPE_NORMALS = 2,
     REMIXAPI_DXVK_COPY_RENDERING_OUTPUT_TYPE_OBJECT_PICKING = 3,
+    REMIXAPI_DXVK_COPY_RENDERING_OUTPUT_TYPE_GUI = 4,
   } remixapi_dxvk_CopyRenderingOutputType;
 
   typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_dxvk_CopyRenderingOutput)(
@@ -913,6 +921,9 @@ extern "C" {
     void*               pNext;
     uint64_t            version;
   } remixapi_InitializeLibraryInfo;
+
+  // NOTE: If adding a new function, append at the end of the struct.
+  //       Reordering breaks backwards compatibility.
 
   // Force the RtxTextureManager to demote/clear textures not currently needed.
   // Hooks SceneManager::requestTextureVramFree, which sets an atomic flag
@@ -988,7 +999,7 @@ extern "C" {
     PFN_remixapi_CreateMesh         CreateMesh;
     PFN_remixapi_CreateMeshBatched  CreateMeshBatched;
     PFN_remixapi_DestroyMesh        DestroyMesh;
-	PFN_remixapi_SetupCamera        SetupCamera;
+    PFN_remixapi_SetupCamera        SetupCamera;
     PFN_remixapi_DrawInstance       DrawInstance;
     PFN_remixapi_CreateLight        CreateLight;
     PFN_remixapi_CreateLightBatched CreateLightBatched;
@@ -1016,7 +1027,7 @@ extern "C" {
     PFN_remixapi_Startup            Startup;
     PFN_remixapi_Present            Present;
 
-	PFN_remixapi_SetCameraMediumMaterial SetCameraMediumMaterial;
+    PFN_remixapi_SetCameraMediumMaterial SetCameraMediumMaterial;
     // NOTE: REMIXAPI_PTR is required so the calling convention matches the
     // actual remixapi_GetUIState / remixapi_SetUIState entry functions
     // (which are __stdcall via REMIXAPI_CALL). On x64 this is moot — there's

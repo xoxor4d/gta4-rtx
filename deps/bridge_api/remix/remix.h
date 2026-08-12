@@ -798,14 +798,6 @@ namespace remix {
   }
 
 
-    remixapi_CameraMediumInfo info {};
-    info.sType = REMIXAPI_STRUCT_TYPE_CAMERA_MEDIUM_INFO;
-    info.pNext = nullptr;
-    info.medium = medium;
-    return m_CInterface.SetCameraMediumMaterial(&info);
-  }
-
-
 
   struct InstanceInfoBoneTransformsEXT : remixapi_InstanceInfoBoneTransformsEXT {
     InstanceInfoBoneTransformsEXT() {
