@@ -21,28 +21,64 @@
                         "priority": 0,
                         "displayName": "Scene Index to resolve material bindings."
                     },
+                    "HdSt_MaterialPrimvarTransferSceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "loadWithRenderer" : "GL",
+                        "priority": 0,
+                        "displayName": "Scene Index to transfer primvars from material to prim."
+                    },
                     "HdSt_NodeIdentifierResolvingSceneIndexPlugin" : {
                         "bases": ["HdSceneIndexPlugin"],
                         "loadWithRenderer" : "GL",
                         "priority": 0,
                         "displayName": "Scene Index to resolve nodeIdentifier from glslfx sourceAsset."
                     },
-                    "HdSt_TerminalsResolvingSceneIndexPlugin" : {
-                        "bases": ["HdSceneIndexPlugin"],
-                        "loadWithRenderer" : "GL",
-                        "priority": 0,
-                        "displayName": "Scene Index to resolve terminal names."
-                    },
                     "HdSt_ImplicitSurfaceSceneIndexPlugin" : {
                         "bases": ["HdSceneIndexPlugin"],
                         "loadWithRenderer" : "GL",
                         "priority": 0,
                         "displayName": "Scene Index to turn implicit surfaces into prims suitable for Storm"
+                    },
+                    "HdSt_NurbsApproximatingSceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "loadWithRenderer" : "GL",
+                        "priority": 0,
+                        "displayName": "Scene Index to resolve terminal names."
+                    },
+                    "HdSt_RenderPassPruneSceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "loadWithRenderer" : "GL",
+                        "priority": 0,
+                        "displayName": "Scene Index to resolve render pass prune rules."
+                    },
+                    "HdSt_RenderPassVisibilitySceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "loadWithRenderer" : "GL",
+                        "priority": 0,
+                        "displayName": "Scene Index to resolve render pass visibility rules."
+                    },
+                    "HdSt_TetMeshConversionSceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "loadWithRenderer" : "GL",
+                        "priority": 0,
+                        "displayName": "Scene Index to convert tet meshes into standard triangle based meshes."
+                    },
+                    "HdSt_UnboundMaterialPruningSceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "loadWithRenderer": "GL",
+                        "priority": 0,
+                        "displayName": "Scene index to prune materials that aren't bound."
+                    },
+                    "HdSt_VelocityMotionResolvingSceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "loadWithRenderer": "GL",
+                        "priority": 0,
+                        "displayName": "Scene index to resolve velocity-based motion."
                     }
                 },
                 "ShaderResources": "shaders"
             },
-            "LibraryPath": "../../hdSt.dll",
+            "LibraryPath": "../../usd_hdSt.dll",
             "Name": "hdSt",
             "ResourcePath": "resources",
             "Root": "..",

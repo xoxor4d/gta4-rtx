@@ -6,13 +6,13 @@
                     
                     "UsdProcImagingGenerativeProceduralAdapter": {
                         "bases": [
-                            "UsdImagingPrimAdapter"
+                            "UsdImagingInstanceablePrimAdapter"
                         ], 
                         "primTypeName": "GenerativeProcedural"
                     }
                 }
             }, 
-            "LibraryPath": "../../usdProcImaging.dll", 
+            "LibraryPath": "../../usd_usdProcImaging.dll", 
             "Name": "usdProcImaging", 
             "ResourcePath": "resources", 
             "Root": "..", 

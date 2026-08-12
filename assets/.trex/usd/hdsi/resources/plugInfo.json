@@ -1,0 +1,20 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Types": {
+                    "HdsiDebuggingSceneIndexPlugin" : {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "priority": 0,
+                        "displayName": "Add debugging scene index if corresponding env var is set."
+                    }
+                }
+            },
+            "LibraryPath": "../../usd_hdsi.dll",
+            "Name": "hdsi",
+            "ResourcePath": "resources",
+            "Root": "..",
+            "Type": "library"
+        }
+    ]
+}

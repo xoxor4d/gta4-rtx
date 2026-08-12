@@ -1,0 +1,45 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Validators": {
+                    "EncapsulationChecker": {
+                        "doc": "Validates there are no nested Gprims.", 
+                        "schemaTypes": [
+                            "UsdGeomBoundable"
+                        ]
+                    }, 
+                    "StageMetadataChecker": {
+                        "doc": "All stages must declare their 'upAxis' and 'metersPerUnit'."
+                    }, 
+                    "SubsetFamilies": {
+                        "doc": "Validates all of the geom subset families authored beneath an Imageable prim.", 
+                        "keywords": [
+                            "UsdGeomSubset"
+                        ], 
+                        "schemaTypes": [
+                            "UsdGeomImageable"
+                        ]
+                    }, 
+                    "SubsetParentIsImageable": {
+                        "doc": "Validates that GeomSubset prims are direct descendants of an Imageable prim.", 
+                        "keywords": [
+                            "UsdGeomSubset"
+                        ], 
+                        "schemaTypes": [
+                            "UsdGeomSubset"
+                        ]
+                    }, 
+                    "keywords": [
+                        "UsdGeomValidators"
+                    ]
+                }
+            }, 
+            "LibraryPath": "../../usd_usdGeomValidators.dll", 
+            "Name": "usdGeomValidators", 
+            "ResourcePath": "resources", 
+            "Root": "..", 
+            "Type": "library"
+        }
+    ]
+}

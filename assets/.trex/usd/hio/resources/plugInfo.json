@@ -6,11 +6,11 @@
                     "Hio_StbImage" : {
                         "bases": ["HioImage"],
                         "imageTypes": ["bmp", "jpg", "jpeg", "png", "tga", "hdr"],
-                        "precedence": 2
+                        "precedence": 30
                     }
                 }
             },
-            "LibraryPath": "../../hio.dll",
+            "LibraryPath": "../../usd_hio.dll",
             "Name": "hio",
             "ResourcePath": "resources",
             "Root": "..",

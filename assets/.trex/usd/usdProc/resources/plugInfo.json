@@ -14,11 +14,12 @@
                         "bases": [
                             "UsdGeomBoundable"
                         ], 
+                        "schemaIdentifier": "GenerativeProcedural", 
                         "schemaKind": "concreteTyped"
                     }
                 }
             }, 
-            "LibraryPath": "../../usdProc.dll", 
+            "LibraryPath": "../../usd_usdProc.dll", 
             "Name": "usdProc", 
             "ResourcePath": "resources", 
             "Root": "..", 

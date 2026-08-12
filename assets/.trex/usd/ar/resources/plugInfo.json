@@ -13,7 +13,7 @@
                     "ArPackageResolver": {}
                 }
             },
-            "LibraryPath": "../../ar.dll", 
+            "LibraryPath": "../../usd_ar.dll", 
             "Name": "ar", 
             "ResourcePath": "resources", 
             "Root": "..", 

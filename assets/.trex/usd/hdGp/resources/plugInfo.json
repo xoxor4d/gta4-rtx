@@ -14,7 +14,7 @@
                     }
                 }
             }, 
-            "LibraryPath": "../../hdGp.dll", 
+            "LibraryPath": "../../usd_hdGp.dll", 
             "Name": "hdGp", 
             "ResourcePath": "resources", 
             "Root": "..", 

@@ -44,6 +44,20 @@ def "GLOBAL" (
             dictionary constant = {
                 string doc = "UsdSplineAPI - Constant-value spline interpolation"
             }
+            dictionary cameraVisibility = {
+                string doc = """
+                UsdRenderPassAPI - This token represents the collection 
+                name to use with UsdCollectionAPI to set the camera visibility
+                attribute on the prims in the collection for the RenderPass.
+                """
+            }
+            dictionary matte = {
+                string doc = """
+                UsdRenderPassAPI - This token represents the collection 
+                name to use with UsdCollectionAPI to set the matte
+                attribute on the prims in the collection for the RenderPass.
+                """
+            }
         }
     }
 )
@@ -141,23 +155,3 @@ class "RiSplineAPI" (
     }
 ) {
 }
-
-class "RiTextureAPI" (
-    inherits = </APISchemaBase>
-    doc = """
-    \\deprecated This API schema will be removed in a future release.
-
-    RiTextureAPI is an API schema that provides an interface
-    to add Renderman-specific attributes to adjust textures."""
-    customData = {
-        string className = "TextureAPI"
-    }
-) {
-    float ri:texture:gamma (
-        doc = """Gamma-correct the texture"""
-    )
-    float ri:texture:saturation (
-        doc = """Adjust the texture's saturation"""
-    )
-}
-

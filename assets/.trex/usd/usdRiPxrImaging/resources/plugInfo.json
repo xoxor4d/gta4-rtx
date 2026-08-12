@@ -1,0 +1,68 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Types": {
+                    "UsdRiPxrImagingAovLightAdapter": {
+                        "bases": [
+                            "UsdImagingLightAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrAovLight"
+                    },
+                    "UsdRiPxrImagingCameraAPIAdapter": {
+                        "bases": [
+                            "UsdImagingAPISchemaAdapter"
+                        ],
+                        "isInternal": true,
+                        "apiSchemaName": "PxrCameraAPI"
+                    },
+                    "UsdRiPxrImagingCameraProjectionAdapter": {
+                        "bases": [
+                            "UsdImagingSceneIndexPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrProjectionPluginBase",
+                        "includeDerivedPrimTypes": true
+                    },
+                    "UsdRiPxrImagingCameraProjectionAPIAdapter": {
+                        "bases": [
+                            "UsdImagingAPISchemaAdapter"
+                        ],
+                        "isInternal": true,
+                        "apiSchemaName": "PxrCameraProjectionAPI"
+                    },
+                    "UsdRiPxrImagingDisplayFilterAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrDisplayFilterPluginBase",
+                        "includeDerivedPrimTypes": true
+                    },
+                    "UsdRiPxrImagingIntegratorAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrIntegratorPluginBase",
+                        "includeDerivedPrimTypes" : true
+                    },
+                    "UsdRiPxrImagingSampleFilterAdapter": {
+                        "bases": [
+                            "UsdImagingPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "PxrSampleFilterPluginBase",
+                        "includeDerivedPrimTypes" : true
+                    }
+                }
+            },
+            "LibraryPath": "../../usd_usdRiPxrImaging.dll",
+            "Name": "usdRiPxrImaging",
+            "ResourcePath": "resources",
+            "Root": "..",
+            "Type": "library"
+        }
+    ]
+}

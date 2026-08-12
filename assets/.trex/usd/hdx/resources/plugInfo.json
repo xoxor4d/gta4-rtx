@@ -4,7 +4,7 @@
             "Info": {
                  "ShaderResources": "shaders"
             },
-            "LibraryPath": "../../hdx.dll",
+            "LibraryPath": "../../usd_hdx.dll",
             "Name": "hdx",
             "ResourcePath": "resources",
             "Root": "..",

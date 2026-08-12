@@ -129,7 +129,8 @@ class SkelAnimation "SkelAnimation" (
          doc = """Array of tokens identifying which blend shapes this
          animation's data applies to. The tokens for blendShapes correspond to
          the tokens set in the *skel:blendShapes* binding property of the
-         UsdSkelBindingAPI."""
+         UsdSkelBindingAPI. Note that blendShapes does not accept time-sampled
+         values."""
     )
 
     float[] blendShapeWeights (
@@ -138,14 +139,6 @@ class SkelAnimation "SkelAnimation" (
         *blendShapes* token array, and therefore must have the same length as
         *blendShapes."""
     )
-}
-
-
-class PackedJointAnimation "PackedJointAnimation" (
-    inherits = </SkelAnimation>
-    doc = """Deprecated. Please use SkelAnimation instead."""
-)
-{
 }
 
 class "SkelBindingAPI" (
@@ -182,6 +175,14 @@ class "SkelBindingAPI" (
         doc = """Skeleton to be bound to this prim and its descendents that
         possess a mapping and weighting to the joints of the identified
         Skeleton."""
+    )
+
+    uniform token primvars:skel:skinningMethod = "classicLinear" (
+        customData = {
+            string apiName = "skinningMethod"
+        }
+        allowedTokens = ["classicLinear", "dualQuaternion"]
+        doc = """The skinningMethod specifies the skinning method for the prim."""
     )
 
     matrix4d primvars:skel:geomBindTransform (
@@ -230,25 +231,6 @@ class "SkelBindingAPI" (
         apply to each point. The length, interpolation, and elementSize of
         *jointWeights* must match that of *jointIndices*. See UsdGeomPrimvar
         for more information on interpolation and elementSize."""
-    )
-
-    uniform token skel:skinningMethod = "ClassicLinear" (
-        allowedTokens = ["ClassicLinear", "DualQuaternion", "WeightedBlend"]
-        customData = {
-            string apiName = "skinningMethod"
-        }       
-        doc = """Different calculation method for skinning. LBS, DQ, and blendWeight"""
-    )
-
-    uniform float[] primvars:skel:skinningBlendWeights (
-        customData = {
-            string apiName = "skinningBlendWeights"
-        }       
-        doc = """Weights for weighted blend skinning method. The primvar can have either 
-        *constant* or *vertex* interpolation.
-        Constant interpolation means every vertex share the same single blend weight.
-        Vertex interpolation means every vertex has their own blend weight. The element
-        size should match the vertices count in this case."""
     )
 
     uniform token[] skel:blendShapes (

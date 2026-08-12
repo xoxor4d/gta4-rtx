@@ -1,0 +1,21 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Types": {
+                    "SdrDiscoveryPlugin": {},
+                    "_SdrFilesystemDiscoveryPlugin" : {
+                        "bases": ["SdrDiscoveryPlugin"],
+                        "displayName": "Filesystem Discovery"
+                    },
+                    "SdrParserPlugin": {}
+                }
+            },
+            "LibraryPath": "../../usd_sdr.dll", 
+            "Name": "sdr", 
+            "ResourcePath": "resources", 
+            "Root": "..", 
+            "Type": "library"
+        }
+    ]
+}

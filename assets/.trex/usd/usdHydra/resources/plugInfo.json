@@ -8,7 +8,7 @@
                 "Types": {
                     "UsdHydraDiscoveryPlugin": {
                         "bases": [
-                            "NdrDiscoveryPlugin"
+                            "SdrDiscoveryPlugin"
                         ], 
                         "displayName": "Discovery plugin for deprecated hydra shaders."
                     }, 
@@ -23,11 +23,12 @@
                         "bases": [
                             "UsdAPISchemaBase"
                         ], 
+                        "schemaIdentifier": "HydraGenerativeProceduralAPI", 
                         "schemaKind": "singleApplyAPI"
                     }
                 }
             }, 
-            "LibraryPath": "../../usdHydra.dll", 
+            "LibraryPath": "../../usd_usdHydra.dll", 
             "Name": "usdHydra", 
             "ResourcePath": "resources", 
             "Root": "..", 

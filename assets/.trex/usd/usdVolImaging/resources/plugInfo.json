@@ -19,7 +19,7 @@
                     }
                 }
             },
-            "LibraryPath": "../../usdVolImaging.dll",
+            "LibraryPath": "../../usd_usdVolImaging.dll",
             "Name": "usdVolImaging",
             "ResourcePath": "resources",
             "Root": "..",

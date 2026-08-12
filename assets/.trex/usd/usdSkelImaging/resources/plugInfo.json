@@ -5,7 +5,7 @@
                 "Types": {
                     "UsdSkelImagingSkeletonAdapter": {
                         "bases": [
-                            "UsdImagingPrimAdapter"
+                            "UsdImagingInstanceablePrimAdapter"
                         ],
                         "isInternal": true,
                         "primTypeName": "Skeleton"
@@ -15,11 +15,39 @@
                             "UsdImagingPrimAdapter"
                         ],
                         "isInternal": true,
+                        "includeDerivedPrimTypes": true,
                         "primTypeName": "SkelRoot"
+                    },
+                    "UsdSkelImagingAnimationAdapter": {
+                        "bases": [
+                            "UsdImagingSceneIndexPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "SkelAnimation"
+                    },
+                    "UsdSkelImagingBindingAPIAdapter": {
+                        "bases": [
+                            "UsdImagingAPISchemaAdapter"
+                        ],
+                        "isInternal": true,
+                        "apiSchemaName": "SkelBindingAPI"
+                    },
+                    "UsdSkelImagingBlendShapeAdapter": {
+                        "bases": [
+                            "UsdImagingSceneIndexPrimAdapter"
+                        ],
+                        "isInternal": true,
+                        "primTypeName": "BlendShape"
+                    },
+                    "UsdSkelImagingResolvingSceneIndexPlugin": {
+                        "bases": [
+                            "UsdImagingSceneIndexPlugin"
+                        ],
+                        "isInternal": true
                     }
                 }
             },
-            "LibraryPath": "../../usdSkelImaging.dll",
+            "LibraryPath": "../../usd_usdSkelImaging.dll",
             "Name": "usdSkelImaging",
             "ResourcePath": "resources",
             "Root": "..",

@@ -11,6 +11,7 @@
             "bases": [
               "UsdAPISchemaBase"
             ],
+            "schemaIdentifier": "ParticleSystemAPI",
             "schemaKind": "singleApplyAPI"
           }
         }

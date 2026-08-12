@@ -1,0 +1,80 @@
+-- glslfx version 0.1
+
+//
+// Copyright 2023 Pixar
+//
+// Licensed under the terms set forth in the LICENSE.txt file available at
+// https://openusd.org/license.
+//
+
+
+
+--- --------------------------------------------------------------------------
+-- glsl SurfaceHelpers.Lighting
+
+#define PI 3.1415
+vec2 ProjectToLatLong(vec3 sample3D)
+{
+    // project spherical coord onto latitude-longitude map with
+    // latitude: +y == pi/2 and longitude: +z == 0, +x == pi/2
+    float x = (atan(sample3D.z, sample3D.x) + 0.5 * PI) / (2.0 * PI);
+    float y = acos(sample3D.y) / PI;
+
+    return vec2(x,y);
+}
+
+
+--- --------------------------------------------------------------------------
+-- glsl SurfaceHelpers.TangentSpace
+
+// Calculation of TBN matrix and terminology based on "Surface 
+// Gradient-Based Bump Mapping Framework" (2020)
+mat3
+ComputeTBNMatrix(vec3 P, vec3 N, vec2 st)
+{
+    // Get screen space derivatives of position
+    vec3 dPdx = dFdx(P);
+    vec3 dPdy = dFdy(P);
+
+    // Ensure position derivatives are perpendicular to N
+    vec3 sigmaX = dPdx - dot(dPdx, N) * N;
+    vec3 sigmaY = dPdy - dot(dPdy, N) * N;
+
+    float flipSign = dot(dPdy, cross(N, dPdx)) < 0 ? -1 : 1;
+
+    // Get screen space derivatives of st
+    vec2 dSTdx = dFdx(st);
+    vec2 dSTdy = dFdy(st);
+
+    // Get determinant and determinant sign of st matrix
+    float det = dot(dSTdx, vec2(dSTdy.y, -dSTdy.x));
+    float signDet = det < 0 ? -1 : 1;
+
+    // Get first column of inv st matrix
+    // Don't divide by det, but scale by its sign
+    vec2 invC0 = signDet * vec2(dSTdy.y, -dSTdx.y);
+
+    vec3 T = sigmaX * invC0.x + sigmaY * invC0.y;
+
+    if (abs(det) > 0) {
+        T = normalize(T);
+    }
+
+    vec3 B = (signDet * flipSign) * cross(N, T);
+
+    return mat3(T, B, N);
+}
+
+vec3
+ComputeTangentVector(vec3 P, vec3 N, vec2 st)
+{
+    mat3 TBN = ComputeTBNMatrix(P, N, st);
+    return TBN[0];
+}
+
+vec3
+PerturbNormal(vec3 P, vec3 N, vec2 st, vec3 Nt)
+{
+    mat3 TBN = ComputeTBNMatrix(P, N, st);
+    return normalize(TBN * Nt);
+}

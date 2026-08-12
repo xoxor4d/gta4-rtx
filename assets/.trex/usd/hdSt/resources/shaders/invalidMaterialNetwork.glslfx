@@ -1,0 +1,53 @@
+-- glslfx version 0.1
+
+//
+// Copyright 2023 Pixar
+//
+// Licensed under the terms set forth in the LICENSE.txt file available at
+// https://openusd.org/license.
+//
+
+--- This is what an import might look like.
+--- #import $TOOLS/hdSt/shaders/invalidMaterialNetwork.glslfx
+
+---
+--- The invalid shader is used as a replacement shader if the
+--- original material shader failed to compile. It needs to
+--- define both the surfaceShader() and displacementShader() terminals.
+---
+-- configuration
+{
+    "techniques": {
+        "default": {
+            "displacementShader": {
+                "source": [ "Invalid.Displacement" ]
+            },
+            "surfaceShader": {
+                "source": [ "Invalid.Surface" ]
+            }
+        }
+    }
+}
+
+--- --------------------------------------------------------------------------
+-- glsl Invalid.Surface
+
+vec4 surfaceShader(vec4 Peye, vec3 Neye, vec4 color, vec4 patchCoord)
+{
+    vec2 t = gl_FragCoord.xy;
+    float v = mod(round(t.x + t.y), 16.0);
+
+    const vec4 invalidColor = vec4(0.7, 0.3, 0.3, 1.0);
+    return mix(color, invalidColor, v);
+
+    // Alt look:
+    // Override the color to a bright red. Don't light it.
+    // return vec4(0.9, 0.0, 0.0, 1.0);
+}
+--- --------------------------------------------------------------------------
+-- glsl Invalid.Displacement
+
+vec4 displacementShader(int index, vec4 Peye, vec3 Neye, vec4 patchCoord)
+{
+    return Peye;
+}

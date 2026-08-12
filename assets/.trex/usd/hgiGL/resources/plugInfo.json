@@ -8,7 +8,7 @@
                     }
                 }
             },
-            "LibraryPath": "../../hgiGL.dll",
+            "LibraryPath": "../../usd_hgiGL.dll",
             "Name": "hgiGL",
             "ResourcePath": "resources",
             "Root": "..",

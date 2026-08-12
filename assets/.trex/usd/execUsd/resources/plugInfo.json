@@ -1,0 +1,15 @@
+{
+    "Plugins": [
+        {
+            "Info": {
+                "Types": {
+                }
+            },
+            "LibraryPath": "../../usd_execUsd.dll",
+            "Name": "execUsd",
+            "ResourcePath": "resources",
+            "Root": "..",
+            "Type": "library"
+        }
+    ]
+}
