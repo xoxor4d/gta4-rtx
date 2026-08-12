@@ -6069,12 +6069,9 @@ namespace gta4
 				ImGui::SetCursorScreenPos(spos);
 				m_devgui_custom_footer_content.clear();
 			}
-			
 
 			ImGui::SetCursorPos(ImVec2(cur_pos, ImGui::GetCursorPosY() /*+ 2.0f*/));
-			
 			if (ImGui::TextLink("[Demo]")) {
-			//if (ImGui::Button("Demo", ImVec2(50, 26))) {
 				im_demo_menu = !im_demo_menu;
 			}
 

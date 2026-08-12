@@ -129,8 +129,10 @@ namespace gta4
 		IgnoreBakedLighting = 1 << 21,
 		IgnoreTransparencyLayer = 1 << 22,
 		ParticleEmitter = 1 << 23,
-		DisableBackfaceCulling = 1 << 24,
-		Count = 24,
+		SmoothNormals = 1 << 24,
+		HairCards = 1 << 25,
+		DisableBackfaceCulling = 1 << 26,
+		Count = 26,
 		None = 0u
 	};
 
