@@ -995,11 +995,16 @@ namespace gta4
 				ImGui::Spacing(0, TREENODE_SPACING);
 
 				static float trans_val = 0.0f;
-				ImGui::SliderFloat("Absolute Val", &trans_val, -1.0f, 1.0f);
-				TT("-1 to disable absolute");
+				ImGui::SliderFloat("Absolute Val", &trans_val, 0.0f, 1.0f);
 
 				if (ImGui::Button("Apply Absolute Value", ImVec2(ImGui::CalcItemWidth(), 0))) {
 					bridge.SetGameValue("__weather.blend_absolute", std::to_string(trans_val).c_str());
+				}
+
+				if (ImGui::Button("Disable Absolute Mode", ImVec2(ImGui::CalcItemWidth(), 0))) 
+				{
+					bridge.SetGameValue("__weather.blend_absolute", "-1");
+					trans_val = -1.0f;
 				}
 
 				ImGui::Spacing(0, TREENODE_SPACING);
@@ -1017,29 +1022,29 @@ namespace gta4
 				}
 
 				ImGui::Spacing(0, TREENODE_SPACING);
-			ImGui::Separator();
-			ImGui::Spacing(0, TREENODE_SPACING);
+				ImGui::Separator();
+				ImGui::Spacing(0, TREENODE_SPACING);
 
-			static char str_buff[512] = {};
-			static uint32_t str_len = 0u;
+				static char str_buff[512] = {};
+				static uint32_t str_len = 0u;
 
-			bridge.GetGameValue("__weather.current", str_buff, ARRAYSIZE(str_buff), &str_len);
-			const std::string weather_current = str_buff;
+				bridge.GetGameValue("__weather.current", str_buff, ARRAYSIZE(str_buff), &str_len);
+				const std::string weather_current = str_buff;
 
-			bridge.GetGameValue("__weather.target", str_buff, ARRAYSIZE(str_buff), &str_len);
-			const std::string weather_target = str_buff;
+				bridge.GetGameValue("__weather.target", str_buff, ARRAYSIZE(str_buff), &str_len);
+				const std::string weather_target = str_buff;
 
-			bridge.GetGameValue("__weather.previous", str_buff, ARRAYSIZE(str_buff), &str_len);
-			const std::string weather_previous = str_buff;
+				bridge.GetGameValue("__weather.previous", str_buff, ARRAYSIZE(str_buff), &str_len);
+				const std::string weather_previous = str_buff;
 
-			bridge.GetGameValue("__weather.blend_absolute", str_buff, ARRAYSIZE(str_buff), &str_len);
-			const std::string weather_blend_absolute = str_buff;
+				bridge.GetGameValue("__weather.blend_absolute", str_buff, ARRAYSIZE(str_buff), &str_len);
+				const std::string weather_blend_absolute = str_buff;
 
-			bridge.GetGameValue("__weather.blend_progress", str_buff, ARRAYSIZE(str_buff), &str_len);
-			const std::string weather_blend_progress = str_buff;
+				bridge.GetGameValue("__weather.blend_progress", str_buff, ARRAYSIZE(str_buff), &str_len);
+				const std::string weather_blend_progress = str_buff;
 
-			ImGui::TextUnformatted(std::format("__weather.current: {}", weather_current).c_str());
-			ImGui::TextUnformatted(std::format("__weather.target: {}", weather_target).c_str());
+				ImGui::TextUnformatted(std::format("__weather.current: {}", weather_current).c_str());
+				ImGui::TextUnformatted(std::format("__weather.target: {}", weather_target).c_str());
 				ImGui::TextUnformatted(std::format("__weather.previous: {}", weather_previous).c_str());
 				ImGui::TextUnformatted(std::format("__weather.blend_absolute: {}", weather_blend_absolute).c_str());
 				ImGui::TextUnformatted(std::format("__weather.blend_progress: {}", weather_blend_progress).c_str());
