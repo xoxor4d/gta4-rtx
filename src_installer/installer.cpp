@@ -1691,16 +1691,21 @@ int main()
 			MOVEFILE_REPLACE_EXISTING))
 		{
 			std::cout << PAD << "Renamed 'comp_settings.toml' to 'comp_settings.toml.bak'\n";
-		}
-		Sleep(25);
+		} Sleep(25);
 
 		if (MoveFileExA(
 			(game_dir + "\\rtx.conf").c_str(),
 			(game_dir + "\\rtx.conf.bak").c_str(), MOVEFILE_REPLACE_EXISTING))
 		{
 			std::cout << PAD << "Renamed 'rtx.conf' to 'rtx.conf.bak'\n";
-		}
-		Sleep(25);
+		} Sleep(25);
+
+		if (MoveFileExA(
+			(game_dir + "\\user.conf").c_str(),
+			(game_dir + "\\user.conf.bak").c_str(), MOVEFILE_REPLACE_EXISTING))
+		{
+			std::cout << PAD << "Renamed 'user.conf' to 'user.conf.bak'\n";
+		} Sleep(25);
 
 		// --------------
 
