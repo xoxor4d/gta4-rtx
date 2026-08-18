@@ -580,17 +580,25 @@ bool extract_single_file_from_zip(const std::filesystem::path& zip_path, const s
 bool extract_zip(const std::filesystem::path& zip_path, const std::string& target_dir, const std::string& inner_folder = "")
 {
 	mz_zip_archive zip = {};
-	if (!init_zip_from_file(zip_path, zip)) {
+	if (!init_zip_from_file(zip_path, zip))
+	{
+		log_error("Failed to init zip."); 
 		return false;
 	}
 
 	bool result = true;
 	mz_uint file_count = mz_zip_reader_get_num_files(&zip);
-	
+
+	if (!file_count) {
+		log_error("Failed to get total amount of files in zip.");
+	}
+
 	for (mz_uint i = 0u; i < file_count; i++)
 	{
 		mz_zip_archive_file_stat stat;
-		if (!mz_zip_reader_file_stat(&zip, i, &stat)) {
+		if (!mz_zip_reader_file_stat(&zip, i, &stat)) 
+		{
+			log_error("Failed to read file info " + std::to_string(i) + "/" + std::to_string(file_count));
 			continue;
 		}
 
@@ -624,7 +632,6 @@ bool extract_zip(const std::filesystem::path& zip_path, const std::string& targe
 		catch (const std::exception&) 
 		{
 			log_error("Failed to create directory: " + out_path.parent_path().string());
-			MessageBoxA(nullptr, ("Failed to create directory: " + out_path.parent_path().string()).c_str(), "Error", MB_ICONERROR);
 			result = false;
 			continue;
 		}
@@ -635,8 +642,25 @@ bool extract_zip(const std::filesystem::path& zip_path, const std::string& targe
 
 		if (!mz_zip_reader_extract_to_file(&zip, i, out_path.string().c_str(), 0))
 		{
-			log_error("Failed to extract: " + std::string(stat.m_filename));
-			MessageBoxA(nullptr, ("Failed to extract: " + std::string(stat.m_filename)).c_str(), "Error", MB_ICONERROR);
+			const mz_zip_error error = mz_zip_get_last_error(&zip);
+			const char* error_string = mz_zip_get_error_string(error);
+
+			std::ostringstream log;
+			log << "Failed to extract ZIP entry\n"
+				<< "  index: " << i << "\n"
+				<< "  archive entry: " << stat.m_filename << "\n"
+				<< "  output path: " << out_path.string() << "\n"
+				<< "  miniz error: " << static_cast<int>(error)
+				<< " (" << (error_string ? error_string : "unknown") << ")\n"
+				<< "  compressed size: " << stat.m_comp_size << "\n"
+				<< "  uncompressed size: " << stat.m_uncomp_size << "\n"
+				<< "  compression method: " << stat.m_method << "\n"
+				<< "  flags: 0x" << std::hex << stat.m_bit_flag << std::dec << "\n"
+				<< "  CRC32: 0x" << std::hex << stat.m_crc32 << std::dec << "\n"
+				<< "  encrypted: " << (stat.m_is_encrypted ? "yes" : "no") << "\n"
+				<< "  supported: " << (stat.m_is_supported ? "yes" : "no");
+
+			log_error(log.str());
 			result = false;
 		}
 	}
@@ -1443,6 +1467,11 @@ int main()
 	
 	std::cout << PAD << "> Using Path: '" << game_dir << "'\n\n\n";
 
+	log_blue(true);
+	std::cout << PAD << "Note: The installer can only auto-update remix assets (textures/meshes).\n";
+	std::cout << PAD << "To update logic, you'll need to provide a newer 'GTAIV-Remix-CompatibilityMod-X.X.X.zip' file.\n\n";
+	log_default();
+
 	bool has_remix_comp_mod = file_exists(game_dir + "\\d3d9.dll") && file_exists(game_dir + "\\a_gta4-rtx.asi");
 
 	bool update_remote_mods_only = false;
@@ -1451,7 +1480,7 @@ int main()
 		const int reinstall_choice = select_console_option(
 			"RTX Remix Compatibility Mod was already detected. What do you want to do?",
 			{
-				"Full reinstall/update of the compatibility mod, base mod, and optional AutoPBR mod",
+				"Full reinstall of the compatibility mod, base mod, and optional AutoPBR mod",
 				"Only check for updates for the base remix mod and optional AutoPBR mod"
 			});
 
@@ -1511,7 +1540,7 @@ int main()
 				}
 			}
 
-			std::cout << "Using compatibility mod zip: " << found_zip.filename().string() << "\n";
+			std::cout << PAD << "Using compatibility mod zip: " << found_zip.filename().string() << "\n";
 		}
 
 		if (found_zip.empty())
@@ -1615,7 +1644,7 @@ int main()
 				else
 				{
 					log_yellow(true);
-					std::cout << "[WARN] Failed to extract RTXRemix FusionFix marker file.\n\n";
+					std::cout << PAD << "[WARN] Failed to extract RTXRemix FusionFix marker file.\n\n";
 					log_default();
 				}
 
@@ -1704,27 +1733,26 @@ int main()
 		log_default();
 
 		Sleep(100); // Small delay before extraction
+		bool zip_failed = false;
 
 		if (!extract_zip(found_zip, game_dir, "GTAIV-Remix-CompatibilityMod"))
 		{
-			log_error(
-				"Failed to extract 'GTAIV-Remix-CompatibilityMod' files from 'GTAIV-Remix-CompatibilityMod.zip'\n"
-				PAD_INL "> Please extract files manually.");
-
-			MessageBoxA(nullptr, "Something went wrong.\nCheck console.", "Error", MB_ICONERROR);
-			//return 0;
+			zip_failed = true;
+			MessageBoxA(nullptr, "Something went wrong when extracting the zip.\nCheck console.", "Error", MB_ICONERROR);
 		}
 
 		std::cout << PAD << "> Done!\n";
 
 		Sleep(100); // Small delay between extractions
 
-		if (!has_remix_comp_mod)
+		if (!has_remix_comp_mod && !zip_failed)
 		{
 			// extract fullscreen or windowed files
 			std::string windowed_or_fullscreen_path = fullscreen ? "_installer_options/mode_fullscreen/" : "_installer_options/mode_windowed/";
-			if (!extract_zip(found_zip, game_dir, windowed_or_fullscreen_path)) {
-				log_error("Failed to extract '" + windowed_or_fullscreen_path + "' files from 'GTAIV-Remix-CompatibilityMod.zip'");
+			if (!extract_zip(found_zip, game_dir, windowed_or_fullscreen_path)) 
+			{
+				zip_failed = true;
+				MessageBoxA(nullptr, "Something went wrong when extracting the zip.\nCheck console.", "Error", MB_ICONERROR);
 			}
 
 			Sleep(100); // Small delay before next operation
@@ -1741,7 +1769,7 @@ int main()
 					(game_dir + "\\update_originalFF").c_str(),
 					MOVEFILE_REPLACE_EXISTING))
 				{
-					std::cout << "Renamed 'update' folder to 'update_originalFF'\n";
+					std::cout << PAD << "Renamed 'update' folder to 'update_originalFF'\n";
 				}
 				Sleep(25);
 
@@ -1750,7 +1778,7 @@ int main()
 					(game_dir + "\\vulkan.dll.originalFF").c_str(),
 					MOVEFILE_REPLACE_EXISTING))
 				{
-					std::cout << "Renamed 'vulkan.dll' to 'vulkan.dll.originalFF'\n";
+					std::cout << PAD << "Renamed 'vulkan.dll' to 'vulkan.dll.originalFF'\n";
 				}
 				Sleep(25);
 
@@ -1759,7 +1787,7 @@ int main()
 					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.asi.originalFF").c_str(),
 					MOVEFILE_REPLACE_EXISTING))
 				{
-					std::cout << "Renamed 'GTAIV.EFLC.FusionFix.asi' to 'GTAIV.EFLC.FusionFix.asi.originalFF'\n";
+					std::cout << PAD << "Renamed 'GTAIV.EFLC.FusionFix.asi' to 'GTAIV.EFLC.FusionFix.asi.originalFF'\n";
 				}
 				Sleep(25);
 
@@ -1768,7 +1796,7 @@ int main()
 					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.cfg.originalFF").c_str(),
 					MOVEFILE_REPLACE_EXISTING))
 				{
-					std::cout << "Renamed 'GTAIV.EFLC.FusionFix.cfg' to 'GTAIV.EFLC.FusionFix.cfg.originalFF'\n";
+					std::cout << PAD << "Renamed 'GTAIV.EFLC.FusionFix.cfg' to 'GTAIV.EFLC.FusionFix.cfg.originalFF'\n";
 				}
 				Sleep(25);
 
@@ -1777,16 +1805,29 @@ int main()
 					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.ini.originalFF").c_str(),
 					MOVEFILE_REPLACE_EXISTING))
 				{
-					std::cout << "Renamed 'GTAIV.EFLC.FusionFix.ini' to 'GTAIV.EFLC.FusionFix.ini.originalFF'\n";
+					std::cout << PAD << "Renamed 'GTAIV.EFLC.FusionFix.ini' to 'GTAIV.EFLC.FusionFix.ini.originalFF'\n";
 				}
 				Sleep(25);
 			}
 
-			if (!extract_zip(found_zip, game_dir, "_installer_options/FusionFix_RTXRemixFork/")) {
-				log_error("Failed to extract '_installer_options/FusionFix_RTXRemixFork/' files from 'GTAIV-Remix-CompatibilityMod.zip'");
+			if (!zip_failed && !extract_zip(found_zip, game_dir, "_installer_options/FusionFix_RTXRemixFork/"))
+			{
+				zip_failed = true;
+				MessageBoxA(nullptr, "Something went wrong when extracting the zip.\nCheck console.", "Error", MB_ICONERROR);
 			}
 
-			std::cout << "> Extracted FusionFix RTX Remix Fork\n\n";
+			std::cout << PAD << "> Extracted FusionFix RTX Remix Fork\n\n";
+		}
+
+		if (zip_failed)
+		{
+			log_error("ZIP Extraction Errors -------- ");
+			log_default(true);
+			std::cout << PAD << "Please make sure to manually extract the Contents of '_installer_options/FusionFix_RTXRemixFork/' into your GTAIV folder.\n";
+			std::cout << PAD << "> Overwrite all when prompted\n\n";
+
+			std::cout << PAD << "If you are experiencing issues, try replacing your 'GTAIV.EFLC.FusionFix.cfg' with a cfg from 'mode_fullscreen' OR 'mode_windowed'.\n";
+			log_default();
 		}
 	}
 

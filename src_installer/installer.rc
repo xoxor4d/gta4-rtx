@@ -22,8 +22,8 @@
 //
 
 1 VERSIONINFO
- FILEVERSION 1,3,2,0
- PRODUCTVERSION 1,3,2,0
+ FILEVERSION 1,4,3,0
+ PRODUCTVERSION 1,4,3,0
  FILEFLAGSMASK 0x0L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -41,12 +41,12 @@ BEGIN
             VALUE "Comments", "Installer for GTAIV RTX Remix Compatibility Mod"
             VALUE "CompanyName", "#xoxor4d"
             VALUE "FileDescription", "GTAIV RTX Remix Compatibility Mod Installer"
-            VALUE "FileVersion", "1.3.2.0"
+            VALUE "FileVersion", "1.4.3.0"
             VALUE "InternalName", "GTAIV-Remix-CompMod-Installer"
             VALUE "LegalCopyright", "Copyright (C) #xoxor4d"
             VALUE "OriginalFilename", "GTAIV-Remix-CompMod-Installer.exe"
             VALUE "ProductName", "GTAIV RTX Remix Compatibility Mod"
-            VALUE "ProductVersion", "1.3.2.0"
+            VALUE "ProductVersion", "1.4.3.0"
         END
     END
     BLOCK "VarFileInfo"
