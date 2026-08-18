@@ -21,12 +21,20 @@
 
 <br>
 
+> [!TIP]
+> You can re-run the installer at any time and choose to only check for **remix-base-mod** or **AutoPBR** updates.  
+> If you've used the `GIT` installation method, it will do delta updates and pull the latest changes. 
+> The base mod (textures/meshes) is getting constant updates which are not coupled to Compatibility Mod releases.
+
+<br>
+
 ### OR Install manually (no need to do this if you've used the installer):
 1. Download <LINK_TO_MOD_ZIP>
 
 3. Open the zip and extract all files contained inside the `GTAIV-Remix-CompatibilityMod` folder into your GTAIV directory (next to the `GTAIV.exe`). Overwrite all when prompted.
 4. If you want to use FusionFix or have it installed already, it's definitely recommended to install rtx-remix fork of it.  
-You can find the files inside `_installer_options/FusionFix_RTXRemixFork`. Extract the `plugins` & `update` into your GTAIV directory and override any existing files.
+You can find the files inside `_installer_options/FusionFix_RTXRemixFork`. Extract the `plugins` & `update` into your GTAIV directory and override any existing files.  
+You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen/plugins` or `mode_windowed/plugins`.
 
 5. Download [gta4-rtx-base-mod](https://github.com/xoxor4d/gta4-rtx-base-mod/archive/refs/heads/master.zip) 
 6. Extract the _mods_ folder (inside of `gta4-rtx-base-mod-master`) into your `rtx-remix` folder so that the folder structure looks like this:
@@ -61,16 +69,22 @@ You can find the files inside `_installer_options/FusionFix_RTXRemixFork`. Extra
 > - Press `Alt + X` to open the Remix menu  
 > - Press `F4` to open the Compatibility Mod menu
 
+### Toggling the Sky System
+- Press `F4` and toggle `Use Remix Atmosphere System`
+
 <br>
-
-> [!Important]
-> **Troubleshooting / Guides** -- Look into the **Wiki** if you are having issues:  
-> https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides
-
 <br>
 
 > [!NOTE]  
+> **Troubleshooting / Guides** -- Look into the **Wiki** if you are having issues:  
+> https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides
+
 > The release includes a custom remix runtime build that contains a few necessary changes. Info about the changes can be found here:  
 > https://github.com/xoxor4d/gta4-rtx/wiki#remix-runtime-changes-and-differences-in-usage
 
+---
+
+> [!Important]
+> Installer False-Positive: If you get a false positive on the installer, download and use the Installer that shipped with  
+[1.3.2](https://github.com/xoxor4d/gta4-rtx/releases/download/v1.3.2/GTAIV-Remix-CompMod-Installer.exe) or the one shipped with [1.4.0](https://github.com/xoxor4d/gta4-rtx/releases/download/v1.4.0/GTAIV-Remix-CompMod-Installer.exe)
 

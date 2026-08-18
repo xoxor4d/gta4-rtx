@@ -42,15 +42,15 @@ First and foremost, __this is not a remaster__. It is a mod that allows the game
 
 <br>
 
-RTX Remix has a certain overhead because of how it works and intercepts the game's draw calls  
-and are obvious drawbacks and things that will not work with such a new title. So don't expect this to be perfect.  
+RTX Remix has a certain overhead because of how it works and intercepts the game's draw calls and   
+there are obvious drawbacks and things that will not work with such a new title. Don't expect this to be perfect.  
 
 You'll likely experience a CPU bottleneck because of the amount of detailed meshes the game is rendering.  
 This means that the performance you'll see in certain places is not entirely due to pathtracing.  
 
 <br>
 
-The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4_atmos9) required for a few game specific features,   
+The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4_atmos10) required for a few game specific features,   
 with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/tag/v9.0.0) to load the Compatibility Mod itself and a custom fork of [FusionFix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix) tailored for RTX-Remix.
 
 </div>
@@ -96,12 +96,11 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 
 <br>
 
-## Installing
+## Installing the Mod
 - Grab the latest [Release](https://github.com/xoxor4d/gta4-rtx/releases) and follow the instructions found there
 
 
-
-## Uninstalling
+## Uninstalling the Mod
 - Delete `d3d9.dll` and `a_gta4-rtx.asi` or use the provided `_toggle-gta4-rtx.bat` to quickly toggle RTX-Remix
 - Some other minor files remain in the updates folder (mainly `.img` files starting with `1__remix ..`)
 - Re-install the official FusionFix mod if you used the custom Fork
