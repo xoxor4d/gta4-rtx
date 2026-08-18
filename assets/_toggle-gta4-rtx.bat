@@ -1,27 +1,45 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-REM
-set "DLL1=d3d9.dll"
-set "DLL2=a_gta4-rtx.asi"
+:: ============================================================
+:: Files to be toggled
 
-REM check current status of files
+set "FILE[1]=d3d9.dll"
+set "FILE[2]=a_gta4-rtx.asi"
+set "FILE[3]=update\1__remix_fixes.img"
+set "FILE[4]=update\1__remix_light_tweaks.img"
+
+set "FILECOUNT=4"
+
+:: ============================================================
+:: Check current status
+:: first two files are used to determine status
+
 set "STATUS=unknown"
-if exist "%DLL1%" if exist "%DLL2%" set "STATUS=enabled"
-if exist "%DLL1%.REMIX_OFF" if exist "%DLL2%.REMIX_OFF" set "STATUS=disabled"
+
+if exist "!FILE[1]!" if exist "!FILE[2]!" (
+    set "STATUS=enabled"
+)
+
+if exist "!FILE[1]!.REMIX_OFF" if exist "!FILE[2]!.REMIX_OFF" (
+    set "STATUS=disabled"
+)
 
 echo Current mod status: %STATUS%
 echo.
 
-REM
+:: ============================================================
+:: Inconsistent state handling
+
 if "%STATUS%"=="unknown" (
-    echo Error: DLL files are in an inconsistent state.
-    echo Please ensure both files exist with either .dll or .dll.REMIX_OFF extensions.
-    pause
-    exit /b
+    echo Error: Files are in an inconsistent state.
+    echo Disabling Mod.
+    set "STATUS=enabled"
 )
 
-REM
+:: ============================================================
+:: Prompt
+
 if "%STATUS%"=="enabled" (
     set "QUESTION=Would you like to disable the mod? (y/n)"
     set "ACTION=disable"
@@ -32,21 +50,52 @@ if "%STATUS%"=="enabled" (
 
 :PROMPT
 set "CHOICE="
-set /p CHOICE="%QUESTION% "
-if /i "%CHOICE%"=="y" goto :PROCESS
-if /i "%CHOICE%"=="n" goto :EXIT
+set /p "CHOICE=%QUESTION% "
+
+if /i "%CHOICE%"=="y" goto PROCESS
+if /i "%CHOICE%"=="n" goto EXIT
+
 echo Please enter y or n
-goto :PROMPT
+goto PROMPT
+
+:: ============================================================
+:: Toggle
 
 :PROCESS
+
 if "%ACTION%"=="disable" (
-    ren "%DLL1%" "d3d9.dll.REMIX_OFF"
-    ren "%DLL2%" "a_gta4-rtx.asi.REMIX_OFF"
-    echo Mod has been disabled
-) else (
-    ren "%DLL1%.REMIX_OFF" "d3d9.dll"
-    ren "%DLL2%.REMIX_OFF" "a_gta4-rtx.asi"
-    echo Mod has been enabled
+    for /L %%I in (1,1,%FILECOUNT%) do (
+        set "FILE=!FILE[%%I]!"
+
+        for %%F in ("!FILE!") do (
+            if exist "!FILE!" (
+                ren "!FILE!" "%%~nxF.REMIX_OFF"
+            )
+        )
+    )
+
+    echo.
+    echo Mod has been disabled.
+    goto EXIT
+)
+
+if "%ACTION%"=="enable" (
+    for /L %%I in (1,1,%FILECOUNT%) do (
+        set "FILE=!FILE[%%I]!"
+
+        if exist "!FILE!.REMIX_OFF" (
+            for %%F in ("!FILE!.REMIX_OFF") do (
+                set "NAME=%%~nxF"
+                set "NAME=!NAME:.REMIX_OFF=!"
+
+                ren "!FILE!.REMIX_OFF" "!NAME!"
+            )
+        )
+    )
+
+    echo.
+    echo Mod has been enabled.
+    goto EXIT
 )
 
 :EXIT
