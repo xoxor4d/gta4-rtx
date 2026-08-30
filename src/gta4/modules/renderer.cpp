@@ -2167,7 +2167,7 @@ namespace gta4
 
 				if (!using_dev_cat) {*/
 					// IgnoreTransparencyLayer to fix z fighting
-					renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap | InstanceCategories::IgnoreTransparencyLayer);
+					renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap /*| InstanceCategories::IgnoreTransparencyLayer*/);
 				//}
 			}
 

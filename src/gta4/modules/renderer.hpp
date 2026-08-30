@@ -127,12 +127,11 @@ namespace gta4
 		ThirdPersonPlayerModel = 1 << 19,
 		ThirdPersonPlayerBody = 1 << 20,
 		IgnoreBakedLighting = 1 << 21,
-		IgnoreTransparencyLayer = 1 << 22,
-		ParticleEmitter = 1 << 23,
-		SmoothNormals = 1 << 24,
-		HairCards = 1 << 25,
-		DisableBackfaceCulling = 1 << 26,
-		Count = 26,
+		ParticleEmitter = 1 << 22,
+		SmoothNormals = 1 << 23,
+		HairCards = 1 << 24,
+		DisableBackfaceCulling = 1 << 25,
+		Count = 25,
 		None = 0u
 	};
 

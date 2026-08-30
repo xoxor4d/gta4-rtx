@@ -109,7 +109,7 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, (InstanceCategories)(1 << im->m_dbg_tag_static_emissive_as_index));
 			}
 			else if (im->m_dbg_emissive_ff_worldui_ignore_alpha) {
-				renderer::set_remix_texture_categories(dev, InstanceCategories::WorldUI | InstanceCategories::IgnoreTransparencyLayer);
+				renderer::set_remix_texture_categories(dev, InstanceCategories::WorldUI /*| InstanceCategories::IgnoreTransparencyLayer*/);
 			}
 			else if (im->m_dbg_render_emissives_with_shaders_tag_as_decal) {
 				renderer::set_remix_texture_categories(dev, InstanceCategories::WorldUI /*InstanceCategories::DecalStatic*/);
@@ -320,9 +320,9 @@ namespace gta4
 				}
 			}
 
-			else if (im->m_dbg_emissive_ff_alphablend_test1) {
+			/*else if (im->m_dbg_emissive_ff_alphablend_test1) {
 				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer);
-			}
+			}*/
 
 			// TODO? HACK against flickering?
 			if (ctx.info.shaderconst_emissive_intensity < 0.0f)
