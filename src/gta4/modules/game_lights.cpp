@@ -194,17 +194,57 @@ namespace gta4
 			const static auto rtx_atmosphere_moon0_elevation = remix_vars::get_option("rtx.atmosphere.moon0.elevation0");
 			const static auto rtx_atmosphere_moon0_rotation = remix_vars::get_option("rtx.atmosphere.moon0.rotation0");
 
+			// notes:
+			// - game combines sun + moon into a single light
+			// - game light never reaches horizon, instead starts to rotate, changes color (moon) and increase elevation again
+			// - we need to manually animate this timeframe for sunrise and sunset and pull down the sun elevation to reach night state
+			// - we re-use game light direction for the moon more or less directly
+
 			if (rtx_atmosphere_sunElevation && rtx_atmosphere_sunRotation && rtx_atmosphere_moon0_elevation && rtx_atmosphere_moon0_rotation)
 			{
-				float sun_elevation = RAD2DEG(std::asin(dir.z));
-				float sun_rotation = RAD2DEG(std::atan2(dir.x, dir.y));
-				if (sun_rotation < 0.0f) {
-					sun_rotation += 360.0f;
+				float game_sun_elevation = RAD2DEG(std::asin(dir.z));
+				float game_sun_rotation = RAD2DEG(std::atan2(dir.x, dir.y));
+				if (game_sun_rotation < 0.0f) {
+					game_sun_rotation += 360.0f;
 				}
 
 				const int& hour = *game::m_game_clock_hours;
 				const int& minute = *game::m_game_clock_minutes;
 				const int& seconds = *game::m_game_clock_seconds;
+
+				// sunset normal
+				constexpr auto t_sunset_start = 20.0f;					// t when we start pushing sun down towards horizon
+				constexpr auto t_sunset_end = 21.00f;					// t when sun reaches slow sunset mode
+				constexpr auto deg_sunset_end = 7.0f;					// deg when t = t_sunset_end
+
+				// sunset slow
+				constexpr auto t_sunset_slowdown_until = 21.75f;		// t when slow sunset ends
+				constexpr auto deg_sunset_slowdown_end = -5.0f;			// deg when t = t_sunset_slowdown_until
+				constexpr auto t_sunset_post = 23.0f;					// t when sun reaches -90deg
+
+				// sunrise 
+				constexpr auto t_sunrise_prepare = 3.0f;				// t when sun starts to move from -90deg towards horizon
+
+				// sunrise slow
+				constexpr auto t_sunrise_start = 5.0f;					// t when slow sunrise starts
+				constexpr auto deg_sunrise_start = -2.0f;				// deg when t = t_sunrise_start
+				constexpr auto t_sunrise_slowdown_until = 6.0f;			// t when slow sunrise ends
+				constexpr auto t_sunrise_end = 8.0f;					// t when sun equals game sun altitude
+				constexpr auto deg_sunrise_slowdown_end = 8.0f;			// deg when t = t_sunrise_slowdown_until
+
+				// --
+
+				// save position where moon is at lowest possible altitude before it contintues to only move horizontally
+				static float moon_sunrise_5h15m_altitude = 0.0f;
+				if (hour == 5 && minute == 15 && seconds < 2) {
+					moon_sunrise_5h15m_altitude = game_sun_elevation;
+				}
+
+				// save sun rotation val when we hold the sun near the horizon at sunset (t_sunset_end)
+				static float sun_sunset_21h00m_rotation = 0.0f;
+				if (hour == 21 && minute == 00 && seconds < 2) {
+					sun_sunset_21h00m_rotation = game_sun_rotation;
+				}
 
 				auto lerp = [](const float& a, const float& b, const float& t) -> float {
 						return a + (b - a) * t;
@@ -212,42 +252,71 @@ namespace gta4
 
 				auto get_sun_elevation = [lerp](const float& t, const float daytime_return_val)
 					{
-						// sunset: 20h → 21h (30 → 0)
-						if (t >= 20.0f && t < 21.0f) {
-							return lerp(30.0f, 0.0f, (t - 20.0f) / 1.0f);
+						// sunset: pull sun towards horizon
+						if (t >= t_sunset_start && t < t_sunset_end) {
+							return lerp(daytime_return_val, deg_sunset_end, (t - t_sunset_start) / (t_sunset_end - t_sunset_start));
 						}
 
-						// 21h → 23h (0 → -90)
-						if (t >= 21.0f && t < 23.0f) {
-							return lerp(0.0f, -90.0f, (t - 21.0f) / 2.0f);
+						// sunset: slow down
+						if (t >= t_sunset_end && t < t_sunset_slowdown_until) {
+							return lerp(deg_sunset_end, deg_sunset_slowdown_end, (t - t_sunset_end) / (t_sunset_slowdown_until - t_sunset_end));
 						}
 
-						// plateau: 23h → 3h (-90 flat)
-						if (t >= 23.0f || t < 3.0f) {
+						// pull down sun elevation to -90
+						if (t >= t_sunset_slowdown_until && t < t_sunset_post) {
+							return lerp(deg_sunset_slowdown_end, -90.0f, (t - t_sunset_slowdown_until) / (t_sunset_post - t_sunset_slowdown_until));
+						}
+
+						// plateau at -90
+						if (t >= t_sunset_post || t < t_sunrise_prepare) {
 							return -90.0f;
 						}
 
-						// 3h → 6h (-90 → 0)
-						if (t >= 3.0f && t < 6.0f) {
-							return lerp(-90.0f, 0.0f, (t - 3.0f) / 3.0f);
+						// sunrise prepare
+						if (t >= t_sunrise_prepare && t < t_sunrise_start) {
+							return lerp(-90.0f, deg_sunrise_start, (t - t_sunrise_prepare) / (t_sunrise_start - t_sunrise_prepare));
 						}
 
-						// sunrise: 6h → 7h (0 → 30)
-						if (t >= 6.0f && t < 7.0f) {
-							return lerp(0.0f, 30.0f, (t - 6.0f) / 1.0f);
+						// sunrise: slow
+						if (t >= t_sunrise_start && t < t_sunrise_slowdown_until) {
+							return lerp(deg_sunrise_start, deg_sunrise_slowdown_end, (t - t_sunrise_start) / (t_sunrise_slowdown_until - t_sunrise_start));
 						}
 
-						// in out between 7 → 20
+						// sunrise
+						if (t >= t_sunrise_slowdown_until && t < t_sunrise_end) {
+							return lerp(deg_sunrise_slowdown_end, daytime_return_val, (t - t_sunrise_slowdown_until) / (t_sunrise_end - t_sunrise_slowdown_until));
+						}
+
+						// in = out otherwise
 						return daytime_return_val;
 					};
 
-				float moon_elevation = sun_elevation;
+				auto get_moon_elevation = [lerp](const float& t, const float elevation_return_val)
+					{
+						constexpr auto t_moonset_start = 5.25f;
+						constexpr auto t_moonset_end = 7.0f;
+
+						// sunrise: t_sunrise_start → t_moonset_end (0 → 30)
+						if (t >= t_moonset_start && t < t_moonset_end) {
+							return lerp(moon_sunrise_5h15m_altitude, -15.0f, (t - t_moonset_start) / (t_moonset_end - t_moonset_start));
+						}
+
+						// in out at all other times
+						return elevation_return_val;
+					};
 
 				float t = static_cast<float>(hour)
 						+ static_cast<float>(minute) / 60.0f
 						+ static_cast<float>(seconds) / 3600.0f;
 
-				sun_elevation = get_sun_elevation(t, sun_elevation);
+				const float sun_elevation = get_sun_elevation(t, game_sun_elevation);
+				float sun_rotation = game_sun_rotation;
+
+				// we hold the numos sun near horizon to get a longer sunset but the game light starts to rotate
+				// (because it starts to act as the moon) so we need to lock the rotation here
+				if (t >= t_sunset_end && t < t_sunset_slowdown_until) {
+					sun_rotation = sun_sunset_21h00m_rotation;
+				}
 
 				if (shared::globals::imgui_menu_open)
 				{
@@ -268,6 +337,8 @@ namespace gta4
 
 				if (hour >= 20 || hour <= 6)
 				{
+					float moon_elevation = get_moon_elevation(t, game_sun_elevation);
+
 					// directional light past 21 = moon
 					const auto& v3 = remix_vars::string_to_option_value(remix_vars::OPTION_TYPE_FLOAT, std::to_string(moon_elevation));
 					remix_vars::get()->add_interpolate_entry(rtx_atmosphere_moon0_elevation, v3, UPDATE_DELAY);
