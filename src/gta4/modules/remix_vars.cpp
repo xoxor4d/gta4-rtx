@@ -133,9 +133,10 @@ namespace gta4
 	 * @param v					variable will be set to this value 
 	 * @param is_level_setting	update the reset_level value (used if reset_option() is called with reset_to_level_state)
 	 * @param always			set this option even if the last state equals the new state (value might have changed on remix side - user or programmatically)
-	 * @return					true if successfull
+	 * @param for_user_layer	options are usually set on the derived layer (below user) which might prevent some settings from being set -> set to true to set them on the user layer
+	* @return					true if successfull
 	 */
-	bool remix_vars::set_option(option_handle o, const option_value& v, const bool is_level_setting, const bool always)
+	bool remix_vars::set_option(option_handle o, const option_value& v, const bool is_level_setting, const bool always, bool for_user_layer)
 	{
 		if (o && shared::common::remix_api::is_initialized())
 		{
@@ -156,27 +157,27 @@ namespace gta4
 				o->second.reset_level = v;
 			}
 
-			std::string var_str;
+			std::string var_str = for_user_layer ? "user " : "";
 			switch(o->second.type)
 			{
 			case OPTION_TYPE_BOOL:
-				var_str = v.enabled ? "True" : "False";
+				var_str += v.enabled ? "True" : "False";
 				o->second.modified = o->second.current.enabled != o->second.reset.enabled;
 				break;
 			case OPTION_TYPE_INT:
-				var_str = std::to_string(v.integer);
+				var_str += std::to_string(v.integer);
 				o->second.modified = o->second.current.integer != o->second.reset.integer;
 				break;
 			case OPTION_TYPE_FLOAT:
-				var_str = std::to_string(v.value);
+				var_str += std::to_string(v.value);
 				o->second.modified = o->second.current.value != o->second.reset.value;
 				break;
 			case OPTION_TYPE_VEC2:
-				var_str = std::to_string(v.vector[0]) + ", " + std::to_string(v.vector[1]);
+				var_str += std::to_string(v.vector[0]) + ", " + std::to_string(v.vector[1]);
 				o->second.modified = o->second.current.vector[0] != o->second.reset.vector[0] || o->second.current.vector[1] != o->second.reset.vector[1];
 				break;
 			case OPTION_TYPE_VEC3:
-				var_str = std::to_string(v.vector[0]) + ", " + std::to_string(v.vector[1]) + ", " + std::to_string(v.vector[2]);
+				var_str += std::to_string(v.vector[0]) + ", " + std::to_string(v.vector[1]) + ", " + std::to_string(v.vector[2]);
 				o->second.modified = o->second.current.vector[0] != o->second.reset.vector[0] || o->second.current.vector[1] != o->second.reset.vector[1] || o->second.current.vector[2] != o->second.reset.vector[2];
 				break;
 			case OPTION_TYPE_NONE:
