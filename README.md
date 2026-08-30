@@ -59,6 +59,8 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 <br>
 
 ###### The good:  
+- **DLSS 4.5 (Ray Reconstruction 2) support**
+- **DLSS 5.0 (Neural Rendering) support (if you provide the necessary dll)**
 - Most objects rendered via fixed function to increase performance (compared to grabbing data from Vertexshaders)
 - Cascaded anti culling of meshes
 - All game lights (including the sun) are translated to remix lights

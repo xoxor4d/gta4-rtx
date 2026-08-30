@@ -21,6 +21,14 @@
 
 <br>
 
+> [!IMPORTANT]
+> If you want to use DLSS 5 (NR), you'll need to source and place `nvngx_dlssnr.dll` into the `.trex` folder on your own.  
+> You can then use the NR settings found within the Post-Processing tab (Alt+X - Advanced Menu) 
+
+![img](img/dlssnr.jpg)
+
+<br>
+
 > [!TIP]
 > You can re-run the installer at any time and choose to only check for **remix-base-mod** or **AutoPBR** updates.  
 > If you've used the `GIT` installation method, it will do delta updates and pull the latest changes. 

@@ -19,7 +19,7 @@
       "LibraryPath": "RemixCategories.dll",
       "Name": "RemixCategories",
       "ResourcePath": ".",
-      "Root": "./../",
+      "Root": "..",
       "Type": "library"
     }
   ]
