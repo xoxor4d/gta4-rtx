@@ -1248,8 +1248,8 @@ namespace gta4
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",
 				("Scale alpha of gta_rmptfx_litsprite"),
-				"1.3.0",
-				1.0f
+				"1.5.1",
+				1.5f
 			};
 
 			variable rain_particle_system_enabled =
