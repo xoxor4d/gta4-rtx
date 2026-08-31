@@ -480,8 +480,8 @@ namespace gta4
 				"remix_override_rtxdi_samplecount",
 				("Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start.\n"
 				 "Setting this value to anything greater 0 constantly sets the remix variable with this value."),
-				"1.3.0",
-				60
+				"1.5.1",
+				64
 			};
 
 			variable remix_var_queue_frame_timeout = {

@@ -2512,7 +2512,7 @@ namespace gta4
 		ImGui::SeparatorText(" Remix ");
 		ImGui::Spacing(0, 4);
 
-		compsettings_int_widget("RTXDI Initial Sample Count Override", gs->remix_override_rtxdi_samplecount, 0, 60, 0.01f);
+		compsettings_int_widget("RTXDI Initial Sample Count Override", gs->remix_override_rtxdi_samplecount, 0, 64, 0.01f);
 		compsettings_int_widget("RemixVar Set FrameTimeout", gs->remix_var_queue_frame_timeout, 0, 60);
 
 		ImGui::Spacing(0, 4);
