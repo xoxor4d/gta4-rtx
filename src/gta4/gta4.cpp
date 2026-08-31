@@ -100,9 +100,9 @@ namespace gta4
 		}
 
 		// called in remix_vars::on_client_frame() otherwise
-		if (!comp_settings::get()->timecycle_set_on_endscene.get_as<bool>()) {
+		/*if (!comp_settings::get()->timecycle_set_on_endscene.get_as<bool>()) {
 			timecycle::translate_and_apply_timecycle_settings();
-		}
+		}*/
 	}
 
 	// ----

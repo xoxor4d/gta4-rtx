@@ -2108,13 +2108,13 @@ namespace gta4
 			if (const auto skyMode = remix_vars::get_option("rtx.skyMode"); skyMode)
 			{
 				remix_vars::option_value val { .value = state ? 1.0f : 0.0f };
-				remix_vars::get()->add_interpolate_entry(skyMode, val, 0.1f);
+				remix_vars::get()->add_queue_entry(skyMode, val, 0.1f);
 			}
 
 			if (const auto tempResampling = remix_vars::get_option("rtx.volumetrics.enableTemporalResampling"); tempResampling)
 			{
 				remix_vars::option_value val { .enabled = state };
-				remix_vars::get()->add_interpolate_entry(tempResampling, val, 0.1f);
+				remix_vars::get()->add_queue_entry(tempResampling, val, 0.1f);
 			}
 		}
 	}
@@ -2513,6 +2513,7 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		compsettings_int_widget("RTXDI Initial Sample Count Override", gs->remix_override_rtxdi_samplecount, 0, 60, 0.01f);
+		compsettings_int_widget("RemixVar Set FrameTimeout", gs->remix_var_queue_frame_timeout, 0, 60);
 
 		ImGui::Spacing(0, 4);
 	}

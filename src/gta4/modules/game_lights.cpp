@@ -326,14 +326,11 @@ namespace gta4
 					im->m_dbg_vis_sun_frame_count++;
 				}
 
-				const auto frametime_s = remix_vars::get()->get_frametime() * 0.001f; // ms to s - min delay by frametime
-				const auto UPDATE_DELAY = 0.1f + frametime_s;
-
 				const auto& v1 = remix_vars::string_to_option_value(remix_vars::OPTION_TYPE_FLOAT, std::to_string(sun_elevation));
-				remix_vars::get()->add_interpolate_entry(rtx_atmosphere_sunElevation, v1, UPDATE_DELAY);
+				remix_vars::get()->add_queue_entry(rtx_atmosphere_sunElevation, v1);
 
 				const auto& v2 = remix_vars::string_to_option_value(remix_vars::OPTION_TYPE_FLOAT, std::to_string(sun_rotation));
-				remix_vars::get()->add_interpolate_entry(rtx_atmosphere_sunRotation, v2, UPDATE_DELAY);
+				remix_vars::get()->add_queue_entry(rtx_atmosphere_sunRotation, v2);
 
 				if (hour >= 20 || hour <= 6)
 				{
@@ -341,8 +338,8 @@ namespace gta4
 
 					// directional light past 21 = moon
 					const auto& v3 = remix_vars::string_to_option_value(remix_vars::OPTION_TYPE_FLOAT, std::to_string(moon_elevation));
-					remix_vars::get()->add_interpolate_entry(rtx_atmosphere_moon0_elevation, v3, UPDATE_DELAY);
-					remix_vars::get()->add_interpolate_entry(rtx_atmosphere_moon0_rotation, v2, UPDATE_DELAY);
+					remix_vars::get()->add_queue_entry(rtx_atmosphere_moon0_elevation, v3);
+					remix_vars::get()->add_queue_entry(rtx_atmosphere_moon0_rotation, v2);
 				}
 			}
 		}

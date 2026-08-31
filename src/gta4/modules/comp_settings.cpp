@@ -171,6 +171,7 @@ namespace gta4
 				ASSIGN(manual_game_resolution);
 				ASSIGN(load_colormaps_only);
 				ASSIGN(remix_override_rtxdi_samplecount);
+				ASSIGN(remix_var_queue_frame_timeout);
 				
 				// culling related settings
 				ASSIGN(nocull_dist_near_static);
@@ -283,7 +284,7 @@ namespace gta4
 				ASSIGN(rain_particle_system_enabled);
 
 				// timecycle related settings
-				ASSIGN(timecycle_set_on_endscene);
+				//ASSIGN(timecycle_set_on_endscene);
 				ASSIGN(timecycle_use_remix_atmos_system);
 				ASSIGN(timecycle_wetness_enabled);
 				ASSIGN(timecycle_wetness_world_scalar);

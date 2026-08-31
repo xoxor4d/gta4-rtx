@@ -132,24 +132,14 @@ namespace gta4
 	 * @param o					handle into the options map
 	 * @param v					variable will be set to this value 
 	 * @param is_level_setting	update the reset_level value (used if reset_option() is called with reset_to_level_state)
-	 * @param always			set this option even if the last state equals the new state (value might have changed on remix side - user or programmatically)
 	 * @param for_user_layer	options are usually set on the derived layer (below user) which might prevent some settings from being set -> set to true to set them on the user layer
-	* @return					true if successfull
+	 * @return					true if successfull
 	 */
-	bool remix_vars::set_option(option_handle o, const option_value& v, const bool is_level_setting, const bool always, bool for_user_layer)
+	bool remix_vars::set_option(option_handle o, const option_value& v, const bool is_level_setting, bool for_user_layer)
 	{
 		if (o && shared::common::remix_api::is_initialized())
 		{
 			std::unique_lock lock(get()->mutex_);
-
-			if (!always && o->second.current.compare(o->second.type, v, 0.01f))
-			{
-				if (imgui::get()->m_dbg_debug_single_frame_timecycle_remix_vars) {
-					shared::common::log("RemixVars", std::format("Not setting {} because value did not change (- enough).", o->first));
-				}
-
-				return false;
-			}
 
 			o->second.current = v;
 
@@ -383,7 +373,7 @@ namespace gta4
 	 * Parses a .conf within the specified directory and sets to contained values
 	 * @param sub_dir				config name without extension
 	 * @param file_name				name of config without extension
-	 * @param delay					delay transition start (in seconds)
+	 * @param delay					delay before the option is set (in seconds)
 	 */
 	void remix_vars::parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name, const float delay)
 	{
@@ -410,8 +400,8 @@ namespace gta4
 					if (const auto o = get_option(pair[0].c_str()); o)
 					{
 						const auto& v = string_to_option_value(o->second.type, pair[1]);
-						remix_vars::get()->add_interpolate_entry(o, v, delay);
-						//DEBUG_PRINT("[VAR-LERP] Start lerping var: %s to: %s\n", o->first.c_str(), pair[1].c_str());
+						remix_vars::get()->add_queue_entry(o, v, delay);
+						//DEBUG_PRINT("[VAR-SET] Queue var: %s to: %s\n", o->first.c_str(), pair[1].c_str());
 					}
 				}
 			}
@@ -424,21 +414,22 @@ namespace gta4
 
 
 	// #
-	// Interpolation
+	// Delayed option sets
 
 	 /**
-	  * Adds a remix var (option) to the interpolation stack and linearly interpolates it
-	  *	@param identifier				unique identifier so one can check if it exists within the interpolate_stack
+	  * Queues a remix var (option) to be set after an optional delay.
+	  * Per-option frame timeout (comp_settings::remix_var_interpolation_frame_timeout) may reject the add
+	  * if the same option was accepted on a previous frame within the timeout. Multiple adds of the same
+	  * option in the same frame are allowed.
 	  * @param handle					handle of remix var option in the options map (can be nullptr if 'remix_var_name' is used instead)
-	  * @param goal						transition goal
-	  * @param duration					duration of the transition (in seconds)
-	  * @param delay					delay transition start (seconds)
-	  *	@param delay_transition_back	delay between end of transition and transition back to the initial starting value (in seconds) - only active if value > 0
-	  * @param ease						[EASE_TYPE] ease mode
+	  * @param goal						value to set
+	  * @param delay					delay before the option is set (seconds); 0 applies immediately
+	  * @param always					set even if the cached value already matches the goal (Remix may have changed it)
+	  * @param epsilon					skip the API write when !always and the cached value is within this epsilon of the goal
 	  * @param remix_var_name			can be used if handle = nullptr
-	  * @return
+	  * @return							true if the entry was accepted (queued or applied)
 	  */
-	bool remix_vars::add_interpolate_entry(option_handle handle, const option_value& goal, const float delay, const std::string& remix_var_name)
+	bool remix_vars::add_queue_entry(option_handle handle, const option_value& goal, const float delay, const bool always, const float epsilon, const std::string& remix_var_name)
 	{
 		std::unique_lock lock(get()->mutex_);
 
@@ -449,30 +440,54 @@ namespace gta4
 				return false;
 			}
 
-			h = remix_vars::get()->get_option(remix_var_name);
+			// look up under the lock we already hold (get_option would deadlock on mutex_)
+			if (const auto it = get()->options.find(remix_var_name); it != get()->options.end()) {
+				h = &*it;
+			}
 		}
 
-		if (h)
+		if (!h) {
+			return false;
+		}
+
+		const auto frame = get()->m_option_set_frame;
+		auto& last_frame = h->second.last_queue_add_frame;
+		const auto timeout = static_cast<std::uint32_t>(comp_settings::get()->remix_var_queue_frame_timeout._int());
+
+		if (   timeout > 0u 
+			&& last_frame != 0u && last_frame != frame 
+			&& (frame - last_frame) < timeout) 
 		{
-			// directly apply when no delay
-			if (delay == 0.0f) 
-			{
-				lock.unlock();
-				set_option(handle, goal);
-			}
-			// interpolate over time or set after delay
-			else
-			{
-				{
-					interpolate_stack.emplace_back(interpolate_entry_s
-						{ h, h->second.current, goal, h->second.type, -delay });
-				}
-			}
-
-			return true;
+			return false;
 		}
 
-		return false;
+		last_frame = frame;
+
+		if (delay == 0.0f)
+		{
+			if (!always && h->second.current.compare(h->second.type, goal, epsilon))
+			{
+				if (imgui::get()->m_dbg_debug_single_frame_timecycle_remix_vars) {
+					shared::common::log("RemixVars", std::format("Not setting {} because value did not change (- enough).", h->first));
+				}
+
+				return true;
+			}
+
+			lock.unlock();
+			return set_option(h, goal);
+		}
+
+		var_queue.emplace_back(queue_entry_s {
+			.option = h,
+			.goal = goal,
+			.type = h->second.type,
+			._time_elapsed = -delay,
+			.always = always,
+			.epsilon = epsilon,
+		});
+
+		return true;
 	}
 
 	void remix_vars::init_once_on_init()
@@ -513,14 +528,13 @@ namespace gta4
 	}
 
 
-	std::uint32_t framecounter = 0u;
-
-	// Interpolates all variables on the 'interpolate_stack' and removes them once they reach their goal. \n
+	// Applies delayed options from var_queue and removes them once they are set (or skipped as unchanged)
 	// Called on d3d9ex::D3D9Device::EndScene
 	void remix_vars::on_client_frame()
 	{
 		GTA4_PERF_SCOPE(performance_section::RemixVars);
-		if (const auto v = get(); !v) {
+		const auto v = get();
+		if (!v) {
 			return;
 		}
 
@@ -528,17 +542,20 @@ namespace gta4
 		if (shared::common::remix_api::is_initialized())
 		{
 			init_once_on_init();
+			v->m_option_set_frame++;
 
 			// called in gta4::on_begin_scene_cb() otherwise
-			if (comp_settings::get()->timecycle_set_on_endscene.get_as<bool>()) {
+			//if (comp_settings::get()->timecycle_set_on_endscene.get_as<bool>()) {
 				timecycle::translate_and_apply_timecycle_settings();
-			}
+			//}
+
+			static std::uint32_t framecounter_fixed = 0u;
 
 			if (game::is_in_game)
 			{
-				if (framecounter++ > 60)
+				if (framecounter_fixed++ > 60)
 				{
-					framecounter = 0u;
+					framecounter_fixed = 0u;
 
 					init_once_on_ingame_frame();
 
@@ -549,41 +566,39 @@ namespace gta4
 					{
 						static auto rtxdi_samplecount = get_option("rtx.di.initialSampleCount");
 						option_value val { .value = (float)rtxdi_override_val };
-						set_option(rtxdi_samplecount, val, false, true);
-					}
-
-					// particle mode is disabled by default (rtx.conf), enable if alpha emissive hack is on
-					if (static auto rr_particle_mode = get_option("rtx.rayreconstruction.particleBufferMode"); rr_particle_mode)
-					{
-						rr_particle_mode->second.type = OPTION_TYPE::OPTION_TYPE_INT; // float by default
-						option_value val{ .integer = (gs->emissive_alpha_blend_hack._bool() ? 1 : 0) };
-						set_option(rr_particle_mode, val, false, gs->emissive_alpha_blend_hack._bool()); // only override constantly when hack is enabled
+						set_option(rtxdi_samplecount, val);
 					}
 				}
 
 				if (!is_paused())
 				{
-					if (!interpolate_stack.empty())
+					if (!var_queue.empty())
 					{
-						for (auto& ip : interpolate_stack)
+						for (auto& ip : var_queue)
 						{
 							ip._time_elapsed += get()->get_frametime() * 0.001f; // ms to s
 
-							// check if delayed
 							if (ip._time_elapsed < 0.0f) {
 								continue;
 							}
 
-							set_option(ip.option, ip.goal, false, true);
+							if (!ip.always && ip.option->second.current.compare(ip.type, ip.goal, ip.epsilon))
+							{
+								if (imgui::get()->m_dbg_debug_single_frame_timecycle_remix_vars) {
+									shared::common::log("RemixVars", std::format("Not setting {} because value did not change (- enough).", ip.option->first));
+								}
+
+								ip._complete = true;
+								continue;
+							}
+
+							set_option(ip.option, ip.goal);
 							ip._complete = true;
-
-							auto completed_condition = [](const interpolate_entry_s& ip) {
-								return ip._complete;
-							};
-
-							const auto it = std::remove_if(interpolate_stack.begin(), interpolate_stack.end(), completed_condition);
-							interpolate_stack.erase(it, interpolate_stack.end());
 						}
+
+						const auto it = std::remove_if(var_queue.begin(), var_queue.end(),
+							[](const queue_entry_s& e) { return e._complete; });
+						var_queue.erase(it, var_queue.end());
 					}
 				}
 			}
@@ -601,7 +616,7 @@ namespace gta4
 		{
 			auto& options = get()->options;
 			for (auto& o : options) {
-				remix_vars::set_option(&o, o.second.current, false, true);
+				remix_vars::set_option(&o, o.second.current);
 			}
 		}
 	}
@@ -615,7 +630,7 @@ namespace gta4
 	void xo_vars_clear_transitions_fn()
 	{
 		std::shared_lock lock(remix_vars::get()->mutex_);
-		remix_vars::interpolate_stack.clear();
+		remix_vars::var_queue.clear();
 	}
 
 	remix_vars::remix_vars()

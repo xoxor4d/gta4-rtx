@@ -158,8 +158,7 @@ namespace gta4
 				}
 
 				val.value += (gs->timecycle_skylight_max_offset_bad_weather._float() * weather_factor);
-
-				vars->set_option(rtxSkybrightness, val);
+				vars->add_queue_entry(rtxSkybrightness, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mSkyLightMultiplier);
 			}
 
@@ -192,13 +191,13 @@ namespace gta4
 					
 					val.value = std::max(gs->timecycle_bloom_night_min_clamp_value._float() * fade_scale, val.value);
 				}
-	
-				vars->set_option(rtxBloomBurnIntensity, val);
+
+				vars->add_queue_entry(rtxBloomBurnIntensity, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mBloomIntensity);
 				
 
 				val.value = timecycle->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
-				vars->set_option(rtxBloomLuminanceThreshold, val);
+				vars->add_queue_entry(rtxBloomLuminanceThreshold, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mBloomThreshold);
 			}
 
@@ -229,7 +228,7 @@ namespace gta4
 				val.vector[0] = color_correction.x + temp_color_offset.x;
 				val.vector[1] = color_correction.y + temp_color_offset.y;
 				val.vector[2] = color_correction.z + temp_color_offset.z;
-				vars->set_option(rtxTonemapColorBalance, val);
+				vars->add_queue_entry(rtxTonemapColorBalance, val);
 				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction);
 			}
 
@@ -240,7 +239,7 @@ namespace gta4
 				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * map_range(timecycle->mDesaturationFar, 0.0f, 1.0f, 0.0f, 0.4f);
 				val.value = 1.0f - ((1.0f - timecycle->mDesaturation) * gs->timecycle_desaturation_influence.get_as<float>());
 				val.value -= far_desaturation_influence;
-				vars->set_option(rtxTonemapSaturation, val);
+				vars->add_queue_entry(rtxTonemapSaturation, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mDesaturation);
 				im->m_timecyc_curr_mDesaturationFar = timecycle->mDesaturationFar;
 				im->m_timecyc_curr_mDesaturationFar_offset = far_desaturation_influence;
@@ -251,7 +250,7 @@ namespace gta4
 			if (gs->timecycle_gamma_enabled.get_as<bool>() && rtxTonemapExposureBias)
 			{
 				val.value = -(1.0f - timecycle->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
-				vars->set_option(rtxTonemapExposureBias, val);
+				vars->add_queue_entry(rtxTonemapExposureBias, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mGamma);
 			}
 
@@ -294,7 +293,7 @@ namespace gta4
 				//val.vector[1] = base_strength + fog_color_density.y * influence;
 				//val.vector[2] = base_strength + fog_color_density.z * influence;
 
-				vars->set_option(rtxVolumetricsSingleScatteringAlbedo, val);
+				vars->add_queue_entry(rtxVolumetricsSingleScatteringAlbedo, val);
 				ASSIGN_IMGUI_VIS_VEC3(singleScatteringAlbedo);
 			}
 
@@ -341,7 +340,7 @@ namespace gta4
 				}
 
 				val.value = atmos_height;
-				vars->set_option(rtxVolumetricsAtmosphereHeightMeters, val);
+				vars->add_queue_entry(rtxVolumetricsAtmosphereHeightMeters, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mSkyHorizonHeight);
 			}
 
@@ -358,7 +357,7 @@ namespace gta4
 					val.value = 0.6f;
 				}
 
-				vars->set_option(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
+				vars->add_queue_entry(rtxVolumetricsTransmittanceMeasurementDistanceMeters, val);
 				im->m_timecyc_curr_volumetricsTransmittanceMeasurementDistanceMeters = val.value;
 			}
 

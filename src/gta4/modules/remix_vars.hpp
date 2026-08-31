@@ -24,34 +24,6 @@ namespace gta4
 
 		static void xo_vars_parse_options_fn();
 
-		static constexpr const char* EASE_TYPE_STR[] =
-		{
-			"Linear",
-			"SinIn",
-			"SinOut",
-			"SinInOut",
-			"CubicIn",
-			"CubicOut",
-			"CubicInOut",
-			"ExpoIn",
-			"ExpoOut",
-			"ExpoInOut",
-		};
-
-		enum EASE_TYPE : std::uint8_t
-		{
-			EASE_TYPE_LINEAR,
-			EASE_TYPE_SIN_IN,
-			EASE_TYPE_SIN_OUT,
-			EASE_TYPE_SIN_INOUT,
-			EASE_TYPE_CUBIC_IN,
-			EASE_TYPE_CUBIC_OUT,
-			EASE_TYPE_CUBIC_INOUT,
-			EASE_TYPE_EXPO_IN,
-			EASE_TYPE_EXPO_OUT,
-			EASE_TYPE_EXPO_INOUT,
-		};
-
 		enum OPTION_TYPE : uint8_t
 		{
 			OPTION_TYPE_BOOL,
@@ -103,6 +75,7 @@ namespace gta4
 				type = _type;
 				not_a_remix_var = false;
 				modified = false;
+				last_queue_add_frame = 0;
 			}
 
 			option_s()
@@ -113,6 +86,7 @@ namespace gta4
 				type = OPTION_TYPE_NONE;
 				not_a_remix_var = false;
 				modified = false;
+				last_queue_add_frame = 0;
 			}
 
 			option_value current;
@@ -121,6 +95,7 @@ namespace gta4
 			OPTION_TYPE type;
 			bool not_a_remix_var;
 			bool modified;
+			std::uint32_t last_queue_add_frame = 0;
 		};
 
 		typedef std::pair<const std::string, option_s>* option_handle;
@@ -134,7 +109,7 @@ namespace gta4
 
 		static option_handle	get_option(const char*);
 		static option_handle	get_option(const std::string& o);
-		static bool				set_option(option_handle o, const option_value& v, bool is_level_setting = false, bool always = false, bool for_user_layer = false);
+		static bool				set_option(option_handle o, const option_value& v, bool is_level_setting = false, bool for_user_layer = false);
 		static bool				reset_option(option_handle o, bool reset_to_level_state = false);
 		static void				reset_all_modified(bool reset_to_level_state = false);
 		static option_value		string_to_option_value(OPTION_TYPE type, const std::string& str);
@@ -147,19 +122,20 @@ namespace gta4
 		static bool				init_once_on_ingame_frame();
 		static void				on_client_frame();
 
-		struct interpolate_entry_s
+		// delayed option set - multiple entries for the same option are allowed
+		struct queue_entry_s
 		{
-			option_handle option;
-			option_value start;
-			option_value goal;
-			OPTION_TYPE type;
-			float _time_elapsed;
-			bool _in_backwards_transition;
-			bool _complete;
+			option_handle option = nullptr;
+			option_value goal = {};
+			OPTION_TYPE type = OPTION_TYPE_NONE;
+			float _time_elapsed = 0.0f;
+			bool always = false;
+			float epsilon = 0.01f;
+			bool _complete = false;
 		};
 
-		static inline std::vector<interpolate_entry_s> interpolate_stack;
-		bool add_interpolate_entry(option_handle handle, const option_value& goal, float delay, const std::string& remix_var_name = "");
+		static inline std::vector<queue_entry_s> var_queue;
+		bool add_queue_entry(option_handle handle, const option_value& goal, float delay = 0.0f, bool always = false, float epsilon = 0.01f, const std::string& remix_var_name = "");
 
 		static bool is_paused()
 		{
@@ -192,5 +168,6 @@ namespace gta4
 		std::function<bool()> m_is_paused_callback;
 		bool* m_is_game_paused_ptr = nullptr;
 		float* m_frametime_ptr = nullptr;
+		std::uint32_t m_option_set_frame = 1;
 	};
 }

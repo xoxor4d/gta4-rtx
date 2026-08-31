@@ -484,6 +484,14 @@ namespace gta4
 				60
 			};
 
+			variable remix_var_queue_frame_timeout = {
+				"remix_var_queue_frame_timeout",
+				("Amount of frames between accepting a delayed remix option set for the same option\n"
+				 "via remix_vars::add_interpolate_entry. Same-frame queues of the same option are still allowed. "),
+				"1.5.1",
+				4
+			};
+
 
 			// ----------------------------------
 			// culling related settings
