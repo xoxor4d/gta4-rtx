@@ -266,8 +266,11 @@ namespace gta4
 		CENTER_URL("Thundery_Dan", "https://github.com/DANLOPAND");
 		CENTER_URL("KapibosRU", "https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ");
 		CENTER_URL("Budgie", "https://www.patreon.com/c/BudgieGames");
-		CENTER_URL("Sparkles (Remix Plus)", "https://github.com/Kim2091");
 		CENTER_URL("Alex from Digital Foundry", "https://www.youtube.com/watch?v=vGxPdcMQfwg");
+		CENTER_URL("Sparkles (Remix Plus - Numos - DLSS5 Integration)", "https://github.com/Kim2091");
+		CENTER_URL("CR (Remix Plus)", "https://github.com/sambow23");
+		CENTER_URL("TheGreatHMMMM (Remix Plus)", "https://github.com/TheGreatHMMMM");
+		CENTER_URL("Gokuwashere (Remix Plus)", "https://github.com/BrunchyChineapple");
 
 		ImGui::Spacing(0.0f, 24.0f);
 		ImGui::CenterText("And of course, all my fellow Ko-Fi and Patreon supporters");

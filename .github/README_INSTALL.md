@@ -25,8 +25,6 @@
 > If you want to use DLSS 5 (NR), you'll need to source and place `nvngx_dlssnr.dll` into the `.trex` folder on your own.  
 > You can then use the NR settings found within the Post-Processing tab (Alt+X - Advanced Menu) 
 
-![img](img/dlssnr.jpg)
-
 <br>
 
 > [!TIP]
@@ -69,6 +67,39 @@ You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen
 │                 └── ...
 └── ...  
 ```
+
+<br>
+
+# Credits
+- [NVIDIA - RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix)
+- [People of the showcase discord](https://discord.gg/j6sh7JD3v9) - especially the nvidia engineers ✌️
+- [Dear ImGui](https://github.com/ocornut/imgui)
+- [imgui-blur-effect](https://github.com/3r4y/imgui-blur-effect)
+- [minhook](https://github.com/TsudaKageyu/minhook)
+- [toml11](https://github.com/ToruNiina/toml11)
+- [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader)
+- [miniz](https://github.com/richgel999/miniz)
+- [Rapidjson](https://github.com/Tencent/rapidjson)
+- [DiscordRPC](https://github.com/discord/discord-rpc)
+- [FusionFix](https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix)
+- [FusionShaders](https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders)
+- [Rage-Shader-Editor](https://github.com/ImpossibleEchoes/rage-shader-editor-cpp)
+- [IV-SDK](https://github.com/Zolika1351/iv-sdk/)
+- [IV-SDK-DotNet](https://github.com/ClonkAndre/IV-SDK-DotNet)
+- [AssaultKifle47](https://github.com/akifle47)
+- [DayL](https://www.gtainside.de/de/user/falcogray)
+- [Entity](https://www.youtube.com/@paprykszadolowski8796)
+- [Gabdeg](https://www.youtube.com/@gabdeg793)
+- [Hemry](https://www.youtube.com/@Hemry81)
+- [Danlopand / Thundery_Dan](https://github.com/DANLOPAND)
+- [KapibosRU](https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ)
+- [Budgie](https://www.patreon.com/c/BudgieGames)
+- [Alex from Digital Foundry](https://www.youtube.com/watch?v=vGxPdcMQfwg)
+- [Sparkles (Remix Plus - Numos - DLSS5 Integration)](https://github.com/Kim2091)
+- [CR (Remix Plus)](https://github.com/sambow23)
+- [TheGreatHMMMM (Remix Plus)](https://github.com/TheGreatHMMMM)
+- [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)
+- All 🍓 Testers
 
 <br>
 

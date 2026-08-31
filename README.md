@@ -37,8 +37,9 @@ __[Compiling](#compiling)__
 ## Overview
 <div align="center" markdown="1"> 
 
-First and foremost, __this is not a remaster__. It is a mod that allows the game to be modded with NVIDIA's [RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix)  
-[It comes with a Baseline Remix Mod](https://github.com/xoxor4d/gta4-rtx-base-mod) and [GTAIV-AutoPBR](https://github.com/xoxor4d/gta4-rtx-autopbr-mod).  
+First and foremost, __this is not a remaster__.  
+It is a mod that allows the game to be modded with NVIDIA's [RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix).  
+It comes with a [Baseline Remix Mod](https://github.com/xoxor4d/gta4-rtx-base-mod) and [GTAIV-AutoPBR](https://github.com/xoxor4d/gta4-rtx-autopbr-mod).  
 
 <br>
 
@@ -50,17 +51,21 @@ This means that the performance you'll see in certain places is not entirely due
 
 <br>
 
-The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4_atmos10) required for a few game specific features,   
+The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4_atmos10_nr2) required for a few game specific features,   
 with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/tag/v9.0.0) to load the Compatibility Mod itself and a custom fork of [FusionFix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix) tailored for RTX-Remix.
 
 </div>
 
+<br>
+
+![img](.github/img/03.jpg)
 
 <br>
 
 ###### The good:  
 - **DLSS 4.5 (Ray Reconstruction 2) support**
-- **DLSS 5.0 (Neural Rendering) support (if you provide the necessary dll)**
+- **DLSS 5.0 (Neural Rendering) support** (if you provide the necessary dll) - Integration made by [Sparkles](https://github.com/Kim2091/dxvk-remix/tree/gta4-atmos-dlss5)
+- Includes an **Atmospheric sky system with Volumetric Clouds** made by the Community [Remix Plus / Numos](https://github.com/RemixProjGroup/dxvk-remix)
 - Most objects rendered via fixed function to increase performance (compared to grabbing data from Vertexshaders)
 - Cascaded anti culling of meshes
 - All game lights (including the sun) are translated to remix lights
@@ -79,7 +84,6 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - FusionFix compatible (custom fork: [GTAIV.EFLC.FusionFix.RTXRemix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix))
 - Many many tweakable settings via the in-game __F4__ menu
 - A few PBR materials, hq-meshes (vegetation, modeled fences ..) and texture fixes
-- Includes an Atmospheric sky system with Volumetric Clouds made by the Community [Remix Plus / Numos](https://github.com/RemixProjGroup/dxvk-remix)
 - Mod Installer / Updater
 
 ###### The bad:
@@ -93,7 +97,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 <div align="center" markdown="1"> 
 
 ![img](.github/img/04.jpg)
-![img](.github/img/01.jpg)
+![img](.github/img/05.jpg)
 </div>
 
 <br>
@@ -160,8 +164,11 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [Danlopand / Thundery_Dan](https://github.com/DANLOPAND)
 - [KapibosRU](https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ)
 - [Budgie](https://www.patreon.com/c/BudgieGames)
-- [Sparkles (Remix Plus)](https://github.com/Kim2091)
 - [Alex from Digital Foundry](https://www.youtube.com/watch?v=vGxPdcMQfwg)
+- [Sparkles (Remix Plus - Numos - DLSS5 Integration)](https://github.com/Kim2091)
+- [CR (Remix Plus)](https://github.com/sambow23)
+- [TheGreatHMMMM (Remix Plus)](https://github.com/TheGreatHMMMM)
+- [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)
 - All 🍓 Testers
 
 <div align="center" markdown="1"> 
@@ -171,7 +178,7 @@ and all the people that helped along the way!
 
 <br>
 
-![img](.github/img/03.jpg)
 ![img](.github/img/02.jpg)
+![img](.github/img/06.jpg)
 
 </div>
