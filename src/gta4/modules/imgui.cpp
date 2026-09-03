@@ -4033,8 +4033,8 @@ namespace gta4
 
 												if (vislight.m_def_copy.mType == game::LT_SPOT)
 												{
-													override_data.outer_cone_angle = vislight.m_def_copy.mInnerConeAngle;
-													override_data.inner_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+													override_data.outer_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+													override_data.inner_cone_angle = vislight.m_def_copy.mInnerConeAngle;
 													override_data.light_type = true;
 												}
 											}
@@ -4143,8 +4143,8 @@ namespace gta4
 
 																if (vislight.m_def_copy.mType == game::LT_SPOT)
 																{
-																	override_data.outer_cone_angle = vislight.m_def_copy.mInnerConeAngle;
-																	override_data.inner_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+																	override_data.outer_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+																	override_data.inner_cone_angle = vislight.m_def_copy.mInnerConeAngle;
 																	override_data.light_type = true;
 																}
 															}
@@ -4236,8 +4236,8 @@ namespace gta4
 
 															if (vislight.m_def_copy.mType == game::LT_SPOT)
 															{
-																override_data.outer_cone_angle = vislight.m_def_copy.mInnerConeAngle;
-																override_data.inner_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+																override_data.outer_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+																override_data.inner_cone_angle = vislight.m_def_copy.mInnerConeAngle;
 																override_data.light_type = true;
 															}
 														}
@@ -4322,8 +4322,8 @@ namespace gta4
 
 								if (selected_vis_light->m_def_copy.mType == game::LT_SPOT)
 								{
-									override_data.outer_cone_angle = selected_vis_light->m_def_copy.mInnerConeAngle;
-									override_data.inner_cone_angle = selected_vis_light->m_def_copy.mOuterConeAngle;
+									override_data.outer_cone_angle = selected_vis_light->m_def_copy.mOuterConeAngle;
+									override_data.inner_cone_angle = selected_vis_light->m_def_copy.mInnerConeAngle;
 									override_data.light_type = true;
 								}
 							}
@@ -4668,7 +4668,7 @@ namespace gta4
 							if (selected_vis_light && selected_vis_light->m_def_copy.mType == game::LT_SPOT) {
 								return selected_vis_light->m_def_copy.mOuterConeAngle;
 							}
-							return cosf(45.0f);
+							return cosf(DEG2RAD(45.0f));
 						};
 
 						auto get_default_inner_cone = [&]() -> float 
@@ -4676,7 +4676,7 @@ namespace gta4
 							if (selected_vis_light && selected_vis_light->m_def_copy.mType == game::LT_SPOT) {
 								return selected_vis_light->m_def_copy.mInnerConeAngle;
 							}
-							return cosf(30.0f);
+							return cosf(DEG2RAD(30.0f));
 						};
 
 						bool was_use_pos = current_light._use_pos;
@@ -4810,8 +4810,7 @@ namespace gta4
 						}
 						ImGui::EndDisabled();
 
-						if (ImGui::Checkbox("##Tweak Light Type", &current_light._use_light_type))
-						{
+						if (ImGui::Checkbox("##Tweak Light Type", &current_light._use_light_type)) {
 							sync_override_to_toml(selected_hash);
 						} TT("Tweak Light Type");
 
@@ -4820,6 +4819,8 @@ namespace gta4
 						if (ImGui::Checkbox("Light Type (False: Sphere -- True: Spot)", &current_light.light_type)) 
 						{
 							sync_override_to_toml(selected_hash);
+							current_light.outer_cone_angle = get_default_outer_cone();
+							current_light.inner_cone_angle = get_default_inner_cone();
 						}
 						ImGui::EndDisabled();
 
@@ -4841,6 +4842,11 @@ namespace gta4
 						if (ImGui::DragFloat("OuterConeAngle Override", &temp_outer_angle, 0.025f, 0.0f, 180.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) 
 						{
 							current_light.outer_cone_angle = cosf(DEG2RAD(temp_outer_angle));
+
+							if (current_light.outer_cone_angle > current_light.inner_cone_angle) {
+								current_light.outer_cone_angle = current_light.inner_cone_angle;
+							}
+
 							current_light._use_outer_cone_angle = true;
 							sync_override_to_toml(selected_hash);
 						}
@@ -5155,8 +5161,8 @@ namespace gta4
 
 																if (vislight.m_def_copy.mType == game::LT_SPOT)
 																{
-																	override_data.outer_cone_angle = vislight.m_def_copy.mInnerConeAngle;
-																	override_data.inner_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+																	override_data.outer_cone_angle = vislight.m_def_copy.mOuterConeAngle;
+																	override_data.inner_cone_angle = vislight.m_def_copy.mInnerConeAngle;
 																	override_data.light_type = true;
 																}
 																break;
