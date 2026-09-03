@@ -251,6 +251,7 @@ namespace gta4
 				ASSIGN(emissive_alpha_blend_hack);
 				ASSIGN(emissive_alpha_blend_hack_scale);
 				ASSIGN(emissive_allow_vertex_colors);
+				ASSIGN(emissive_alpha_allow_vertex_colors);
 				ASSIGN(phone_emissive_override);
 				ASSIGN(phone_emissive_scalar);
 

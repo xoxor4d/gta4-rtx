@@ -1050,6 +1050,15 @@ namespace gta4
 				true
 			};
 
+			variable emissive_alpha_allow_vertex_colors =
+			{
+				"emissive_alpha_allow_vertex_colors",
+				("Allow vertex colors on meshes rendered by emissive alpha shaders\n"
+				 "Might regress some stuff so its off by default for now"),
+				"1.5.2",
+				false
+			};
+
 			variable phone_emissive_override = {
 				"phone_emissive_override",
 				("Automatically tags phone related meshes as world-ui and adjusts the emissive scale.\n"

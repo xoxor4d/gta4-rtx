@@ -230,7 +230,7 @@ namespace gta4
 	void renderer_ff::on_ff_emissives_alpha(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
 		const auto im = imgui::get();
-		const auto gs = comp_settings::get();
+		const auto cs = comp_settings::get();
 
 		if (im->m_dbg_emissive_ff_alphablend_do_not_render)
 		{
@@ -293,14 +293,14 @@ namespace gta4
 				renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreTransparencyLayer);
 			}*/
 
-			else if (gs->emissive_alpha_blend_hack._bool() && ctx.info.shaderconst_emissive_intensity >= 0.0f)
+			else if (cs->emissive_alpha_blend_hack._bool() && ctx.info.shaderconst_emissive_intensity >= 0.0f)
 			{
 				// why did I assign WorldUI here? This creates emissive flicker because remix something is happening on the runtime side
 				renderer::set_remix_texture_categories(dev, /*InstanceCategories::WorldUI |*/ InstanceCategories::DecalStatic);
 
 				if (!im->m_dbg_emissive_disable_alpha_ff)
 				{
-					renderer::set_remix_emissive_intensity(dev, ctx.info.shaderconst_emissive_intensity * gs->emissive_alpha_blend_hack_scale._float());
+					renderer::set_remix_emissive_intensity(dev, ctx.info.shaderconst_emissive_intensity * cs->emissive_alpha_blend_hack_scale._float());
 #if DEBUG
 					if (imgui::get()->m_dbg_debug_single_frame_emissive_intensity_vars)
 					{
@@ -314,7 +314,7 @@ namespace gta4
 						}
 
 						shared::common::log("OnFFAlpha", std::format("[CONSTANT] emissive_alpha_blend_hack :: {:.2f} = constant * emissive_alpha_blend_hack_scale :: {}",
-							ctx.info.shaderconst_emissive_intensity * gs->emissive_alpha_blend_hack_scale._float(), model_name));
+							ctx.info.shaderconst_emissive_intensity * cs->emissive_alpha_blend_hack_scale._float(), model_name));
 					}
 #endif
 				}
@@ -332,7 +332,10 @@ namespace gta4
 				renderer::set_remix_emissive_intensity(dev, const66[0]);
 			}
 
-			renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
+			if (!cs->emissive_alpha_allow_vertex_colors._bool()) {
+				renderer::set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
+			}
+			
 			ctx.modifiers.allow_vertex_colors = true;
 		}
 	}

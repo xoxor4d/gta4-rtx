@@ -2087,6 +2087,7 @@ namespace gta4
 		}
 
 		compsettings_bool_widget("Allow Vertex Colors on Emissives", gs->emissive_allow_vertex_colors);
+		compsettings_bool_widget("Allow Vertex Colors on Emissive Alpha", gs->emissive_alpha_allow_vertex_colors);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Phone ");
@@ -2526,6 +2527,17 @@ namespace gta4
 		//const auto& im = imgui::get();
 		const auto& gs = comp_settings::get();
 		const float inbetween_spacing = SEPARATOR_SPACING;
+
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Version 1.5.X ");
+		ImGui::Spacing(0, 4);
+
+		ImGui::Widget_CategoryWithVerticalLabel("Ems.", [&]()
+			{
+				ImGui::PushID("emissives15");
+				compsettings_bool_widget("Allow Vertex Colors on Emissive Alpha", gs->emissive_alpha_allow_vertex_colors);
+				ImGui::PopID();
+			});
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Version 1.3.X ");
