@@ -38,12 +38,13 @@
 1. Download <LINK_TO_MOD_ZIP>
 
 3. Open the zip and extract all files contained inside the `GTAIV-Remix-CompatibilityMod` folder into your GTAIV directory (next to the `GTAIV.exe`). Overwrite all when prompted.
-4. If you want to use FusionFix or have it installed already, it's definitely recommended to install rtx-remix fork of it.  
+4. Go into your `.trex` folder and find `d3d9_runtime.zip`. Extract the content (`d3d9.dll`) into your `.trex` folder.
+5. If you want to use FusionFix or have it installed already, it's definitely recommended to install rtx-remix fork of it.  
 You can find the files inside `_installer_options/FusionFix_RTXRemixFork`. Extract the `plugins` & `update` into your GTAIV directory and override any existing files.  
 You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen/plugins` or `mode_windowed/plugins`.
 
-5. Download [gta4-rtx-base-mod](https://github.com/xoxor4d/gta4-rtx-base-mod/archive/refs/heads/master.zip) 
-6. Extract the _mods_ folder (inside of `gta4-rtx-base-mod-master`) into your `rtx-remix` folder so that the folder structure looks like this:
+6. Download [gta4-rtx-base-mod](https://github.com/xoxor4d/gta4-rtx-base-mod/archive/refs/heads/master.zip) 
+7. Extract the _mods_ folder (inside of `gta4-rtx-base-mod-master`) into your `rtx-remix` folder so that the folder structure looks like this:
 
 ```
 .  
