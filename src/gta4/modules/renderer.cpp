@@ -2232,7 +2232,7 @@ namespace gta4
 			// handle gta_decal_dirt shader
 			else if (pidx == GTA_DECAL_DIRT /*ctx.info.shader_name.ends_with("_dirt.fxc")*/)
 			{
-				if (gs->decal_dirt_shader_usage.get_as<bool>())
+/*				if (gs->decal_dirt_shader_usage.get_as<bool>())
 				{
 					set_remix_modifier(dev, RemixModifier::DecalDirt | RemixModifier::EnableVertexColor);
 					set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
@@ -2240,7 +2240,7 @@ namespace gta4
 					// using a texture in slot1 in the opaque shader is semi working but the texture is not always updated/correct and and cause
 					// conflicts with other textures
 				}
-				else {
+				else*/ {
 					set_remix_texture_categories(dev, InstanceCategories::Ignore);
 				}
 			}

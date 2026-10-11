@@ -12,7 +12,7 @@ namespace shared::common
 	}
 
 	// called on device->BeginScene
-	void remix_api::begin_scene_callback_internal()
+	void __stdcall remix_api::begin_scene_callback_internal()
 	{
 		auto& api = get();
 		if (api.is_initialized())
@@ -131,19 +131,19 @@ namespace shared::common
 		}
 	}
 
-	void remix_api::end_scene_callback_internal()
+	void __stdcall remix_api::end_scene_callback_internal()
 	{
 		// external callback (if registered)
-		if (get().is_initialized() && get().end_scene_callback_external) {
-			get().end_scene_callback_external();
+		if (remix_api::get().is_initialized() && remix_api::get().end_scene_callback_external) {
+			remix_api::get().end_scene_callback_external();
 		}
 	}
 
-	void remix_api::present_callback_internal()
+	void __stdcall remix_api::present_callback_internal()
 	{
 		// external callback (if registered)
-		if (get().is_initialized() && get().present_callback_external) {
-			get().present_callback_external();
+		if (remix_api::get().is_initialized() && remix_api::get().present_callback_external) {
+			remix_api::get().present_callback_external();
 		}
 	}
 
@@ -656,13 +656,12 @@ namespace shared::common
 	void remix_api::initialize(
 		PFN_remixapi_BridgeCallback begin_scene_callback,
 		PFN_remixapi_BridgeCallback end_scene_callback,
-		PFN_remixapi_BridgeCallback present_callback, 
-		bool is_asi)
+		PFN_remixapi_BridgeCallback present_callback)
 	{
 		auto& instance = get();
 		if (!instance.m_initialized)
 		{
-			if (const auto status = remixapi::bridge_initRemixApi(&instance.m_bridge, is_asi);
+			if (const auto status = remixapi::bridge_initRemixApi(&instance.m_bridge);
 				status == REMIXAPI_ERROR_CODE_SUCCESS)
 			{
 				instance.begin_scene_callback_external = begin_scene_callback;

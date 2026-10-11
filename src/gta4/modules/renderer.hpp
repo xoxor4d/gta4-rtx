@@ -40,7 +40,7 @@ namespace gta4
 		EmissiveScalar = 1 << 0,
 		RoughnessScalar = 1 << 1,
 		EnableVertexColor = 1 << 2,
-		DecalDirt = 1 << 3,
+		Free03 = 1 << 3,
 		RemoveVertexColorKeepAlpha = 1 << 4,
 		VehicleDecalDirt = 1 << 5,
 		UseGlobalUVs = 1 << 6, // use gta4's global uv constant to animate uvs
@@ -131,7 +131,7 @@ namespace gta4
 		SmoothNormals = 1 << 23,
 		HairCards = 1 << 24,
 		DisableBackfaceCulling = 1 << 25,
-		Count = 25,
+		Count = 26,
 		None = 0u
 	};
 
@@ -359,6 +359,10 @@ namespace gta4
 			if (vs_set_)
 			{
 				device->SetVertexShader(vs_);
+				if (vs_set_) {
+					vs_->Release();
+				}
+
 				vs_set_ = false;
 			}
 		}
@@ -369,6 +373,10 @@ namespace gta4
 			if (ps_set_)
 			{
 				device->SetPixelShader(ps_);
+				if (ps_) {
+					ps_->Release();
+				}
+
 				ps_set_ = false;
 			}
 		}
@@ -381,6 +389,10 @@ namespace gta4
 				if (tex0_set_)
 				{
 					device->SetTexture(0, tex0_);
+					if (tex0_) {
+						tex0_->Release();
+					}
+
 					tex0_set_ = false;
 				}
 			}
@@ -389,6 +401,10 @@ namespace gta4
 				if (tex1_set_)
 				{
 					device->SetTexture(1, tex1_);
+					if (tex1_) {
+						tex1_->Release();
+					}
+
 					tex1_set_ = false;
 				}
 			}

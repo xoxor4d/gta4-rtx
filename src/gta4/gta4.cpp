@@ -809,7 +809,7 @@ namespace gta4
 	void main()
 	{
 		// init remix api
-		shared::common::remix_api::initialize(nullptr, nullptr, nullptr, false);
+		shared::common::remix_api::initialize(nullptr, nullptr, nullptr);
 
 		shared::common::loader::module_loader::register_module(std::make_unique<imgui>());
 		shared::common::loader::module_loader::register_module(std::make_unique<performance_logger>());
