@@ -3900,6 +3900,7 @@ namespace gta4
 			shared::utils::hook(game::hk_addr__frag_type_dc_draw, frag_type_dc_draw_stub, HOOK_CALL).install()->quick();
 		}
 		shared::utils::hook(game::hk_addr__post_entity_surfs_stub, post_entity_surfs_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::hk_addr__post_entity_surfs_stub2, post_entity_surfs_stub, HOOK_JUMP).install()->quick();
 
 		// detect vehicle rendering - CDrawFrag .. 0x8DE2BC - could grab basemodel or fragtype to differentiate between models
 		shared::utils::hook(game::retn_addr__pre_vehicle_surfs_stub - 5u, pre_vehicle_surfs_stub, HOOK_JUMP).install()->quick(); // 0x8DCDA1

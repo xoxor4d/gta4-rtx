@@ -123,6 +123,7 @@ namespace gta4::game
 
 	uint32_t retn_addr__pre_entity_surfs_stub = 0u;
 	uint32_t hk_addr__post_entity_surfs_stub = 0u;
+	uint32_t hk_addr__post_entity_surfs_stub2 = 0u;
 
 	uint32_t func_addr__CEntity_AddToDrawListBuckets = 0u;
 	uint32_t func_addr__CRenderPhase_BuildDrawListWrapper = 0u;
@@ -591,6 +592,10 @@ namespace gta4::game
 
 		if (const auto offset = shared::utils::mem::find_pattern("5B 8B E5 5D C3 8A 46", 0, "hk_addr__post_entity_surfs_stub", use_pattern, 0x8DCD66); offset) {
 			hk_addr__post_entity_surfs_stub = offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("FF 52 2C 6A 00 E8 ? ? ? ? 83 C4 04 5F 5E 5B 8B E5 5D C3", 15, "hk_addr__post_entity_surfs_stub2", use_pattern, 0x8DCD88); offset) {
+			hk_addr__post_entity_surfs_stub2 = offset; found_pattern_count++;
 		} total_pattern_count++;
 
 		// remix api static geometry path

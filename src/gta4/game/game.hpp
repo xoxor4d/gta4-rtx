@@ -144,6 +144,7 @@ namespace gta4::game
 
 	extern uint32_t retn_addr__pre_entity_surfs_stub;
 	extern uint32_t hk_addr__post_entity_surfs_stub;
+	extern uint32_t hk_addr__post_entity_surfs_stub2; // second return of CDrawEntityDC::ExecuteCommand (no drawable, alternate draw)
 
 	// remix api static geometry path
 	extern uint32_t func_addr__CEntity_AddToDrawListBuckets;
