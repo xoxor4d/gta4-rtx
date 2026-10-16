@@ -1159,7 +1159,7 @@ namespace gta4
 				("Allow vertex colors on meshes rendered by emissive alpha shaders\n"
 				 "Might regress some stuff so its off by default for now"),
 				"1.5.2",
-				false
+				true
 			};
 
 			variable phone_emissive_override = {

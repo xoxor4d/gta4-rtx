@@ -1773,119 +1773,194 @@ namespace gta4
 
 	// --------------------
 
-	void compsettings_rendering_container()
+	void rs_tab_general()
 	{
-		//const auto& im = imgui::get();
 		const auto& gs = comp_settings::get();
 
-		const float inbetween_spacing = SEPARATOR_SPACING;
+		ImGui::Widget_CategoryWithVerticalLabel("General", [&]()
+			{
+				ImGui::PushID("general");
+				compsettings_bool_widget("Load ColorMaps Only", gs->load_colormaps_only);
+				compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
+				ImGui::PopID();
+			});
 
-		ImGui::Spacing(0, 4);
-		ImGui::SeparatorText(" General ");
-		ImGui::Spacing(0, 4);
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Effects", [&]()
+			{
+				ImGui::PushID("effects");
+				compsettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
+				ImGui::PopID();
+			});
+	}
 
-		compsettings_bool_widget("Load ColorMaps Only", gs->load_colormaps_only);
-		compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
+	void rs_tab_remix_api()
+	{
+		const auto& gs = comp_settings::get();
 
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Water ");
-		ImGui::Spacing(0, 4);
+		ImGui::Widget_CategoryWithVerticalLabel("Geometry", [&]()
+			{
+				ImGui::PushID("geometry");
+				compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
+				compsettings_bool_widget("Peds", gs->api_peds_enabled);
+				compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
+				ImGui::PopID();
+			});
 
-		compsettings_bool_widget("Draw Water Through The Remix API", gs->api_water_enabled);
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Water", [&]()
+			{
+				ImGui::PushID("water");
+				compsettings_bool_widget("Water", gs->api_water_enabled);
+				ImGui::PopID();
+			});
 
-		ImGui::BeginDisabled(!gs->api_water_enabled.get_as<bool>());
-		compsettings_bool_widget("Cull Water Outside The View", gs->api_water_cull_pieces);
-		ImGui::EndDisabled();
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Mesh Cache", [&]()
+			{
+				ImGui::PushID("meshcache");
+				compsettings_int_widget("Mesh Creates Per Frame", gs->api_static_creates_per_frame, 0, 256, 0.2f);
+				compsettings_int_widget("Mesh Cache Budget (MB)", gs->api_static_cache_mb, 0, 8192, 2.0f);
+				ImGui::PopID();
+			});
+	}
 
-		ImGui::Spacing(0, 4);
-		compsettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
-		compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
-		compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
-		compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
-		compsettings_bool_widget("Apply Shoreline Modifier", gs->water_apply_shoreline_modifier);
+	void rs_tab_water()
+	{
+		const auto& gs = comp_settings::get();
+		const bool api_water = gs->api_water_enabled.get_as<bool>();
 
-		ImGui::Spacing(0, 4);
-		compsettings_float_widget("Water Block Distance Scale", gs->water_block_distance_scale, 0.1f, 10.0f, 0.01f);
-		compsettings_float_widget("Wave Simulation Edge Fade", gs->water_sim_edge_fade, 1.0f, 100.0f, 0.5f, "%.1f");
-		compsettings_float_widget("Wave Normal Strength", gs->water_vertex_normal_scale, 0.0f, 4.0f, 0.01f);
+		ImGui::Widget_CategoryWithVerticalLabel("Surface", [&]()
+			{
+				ImGui::PushID("surface");
+				compsettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
+				compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
+				compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
+				compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
+				compsettings_bool_widget("Apply Shoreline Modifier", gs->water_apply_shoreline_modifier);
+				ImGui::PopID();
+			});
 
-		ImGui::Spacing(0, 4);
-		compsettings_bool_widget("Procedural Far Waves", gs->water_far_waves);
-		compsettings_float_widget("Far Wave Strength", gs->water_far_wave_scale, 0.0f, 4.0f, 0.01f);
-		compsettings_float_widget("Far Wave Length", gs->water_far_wave_length, 0.5f, 100.0f, 0.1f, "%.1f");
-		compsettings_float_widget("Far Wave Speed", gs->water_far_wave_speed, 0.0f, 4.0f, 0.01f);
-		compsettings_float_widget("Far Wave Direction", gs->water_far_wave_direction, -180.0f, 180.0f, 0.5f, "%.1f");
-		compsettings_float_widget("Far Wave Edge Fade", gs->water_far_wave_fade, 0.0f, 200.0f, 0.5f, "%.1f");
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Waves", [&]()
+			{
+				ImGui::PushID("waves");
+				compsettings_float_widget("Wave Simulation Edge Fade", gs->water_sim_edge_fade, 1.0f, 100.0f, 0.5f, "%.1f");
+				compsettings_float_widget("Wave Normal Strength", gs->water_vertex_normal_scale, 0.0f, 4.0f, 0.01f);
 
-		ImGui::Spacing(0, 4);
-		compsettings_bool_widget("Coarser Tessellation Further Away", gs->water_lod);
+				ImGui::Spacing(0, 4);
+				compsettings_bool_widget("Procedural Far Waves", gs->water_far_waves);
+				compsettings_float_widget("Far Wave Strength", gs->water_far_wave_scale, 0.0f, 4.0f, 0.01f);
+				compsettings_float_widget("Far Wave Length", gs->water_far_wave_length, 0.5f, 100.0f, 0.1f, "%.1f");
+				compsettings_float_widget("Far Wave Speed", gs->water_far_wave_speed, 0.0f, 4.0f, 0.01f);
+				compsettings_float_widget("Far Wave Direction", gs->water_far_wave_direction, -180.0f, 180.0f, 0.5f, "%.1f");
+				compsettings_float_widget("Far Wave Edge Fade", gs->water_far_wave_fade, 0.0f, 200.0f, 0.5f, "%.1f");
+				ImGui::PopID();
+			});
 
-		ImGui::BeginDisabled(!gs->water_lod.get_as<bool>());
-		compsettings_float_widget("Tessellated Water Radius", gs->water_detail_radius, 100.0f, 600.0f, 1.0f, "%.0f");
-		compsettings_float_widget("4 Unit Cells From", gs->water_lod_radius_4, 16.0f, 600.0f, 1.0f, "%.0f");
-		compsettings_float_widget("8 Unit Cells From", gs->water_lod_radius_8, 32.0f, 600.0f, 1.0f, "%.0f");
-		ImGui::EndDisabled();
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Tessellation", [&]()
+			{
+				ImGui::PushID("tessellation");
+				compsettings_bool_widget("Coarser Tessellation Further Away", gs->water_lod);
 
-		ImGui::Spacing(0, 4);
+				ImGui::BeginDisabled(!gs->water_lod.get_as<bool>());
+				compsettings_float_widget("Tessellated Water Radius", gs->water_detail_radius, 100.0f, 600.0f, 1.0f, "%.0f");
+				compsettings_float_widget("4 Unit Cells From", gs->water_lod_radius_4, 16.0f, 600.0f, 1.0f, "%.0f");
+				compsettings_float_widget("8 Unit Cells From", gs->water_lod_radius_8, 32.0f, 600.0f, 1.0f, "%.0f");
+				ImGui::EndDisabled();
+
+				ImGui::Spacing(0, 4);
+				compsettings_float_widget("Water Block Distance Scale", gs->water_block_distance_scale, 0.1f, 10.0f, 0.01f);
+
+				ImGui::BeginDisabled(!api_water);
+				compsettings_bool_widget("Cull Water Outside The View", gs->api_water_cull_pieces);
+				ImGui::EndDisabled();
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
 		water::devgui_stats();
+	}
 
+	void rs_tab_vehicles()
+	{
+		const auto& gs = comp_settings::get();
 
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Foliage ");
+		ImGui::Widget_CategoryWithVerticalLabel("Dirt", [&]()
+			{
+				ImGui::PushID("dirt");
+				compsettings_bool_widget("Enable Vehicle Dirt", gs->vehicle_dirt_enabled);
+
+				ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
+				compsettings_bool_widget("Enable Vehicle Dirt Color Override", gs->vehicle_dirt_custom_color_enabled);
+				compsettings_color_widget("Vehicle Dirt Color", gs->vehicle_dirt_custom_color, 3, ImGuiColorEditFlags_Float);
+
+				compsettings_float_widget("Dirt Roughness: Expo", gs->vehicle_dirt_expo, 0.5f, 5.0f, 0.005f);
+				compsettings_float_widget("Dirt Roughness: Min Z-Normal", gs->vehicle_dirt_roughness_z_normal, 0.0f, 1.0f, 0.005f);
+				compsettings_float_widget("Dirt Roughness: Blending", gs->vehicle_dirt_roughness_blending, 0.0f, 1.0f, 0.005f);
+				ImGui::EndDisabled();
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("General", [&]()
+			{
+				ImGui::PushID("vehgeneral");
+				compsettings_bool_widget("Enable Vehicle Livery", gs->vehicle_livery_enabled);
+				compsettings_bool_widget("Force Vertex Color Usage", gs->vehicle_force_vertex_colors);
+				ImGui::PopID();
+			});
+	}
+
+	void rs_tab_foliage_hair()
+	{
+		const auto& gs = comp_settings::get();
+
+		ImGui::Widget_CategoryWithVerticalLabel("Foliage", [&]()
+			{
+				ImGui::PushID("foliage");
+				compsettings_bool_widget("Fixed function Trees", gs->fixed_function_trees);
+				compsettings_float_widget("Tree Alpha Cutout Value", gs->tree_foliage_alpha_cutout_value, 0.0f, 20.0f);
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Hair", [&]()
+			{
+				ImGui::PushID("hair");
+				compsettings_bool_widget("NPC Hair Alpha Testing", gs->npc_expensive_hair_alpha_testing);
+
+				ImGui::BeginDisabled(!gs->npc_expensive_hair_alpha_testing.get_as<bool>());
+				compsettings_float_widget("NPC Hair Alpha Cutout Value", gs->npc_expensive_hair_alpha_cutout_value, 0.0f, 1.0f);
+				ImGui::EndDisabled();
+				ImGui::PopID();
+			});
+	}
+
+	void compsettings_rendering_container()
+	{
 		ImGui::Spacing(0, 4);
 
-		compsettings_bool_widget("Fixed function Trees", gs->fixed_function_trees);
-		compsettings_float_widget("Tree Alpha Cutout Value", gs->tree_foliage_alpha_cutout_value, 0.0f, 20.0f);
-		//compsettings_float_widget("Grass Alpha Cutout Value", gs->grass_foliage_alpha_cutout_value, 0.0f, 20.0f);
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Hair ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("NPC Hair Alpha Testing", gs->npc_expensive_hair_alpha_testing);
-		ImGui::BeginDisabled(!gs->npc_expensive_hair_alpha_testing.get_as<bool>());
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x + 12.0f, 8));
+		ImGui::PushStyleColor(ImGuiCol_TabSelected, ImGui::GetColorU32(ImGuiCol_Separator));
+		if (ImGui::BeginTabBar("##rstabs"))
 		{
-			compsettings_float_widget("NPC Hair Alpha Cutout Value", gs->npc_expensive_hair_alpha_cutout_value, 0.0f, 1.0f);
-			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar(1);
+
+			ADD_CONTAINER_TAB("General  " ICON_FA_SLIDERS_H, rs_tab_general, "General rendering Settings");
+			ADD_CONTAINER_TAB("Remix API  " ICON_FA_MICROCHIP, rs_tab_remix_api, "What is drawn through the Remix API");
+			ADD_CONTAINER_TAB("Water  " ICON_FA_WATER, rs_tab_water, "Water related Settings");
+			ADD_CONTAINER_TAB("Vehicles  " ICON_FA_CAR, rs_tab_vehicles, "Vehicle related Settings");
+			ADD_CONTAINER_TAB("Foliage / Hair  " ICON_FA_LEAF, rs_tab_foliage_hair, "Foliage and Hair related Settings");
+			ImGui::EndTabBar();
 		}
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Vehicle Dirt ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Enable Vehicle Dirt", gs->vehicle_dirt_enabled);
-		ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
+		else
 		{
-			compsettings_bool_widget("Enable Vehicle Dirt Color Override", gs->vehicle_dirt_custom_color_enabled);
-			compsettings_color_widget("Vehicle Dirt Color", gs->vehicle_dirt_custom_color, 3, ImGuiColorEditFlags_Float);
-
-			compsettings_float_widget("Dirt Roughness: Expo", gs->vehicle_dirt_expo, 0.5f, 5.0f, 0.005f);
-			compsettings_float_widget("Dirt Roughness: Min Z-Normal", gs->vehicle_dirt_roughness_z_normal, 0.0f, 1.0f, 0.005f);
-			compsettings_float_widget("Dirt Roughness: Blending", gs->vehicle_dirt_roughness_blending, 0.0f, 1.0f, 0.005f);
-	
-			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar(1);
 		}
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" General Vehicle Settings ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Enable Vehicle Livery", gs->vehicle_livery_enabled);
-		compsettings_bool_widget("Force Vertex Color Usage", gs->vehicle_force_vertex_colors);
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Effects ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
-
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Enable Rain - Remix Particle System", gs->rain_particle_system_enabled);
 
 		ImGui::Spacing(0, 4);
 	}
@@ -1973,42 +2048,48 @@ namespace gta4
 		static const auto& gs = comp_settings::get();
 
 		const float inbetween_spacing = SEPARATOR_SPACING;
-
 		bool clear = false;
 
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" General Lights ");
 		ImGui::Spacing(0, 4);
-		ImGui::SeparatorText(" Sphere/Spot ");
-		ImGui::Spacing(0, 4);
 
-		compsettings_bool_widget("Translate Game Lights", gs->translate_game_lights);
-		compsettings_bool_widget("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights);
+		ImGui::Widget_CategoryWithVerticalLabel("Sphere/Spotlights", [&]()
+			{
+				ImGui::PushID("spherelight");
+				compsettings_bool_widget("Translate Game Lights", gs->translate_game_lights);
+				compsettings_bool_widget("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights);
+				compsettings_bool_widget("No Volumetrics on Filler Lights", gs->translate_game_lights_no_volumetrics_on_filler_lights);
 
-		compsettings_bool_widget("No Volumetrics on Filler Lights", gs->translate_game_lights_no_volumetrics_on_filler_lights);
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f));
 
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Offset", gs->translate_game_light_softness_offset, -1.0f, 1.0f, 0.005f, "%.3f"));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Scalar", gs->translate_game_light_softness_scalar, 0.0f, 1.0f, 0.005f, "%.3f"));
 
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Offset", gs->translate_game_light_softness_offset, -1.0f, 1.0f, 0.005f, "%.3f"));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Scalar", gs->translate_game_light_softness_scalar, 0.0f, 1.0f, 0.005f, "%.3f"));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Angle Offset", gs->translate_game_light_angle_offset, -180.0f, 180.0f, 0.1f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Focus Expo", gs->translate_game_light_focus_expo, 0.0f, 10.0f, 0.01f));
 
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Angle Offset", gs->translate_game_light_angle_offset, -180.0f, 180.0f, 0.1f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Focus Expo", gs->translate_game_light_focus_expo, 0.0f, 10.0f, 0.01f));
+				ImGui::PopID();
+			});
 
 		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Distant ");
-		ImGui::Spacing(0, 4);
-
-		ImGui::BeginDisabled(gs->timecycle_use_remix_atmos_system._bool());
-		{
-			compsettings_float_widget("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar, 0.0f, 0.0f, 0.005f);
-			compsettings_float_widget("SunLight Bad Weather Influence", gs->translate_sunlight_intensity_bad_weather_influence, 0.0f, 1.0f, 0.005f);
-			compsettings_float_widget("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees, 0.0f, 45.0f, 0.005f);
-			compsettings_float_widget("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base, 0.0f, 10.0f, 0.005f);
-			compsettings_float_widget("MoonLight Intensity Scalar", gs->translate_moonlight_intensity_scalar, 0.0f, 1.0f, 0.005f, "%.3f");
-			ImGui::EndDisabled();
-		}
+		ImGui::Widget_CategoryWithVerticalLabel("Distant Lights", [&]()
+			{
+				ImGui::PushID("distantlight");
+				ImGui::BeginDisabled(gs->timecycle_use_remix_atmos_system._bool());
+				{
+					compsettings_float_widget("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar, 0.0f, 0.0f, 0.005f);
+					compsettings_float_widget("SunLight Bad Weather Influence", gs->translate_sunlight_intensity_bad_weather_influence, 0.0f, 1.0f, 0.005f);
+					compsettings_float_widget("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees, 0.0f, 45.0f, 0.005f);
+					compsettings_float_widget("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base, 0.0f, 10.0f, 0.005f);
+					compsettings_float_widget("MoonLight Intensity Scalar", gs->translate_moonlight_intensity_scalar, 0.0f, 1.0f, 0.005f, "%.3f");
+					ImGui::EndDisabled();
+				}
+				ImGui::PopID();
+			});
 		
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Vehicle Headlights / Rearlights ");
@@ -2022,8 +2103,7 @@ namespace gta4
 			ImGui::PopID();
 		});
 
-		ImGui::Spacing(0, SEPARATOR_SPACING);
-
+		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::Widget_CategoryWithVerticalLabel("Rear", [&]()
 		{
 			ImGui::PushID("rearlight");
@@ -2496,6 +2576,9 @@ namespace gta4
 
 			ImGui::EndDisabled();
 		}
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		compsettings_bool_widget("Enable Rain - Remix Particle System", cs->rain_particle_system_enabled);
 	}
 
 	void compsettings_timecycle_container()
