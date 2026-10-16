@@ -292,6 +292,20 @@ namespace gta4
 				ASSIGN(water_apply_animated_water_category);
 				ASSIGN(water_texture_uv_scale);
 				ASSIGN(water_texture_normal_fadeout_distance);
+				ASSIGN(water_apply_shoreline_modifier);
+				ASSIGN(water_detail_radius);
+				ASSIGN(water_sim_edge_fade);
+				ASSIGN(water_far_waves);
+				ASSIGN(water_far_wave_scale);
+				ASSIGN(water_far_wave_length);
+				ASSIGN(water_far_wave_speed);
+				ASSIGN(water_far_wave_direction);
+				ASSIGN(water_far_wave_fade);
+				ASSIGN(water_vertex_normal_scale);
+				ASSIGN(water_lod);
+				ASSIGN(water_lod_radius_4);
+				ASSIGN(water_lod_radius_8);
+				ASSIGN(water_block_distance_scale);
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 				ASSIGN(rain_particle_system_enabled);

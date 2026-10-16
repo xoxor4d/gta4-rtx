@@ -1,6 +1,7 @@
 #include "std_include.hpp"
 #include "renderer.hpp"
 #include "renderer_api.hpp"
+#include "water.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui.hpp"
@@ -1634,6 +1635,10 @@ namespace gta4
 
 				if (gs->water_apply_animated_water_category._bool()) {
 					set_remix_texture_categories(dev, InstanceCategories::AnimatedWater);
+				}
+
+				if (gs->water_apply_shoreline_modifier._bool()) {
+					set_remix_modifier(dev, RemixModifier::WaterShoreline);
 				}
 
 				
@@ -3362,6 +3367,15 @@ namespace gta4
 
 	// ---
 
+	void on_water_render_begin()
+	{
+		if (game::pWaterRectFrustumCull) {
+			*game::pWaterRectFrustumCull = imgui::get()->m_dbg_disable_water_rect_culling ? 0u : 1u;
+		}
+
+		water::on_render_begin();
+	}
+
 	__declspec (naked) void pre_water_render_stub()
 	{
 		__asm
@@ -3369,6 +3383,9 @@ namespace gta4
 			mov     ebp, esp;
 			and		esp, 0xFFFFFFF0;
 			mov		g_is_water_rendering, 1;
+			pushad;
+			call	on_water_render_begin;
+			popad;
 			jmp		game::retn_addr__pre_draw_water;
 		}
 	}

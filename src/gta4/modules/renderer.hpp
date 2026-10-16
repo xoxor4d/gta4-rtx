@@ -53,7 +53,7 @@ namespace gta4
 		EmissiveScalar = 1 << 0,
 		RoughnessScalar = 1 << 1,
 		EnableVertexColor = 1 << 2,
-		Free03 = 1 << 3,
+		WaterShoreline = 1 << 3,
 		RemoveVertexColorKeepAlpha = 1 << 4,
 		VehicleDecalDirt = 1 << 5,
 		UseGlobalUVs = 1 << 6, // use gta4's global uv constant to animate uvs

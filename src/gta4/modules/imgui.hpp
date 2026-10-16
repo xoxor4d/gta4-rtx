@@ -131,6 +131,8 @@ namespace gta4
 		bool m_dbg_disable_global_uv_anims = false;
 		bool m_dbg_disable_omm_override_on_alpha_uv_anims = false;
 		bool m_dbg_disable_water_worldpos_logic = false;
+		bool m_dbg_disable_water_module = false;
+		bool m_dbg_disable_water_rect_culling = false;
 
 
 		int m_dbg_tag_exp_hair_as_index = -1;

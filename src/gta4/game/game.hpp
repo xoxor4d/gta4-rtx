@@ -199,6 +199,19 @@ namespace gta4::game
 	extern uint32_t retn_addr__pre_draw_water;
 	extern uint32_t hk_addr__post_draw_water;
 
+	extern uint32_t func_addr__CWater_ScanThroughBlocks;
+	extern uint32_t func_addr__CWater_BlockHit;
+	extern uint32_t func_addr__CWater_CalculateWavesForCoordinate;
+	extern uint32_t func_addr__CWater_RenderHighDetailWaterRectangle;
+	extern uint32_t func_addr__CWater_DrawHighDetailPrimitive;
+	extern uint32_t func_addr__grcViewport_IsSphereVisible;
+	extern int* pWaterDetailDist;            // DETAILEDWATERDIST, half size of the tessellated window around the camera
+	extern int* pWaterRenderBufferIndex;     // render thread buffer of the double buffered water state
+	extern float* pWaterCameraCoordsRT;      // [2][4]: camera x, y of each buffer
+	extern int* pWaterDetailRangeRender;     // x min, x max, y min, y max of the tessellated window (render thread)
+	extern float* pWaterDynamicHeightRT;     // [2][100][100] simulation heights, 2 units per cell
+	extern std::uint8_t* pWaterRectFrustumCull; // block scan tests each water rectangle against the render phase frustum
+
 	extern uint32_t retn_addr__pre_draw_statics;
 	extern uint32_t hk_addr__post_draw_statics;
 

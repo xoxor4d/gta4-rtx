@@ -1354,6 +1354,119 @@ namespace gta4
 				600.0f
 			};
 
+			variable water_apply_shoreline_modifier =
+			{
+				"water_apply_shoreline_modifier",
+				("Adds the shoreline modifier to water surfaces: the water fades out where it is shallow or meets objects. "
+				 "Textures tagged as animated water get the shoreline fade either way."),
+				"1.5.2",
+				true
+			};
+
+			variable water_detail_radius =
+			{
+				"water_detail_radius",
+				("Half size of the tessellated water area around the camera. Needs 'water_lod' (coarser tessellation further away), the game's 100 is used without it. Beyond the game's wave simulation (100 units) it shows the procedural waves."),
+				"1.5.2",
+				200.0f
+			};
+
+			variable water_sim_edge_fade =
+			{
+				"water_sim_edge_fade",
+				("Width of the fade at the edge of the game's wave simulation (the game uses 10). Heights and normals fade over this distance, the procedural waves take over."),
+				"1.5.2",
+				50.0f
+			};
+
+			variable water_far_waves =
+			{
+				"water_far_waves",
+				("Continue the game's waves with procedural waves where its simulation ends."),
+				"1.5.2",
+				true
+			};
+
+			variable water_far_wave_scale =
+			{
+				"water_far_wave_scale",
+				("Strength of the procedural waves relative to the measured strength of the game's waves."),
+				"1.5.2",
+				0.4f
+			};
+
+			variable water_far_wave_length =
+			{
+				"water_far_wave_length",
+				("Wavelength of the longest procedural wave."),
+				"1.5.2",
+				80.0f
+			};
+
+			variable water_far_wave_speed =
+			{
+				"water_far_wave_speed",
+				("Speed multiplier of the procedural waves."),
+				"1.5.2",
+				0.8f
+			};
+
+			variable water_far_wave_direction =
+			{
+				"water_far_wave_direction",
+				("Main direction of the procedural waves in degrees."),
+				"1.5.2",
+				-70.0f
+			};
+
+			variable water_far_wave_fade =
+			{
+				"water_far_wave_fade",
+				("Distance over which the procedural waves fade out towards the edge of the tessellated area."),
+				"1.5.2",
+				100.0f
+			};
+
+			variable water_vertex_normal_scale =
+			{
+				"water_vertex_normal_scale",
+				("Strength of the wave slopes in the water's vertex normals."),
+				"1.5.2",
+				0.75f
+			};
+
+			variable water_lod =
+			{
+				"water_lod",
+				("Coarser tessellation further away from the camera (2 units close by, then 4 and 8 units)."),
+				"1.5.2",
+				true
+			};
+
+			variable water_lod_radius_4 =
+			{
+				"water_lod_radius_4",
+				("Distance from the camera where the tessellation changes from 2 to 4 units."),
+				"1.5.2",
+				16.0f
+			};
+
+			variable water_lod_radius_8 =
+			{
+				"water_lod_radius_8",
+				("Distance from the camera where the tessellation changes from 4 to 8 units."),
+				"1.5.2",
+				64.0f
+			};
+
+			variable water_block_distance_scale =
+			{
+				"water_block_distance_scale",
+				("Scales how far the game looks for water blocks (500 x 500 units) in front of the camera. Blocks outside of the view are still culled."),
+				"1.5.2",
+				1.0f
+			};
+
 
 			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =

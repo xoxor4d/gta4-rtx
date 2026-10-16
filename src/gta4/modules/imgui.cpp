@@ -1,6 +1,7 @@
 #include "std_include.hpp"
 #include "imgui.hpp"
 #include "renderer_api.hpp"
+#include "water.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui_internal.h"
@@ -707,6 +708,10 @@ namespace gta4
 			TT("Disables automatic ignore OMM tagging on alphatested emissive surfaces with animated UVs");
 
 			ImGui::Checkbox("Disable Water Worldpos Logic", &im->m_dbg_disable_water_worldpos_logic);
+			ImGui::Checkbox("Disable Water Module", &im->m_dbg_disable_water_module);
+			TT("All water module hooks behave like the game: no tessellation changes, far waves, simulation edge fade or block scan changes.");
+			ImGui::Checkbox("Disable Water Rectangle Culling", &im->m_dbg_disable_water_rect_culling);
+			TT("The water block scan keeps rectangles outside the camera frustum instead of dropping them.");
 
 			//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
 			ImGui::TreePop();
@@ -1790,6 +1795,32 @@ namespace gta4
 		compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
 		compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
 		compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
+		compsettings_bool_widget("Apply Shoreline Modifier", gs->water_apply_shoreline_modifier);
+
+		ImGui::Spacing(0, 4);
+		compsettings_float_widget("Water Block Distance Scale", gs->water_block_distance_scale, 0.1f, 10.0f, 0.01f);
+		compsettings_float_widget("Wave Simulation Edge Fade", gs->water_sim_edge_fade, 1.0f, 100.0f, 0.5f, "%.1f");
+		compsettings_float_widget("Wave Normal Strength", gs->water_vertex_normal_scale, 0.0f, 4.0f, 0.01f);
+
+		ImGui::Spacing(0, 4);
+		compsettings_bool_widget("Procedural Far Waves", gs->water_far_waves);
+		compsettings_float_widget("Far Wave Strength", gs->water_far_wave_scale, 0.0f, 4.0f, 0.01f);
+		compsettings_float_widget("Far Wave Length", gs->water_far_wave_length, 0.5f, 100.0f, 0.1f, "%.1f");
+		compsettings_float_widget("Far Wave Speed", gs->water_far_wave_speed, 0.0f, 4.0f, 0.01f);
+		compsettings_float_widget("Far Wave Direction", gs->water_far_wave_direction, -180.0f, 180.0f, 0.5f, "%.1f");
+		compsettings_float_widget("Far Wave Edge Fade", gs->water_far_wave_fade, 0.0f, 200.0f, 0.5f, "%.1f");
+
+		ImGui::Spacing(0, 4);
+		compsettings_bool_widget("Coarser Tessellation Further Away", gs->water_lod);
+
+		ImGui::BeginDisabled(!gs->water_lod.get_as<bool>());
+		compsettings_float_widget("Tessellated Water Radius", gs->water_detail_radius, 100.0f, 600.0f, 1.0f, "%.0f");
+		compsettings_float_widget("4 Unit Cells From", gs->water_lod_radius_4, 16.0f, 600.0f, 1.0f, "%.0f");
+		compsettings_float_widget("8 Unit Cells From", gs->water_lod_radius_8, 32.0f, 600.0f, 1.0f, "%.0f");
+		ImGui::EndDisabled();
+
+		ImGui::Spacing(0, 4);
+		water::devgui_stats();
 
 
 		ImGui::Spacing(0, inbetween_spacing);
