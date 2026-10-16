@@ -3,6 +3,7 @@
 #include "modules/dinput_hook.hpp"
 #include "modules/game_lights.hpp"
 #include "modules/comp_settings.hpp"
+#include "modules/renderer_api.hpp"
 #include "modules/discord.hpp"
 #include "modules/imgui.hpp"
 #include "modules/map_settings.hpp"
@@ -35,6 +36,7 @@ namespace gta4
 		const auto im = imgui::get();
 		const auto& gs = comp_settings::get();
 
+		renderer_api::on_begin_scene();
 		renderer::get()->m_triggered_remix_injection = false; 
 		g_applied_hud_hack = false;
 		g_applied_phone_hack = false;
@@ -815,6 +817,7 @@ namespace gta4
 		shared::common::loader::module_loader::register_module(std::make_unique<performance_logger>());
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer>());
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer_ff>());
+		shared::common::loader::module_loader::register_module(std::make_unique<renderer_api>());
 		shared::common::loader::module_loader::register_module(std::make_unique<dinput>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<game_lights>());

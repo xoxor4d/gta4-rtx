@@ -4,6 +4,19 @@
 namespace gta4
 {
 	extern int g_is_instance_rendering;
+
+	// weather state the wetness overrides depend on (renderer.cpp)
+	bool should_apply_heavy_raindrops();
+	bool should_apply_light_raindrops();
+	extern const void* g_instanced_geometry; // grmGeometryQB drawn by RenderInstanced (tyres)
+	extern int g_in_draw_entity_dc; // inside CDrawEntityDC::ExecuteCommand (static map entities)
+	extern int g_in_draw_frag_type_dc; // inside rage::fragType::Draw of CDrawFragTypeDC::Execute (static entities with a fragment type)
+	extern int g_in_draw_frag_dc_object; // inside CDrawFragDC::Execute of a fragment instance that is not a vehicle (props with physics)
+	extern int g_in_draw_entity_info; // inside CEntityDrawInfo::RenderBuckets of an unskinned entity (sorted alpha entities)
+	extern int g_in_draw_dynamic_entity_dc; // inside CDrawSkinnedEntityDC::Execute of an unskinned dynamic entity (CObject)
+	extern int g_in_draw_lights_in_area; // inside CRenderer::RenderDrawableGeometriesWithLightsInArea (large alpha entities, wires)
+
+	void reset_world_transform();
 	extern int g_is_sky_rendering;
 	extern int g_is_water_rendering;
 	extern int g_is_rendering_mirror;
@@ -225,6 +238,14 @@ namespace gta4
 	constexpr InstanceCategories operator~(InstanceCategories e) {
 		return static_cast<InstanceCategories>(~static_cast<std::uint32_t>(e));
 	}
+
+	// texture of the current shader pass, captured in SetupPixelShaderAndConstants
+	struct pass_texture_s
+	{
+		std::uint32_t slot = 0u;
+		std::uint32_t param_hash = 0u;
+		game::grcTextureReference* ref = nullptr;
+	};
 
 	class drawcall_mod_context
 	{
@@ -595,6 +616,29 @@ namespace gta4
 			Vector4D ps_const_73_veh_dirt;
 			Vector4D ps_const_74_veh_dirt;
 
+			// vehicle damage parameters of the bound vertex shader (registers move between the vehicle shaders)
+			int vs_switch_on_register = -1;
+			int vs_bound_radius_register = -1;
+			int vs_damage_sampler = -1;
+			int vs_wheel_transform_register = -1; // matWheelTransform of the tyre shader
+			int vs_tyre_deform_register = -1;     // tyreDeformSwitchOn (flat tyre)
+
+			// DrawIndexedPrimitive range of the current draw (the runtime's geometry hash of the D3D9 draw depends on it)
+			INT draw_base_vertex = 0;
+			UINT draw_start_index = 0u;
+
+			pass_texture_s pass_textures[8];
+			std::uint32_t pass_texture_count = 0u;
+			int spec_map_channel = -1; // channel of the specular map the shader reads (specMapIntMask), -1 = unknown
+
+			// values the set_remix_* setters wrote to the unused render states for this draw (api path reads these)
+			std::uint32_t remix_hash_override = 0u;   // RS150
+			std::uint32_t remix_hash_seed = 0u;       // RS220
+			std::uint32_t remix_wetness_packed = 0u;  // RS210
+			float remix_temp_float01 = 0.0f;          // RS169
+			float remix_temp_float02 = 0.0f;          // RS177
+			float remix_multi_use[6] = {};            // RS211-216
+
 			void reset()
 			{
 				shader_name = "";
@@ -613,6 +657,16 @@ namespace gta4
 				global_anim_uv1.Zero();
 
 				shaderconst_emissive_intensity = -1.0f;
+				pass_texture_count = 0u;
+				spec_map_channel = -1;
+				remix_hash_override = 0u;
+				remix_hash_seed = 0u;
+				remix_wetness_packed = 0u;
+				remix_temp_float01 = 0.0f;
+				remix_temp_float02 = 0.0f;
+				for (auto& v : remix_multi_use) {
+					v = 0.0f;
+				}
 				shaderconst_uses_emissive_multiplier = false;
 
 				rs_alphablendenable = 0u;
@@ -626,6 +680,14 @@ namespace gta4
 				ps_const_72_veh_dirt.Zero();
 				ps_const_73_veh_dirt.Zero();
 				ps_const_74_veh_dirt.Zero();
+
+				vs_switch_on_register = -1;
+				vs_bound_radius_register = -1;
+				vs_damage_sampler = -1;
+				vs_wheel_transform_register = -1;
+				vs_tyre_deform_register = -1;
+				draw_base_vertex = 0;
+				draw_start_index = 0u;
 			}
 		};
 

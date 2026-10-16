@@ -12,6 +12,10 @@ namespace gta4
 		const auto im = imgui::get();
 		const auto n = natives::get();
 
+		if (natives::on_game_frame_callback) {
+			natives::on_game_frame_callback();
+		}
+
 		// TODO: hack to fix issues with SSS-fixing commit (that makes head mesh invisible)
 		// + latest remix versions also make player char invisible
 		// + sometimes even parts of the world ...

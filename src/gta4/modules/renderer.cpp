@@ -1,5 +1,6 @@
 #include "std_include.hpp"
 #include "renderer.hpp"
+#include "renderer_api.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui.hpp"
@@ -11,12 +12,19 @@
 namespace gta4
 {
 	int g_is_instance_rendering = 0;
+	const void* g_instanced_geometry = nullptr;
 	int g_is_sky_rendering = 0;
 	int g_is_water_rendering = 0;
 	int g_is_rendering_mirror = 0;
 	int g_is_rendering_fx_instance = 0;
 	int g_is_rendering_fx = 0;
 	int  g_is_rendering_static = 0;
+	int  g_in_draw_entity_dc = 0;
+	int  g_in_draw_frag_type_dc = 0;
+	int  g_in_draw_frag_dc_object = 0;
+	int  g_in_draw_entity_info = 0;
+	int  g_in_draw_dynamic_entity_dc = 0;
+	int  g_in_draw_lights_in_area = 0;
 	int  g_is_rendering_vehicle = 0;
 	bool g_is_rendering_phone = false; // phone on screen (not true when rendering screen to RT)
 	bool g_was_rendering_phone_last_frame = false;
@@ -142,6 +150,7 @@ namespace gta4
 		uint32_t packedDword = (uint32_t(wetness_params2) << 16) | uint32_t(wetness_params1);
 
 		dc_ctx.save_rs(dev, RS_210_WETNESS_PARAMS_PACKED);
+		dc_ctx.info.remix_wetness_packed = packedDword;
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_210_WETNESS_PARAMS_PACKED, packedDword);
 	}
 
@@ -152,6 +161,7 @@ namespace gta4
 		set_remix_modifier(dev, RemixModifier::Translucent_WorldposAsUVs);
 
 		dc_ctx.save_rs(dev, RS_211_MULTIUSE01);
+		dc_ctx.info.remix_multi_use[0] = scale;
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_211_MULTIUSE01, *reinterpret_cast<DWORD*>(&scale));
 	}
 
@@ -162,6 +172,7 @@ namespace gta4
 		set_remix_modifier(dev, RemixModifier::Translucent_FadeNormalUntilDist);
 
 		dc_ctx.save_rs(dev, RS_212_MULTIUSE02);
+		dc_ctx.info.remix_multi_use[1] = distance;
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_212_MULTIUSE02, *reinterpret_cast<DWORD*>(&distance));
 	}
 
@@ -174,6 +185,7 @@ namespace gta4
 	void renderer::set_remix_temp_float01(IDirect3DDevice9* dev, float value)
 	{
 		dc_ctx.save_rs(dev, RS_169_EMISSIVE_SCALE);
+		dc_ctx.info.remix_temp_float01 = value;
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_169_EMISSIVE_SCALE, *reinterpret_cast<DWORD*>(&value));
 	}
 
@@ -186,6 +198,7 @@ namespace gta4
 	void renderer::set_remix_temp_float02(IDirect3DDevice9* dev, float value)
 	{
 		dc_ctx.save_rs(dev, RS_177_DECAL_DIRT_CONTRAST);
+		dc_ctx.info.remix_temp_float02 = value;
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_177_DECAL_DIRT_CONTRAST, *reinterpret_cast<DWORD*>(&value));
 	}
 
@@ -211,6 +224,7 @@ namespace gta4
 	void renderer::set_remix_texture_hash(IDirect3DDevice9* dev, const std::uint32_t& hash)
 	{
 		dc_ctx.save_rs(dev, RS_150_TEXTURE_HASH);
+		dc_ctx.info.remix_hash_override = hash;
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_150_TEXTURE_HASH, hash);
 	}
 
@@ -219,6 +233,7 @@ namespace gta4
 	void renderer::set_remix_texture_hash_modifier(IDirect3DDevice9* dev, const std::uint32_t& seed)
 	{
 		dc_ctx.save_rs(dev, RS_220_HASH_MODIFIER_SEED);
+		dc_ctx.info.remix_hash_seed = seed;
 		dev->SetRenderState((D3DRENDERSTATETYPE)RS_220_HASH_MODIFIER_SEED, seed);
 	}
 
@@ -694,6 +709,13 @@ namespace gta4
 							if (register_num == 8u && is_lightsemissive_shader) {
 								on_constant_switchOn(shared::globals::d3d_device, constant_data_struct->constants[dataPoolIndex].bool_ptr);
 							}
+
+							if (entry_hash == 0xBBCF983D /*switchOn*/) {
+								ctx.info.vs_switch_on_register = static_cast<int>(register_num);
+							}
+							else if (entry_hash == 0x4E96F308 /*tyreDeformSwitchOn*/) {
+								ctx.info.vs_tyre_deform_register = static_cast<int>(register_num);
+							}
 						}
 
 						game_device->SetVertexShaderConstantB(register_num, constant_data_struct->constants[dataPoolIndex].bool_ptr, 1u);
@@ -799,13 +821,26 @@ namespace gta4
 							game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count* game::pShaderConstFloatCountMap[type]);
 						}
 
-						else {
+						else
+						{
+							if (g_is_rendering_vehicle && entry_hash == 0x84F7D5D9 /*BoundRadius*/) {
+								ctx.info.vs_bound_radius_register = static_cast<int>(register_num);
+							}
+							else if (entry_hash == 0xA8A03862 /*matWheelTransform*/) {
+								ctx.info.vs_wheel_transform_register = static_cast<int>(register_num);
+							}
+
 							game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
 						}
 					}
 				}
 				else
 				{
+					// the damage texture is the only vertex texture of the vehicle shaders
+					if (g_is_rendering_vehicle) {
+						ctx.info.vs_damage_sampler = static_cast<int>(data->register_pool[vs_const->register_pool_index].register_num);
+					}
+
 					//SetupTextureAndSampler(data->register_pool[psconst->register_pool_index].register_num, constant_data_struct->constants[dataPoolIndex].constant_ptr, (*sampler_data)[2 * dataPoolIndex].unk02 >> 1, *&(*sampler_data)[2 * dataPoolIndex + 1].unk01);
 
 					auto arg1 = (unsigned int)data->register_pool[vs_const->register_pool_index].register_num + 257;
@@ -962,6 +997,12 @@ namespace gta4
 					std::uint32_t register_pool_index = psconst->register_pool_index;
 					std::uint32_t type = data->register_pool[register_pool_index].type;
 					std::uint32_t register_num = data->register_pool[register_pool_index].register_num;
+
+					if (entry_hash == 0xFF11711D /*specMapIntMask*/ && type == 7)
+					{
+						const float* mask = constant_data_struct->constants[dataPoolIndex].float_arr;
+						ctx.info.spec_map_channel = mask[0] != 0.0f ? 0 : mask[1] != 0.0f ? 1 : mask[2] != 0.0f ? 2 : -1;
+					}
 
 					if (type == 1) {
 						game_device->SetPixelShaderConstantI(register_num, constant_data_struct->constants[dataPoolIndex].int_ptr, 1u);
@@ -1264,6 +1305,10 @@ namespace gta4
 
 					auto texture_slot = (unsigned int)data->register_pool[psconst->register_pool_index].register_num;
 					auto arg2 = constant_data_struct->constants[dataPoolIndex].texture_ref;
+
+					if (ctx.info.pass_texture_count < std::size(ctx.info.pass_textures)) {
+						ctx.info.pass_textures[ctx.info.pass_texture_count++] = { texture_slot, constant_data_struct->mEntriesHashes[dataPoolIndex], arg2 };
+					}
 					auto arg3 = sampler_data->sampler_constant_data[dataPoolIndex].unk3_lo >> 1;
 					auto arg4 = sampler_data->sampler_constant_data[dataPoolIndex].unk9;
 
@@ -1411,6 +1456,8 @@ namespace gta4
 	{
 		// in case we need to compare the rewritten one to the og version
 		//return SetupVsPsPass_og(pass, vs_data_struct, ps_data_struct, data, sampler_data);
+
+		GTA4_PERF_SCOPE(performance_section::ShaderPassSetup);
 
 		// the "base" object is not a function arg so we get it by subtracting 0x14 from the data arg
 		//auto* parent_addr = reinterpret_cast<std::byte*>(data) - 0x14;
@@ -1786,6 +1833,9 @@ namespace gta4
 		auto& ctx = setup_context(dev);
 		static auto im = imgui::get();
 		static auto gs = comp_settings::get();
+
+		ctx.info.draw_base_vertex = BaseVertexIndex;
+		ctx.info.draw_start_index = startIndex;
 
 		bool render_with_ff = false;
 		const auto& pidx = ctx.info.preset_index;
@@ -2802,8 +2852,34 @@ namespace gta4
 			return hr;
 		}
 
+		// the base pass of a vehicle draw went through the api, its dirt / livery passes follow
+		bool api_vehicle_draw = false;
+
+		// static geometry through the remix api: the fixed function draw is replaced by DrawInstance
+		if (render_with_ff && !shared::globals::imgui_is_rendering)
+		{
+			renderer_api::note_static_draw();
+			if (!ctx.modifiers.do_not_render && !ctx.modifiers.do_not_render_indexed_primitives && renderer_api::try_draw(dev, ctx, PrimitiveType, primCount)) {
+				ctx.modifiers.do_not_render = true;
+			}
+			else if (renderer_api::debug_hide_d3d9_static()) {
+				ctx.modifiers.do_not_render = true;
+			}
+		}
+		// vehicles and peds through the remix api: the vertex shader draw is replaced by a (skinned) DrawInstance
+		else if (!render_with_ff && !shared::globals::imgui_is_rendering && !ctx.modifiers.do_not_render && !ctx.modifiers.do_not_render_indexed_primitives)
+		{
+			// not through do_not_render: instanced draws (tyres) keep the context for every wheel
+			if (renderer_api::try_draw_vehicle(dev, ctx, PrimitiveType, primCount, false)) {
+				api_vehicle_draw = true;
+			}
+			else if (renderer_api::try_draw_ped(dev, ctx, PrimitiveType, primCount) || renderer_api::debug_hide_d3d9_ped()) {
+				ctx.modifiers.do_not_render = true;
+			}
+		}
+
 		// do not render next surface if set
-		if (!ctx.modifiers.do_not_render && !ctx.modifiers.do_not_render_indexed_primitives) 
+		if (!api_vehicle_draw && !ctx.modifiers.do_not_render && !ctx.modifiers.do_not_render_indexed_primitives) 
 		{
 			hr = dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
@@ -3036,7 +3112,7 @@ namespace gta4
 				}*/
 			}
 
-			if (!redrew)
+			if (!redrew && !(api_vehicle_draw && renderer_api::try_draw_vehicle(dev, ctx, PrimitiveType, primCount, true)))
 			{
 				// re-draw surface
 				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
@@ -3121,7 +3197,9 @@ namespace gta4
 				handle_vehicle_dirt_decal(dev, ctx);
 
 				// re-draw surface
-				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount /*- 1*/);
+				if (!(api_vehicle_draw && renderer_api::try_draw_vehicle(dev, ctx, PrimitiveType, primCount, true))) {
+					dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount /*- 1*/);
+				}
 			}
 		}
 		
@@ -3210,9 +3288,24 @@ namespace gta4
 		}
 	}
 
+	__declspec (naked) void on_instanced_render__geometry_stub()
+	{
+		__asm
+		{
+			mov		eax, [edi + 4];
+			push	eax;
+			mov		eax, [eax + ebp * 4];
+			mov		g_instanced_geometry, eax;
+			pop		eax;
+			push	1;
+			jmp		game::retn_addr__on_instanced_render__geometry_stub;
+		}
+	}
+
 	void on_instanced_render__post_setup_vs_ps_pass_hk()
 	{
 		auto& ctx = renderer::get()->dc_ctx;
+		g_instanced_geometry = nullptr;
 
 		assert(ctx.info.device_ptr);
 		ctx.restore_all(ctx.info.device_ptr);
@@ -3323,6 +3416,27 @@ namespace gta4
 		dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
 	}
 
+	// replaces the call to rage::fragType::Draw inside CDrawFragTypeDC::Execute (__thiscall, 4 stack args cleaned by the callee).
+	// the caller's arguments are re-pushed for the inner call because our return address sits on top of them,
+	// and the stub cleans the caller's copy itself (retn 10h) like the original callee would have
+	__declspec (naked) void frag_type_dc_draw_stub()
+	{
+		__asm
+		{
+			mov		g_in_draw_frag_type_dc, 1;
+			push	dword ptr [esp + 16];
+			push	dword ptr [esp + 16];
+			push	dword ptr [esp + 16];
+			push	dword ptr [esp + 16];
+			call	game::func_addr__fragType_Draw;
+			mov		g_in_draw_frag_type_dc, 0;
+			pushad;
+			call	reset_world_transform;
+			popad;
+			retn	0x10;
+		}
+	}
+
 	__declspec (naked) void pre_entity_surfs_stub()
 	{
 		__asm
@@ -3330,6 +3444,7 @@ namespace gta4
 			mov     ebp, esp;
 			and		esp, 0xFFFFFFF0;
 			mov		g_is_rendering_static, 1;
+			mov		g_in_draw_entity_dc, 1;
 			jmp		game::retn_addr__pre_entity_surfs_stub;
 		}
 	}
@@ -3342,6 +3457,7 @@ namespace gta4
 			call	reset_world_transform;
 			popad;
 			mov		g_is_rendering_static, 0;
+			mov		g_in_draw_entity_dc, 0;
 			pop     ebx;
 			mov     esp, ebp;
 			pop     ebp;
@@ -3351,13 +3467,37 @@ namespace gta4
 
 	// ---
 
+	// CDrawFragDC draws every fragment instance: vehicles and props that got physics (light poles, bins, ...).
+	// The model info type (vtable slot 3) tells them apart: 5 = CVehicleModelInfo.
+	void classify_frag_dc(const void* dc)
+	{
+		bool is_vehicle = true;
+		if (game::pModelInfoPtrs)
+		{
+			const auto model_index = *reinterpret_cast<const std::uint16_t*>(static_cast<const std::uint8_t*>(dc) + 0x46);
+			if (const auto mi = game::pModelInfoPtrs[model_index]; mi)
+			{
+				// the getter only writes al (mov al, type; retn), the upper bytes of eax are undefined
+				const auto vtbl = *reinterpret_cast<void* const* const*>(mi);
+				const auto get_type = reinterpret_cast<int(__thiscall*)(const void*)>(vtbl[3]);
+				is_vehicle = (get_type(mi) & 0xFF) == 5;
+			}
+		}
+		g_is_rendering_vehicle = is_vehicle ? 1 : 0;
+		g_in_draw_frag_dc_object = is_vehicle ? 0 : 1;
+	}
+
 	__declspec (naked) void pre_vehicle_surfs_stub()
 	{
 		__asm
 		{
 			mov     ebp, esp;
 			and		esp, 0xFFFFFFF0;
-			mov		g_is_rendering_vehicle, 1;
+			pushad;
+			push	ecx;
+			call	classify_frag_dc;
+			add		esp, 4;
+			popad;
 			jmp		game::retn_addr__pre_vehicle_surfs_stub;
 		}
 	}
@@ -3367,6 +3507,7 @@ namespace gta4
 		__asm
 		{
 			mov		g_is_rendering_vehicle, 0;
+			mov		g_in_draw_frag_dc_object, 0;
 			pop     ebx;
 			mov     esp, ebp;
 			pop     ebp;
@@ -3731,6 +3872,7 @@ namespace gta4
 		shared::utils::hook(game::retn_addr__on_instanced_render__pre_setup_vs_ps_pass_stub - 5u, on_instanced_render__pre_setup_vs_ps_pass_stub, HOOK_JUMP).install()->quick(); // 0x69ED69
 		shared::utils::hook::nop(game::hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub, 7);
 		shared::utils::hook(game::hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub, on_instanced_render__post_setup_vs_ps_pass_stub, HOOK_JUMP).install()->quick();
+		shared::utils::hook(game::hk_addr__on_instanced_render__geometry_stub, on_instanced_render__geometry_stub, HOOK_JUMP).install()->quick(); // 0x69ED83
 
 		// detecting phone rendering is tricky - modify Z argument of 'clear' drawlist-command to 1.337
 		// check all clears in 'd3d9ex::D3D9Device::Clear' for modified Z arg -> assume phone rendering
@@ -3750,6 +3892,13 @@ namespace gta4
 
 		// also considered static
 		shared::utils::hook(game::retn_addr__pre_entity_surfs_stub - 5u, pre_entity_surfs_stub, HOOK_JUMP).install()->quick();
+
+		if (game::hk_addr__frag_type_dc_draw)
+		{
+			// the original call target is read from the rel32 before the call is redirected to the stub
+			game::func_addr__fragType_Draw = game::hk_addr__frag_type_dc_draw + 5u + *reinterpret_cast<std::int32_t*>(game::hk_addr__frag_type_dc_draw + 1u);
+			shared::utils::hook(game::hk_addr__frag_type_dc_draw, frag_type_dc_draw_stub, HOOK_CALL).install()->quick();
+		}
 		shared::utils::hook(game::hk_addr__post_entity_surfs_stub, post_entity_surfs_stub, HOOK_JUMP).install()->quick();
 
 		// detect vehicle rendering - CDrawFrag .. 0x8DE2BC - could grab basemodel or fragtype to differentiate between models

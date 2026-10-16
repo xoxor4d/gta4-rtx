@@ -1,5 +1,6 @@
 ﻿#include "std_include.hpp"
 #include "d3d9ex.hpp"
+#include "renderer_api.hpp"
 
 #include "imgui.hpp"
 #include "renderer.hpp"
@@ -99,6 +100,31 @@ namespace gta4
 	UINT d3d9ex::D3D9Device::GetNumberOfSwapChains()
 	{
 		return m_pIDirect3DDevice9->GetNumberOfSwapChains();
+	}
+
+	const char* d3d9ex::call_type_name(const call_type t)
+	{
+		switch (t)
+		{
+		case call_type::RenderState: return "render state";
+		case call_type::TextureStageState: return "texture stage state";
+		case call_type::SamplerState: return "sampler state";
+		case call_type::Texture: return "texture";
+		case call_type::Transform: return "transform";
+		case call_type::ShaderConstant: return "shader constant";
+		case call_type::Shader: return "shader";
+		case call_type::VertexDeclaration: return "vertex declaration";
+		case call_type::StreamSource: return "stream source";
+		case call_type::Indices: return "indices";
+		case call_type::Draw: return "draw";
+		default: return "?";
+		}
+	}
+
+	void d3d9ex::on_end_scene()
+	{
+		s_calls_last_frame = s_calls_this_frame;
+		s_calls_this_frame = {};
 	}
 
 	HRESULT d3d9ex::D3D9Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
@@ -273,6 +299,8 @@ namespace gta4
 
 		shared::globals::last_frame_time = current_time;
 		remix_vars::on_client_frame();
+		renderer_api::on_end_scene();
+		on_end_scene();
 
 		//renderer::get()->m_modified_draw_prim = false;
 
@@ -330,6 +358,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetTransform(D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix)
 	{
+		count_call(call_type::Transform);
 		return m_pIDirect3DDevice9->SetTransform(State, pMatrix);
 	}
 
@@ -395,6 +424,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
 	{
+		count_call(call_type::RenderState);
 		return m_pIDirect3DDevice9->SetRenderState(State, Value);
 	}
 
@@ -435,6 +465,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture)
 	{
+		count_call(call_type::Texture);
 		return m_pIDirect3DDevice9->SetTexture(Stage, pTexture);  
 	}
 
@@ -445,6 +476,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value)
 	{
+		count_call(call_type::TextureStageState);
 		return m_pIDirect3DDevice9->SetTextureStageState(Stage, Type, Value);
 	}
 
@@ -455,6 +487,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value)
 	{
+		count_call(call_type::SamplerState);
 		return m_pIDirect3DDevice9->SetSamplerState(Sampler, Type, Value);
 	}
 
@@ -515,6 +548,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::DrawPrimitive([[maybe_unused]] D3DPRIMITIVETYPE PrimitiveType, [[maybe_unused]] UINT StartVertex, [[maybe_unused]] UINT PrimitiveCount)
 	{
+		count_call(call_type::Draw);
 		//return D3D_OK;
 		//auto hr = m_pIDirect3DDevice9->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 
@@ -524,12 +558,14 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
 	{
+		count_call(call_type::Draw);
 		const auto hr = renderer::get()->on_draw_indexed_prim(m_pIDirect3DDevice9, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 	{
+		count_call(call_type::Draw);
 		//return D3D_OK;
 		//pre_drawindexedprim();
 		const auto hr = m_pIDirect3DDevice9->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -547,6 +583,7 @@ namespace gta4
 		[[maybe_unused]] CONST void* pVertexStreamZeroData,
 		[[maybe_unused]] UINT VertexStreamZeroStride)
 	{
+		count_call(call_type::Draw);
 		//return D3D_OK;
 		return m_pIDirect3DDevice9->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
 	}
@@ -563,6 +600,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl)
 	{
+		count_call(call_type::VertexDeclaration);
 		return m_pIDirect3DDevice9->SetVertexDeclaration(pDecl);
 	}
 
@@ -573,6 +611,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetFVF(DWORD FVF)
 	{
+		count_call(call_type::VertexDeclaration);
 		return m_pIDirect3DDevice9->SetFVF(FVF);
 	}
 
@@ -588,6 +627,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShader(IDirect3DVertexShader9* pShader)
 	{
+		count_call(call_type::Shader);
 		return m_pIDirect3DDevice9->SetVertexShader(pShader);
 	}
 
@@ -598,6 +638,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount);
 	}
 
@@ -608,6 +649,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetVertexShaderConstantI(StartRegister, pConstantData, Vector4iCount);
 	}
 
@@ -618,6 +660,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetVertexShaderConstantB(StartRegister, pConstantData, BoolCount);
 	}
 
@@ -628,6 +671,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride)
 	{
+		count_call(call_type::StreamSource);
 		return m_pIDirect3DDevice9->SetStreamSource(StreamNumber, pStreamData, OffsetInBytes, Stride);
 	}
 
@@ -648,6 +692,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetIndices(IDirect3DIndexBuffer9* pIndexData)
 	{
+		count_call(call_type::Indices);
 		return m_pIDirect3DDevice9->SetIndices(pIndexData);
 	}
 
@@ -663,6 +708,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShader(IDirect3DPixelShader9* pShader)
 	{
+		count_call(call_type::Shader);
 		return m_pIDirect3DDevice9->SetPixelShader(pShader);
 	}
 
@@ -673,6 +719,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
 	}
 
@@ -683,6 +730,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetPixelShaderConstantI(StartRegister, pConstantData, Vector4iCount);
 	}
 
@@ -693,6 +741,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetPixelShaderConstantB(StartRegister, pConstantData, BoolCount);
 	}
 

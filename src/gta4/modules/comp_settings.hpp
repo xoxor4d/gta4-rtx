@@ -476,6 +476,109 @@ namespace gta4
 				true
 			};
 
+			variable api_static_enabled = {
+				"api_static_enabled",
+				("Render static map geometry through the Remix API instead of re-submitting fixed function draws every frame.\n"
+				 "Meshes are built once per geometry and only instances are submitted per frame.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.5.2",
+				true
+			};
+
+			variable api_static_entity_skip = {
+				"api_static_entity_skip",
+				("Skip the engine's draw command of map entities whose geometry is fully owned by the Remix API path.\n"
+				 "The entity is then submitted directly without any D3D9 calls (needs 'api_static_enabled')."),
+				"1.5.2",
+				true
+			};
+
+			variable api_static_require_plain_draw = {
+				"api_static_require_plain_draw",
+				("Only move draws without per draw render state modifiers or categories (wetness, emissive scale, uv animation ...) to the Remix API path.\n"
+				 "Most static draws carry wetness or a category, so this keeps almost everything on the fixed function path.\n"
+				 "The api path does not apply these modifiers yet."),
+				"1.5.2",
+				false
+			};
+
+			variable api_static_creates_per_frame = {
+				"api_static_creates_per_frame",
+				("Maximum number of Remix API meshes created per frame.\n"
+				 "Geometry that could not be built yet stays on the fixed function path for that frame, which spreads streaming spikes."),
+				"1.5.2",
+				128
+			};
+
+			variable api_static_cache_mb = {
+				"api_static_cache_mb",
+				("Memory budget (MB) for cached Remix API meshes. Geometry that streams back in reuses its cached mesh.\n"
+				 "Least recently drawn meshes are destroyed when the budget is exceeded."),
+				"1.5.2",
+				1024
+			};
+
+			variable api_static_entity_refresh_frames = {
+				"api_static_entity_refresh_frames",
+				("Every n frames an entity owned by the Remix API path is drawn by the engine once more so its per draw values\n"
+				 "(emissive scale, hash seed at the 6:45 / 19:15 switches, wetness when rain starts) are refreshed.\n"
+				 "0 never refreshes; only needed when phase B shows stale emissive windows or wetness after a time or weather change."),
+				"1.5.2",
+				0
+			};
+
+			variable api_static_skip_pass_setup = {
+				"api_static_skip_pass_setup",
+				("Skip the engine's shader pass setup (render states, shader constants, textures) of geometry whose passes are all\n"
+				 "owned by the Remix API path and submit its api instances directly. Removes most D3D9 calls of api drawn geometry\n"
+				 "(needs 'api_static_enabled')."),
+				"1.5.2",
+				true
+			};
+
+			variable api_static_pass_refresh_frames = {
+				"api_static_pass_refresh_frames",
+				("Geometry whose pass setup is skipped is drawn by the engine once every n frames so its per draw values\n"
+				 "(wetness, emissive scale, texture factor, categories) follow time and weather changes. 0 never refreshes."),
+				"1.5.2",
+				0
+			};
+
+			variable api_peds_enabled = {
+				"api_peds_enabled",
+				("Render peds through the Remix API (needs 'api_static_enabled'). Skinned geometry becomes a skinned api mesh that gets\n"
+				 "the bone palette of every draw, so the runtime skins it in compute instead of capturing the vertex shader output.\n"
+				 "Blendshape heads (morphed on the CPU) rebuild their mesh whenever the morph changes.\n"
+				 "Geometry with a second vertex stream keeps the vertex shader path."),
+				"1.5.2",
+				true
+			};
+
+			variable api_peds_blendshapes = {
+				"api_peds_blendshapes",
+				("Draw blendshape heads (morphed on the CPU into double buffered geometry) through the Remix API as well.\n"
+				 "Their api mesh is rebuilt whenever the morph changes; off keeps them on the vertex shader path."),
+				"1.5.2",
+				true
+			};
+
+			variable api_peds_skip_pass_setup = {
+				"api_peds_skip_pass_setup",
+				("Skip the engine's pass setup (render states, shader constants, textures) and draw of ped geometry the Remix API\n"
+				 "path owns (needs 'api_peds_enabled'). Skinned peds get their bones from the matrix set, the same palette\n"
+				 "grmGeometryQB::DrawSkinned uploads."),
+				"1.5.2",
+				true
+			};
+
+			variable api_vehicles_enabled = {
+				"api_vehicles_enabled",
+				("Render vehicles through the Remix API (needs 'api_static_enabled'). Their bones come from every draw, damage is\n"
+				 "applied on the CPU like the vertex shader does (a mesh per damage state). Tyres and light proxies keep the vertex shader path."),
+				"1.5.2",
+				true
+			};
+
 			variable remix_override_rtxdi_samplecount = {
 				"remix_override_rtxdi_samplecount",
 				("Remix sets 'rtx.di.initialSampleCount' to hardcoded values on start.\n"

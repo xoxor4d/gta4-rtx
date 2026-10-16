@@ -170,6 +170,18 @@ namespace gta4
 				ASSIGN(manual_game_resolution_enabled);
 				ASSIGN(manual_game_resolution);
 				ASSIGN(load_colormaps_only);
+				ASSIGN(api_static_enabled);
+				ASSIGN(api_static_entity_skip);
+				ASSIGN(api_static_require_plain_draw);
+				ASSIGN(api_static_creates_per_frame);
+				ASSIGN(api_static_cache_mb);
+				ASSIGN(api_static_entity_refresh_frames);
+				ASSIGN(api_static_skip_pass_setup);
+				ASSIGN(api_static_pass_refresh_frames);
+				ASSIGN(api_peds_enabled);
+				ASSIGN(api_peds_blendshapes);
+				ASSIGN(api_peds_skip_pass_setup);
+				ASSIGN(api_vehicles_enabled);
 				ASSIGN(remix_override_rtxdi_samplecount);
 				ASSIGN(remix_var_queue_frame_timeout);
 				

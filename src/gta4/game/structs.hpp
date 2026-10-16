@@ -976,4 +976,26 @@ namespace gta4::game
 		D3DRS_CCW_STENCIL_FUNC = 0x27,
 		D3DRS_COUNT = 0x28,
 	};
+
+	// rage::grmGeometryQB (PC 1.2.0.59)
+	struct grmGeometryQB
+	{
+		void* vtbl;
+		void* vertex_declaration;		// grcVertexDeclaration*, D3DVERTEXELEMENT9[] at +0x0C
+		int pad08;
+		void* vertex_buffers[4];		// grcVertexBufferD3D*
+		void* index_buffers[4];			// grcIndexBufferD3D*
+		std::uint32_t index_count;
+		std::uint32_t primitive_count;
+		std::uint16_t vertex_count;
+		std::uint16_t primitive_type;	// 3 = triangle list
+		void* matrix_palette;
+		std::uint16_t stride;
+		std::uint16_t palette_count;
+		void* second_declaration;
+		void* second_vertex_buffer;
+		std::uint32_t double_buffered;
+	};
+	STATIC_ASSERT_OFFSET(grmGeometryQB, index_count, 0x2C);
+	STATIC_ASSERT_OFFSET(grmGeometryQB, double_buffered, 0x48);
 }

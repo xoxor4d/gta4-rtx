@@ -1,5 +1,6 @@
 #include "std_include.hpp"
 #include "imgui.hpp"
+#include "renderer_api.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui_internal.h"
@@ -708,6 +709,14 @@ namespace gta4
 			ImGui::Checkbox("Disable Water Worldpos Logic", &im->m_dbg_disable_water_worldpos_logic);
 
 			//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Remix API: Static Geometry ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			renderer_api::devgui();
 			ImGui::TreePop();
 		}
 

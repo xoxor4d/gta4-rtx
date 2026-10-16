@@ -19,6 +19,9 @@ namespace gta4
 		GameLights,
 		AntiCull,
 		DrawIndexedPrim,
+		RendererApi,
+		ApiPassSkip,
+		ShaderPassSetup,
 		Count
 	};
 
@@ -87,6 +90,9 @@ namespace gta4
 			case performance_section::GameLights: return "GameLights";
 			case performance_section::AntiCull: return "AntiCull";
 			case performance_section::DrawIndexedPrim: return "DrawIndexedPrim";
+			case performance_section::RendererApi: return "RendererApi";
+			case performance_section::ApiPassSkip: return "ApiPassSkip";
+			case performance_section::ShaderPassSetup: return "ShaderPassSetup";
 			}
 		}
 

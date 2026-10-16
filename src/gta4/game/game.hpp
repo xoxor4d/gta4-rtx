@@ -129,6 +129,8 @@ namespace gta4::game
 	extern uint32_t hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub;
 	extern uint32_t retn_addr__on_instanced_render__pre_setup_vs_ps_pass_stub;
 	extern uint32_t retn_addr__on_instanced_render__post_setup_vs_ps_pass_stub;
+	extern uint32_t hk_addr__on_instanced_render__geometry_stub;
+	extern uint32_t retn_addr__on_instanced_render__geometry_stub;
 	extern uint32_t retn_addr__on_phone_phase_clear_stub;
 	extern uint32_t func_addr__on_sky_render_stub;
 	extern uint32_t retn_addr__on_sky_render_stub;
@@ -142,6 +144,39 @@ namespace gta4::game
 
 	extern uint32_t retn_addr__pre_entity_surfs_stub;
 	extern uint32_t hk_addr__post_entity_surfs_stub;
+
+	// remix api static geometry path
+	extern uint32_t func_addr__CEntity_AddToDrawListBuckets;
+	extern uint32_t func_addr__CRenderPhase_BuildDrawListWrapper;
+	extern uint32_t func_addr__CEntityDrawInfo_RenderBuckets; // sorted alpha entities (gta_alpha, glass, wire ...)
+	extern uint32_t func_addr__CDrawSkinnedEntityDC_Execute;  // dynamic entities (CObject), skinned or not
+	extern uint32_t func_addr__CRenderer_RenderDrawableGeometriesWithLightsInArea; // per geometry area lights (large alpha entities, wires)
+	extern uint32_t hk_addr__frag_type_dc_draw; // call rage::fragType::Draw inside CDrawFragTypeDC::Execute
+	extern uint32_t func_addr__fragType_Draw;   // resolved from the call above
+	extern void** pModelInfoPtrs;               // CModelInfo::ms_modelInfoPtrs
+	extern uint32_t func_addr__CBaseDC_operator_new;
+	extern uint32_t func_addr__CBaseDC_Init;
+	extern uint32_t func_addr__CDrawListMgr_AddModelInfoReference;
+	extern uint32_t func_addr__grmGeometryQB_Draw;
+	extern uint32_t func_addr__grmGeometryQB_dtor;
+	extern uint32_t func_addr__grcTexturePC_dtor; // releases the D3D texture (+0x18), its address can be reused by a new texture
+	extern uint32_t func_addr__grmShader_DrawGeometry; // runs every pass of the shader's technique for one geometry
+	extern uint32_t func_addr__grmShader_DrawSkinned;  // same for skinned geometry (grmGeometryQB::DrawSkinned uploads the bones)
+	extern int* pForcedTechnique;  // -1 = none (CShaderFx_PushForcedTechnique)
+	extern std::uint8_t* pBikeHelmetDrawFlag; // set while CPed::EnableBikeHelmet draws (grmShader::DrawSkinned adds device state)
+	extern int* pTechniqueDefault;
+	extern int* pTechniqueAlt;     // used instead of the default technique while grmRenderState1 is set
+	extern int* pGrmRenderState1;
+	extern uint32_t func_addr__CDrawPedDC_Execute;
+	extern uint32_t func_addr__CDrawPlayerDC_Execute;
+	extern uint32_t func_addr__CDrawPedPropDC_Execute;
+	extern uint32_t func_addr__CDrawPedPropsDC_Execute;
+	extern uint32_t func_addr__CDrawSLODPedDC_Execute; // super low lod ped (one shared skinned model, gta_default)
+	extern DWORD func_addr__CGtaDrawable_BeforeAddToDrawList;
+	extern DWORD func_addr__CGtaDrawable_AfterDraw;
+	extern void* pgDrawListMgr;
+	extern uint32_t* pDrawCommandIndexCounter;
+	extern void** pCRenderPhase_sm_pCurrent;
 
 	extern uint32_t retn_addr__pre_vehicle_surfs_stub;
 	extern uint32_t hk_addr__post_vehicle_surfs_stub;
