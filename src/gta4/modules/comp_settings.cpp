@@ -306,6 +306,8 @@ namespace gta4
 				ASSIGN(water_lod_radius_4);
 				ASSIGN(water_lod_radius_8);
 				ASSIGN(water_block_distance_scale);
+				ASSIGN(api_water_enabled);
+				ASSIGN(api_water_cull_pieces);
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 				ASSIGN(rain_particle_system_enabled);

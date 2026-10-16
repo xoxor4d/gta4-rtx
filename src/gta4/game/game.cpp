@@ -182,6 +182,7 @@ namespace gta4::game
 	uint32_t func_addr__CWater_CalculateWavesForCoordinate = 0u;
 	uint32_t func_addr__CWater_RenderHighDetailWaterRectangle = 0u;
 	uint32_t func_addr__CWater_DrawHighDetailPrimitive = 0u;
+	uint32_t func_addr__CWater_RenderWaterRectangle = 0u;
 	uint32_t func_addr__grcViewport_IsSphereVisible = 0u;
 	int* pWaterDetailDist = nullptr;
 	int* pWaterRenderBufferIndex = nullptr;
@@ -709,6 +710,7 @@ namespace gta4::game
 		PATTERN_OFFSET_SIMPLE(func_addr__CWater_CalculateWavesForCoordinate, "8B 0D ? ? ? ? 64 A1 ? ? ? ? 56 8B 74 24 1C 8B 04 88", 0, 0xAD4D30);
 		PATTERN_OFFSET_SIMPLE(func_addr__CWater_RenderHighDetailWaterRectangle, "51 8B 54 24 08 8B 4C 24 14 F3 0F 10 15 ? ? ? ? 56 8B 74 24 10", 0, 0xAD8FA0);
 		PATTERN_OFFSET_SIMPLE(func_addr__CWater_DrawHighDetailPrimitive, "83 EC 08 8B 4C 24 34 53 55 56 8B 74 24 1C 57 8B 7C 24 1C 8B C6", 0, 0xAD9130);
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_RenderWaterRectangle, "8B 44 24 0C 8B 4C 24 10 53 55 56 57 3B C1 7D ? 8B D8 8B F9 EB ? 8B D9 8B F8 8B 54 24 14 8B 2D", 0, 0xAD97C0);
 		PATTERN_OFFSET_SIMPLE(func_addr__grcViewport_IsSphereVisible, "55 8B EC 83 E4 F8 51 8B 45 18 56 8B F1 0F 57 F6 85 C0 0F 84", 0, 0x431E40);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDetailDist, int*, "66 0F 6E 05 ? ? ? ? F3 0F 10 27 0F 5B C0 F3 0F 5C E0", 4, 0xAD9E58);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterRectFrustumCull, std::uint8_t*, "80 3D ? ? ? ? 00 0F BF 8F ? ? ? ? 0F BF 04 CD", 2, 0xAD7204);

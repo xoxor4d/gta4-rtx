@@ -3376,6 +3376,10 @@ namespace gta4
 		water::on_render_begin();
 	}
 
+	void on_water_render_end() {
+		water::on_render_end();
+	}
+
 	__declspec (naked) void pre_water_render_stub()
 	{
 		__asm
@@ -3395,6 +3399,9 @@ namespace gta4
 		__asm
 		{
 			mov		g_is_water_rendering, 0;
+			pushad;
+			call	on_water_render_end;
+			popad;
 			pop     edi;
 			pop     esi;
 			mov     esp, ebp;

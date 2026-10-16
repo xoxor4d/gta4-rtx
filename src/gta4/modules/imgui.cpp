@@ -1791,6 +1791,13 @@ namespace gta4
 		ImGui::SeparatorText(" Water ");
 		ImGui::Spacing(0, 4);
 
+		compsettings_bool_widget("Draw Water Through The Remix API", gs->api_water_enabled);
+
+		ImGui::BeginDisabled(!gs->api_water_enabled.get_as<bool>());
+		compsettings_bool_widget("Cull Water Outside The View", gs->api_water_cull_pieces);
+		ImGui::EndDisabled();
+
+		ImGui::Spacing(0, 4);
 		compsettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
 		compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
 		compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");

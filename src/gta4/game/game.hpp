@@ -204,6 +204,7 @@ namespace gta4::game
 	extern uint32_t func_addr__CWater_CalculateWavesForCoordinate;
 	extern uint32_t func_addr__CWater_RenderHighDetailWaterRectangle;
 	extern uint32_t func_addr__CWater_DrawHighDetailPrimitive;
+	extern uint32_t func_addr__CWater_RenderWaterRectangle;
 	extern uint32_t func_addr__grcViewport_IsSphereVisible;
 	extern int* pWaterDetailDist;            // DETAILEDWATERDIST, half size of the tessellated window around the camera
 	extern int* pWaterRenderBufferIndex;     // render thread buffer of the double buffered water state

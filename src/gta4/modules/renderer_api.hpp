@@ -166,6 +166,9 @@ namespace gta4
 		/// @return true if the draw was submitted through the api (the D3D9 draw must be skipped)
 		static bool try_draw_ped(IDirect3DDevice9* dev, drawcall_mod_context& ctx, D3DPRIMITIVETYPE type, UINT prim_count);
 
+		/// passes the game camera to the runtime once per frame (frames without ray traced D3D9 draws have none otherwise)
+		static void submit_camera();
+
 		/// counts a static fixed function draw by the draw command it came from (devgui)
 		static void note_static_draw();
 

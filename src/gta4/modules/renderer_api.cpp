@@ -7,6 +7,7 @@
 #include "natives.hpp"
 #include "performance_logger.hpp"
 #include "renderer.hpp"
+#include "water.hpp"
 
 #include <shared_mutex>
 
@@ -3295,6 +3296,10 @@ namespace gta4
 		return true;
 	}
 
+	void renderer_api::submit_camera() {
+		submit_camera_once();
+	}
+
 	void renderer_api::note_static_draw()
 	{
 		if (g_in_draw_entity_dc) {
@@ -3586,6 +3591,22 @@ namespace gta4
 		ImGui::SeparatorText("Vehicles");
 		ImGui::Checkbox("Draw through the Remix API (bones per draw, damage on the CPU)##vehicles", gs->api_vehicles_enabled.get_as<bool*>());
 		ImGui::Checkbox("Debug: tyres stay on D3D9##vehicles", &g_debug_tyres_on_d3d9);
+
+		ImGui::Spacing(0, 4);
+		if (ImGui::TreeNode("Water material##api_water"))
+		{
+			ImGui::TextDisabled("Used while water is drawn through the Remix API and no USD water material replaces it. Not saved.");
+
+			ImGui::BeginDisabled(gs->override_water_texture_hash.get_temp_override_state());
+			ImGui::Checkbox("Stabilize Water Texture Hash (USD water material)##api_water", gs->override_water_texture_hash.get_as<bool*>());
+			ImGui::EndDisabled();
+
+			auto& m = water::material();
+			ImGui::DragFloat("Index of refraction##api_water", &m.ior, 0.001f, 1.0f, 3.0f, "%.3f");
+			ImGui::ColorEdit3("Transmittance color##api_water", m.transmittance_color, ImGuiColorEditFlags_Float);
+			ImGui::DragFloat("Transmittance distance##api_water", &m.transmittance_distance, 0.05f, 0.01f, 1000.0f, "%.2f");
+			ImGui::TreePop();
+		}
 
 		ImGui::SeparatorText("Mesh cache");
 		ImGui::SliderInt("Mesh creates per frame", gs->api_static_creates_per_frame.get_as<int*>(), 0, 256);

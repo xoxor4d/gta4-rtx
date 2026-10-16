@@ -1325,7 +1325,8 @@ namespace gta4
 			variable override_water_texture_hash =
 			{
 				"override_water_texture_hash",
-				("This assigns the same texture hash to all water surfaces. Aids with water replacements."),
+				("This assigns the same texture hash to all water surfaces so a USD water material replaces them.\n"
+				 "Forced on while water is drawn through the fixed function path. Off on the Remix API path: the API water material (dev tab) is used."),
 				"1.3.0",
 				true
 			};
@@ -1457,6 +1458,24 @@ namespace gta4
 				("Distance from the camera where the tessellation changes from 4 to 8 units."),
 				"1.5.2",
 				64.0f
+			};
+
+			variable api_water_enabled =
+			{
+				"api_water_enabled",
+				("Draw the water surface through the Remix API (one mesh per frame) instead of the fixed function draw.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.5.3",
+				true
+			};
+
+			variable api_water_cull_pieces =
+			{
+				"api_water_cull_pieces",
+				("Remix API water: skip tessellated water pieces outside the view like the fixed function path.\n"
+				 "Off submits the whole tessellated area so reflections see the waves behind the camera."),
+				"1.5.2",
+				true
 			};
 
 			variable water_block_distance_scale =
