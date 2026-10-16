@@ -481,7 +481,7 @@ namespace gta4
 				("Render static map geometry through the Remix API instead of re-submitting fixed function draws every frame.\n"
 				 "Meshes are built once per geometry and only instances are submitted per frame.\n"
 				 "Can be toggled at runtime to compare both paths."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -489,7 +489,7 @@ namespace gta4
 				"api_static_entity_skip",
 				("Skip the engine's draw command of map entities whose geometry is fully owned by the Remix API path.\n"
 				 "The entity is then submitted directly without any D3D9 calls (needs 'api_static_enabled')."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -498,7 +498,7 @@ namespace gta4
 				("Only move draws without per draw render state modifiers or categories (wetness, emissive scale, uv animation ...) to the Remix API path.\n"
 				 "Most static draws carry wetness or a category, so this keeps almost everything on the fixed function path.\n"
 				 "The api path does not apply these modifiers yet."),
-				"1.5.2",
+				"1.7.0",
 				false
 			};
 
@@ -506,15 +506,15 @@ namespace gta4
 				"api_static_creates_per_frame",
 				("Maximum number of Remix API meshes created per frame.\n"
 				 "Geometry that could not be built yet stays on the fixed function path for that frame, which spreads streaming spikes."),
-				"1.5.2",
-				128
+				"1.7.0",
+				64
 			};
 
 			variable api_static_cache_mb = {
 				"api_static_cache_mb",
 				("Memory budget (MB) for cached Remix API meshes. Geometry that streams back in reuses its cached mesh.\n"
 				 "Least recently drawn meshes are destroyed when the budget is exceeded."),
-				"1.5.2",
+				"1.7.0",
 				1024
 			};
 
@@ -523,7 +523,7 @@ namespace gta4
 				("Every n frames an entity owned by the Remix API path is drawn by the engine once more so its per draw values\n"
 				 "(emissive scale, hash seed at the 6:45 / 19:15 switches, wetness when rain starts) are refreshed.\n"
 				 "0 never refreshes; only needed when phase B shows stale emissive windows or wetness after a time or weather change."),
-				"1.5.2",
+				"1.7.0",
 				0
 			};
 
@@ -532,7 +532,7 @@ namespace gta4
 				("Skip the engine's shader pass setup (render states, shader constants, textures) of geometry whose passes are all\n"
 				 "owned by the Remix API path and submit its api instances directly. Removes most D3D9 calls of api drawn geometry\n"
 				 "(needs 'api_static_enabled')."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -540,7 +540,7 @@ namespace gta4
 				"api_static_pass_refresh_frames",
 				("Geometry whose pass setup is skipped is drawn by the engine once every n frames so its per draw values\n"
 				 "(wetness, emissive scale, texture factor, categories) follow time and weather changes. 0 never refreshes."),
-				"1.5.2",
+				"1.7.0",
 				0
 			};
 
@@ -550,7 +550,7 @@ namespace gta4
 				 "the bone palette of every draw, so the runtime skins it in compute instead of capturing the vertex shader output.\n"
 				 "Blendshape heads (morphed on the CPU) rebuild their mesh whenever the morph changes.\n"
 				 "Geometry with a second vertex stream keeps the vertex shader path."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -558,7 +558,7 @@ namespace gta4
 				"api_peds_blendshapes",
 				("Draw blendshape heads (morphed on the CPU into double buffered geometry) through the Remix API as well.\n"
 				 "Their api mesh is rebuilt whenever the morph changes; off keeps them on the vertex shader path."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -567,7 +567,7 @@ namespace gta4
 				("Skip the engine's pass setup (render states, shader constants, textures) and draw of ped geometry the Remix API\n"
 				 "path owns (needs 'api_peds_enabled'). Skinned peds get their bones from the matrix set, the same palette\n"
 				 "grmGeometryQB::DrawSkinned uploads."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -575,7 +575,7 @@ namespace gta4
 				"api_vehicles_enabled",
 				("Render vehicles through the Remix API (needs 'api_static_enabled'). Their bones come from every draw, damage is\n"
 				 "applied on the CPU like the vertex shader does (a mesh per damage state). Tyres and light proxies keep the vertex shader path."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -1317,8 +1317,8 @@ namespace gta4
 			{
 				"water_texture_uv_scale",
 				("Water surfaces use world positions instead of surface UVs. This can be used to scale the applied texture."),
-				"1.3.0",
-				3.0f
+				"1.7.0",
+				5.0f
 			};
 
 			variable water_texture_normal_fadeout_distance =
@@ -1334,7 +1334,7 @@ namespace gta4
 				"water_apply_shoreline_modifier",
 				("Adds the shoreline modifier to water surfaces: the water fades out where it is shallow or meets objects. "
 				 "Textures tagged as animated water get the shoreline fade either way."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -1342,15 +1342,15 @@ namespace gta4
 			{
 				"water_detail_radius",
 				("Half size of the tessellated water area around the camera. Needs 'water_lod' (coarser tessellation further away), the game's 100 is used without it. Beyond the game's wave simulation (100 units) it shows the procedural waves."),
-				"1.5.2",
-				200.0f
+				"1.7.0",
+				300.0f
 			};
 
 			variable water_sim_edge_fade =
 			{
 				"water_sim_edge_fade",
 				("Width of the fade at the edge of the game's wave simulation (the game uses 10). Heights and normals fade over this distance, the procedural waves take over."),
-				"1.5.2",
+				"1.7.0",
 				50.0f
 			};
 
@@ -1358,7 +1358,7 @@ namespace gta4
 			{
 				"water_far_waves",
 				("Continue the game's waves with procedural waves where its simulation ends."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -1366,7 +1366,7 @@ namespace gta4
 			{
 				"water_far_wave_scale",
 				("Strength of the procedural waves relative to the measured strength of the game's waves."),
-				"1.5.2",
+				"1.7.0",
 				0.4f
 			};
 
@@ -1374,7 +1374,7 @@ namespace gta4
 			{
 				"water_far_wave_length",
 				("Wavelength of the longest procedural wave."),
-				"1.5.2",
+				"1.7.0",
 				80.0f
 			};
 
@@ -1382,7 +1382,7 @@ namespace gta4
 			{
 				"water_far_wave_speed",
 				("Speed multiplier of the procedural waves."),
-				"1.5.2",
+				"1.7.0",
 				0.8f
 			};
 
@@ -1390,7 +1390,7 @@ namespace gta4
 			{
 				"water_far_wave_direction",
 				("Main direction of the procedural waves in degrees."),
-				"1.5.2",
+				"1.7.0",
 				-70.0f
 			};
 
@@ -1398,7 +1398,7 @@ namespace gta4
 			{
 				"water_far_wave_fade",
 				("Distance over which the procedural waves fade out towards the edge of the tessellated area."),
-				"1.5.2",
+				"1.7.0",
 				100.0f
 			};
 
@@ -1406,7 +1406,7 @@ namespace gta4
 			{
 				"water_vertex_normal_scale",
 				("Strength of the wave slopes in the water's vertex normals."),
-				"1.5.2",
+				"1.7.0",
 				0.75f
 			};
 
@@ -1414,7 +1414,7 @@ namespace gta4
 			{
 				"water_lod",
 				("Coarser tessellation further away from the camera (2 units close by, then 4 and 8 units)."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -1422,7 +1422,7 @@ namespace gta4
 			{
 				"water_lod_radius_4",
 				("Distance from the camera where the tessellation changes from 2 to 4 units."),
-				"1.5.2",
+				"1.7.0",
 				16.0f
 			};
 
@@ -1430,7 +1430,7 @@ namespace gta4
 			{
 				"water_lod_radius_8",
 				("Distance from the camera where the tessellation changes from 4 to 8 units."),
-				"1.5.2",
+				"1.7.0",
 				64.0f
 			};
 
@@ -1439,7 +1439,7 @@ namespace gta4
 				"api_water_enabled",
 				("Draw the water surface through the Remix API (one mesh per frame) instead of the fixed function draw.\n"
 				 "Can be toggled at runtime to compare both paths."),
-				"1.5.3",
+				"1.7.0",
 				true
 			};
 
@@ -1448,7 +1448,7 @@ namespace gta4
 				"api_water_cull_pieces",
 				("Remix API water: skip tessellated water pieces outside the view like the fixed function path.\n"
 				 "Off submits the whole tessellated area so reflections see the waves behind the camera."),
-				"1.5.2",
+				"1.7.0",
 				true
 			};
 
@@ -1456,8 +1456,8 @@ namespace gta4
 			{
 				"water_block_distance_scale",
 				("Scales how far the game looks for water blocks (500 x 500 units) in front of the camera. Blocks outside of the view are still culled."),
-				"1.5.2",
-				1.0f
+				"1.7.0",
+				3.0f
 			};
 
 

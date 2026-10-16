@@ -1854,7 +1854,7 @@ namespace gta4
 				compsettings_float_widget("Far Wave Length", gs->water_far_wave_length, 0.5f, 100.0f, 0.1f, "%.1f");
 				compsettings_float_widget("Far Wave Speed", gs->water_far_wave_speed, 0.0f, 4.0f, 0.01f);
 				compsettings_float_widget("Far Wave Direction", gs->water_far_wave_direction, -180.0f, 180.0f, 0.5f, "%.1f");
-				compsettings_float_widget("Far Wave Edge Fade", gs->water_far_wave_fade, 0.0f, 200.0f, 0.5f, "%.1f");
+				compsettings_float_widget("Far Wave Edge Fade", gs->water_far_wave_fade, 0.0f, 600.0f, 0.5f, "%.1f");
 				ImGui::PopID();
 			});
 
@@ -2646,23 +2646,16 @@ namespace gta4
 		const float inbetween_spacing = SEPARATOR_SPACING;
 
 		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Version 1.5.X ");
+		ImGui::SeparatorText(" Version 1.7.X ");
 		ImGui::Spacing(0, 4);
 
-		ImGui::Widget_CategoryWithVerticalLabel("Ems.", [&]()
-			{
-				ImGui::PushID("emissives15");
-				compsettings_bool_widget("Allow Vertex Colors on Emissive Alpha", gs->emissive_alpha_allow_vertex_colors);
-				ImGui::PopID();
-			});
+		compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
 
 		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Version 1.3.X ");
+		ImGui::SeparatorText(" Version 1.5.X and lower ");
 		ImGui::Spacing(0, 4);
 
 		remix_atmospheric_toggle();
-		
-		compsettings_bool_widget("No Volumetrics on Filler Lights", gs->translate_game_lights_no_volumetrics_on_filler_lights);
 
 		ImGui::Spacing(0, inbetween_spacing);
 
@@ -2706,6 +2699,7 @@ namespace gta4
 			{
 				ImGui::PushID("emissives");
 				compsettings_bool_widget("Allow Vertex Colors on Emissives", gs->emissive_allow_vertex_colors);
+				compsettings_bool_widget("Allow Vertex Colors on Emissive Alpha", gs->emissive_alpha_allow_vertex_colors);
 				ImGui::PopID();
 			});
 
@@ -2759,6 +2753,98 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 	}
 
+	void wip_api_container()
+	{
+		const auto& gs = comp_settings::get();
+
+		ImGui::Spacing(0, 4);
+		ImGui::TextUnformatted("Geometry drawn through the Remix API instead of D3D9. Changes apply from the next frame.");
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+
+		compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
+		compsettings_bool_widget("Peds", gs->api_peds_enabled);
+		compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
+		compsettings_bool_widget("Water", gs->api_water_enabled);
+
+		ImGui::Spacing(0, 4);
+	}
+
+	void wip_water_container()
+	{
+		const auto& gs = comp_settings::get();
+
+		ImGui::Spacing(0, 4);
+		ImGui::TextUnformatted("Presets for the tessellated water area and the waves (needs water drawn through the Remix API).");
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+
+		// every preset starts from the defaults of the tessellation and wave settings
+		const auto apply_preset = [&](const std::function<void()>& changes)
+			{
+				comp_settings::variable* vars[] =
+				{
+					&gs->water_lod, &gs->water_detail_radius, &gs->water_lod_radius_4, &gs->water_lod_radius_8, &gs->water_block_distance_scale,
+					&gs->water_sim_edge_fade, &gs->water_vertex_normal_scale, &gs->water_far_waves, &gs->water_far_wave_scale, &gs->water_far_wave_length,
+					&gs->water_far_wave_speed, &gs->water_far_wave_direction, &gs->water_far_wave_fade, &gs->api_water_cull_pieces,
+				};
+
+				for (const auto v : vars) {
+					v->reset_default();
+				}
+
+				changes();
+				comp_settings::write_comp_settings_toml();
+			};
+
+		const auto button_4way_width = (ImGui::GetContentRegionAvail().x * 0.25f) - (ImGui::GetStyle().ItemSpacing.x);
+
+		ImGui::BeginDisabled(!gs->api_water_enabled.get_as<bool>());
+		{
+			if (ImGui::Button("Performance", ImVec2(button_4way_width, 0)))
+			{
+				apply_preset([&]()
+					{
+						gs->water_detail_radius.set_var(150.0f, true);
+						gs->water_block_distance_scale.set_var(1.0f, true);
+						gs->water_sim_edge_fade.set_var(30.0f, true);
+						gs->water_far_waves.set_var(false, true);
+					});
+			} TT("Tessellated radius 150, block distance scale 1, simulation edge fade 30, no procedural far waves.");
+
+			ImGui::SameLine();
+			if (ImGui::Button("Standard", ImVec2(button_4way_width, 0))) {
+				apply_preset([]() {});
+			} TT("The default water settings.");
+
+			ImGui::SameLine();
+			if (ImGui::Button("Quality", ImVec2(button_4way_width, 0)))
+			{
+				apply_preset([&]()
+					{
+						gs->water_detail_radius.set_var(400.0f, true);
+						gs->water_far_wave_fade.set_var(250.0f, true);
+					});
+			} TT("Defaults with a tessellated radius of 400 and a far wave edge fade of 250.");
+
+			ImGui::SameLine();
+			if (ImGui::Button("Insane", ImVec2(button_4way_width, 0)))
+			{
+				apply_preset([&]()
+					{
+						gs->water_detail_radius.set_var(600.0f, true);
+						gs->water_far_wave_fade.set_var(350.0f, true);
+						gs->water_far_wave_scale.set_var(0.3f, true);
+						gs->water_lod_radius_4.set_var(64.0f, true);
+					});
+			} TT("Defaults with a tessellated radius of 600, a far wave edge fade of 350, far wave strength 0.3 and 4 unit cells from 64.");
+
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing(0, 4);
+		water::devgui_stats();
+		ImGui::Spacing(0, 4);
+	}
+
 	void imgui::tab_wip()
 	{
 		ImGui::Spacing(0, 4);
@@ -2770,6 +2856,20 @@ namespace gta4
 			"Options listed here are still WIP, might cause problems, instability or reduce Performance.");
 		ImGui::Unindent(4);
 		ImGui::Spacing(0, 16);
+
+		// remix api
+		{
+			static float cont_wip_api_height = 0.0f;
+			cont_wip_api_height = ImGui::Widget_ContainerWithCollapsingTitle("Remix API", cont_wip_api_height, wip_api_container,
+				true, ICON_FA_MICROCHIP, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// water
+		{
+			static float cont_wip_water_height = 0.0f;
+			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Water", cont_wip_water_height, wip_water_container,
+				true, ICON_FA_WATER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
 
 		// cs
 		{

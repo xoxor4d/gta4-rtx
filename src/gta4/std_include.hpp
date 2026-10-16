@@ -1,8 +1,8 @@
 #pragma once
 
 constexpr auto COMP_MOD_VERSION_MAJOR = 1;
-constexpr auto COMP_MOD_VERSION_MINOR = 5;
-constexpr auto COMP_MOD_VERSION_PATCH = 3;
+constexpr auto COMP_MOD_VERSION_MINOR = 7;
+constexpr auto COMP_MOD_VERSION_PATCH = 0;
 
 // adjust for pre-release builds
 constexpr auto COMP_MOD_PRE_RELEASE_NUM = 0;

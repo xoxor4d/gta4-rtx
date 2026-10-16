@@ -108,15 +108,20 @@ namespace gta4
 
 		api_s g_api;
 
-		// the fixed function water needs the stable hash for its USD material, the api path reads it as a user choice
-		void sync_hash_override()
+		// the fixed function water needs the stable hash for its USD material and stays at the game's tessellated radius,
+		// the api path reads both as user choices
+		void sync_overrides()
 		{
 			static const auto gs = comp_settings::get();
 			const bool forced = !gs->api_water_enabled.get_as<bool>() || !renderer_api::is_runtime_supported();
+			const char* reason = "Forced while water is drawn through the fixed function path";
 
-			gs->override_water_texture_hash.set_temp_override_state(forced, "Forced on while water is drawn through the fixed function path");
-			if (forced) {
+			gs->override_water_texture_hash.set_temp_override_state(forced, reason);
+			gs->water_detail_radius.set_temp_override_state(forced, reason);
+			if (forced)
+			{
 				gs->override_water_texture_hash.set_var(true, true);
+				gs->water_detail_radius.set_var(static_cast<float>(GAME_DETAIL_RADIUS), true);
 			}
 		}
 
@@ -827,7 +832,7 @@ namespace gta4
 	{
 		static const auto gs = comp_settings::get();
 		g_api.active = false;
-		sync_hash_override();
+		sync_overrides();
 
 		if (!get() || !game::pWaterDetailDist || !game::pWaterRenderBufferIndex || !game::pWaterCameraCoordsRT || !game::pWaterDetailRangeRender
 			|| !game::pWaterDynamicHeightRT)
@@ -961,7 +966,7 @@ namespace gta4
 		shared::utils::hook::detour(game::func_addr__CWater_RenderWaterRectangle, &CWater_RenderWaterRectangle_hk, DETOUR_CAST(CWater_RenderWaterRectangle_og));
 
 		p_this = this;
-		sync_hash_override();
+		sync_overrides();
 
 		shared::common::log("Water", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 	}
