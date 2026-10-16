@@ -129,7 +129,6 @@ namespace gta4
 
 				const auto current_comp_version = shared::utils::version_t::from_string(get_current_comp_version_string());
 				
-				//vars.decal_dirt_shader_contrast.set_config_name()
 				// ---------------------------------------
 				// Used to assign toml settings
 				// - check setting version, only read val if setting on disk is older than version the setting was last changed on - use the default val otherwise
@@ -279,9 +278,6 @@ namespace gta4
 				ASSIGN(vehicle_livery_enabled);
 				ASSIGN(vehicle_force_vertex_colors);
 
-				ASSIGN(decal_dirt_shader_usage);
-				ASSIGN(decal_dirt_shader_scalar);
-				ASSIGN(decal_dirt_shader_contrast);
 				ASSIGN(fixed_function_trees);
 				ASSIGN(tree_foliage_alpha_cutout_value);
 				ASSIGN(grass_foliage_alpha_cutout_value);

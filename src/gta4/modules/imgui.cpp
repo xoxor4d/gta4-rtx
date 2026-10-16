@@ -1878,19 +1878,6 @@ namespace gta4
 
 
 		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Interior Dirt ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Decal Dirt Shader Usage", gs->decal_dirt_shader_usage);
-		ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
-		{
-			compsettings_float_widget("Dirt Decal Shader Scalar", gs->decal_dirt_shader_scalar, 0.0f, 8.0f);
-			compsettings_float_widget("Dirt Decal Shader Contrast", gs->decal_dirt_shader_contrast, 0.0f, 8.0f);
-			ImGui::EndDisabled();
-		}
-
-
-		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Effects ");
 		ImGui::Spacing(0, 4);
 

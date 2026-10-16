@@ -1253,32 +1253,6 @@ namespace gta4
 			
 
 			// -----
-			variable decal_dirt_shader_usage =
-			{
-				"handle_decal_dirt_shader",
-				("Enable decal_dirt shader logic. Runtime will use 'rtx_comp/textures/decal_dirt.png' in texture slot 0 and the games intensity/alpha mask in slot 1.\n"
-				"This allows remixing the dirt texture while the game is handling the blending."),
-				"1.3.0",
-				false
-			};
-
-			variable decal_dirt_shader_scalar =
-			{
-				"decal_dirt_shader_scalar",
-				("Scale decal_dirt shader strength"),
-				"1.3.0",
-				0.25f
-			};
-
-			variable decal_dirt_shader_contrast =
-			{
-				"decal_dirt_shader_contrast",
-				("Mask contrast of decal_dirt shader"),
-				"1.3.0",
-				1.0f
-			};
-
-			// -----
 			variable fixed_function_trees =
 			{
 				"fixed_function_trees",

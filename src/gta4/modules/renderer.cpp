@@ -1274,16 +1274,6 @@ namespace gta4
 							}
 						}
 
-						if (g_is_rendering_static)
-						{
-							if (gs->decal_dirt_shader_usage.get_as<bool>() && register_num == 66u && pidx == GTA_DECAL_DIRT)
-							{
-								float intensity = *constant_data_struct->constants[dataPoolIndex].float_arr * gs->decal_dirt_shader_scalar.get_as<float>();
-								renderer::set_remix_temp_float01(shared::globals::d3d_device, intensity);
-								renderer::set_remix_temp_float02(shared::globals::d3d_device, gs->decal_dirt_shader_contrast.get_as<float>());
-							}
-						}
-
 						/*if (im->m_dbg_debug_shader_float_constants)
 						{
 							if (ctx.info.shader_name.contains("gta_emissive.fxc"))
@@ -2285,19 +2275,8 @@ namespace gta4
 			}
 
 			// handle gta_decal_dirt shader
-			else if (pidx == GTA_DECAL_DIRT /*ctx.info.shader_name.ends_with("_dirt.fxc")*/)
-			{
-/*				if (gs->decal_dirt_shader_usage.get_as<bool>())
-				{
-					set_remix_modifier(dev, RemixModifier::DecalDirt | RemixModifier::EnableVertexColor);
-					set_remix_texture_categories(dev, InstanceCategories::DecalStatic);
-
-					// using a texture in slot1 in the opaque shader is semi working but the texture is not always updated/correct and and cause
-					// conflicts with other textures
-				}
-				else*/ {
-					set_remix_texture_categories(dev, InstanceCategories::Ignore);
-				}
+			else if (pidx == GTA_DECAL_DIRT) {
+				set_remix_texture_categories(dev, InstanceCategories::Ignore);
 			}
 
 			else if (pidx == GTA_HAIR_SORTED_ALPHA_EXPENSIVE || pidx == GTA_HAIR_SORTED_ALPHA)
