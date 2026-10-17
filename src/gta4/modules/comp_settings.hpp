@@ -1481,8 +1481,8 @@ namespace gta4
 			{
 				"rain_particle_system_enabled",
 				("Enable rain handled by a remix particle system. Has limited collision detection - can still rain 'inside' - WIP"),
-				"1.3.0",
-				true
+				"1.7.0",
+				false
 			};
 
 
