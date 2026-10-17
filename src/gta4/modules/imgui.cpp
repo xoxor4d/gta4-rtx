@@ -106,17 +106,27 @@ namespace gta4
 		const auto im = imgui::get();
 		const auto n = natives::get();
 
-		if (ImGui::Checkbox("Modify / Freeze Time", &im->m_freeze_time)) {
+		if (ImGui::Checkbox("Modify Time", &im->m_freeze_time)) {
 			*game::m_game_timer_length = im->m_freeze_time ? 9999999 : 2000;
 		}
 
+		ImGui::SameLine(0, 16.0f);
+		const auto& style = ImGui::GetStyle();
+		constexpr auto clock_widget_gap = 12.0f;
+		constexpr auto clock_widget_end_padding = 12.0f;
+		const auto clock_widget_width = (ImGui::GetContentRegionAvail().x - clock_widget_gap - clock_widget_end_padding) * 0.5f;
+
 		ImGui::BeginDisabled(!im->m_freeze_time);
 		{
+			ImGui::SetNextItemWidth(clock_widget_width - ImGui::CalcTextSize("Hour").x - style.ItemInnerSpacing.x);
 			if (ImGui::InputInt("Hour", &im->m_curr_game_hour, 1, 2))
 			{
 				im->m_curr_game_hour = im->m_curr_game_hour > 23 ? 0 : im->m_curr_game_hour < 0 ? 23 : im->m_curr_game_hour;
 				im->m_time_was_changed = true;
 			}
+
+			ImGui::SameLine(0, clock_widget_gap);
+			ImGui::SetNextItemWidth(clock_widget_width - ImGui::CalcTextSize("Minutes").x - style.ItemInnerSpacing.x);
 			if (ImGui::InputInt("Minutes", &im->m_curr_game_minute, 1, 4))
 			{
 				im->m_curr_game_minute = im->m_curr_game_minute > 59 ? 0 : im->m_curr_game_minute < 0 ? 59 : im->m_curr_game_minute;
@@ -2862,7 +2872,7 @@ namespace gta4
 		{
 			static float cont_wip_api_height = 0.0f;
 			cont_wip_api_height = ImGui::Widget_ContainerWithCollapsingTitle("Remix API", cont_wip_api_height, wip_api_container,
-				true, ICON_FA_MICROCHIP, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+				false, ICON_FA_MICROCHIP, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// water
@@ -2893,8 +2903,12 @@ namespace gta4
 
 		ImGui::BeginDisabled(!game::is_in_game);
 		{
+			constexpr auto screenshot_button_height = 48.0f;
+			const auto hide_player_width = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x + ImGui::CalcTextSize("Hide Player").x + 40.0f;
+			const auto screenshot_button_width = ImGui::GetContentRegionAvail().x - hide_player_width - ImGui::GetStyle().ItemSpacing.x;
+
 			ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("Toggle Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			if (ImGui::Button("Toggle Screenshot Mode", ImVec2(screenshot_button_width, screenshot_button_height)))
 			{
 				const auto n = natives::get();
 
@@ -2918,6 +2932,8 @@ namespace gta4
 			}
 			ImGui::Style_ColorButtonPop();
 
+			ImGui::SameLine();
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (screenshot_button_height - ImGui::GetFrameHeight()) * 0.5f);
 			ImGui::Checkbox("Hide Player", &im->m_screenshot_mode_hide_player);
 
 			// ---
@@ -2926,8 +2942,11 @@ namespace gta4
 			ImGui::SeparatorText("    FreeCam     ");
 			ImGui::Spacing(0, 2);
 
+			const auto freecam_button_width = ImGui::GetContentRegionAvail().x * 0.33f;
+			const auto freecam_button_height = ImGui::GetFrameHeight() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+
 			ImGui::Style_ColorButtonPush(im->m_freecam_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("FreeCam Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			if (ImGui::Button("FreeCam Mode", ImVec2(freecam_button_width, freecam_button_height)))
 			{
 				const auto n = natives::get();
 
@@ -2947,10 +2966,12 @@ namespace gta4
 				"Shift/Space: Speedup & Slowdown");
 			ImGui::Style_ColorButtonPop();
 
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
-			//SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::DragFloat("FreeCam Upward Offset", &im->m_freecam_up_offset, 0.0001f, 0, 0, "%.5f");
+			ImGui::SameLine();
+			ImGui::BeginGroup();
+			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
+			ImGui::EndGroup();
 			ImGui::EndDisabled();
 
 			ImGui::Spacing(0, 12);

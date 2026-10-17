@@ -39,7 +39,6 @@ namespace gta4
 		float m_freecam_fwd_speed = 0.5f;
 		float m_freecam_rt_speed = 0.2f;
 		float m_freecam_up_speed = 0.2f;
-		float m_freecam_up_offset = 0.0f;
 
 		bool m_freeze_time = false;
 		bool m_time_was_changed = false;
