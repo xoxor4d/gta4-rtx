@@ -189,10 +189,10 @@ namespace gta4
 			auto dir = def.mDirection; dir.Normalize();
 				 dir = -dir;
 
-			const static auto rtx_atmosphere_sunElevation = remix_vars::get_option("rtx.atmosphere.sunElevation");
-			const static auto rtx_atmosphere_sunRotation = remix_vars::get_option("rtx.atmosphere.sunRotation");
-			const static auto rtx_atmosphere_moon0_elevation = remix_vars::get_option("rtx.atmosphere.moon0.elevation");
-			const static auto rtx_atmosphere_moon0_rotation = remix_vars::get_option("rtx.atmosphere.moon0.rotation");
+			const static auto rtx_atmosphere_sunElevation = remix_vars::get_option("rtx.atmosphere.sunElevation", "45");
+			const static auto rtx_atmosphere_sunRotation = remix_vars::get_option("rtx.atmosphere.sunRotation", "0");
+			const static auto rtx_atmosphere_moon0_elevation = remix_vars::get_option("rtx.atmosphere.moon0.elevation", "45");
+			const static auto rtx_atmosphere_moon0_rotation = remix_vars::get_option("rtx.atmosphere.moon0.rotation", "0");
 
 			// notes:
 			// - game combines sun + moon into a single light

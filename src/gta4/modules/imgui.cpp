@@ -2234,13 +2234,13 @@ namespace gta4
 		if (compsettings_bool_widget("Use Remix Atmosphere System", cs->timecycle_use_remix_atmos_system))
 		{
 			const bool state = cs->timecycle_use_remix_atmos_system._bool();
-			if (const auto skyMode = remix_vars::get_option("rtx.skyMode"); skyMode)
+			if (const auto skyMode = remix_vars::get_option("rtx.skyMode", "1"); skyMode)
 			{
 				remix_vars::option_value val { .value = state ? 1.0f : 0.0f };
 				remix_vars::get()->add_queue_entry(skyMode, val, 0.1f);
 			}
 
-			if (const auto tempResampling = remix_vars::get_option("rtx.volumetrics.enableTemporalResampling"); tempResampling)
+			if (const auto tempResampling = remix_vars::get_option("rtx.volumetrics.enableTemporalResampling", "False"); tempResampling)
 			{
 				remix_vars::option_value val { .enabled = state };
 				remix_vars::get()->add_queue_entry(tempResampling, val, 0.1f);

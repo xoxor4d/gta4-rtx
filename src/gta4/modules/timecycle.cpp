@@ -128,7 +128,7 @@ namespace gta4
 
 			// ----------------
 
-			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness");
+			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness", "0.1");
 			if (!using_atmos && gs->timecycle_skylight_enabled.get_as<bool>() && rtxSkybrightness)
 			{
 				val.value = timecycle->mSkyLightMultiplier * gs->timecycle_skylight_scalar.get_as<float>();
@@ -163,8 +163,8 @@ namespace gta4
 			}
 
 
-			static auto rtxBloomBurnIntensity = vars->get_option("rtx.bloom.burnIntensity");
-			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold");
+			static auto rtxBloomBurnIntensity = vars->get_option("rtx.bloom.burnIntensity", "0");
+			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold", "0");
 			if (gs->timecycle_bloom_enabled.get_as<bool>() && rtxBloomBurnIntensity && rtxBloomLuminanceThreshold)
 			{
 				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
@@ -202,7 +202,7 @@ namespace gta4
 			}
 
 
-			static auto rtxTonemapColorBalance = vars->get_option("rtx.tonemap.colorBalance");
+			static auto rtxTonemapColorBalance = vars->get_option("rtx.tonemap.colorBalance", "1 1 1");
 			if (gs->timecycle_colorcorrection_enabled.get_as<bool>() && rtxTonemapColorBalance)
 			{
 				Vector temp_color_offset;
@@ -233,7 +233,7 @@ namespace gta4
 			}
 
 
-			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation");
+			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation", "1");
 			if (gs->timecycle_desaturation_enabled.get_as<bool>() && rtxTonemapSaturation)
 			{
 				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * map_range(timecycle->mDesaturationFar, 0.0f, 1.0f, 0.0f, 0.4f);
@@ -246,7 +246,7 @@ namespace gta4
 			}
 
 
-			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias");
+			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias", "0");
 			if (gs->timecycle_gamma_enabled.get_as<bool>() && rtxTonemapExposureBias)
 			{
 				val.value = -(1.0f - timecycle->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
@@ -274,7 +274,7 @@ namespace gta4
 			im->m_timecyc_curr_mSkyBottomColorFogDensity.z = val.vector[2];
 			im->m_timecyc_curr_mSkyBottomColorFogDensity.w = val.vector[3];
 
-			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
+			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo", "1 1 1");
 			if (!using_atmos && gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
 			{
 				const auto& base_strength = gs->timecycle_fogcolor_base_strength.get_as<float>();
@@ -298,7 +298,7 @@ namespace gta4
 			}
 
 			float atmos_height = 0.0f;
-			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters");
+			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters", "1000");
 			if (gs->timecycle_skyhorizonheight_enabled.get_as<bool>() && rtxVolumetricsAtmosphereHeightMeters)
 			{
 				// Base atmosphere height from timecycle
@@ -344,7 +344,7 @@ namespace gta4
 				ASSIGN_IMGUI_VIS_FLOAT(mSkyHorizonHeight);
 			}
 
-			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters");
+			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters", "200");
 			if (!using_atmos && gs->timecycle_fogdensity_enabled.get_as<bool>() && rtxVolumetricsTransmittanceMeasurementDistanceMeters)
 			{
 				val.value = map_range(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.6f)

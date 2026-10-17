@@ -20,6 +20,7 @@ namespace gta4
 		// + latest remix versions also make player char invisible
 		// + sometimes even parts of the world ...
 
+#if 0
 		static uint32_t frame_counter = 0u;
 		if (static auto first_frame = false; !first_frame)
 		{
@@ -49,7 +50,7 @@ namespace gta4
 				im->m_dbg_do_not_render_ff = false;
 			}
 		}
-
+#endif
 		discord::update_discord();
 
 		// ----
