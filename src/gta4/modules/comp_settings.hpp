@@ -1008,16 +1008,16 @@ namespace gta4
 			{
 				"translate_vehicle_vsirens_intensity_offset",
 				("Intensity offset (in game units) applied to the v-siren lights inside the actual sirens"),
-				"1.3.2",
-				0.0f
+				"1.7.0",
+				-40.0f
 			};
 
 			variable translate_vehicle_vsirens_radius_offset =
 			{
 				"translate_vehicle_vsirens_radius_offset",
 				("Radius offset (in game units) applied to the v-siren lights inside the actual sirens"),
-				"1.3.2",
-				20.0f
+				"1.7.0",
+				10.0f
 			};
 
 
