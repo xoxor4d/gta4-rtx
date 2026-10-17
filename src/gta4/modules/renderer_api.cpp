@@ -518,10 +518,12 @@ namespace gta4
 
 		std::vector<unknown_draw_s> g_unknown_draws;
 		std::uint32_t g_skips_instanced_this_frame = 0u;
+		std::uint32_t g_skips_target_this_frame = 0u;
 		std::uint32_t g_skips_dual_render_this_frame = 0u;
 		std::uint32_t g_skips_no_geometry_this_frame = 0u;
 		std::uint32_t g_skips_no_window_last_frame = 0u;
 		std::uint32_t g_skips_instanced_last_frame = 0u;
+		std::uint32_t g_skips_target_last_frame = 0u;
 		std::uint32_t g_skips_dual_render_last_frame = 0u;
 		std::uint32_t g_skips_no_geometry_last_frame = 0u;
 
@@ -1652,6 +1654,11 @@ namespace gta4
 
 			const auto mat_it = g_materials.find(mesh_it->second.material_key);
 			if (mat_it == g_materials.end()) {
+				return;
+			}
+
+			// dev tab: the engine draw of an owned geometry is skipped, so the ignore shader logic is applied here
+			if (debug_ignore_shader_logic(mat_it->second.shader_name)) {
 				return;
 			}
 
@@ -2889,6 +2896,14 @@ namespace gta4
 			return false;
 		}
 
+		// depth-only draws (colour writes off: the interior occluders of some buildings) and draws into other targets: the
+		// runtime drops them on the D3D9 path, the api would draw them
+		if (!draws_to_primary_target(dev))
+		{
+			g_skips_target_this_frame++;
+			return false;
+		}
+
 		std::uint64_t state_key = 0u;
 		const bool owned = try_draw_impl(dev, ctx, type, prim_count, nullptr, state_key);
 		note_captured_pass(owned, state_key, ctx);
@@ -3507,6 +3522,7 @@ namespace gta4
 		g_skips_vehicle_this_frame = 0u;
 		g_skips_ped_this_frame = 0u;
 		g_skips_instanced_this_frame = 0u;
+		g_skips_target_this_frame = 0u;
 		g_skips_dual_render_this_frame = 0u;
 		g_skips_no_geometry_this_frame = 0u;
 		g_pass_skips_this_frame = 0u;
@@ -3553,6 +3569,7 @@ namespace gta4
 		g_skips_vehicle_last_frame = g_skips_vehicle_this_frame;
 		g_skips_ped_last_frame = g_skips_ped_this_frame;
 		g_skips_instanced_last_frame = g_skips_instanced_this_frame;
+		g_skips_target_last_frame = g_skips_target_this_frame;
 		g_skips_dual_render_last_frame = g_skips_dual_render_this_frame;
 		g_skips_no_geometry_last_frame = g_skips_no_geometry_this_frame;
 		g_pass_skips_last_frame = g_pass_skips_this_frame;
@@ -3678,6 +3695,7 @@ namespace gta4
 		s.skips_vehicle_last_frame = g_skips_vehicle_last_frame;
 		s.skips_ped_last_frame = g_skips_ped_last_frame;
 		s.skips_instanced_last_frame = g_skips_instanced_last_frame;
+		s.skips_target_last_frame = g_skips_target_last_frame;
 		s.skips_dual_render_last_frame = g_skips_dual_render_last_frame;
 		s.skips_no_geometry_last_frame = g_skips_no_geometry_last_frame;
 		s.pass_skips_last_frame = g_pass_skips_last_frame;
@@ -3814,8 +3832,8 @@ namespace gta4
 			ImGui::Text("                 dynamic entity %u, area lights %u, rigid ped parts %u, other %u", s.static_draws_dynamic_entity_last_frame,
 				s.static_draws_lights_in_area_last_frame, s.static_draws_ped_last_frame, s.static_draws_other_last_frame);
 			
-			ImGui::Text("Kept on D3D9: vehicle %u, ped %u, unknown draw command %u, instanced %u", s.skips_vehicle_last_frame,
-				s.skips_ped_last_frame, s.skips_no_window_last_frame, s.skips_instanced_last_frame);
+			ImGui::Text("Kept on D3D9: vehicle %u, ped %u, unknown draw command %u, instanced %u, colour write off / other target %u", s.skips_vehicle_last_frame,
+				s.skips_ped_last_frame, s.skips_no_window_last_frame, s.skips_instanced_last_frame, s.skips_target_last_frame);
 			
 			ImGui::Text("              dual / tri render %u, no geometry %u, modifiers / categories %u", s.skips_dual_render_last_frame,
 				s.skips_no_geometry_last_frame, s.modifier_skips_last_frame);

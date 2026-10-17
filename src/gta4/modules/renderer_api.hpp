@@ -110,6 +110,7 @@ namespace gta4
 			std::uint32_t skips_vehicle_last_frame = 0u;
 			std::uint32_t skips_ped_last_frame = 0u;
 			std::uint32_t skips_instanced_last_frame = 0u;
+			std::uint32_t skips_target_last_frame = 0u; // colour writes off (depth-only occluders) or not the backbuffer sized target
 			std::uint32_t skips_dual_render_last_frame = 0u;
 			std::uint32_t skips_no_geometry_last_frame = 0u;
 

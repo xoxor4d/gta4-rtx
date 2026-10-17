@@ -3,6 +3,9 @@
 
 namespace gta4
 {
+	/// dev tab: shaders ticked under "Enable Ignore Shader Logic" are not drawn (D3D9 and api path)
+	bool debug_ignore_shader_logic(const std::string_view& shader);
+
 	extern int g_is_instance_rendering;
 
 	// weather state the wetness overrides depend on (renderer.cpp)
