@@ -66,16 +66,16 @@ namespace gta4
 
 		if (gs->limit_option_sliders._bool())
 		{
-			if (game::loaded_settings_cfg->view_distance > 29u) {
-				game::loaded_settings_cfg->view_distance = 29u;
+			if (game::loaded_settings_cfg->view_distance > 59u) {
+				game::loaded_settings_cfg->view_distance = 59u;
 			}
 
-			if (game::loaded_settings_cfg->detail_distance > 34u) {
-				game::loaded_settings_cfg->detail_distance = 34u;
+			if (game::loaded_settings_cfg->detail_distance > 64u) {
+				game::loaded_settings_cfg->detail_distance = 64u;
 			}
 
-			if (game::loaded_settings_cfg->vehicle_density > 29u) {
-				game::loaded_settings_cfg->vehicle_density = 29u;
+			if (game::loaded_settings_cfg->vehicle_density > 59u) {
+				game::loaded_settings_cfg->vehicle_density = 59u;
 			}
 		}
 
