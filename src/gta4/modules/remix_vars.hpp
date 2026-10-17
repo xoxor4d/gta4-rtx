@@ -116,6 +116,7 @@ namespace gta4
 		static option_s			string_to_option(const std::string& str);
 		static void				parse_rtx_options();
 		static void				parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name,float delay = 0.0f);
+		static void				parse_and_apply_weather_presets(float delay = 0.0f);
 
 		//static void			reset(std::string map_name);
 		static void				init_once_on_init();

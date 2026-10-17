@@ -2246,6 +2246,10 @@ namespace gta4
 				remix_vars::get()->add_queue_entry(tempResampling, val, 0.1f);
 			}
 		}
+
+		if (ImGui::Button(ICON_FA_REDO "   Reload Weather Presets", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			remix_vars::parse_and_apply_weather_presets();
+		} TT("Parse and apply all conf files stored in 'rtx_comp/weather_presets/'");
 	}
 
 	void tc_tab_fog()

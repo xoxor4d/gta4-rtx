@@ -437,7 +437,7 @@ namespace gta4
 					if (const auto o = remix_vars::get_option(pair[0].c_str(), pair[1]); o)
 					{
 						const auto& v = string_to_option_value(o->second.type, pair[1]);
-						remix_vars::get()->add_queue_entry(o, v, delay);
+						remix_vars::get()->add_queue_entry(o, v, delay, true);
 						//DEBUG_PRINT("[VAR-SET] Queue var: %s to: %s\n", o->first.c_str(), pair[1].c_str());
 					}
 				}
@@ -527,6 +527,16 @@ namespace gta4
 		return true;
 	}
 
+	void remix_vars::parse_and_apply_weather_presets(const float delay)
+	{
+		const auto weather_preset_files = shared::utils::get_sorted_files("rtx_comp\\weather_presets", ".conf", false, false);
+		for (const auto& file_name : weather_preset_files)
+		{
+			shared::common::log("RemixVars", std::format("> Parsing Weather Preset 'rtx_comp/weather_presets/{}' ...", file_name), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			parse_and_apply_conf("rtx_comp\\weather_presets", file_name, delay);
+		}
+	}
+
 	void remix_vars::init_once_on_init()
 	{
 		if (const auto v = get();
@@ -546,6 +556,8 @@ namespace gta4
 				}
 #endif
 			}
+
+			parse_and_apply_weather_presets(1.0f);
 		}
 	}
 
