@@ -496,8 +496,7 @@ namespace gta4
 			variable api_static_require_plain_draw = {
 				"api_static_require_plain_draw",
 				("Only move draws without per draw render state modifiers or categories (wetness, emissive scale, uv animation ...) to the Remix API path.\n"
-				 "Most static draws carry wetness or a category, so this keeps almost everything on the fixed function path.\n"
-				 "The api path does not apply these modifiers yet."),
+				 "Most static draws carry wetness or a category, so this keeps almost everything on the fixed function path."),
 				"1.7.0",
 				false
 			};
@@ -522,7 +521,7 @@ namespace gta4
 				"api_static_entity_refresh_frames",
 				("Every n frames an entity owned by the Remix API path is drawn by the engine once more so its per draw values\n"
 				 "(emissive scale, hash seed at the 6:45 / 19:15 switches, wetness when rain starts) are refreshed.\n"
-				 "0 never refreshes; only needed when phase B shows stale emissive windows or wetness after a time or weather change."),
+				 "0 never refreshes; only needed when noticing stale meshes (emissive windows or wetness after a time or weather change)"),
 				"1.7.0",
 				0
 			};
@@ -1281,8 +1280,7 @@ namespace gta4
 			variable npc_expensive_hair_alpha_testing =
 			{
 				"npc_expensive_hair_alpha_testing",
-				("Alpha-test hair rendered with 'gta_hair_sorted_alpha_expensive' shader to make it look a little more like hair.\n"
-				 "Not perfect and still WIP."),
+				("Alpha-test hair rendered with 'gta_hair_sorted_alpha_expensive' shader to make it look a little more like hair."),
 				"1.3.0",
 				true
 			};
@@ -1341,7 +1339,8 @@ namespace gta4
 			variable water_detail_radius =
 			{
 				"water_detail_radius",
-				("Half size of the tessellated water area around the camera. Needs 'water_lod' (coarser tessellation further away), the game's 100 is used without it. Beyond the game's wave simulation (100 units) it shows the procedural waves."),
+				("Half size of the tessellated water area around the camera. Needs 'water_lod' (coarser tessellation further away), the game's 100 is used without it.\n"
+				 "Beyond the game's wave simulation (100 units) it shows the procedural waves."),
 				"1.7.0",
 				300.0f
 			};
@@ -1434,6 +1433,23 @@ namespace gta4
 				64.0f
 			};
 
+			variable water_block_distance_scale =
+			{
+				"water_block_distance_scale",
+				("Scales how far the game looks for water blocks (500 x 500 units) in front of the camera. Blocks outside of the view are still culled."),
+				"1.7.0",
+				3.0f
+			};
+
+			variable water_disable_seabed_plane =
+			{
+				"water_disable_seabed_plane",
+				("This setting prevents marker 1000 from drawing. Older versions of the mod placed a large plane under the sea to terminate rays\n"
+				 "which was needed for absorption to kick in. This is no longer needed."),
+				"1.7.0",
+				true
+			};
+
 			variable api_water_enabled =
 			{
 				"api_water_enabled",
@@ -1451,15 +1467,6 @@ namespace gta4
 				"1.7.0",
 				true
 			};
-
-			variable water_block_distance_scale =
-			{
-				"water_block_distance_scale",
-				("Scales how far the game looks for water blocks (500 x 500 units) in front of the camera. Blocks outside of the view are still culled."),
-				"1.7.0",
-				3.0f
-			};
-
 
 			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =

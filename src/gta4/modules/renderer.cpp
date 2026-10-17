@@ -2334,7 +2334,7 @@ namespace gta4
 
 					//ctx.modifiers.allow_vertex_colors = true;
 					set_remix_modifier(dev, RemixModifier::RemoveVertexColorKeepAlpha);
-					set_remix_texture_categories(dev, InstanceCategories::DisableBackfaceCulling);
+					set_remix_texture_categories(dev, InstanceCategories::DisableBackfaceCulling | InstanceCategories::HairCards);
 				}
 			}
 

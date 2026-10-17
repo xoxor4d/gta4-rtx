@@ -269,7 +269,7 @@ namespace gta4
 		CENTER_URL("KapibosRU", "https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ");
 		CENTER_URL("Budgie", "https://www.patreon.com/c/BudgieGames");
 		CENTER_URL("Alex from Digital Foundry", "https://www.youtube.com/watch?v=vGxPdcMQfwg");
-		CENTER_URL("Sparkles (Remix Plus - Numos - DLSS5 Integration)", "https://github.com/Kim2091");
+		CENTER_URL("Sparkles (Remix Plus - Numos - Initial DLSS5 Integration)", "https://github.com/Kim2091");
 		CENTER_URL("CR (Remix Plus)", "https://github.com/sambow23");
 		CENTER_URL("TheGreatHMMMM (Remix Plus)", "https://github.com/TheGreatHMMMM");
 		CENTER_URL("Gokuwashere (Remix Plus)", "https://github.com/BrunchyChineapple");
@@ -1830,14 +1830,15 @@ namespace gta4
 		const auto& gs = comp_settings::get();
 		const bool api_water = gs->api_water_enabled.get_as<bool>();
 
-		ImGui::Widget_CategoryWithVerticalLabel("Surface", [&]()
+		ImGui::Widget_CategoryWithVerticalLabel("General", [&]()
 			{
-				ImGui::PushID("surface");
+				ImGui::PushID("generalwater");
 				compsettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
 				compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
 				compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
 				compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
 				compsettings_bool_widget("Apply Shoreline Modifier", gs->water_apply_shoreline_modifier);
+				compsettings_bool_widget("Disable Seabed Plane", gs->water_disable_seabed_plane);
 				ImGui::PopID();
 			});
 
@@ -2874,7 +2875,7 @@ namespace gta4
 		// cs
 		{
 			static float cont_wip_comp_settings_height = 0.0f;
-			cont_wip_comp_settings_height = ImGui::Widget_ContainerWithCollapsingTitle("Comp Settings", cont_wip_comp_settings_height, wip_cs_container,
+			cont_wip_comp_settings_height = ImGui::Widget_ContainerWithCollapsingTitle("Settings", cont_wip_comp_settings_height, wip_cs_container,
 				true, ICON_FA_CAMERA, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
