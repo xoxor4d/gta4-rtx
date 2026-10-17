@@ -41,6 +41,7 @@ namespace gta4
 			material_failed,
 			mesh_failed,
 			bone_range,
+			volatile_texture,
 			count
 		};
 
@@ -76,6 +77,9 @@ namespace gta4
 			std::uint32_t meshes_cached = 0u;
 			std::uint32_t meshes_with_replacement_hash = 0u;
 			std::uint32_t materials = 0u;
+			std::uint32_t texture_writes_last_frame = 0u;   // textures the game wrote (LockRect / UpdateTexture)
+			std::uint32_t texture_rebuilds_last_frame = 0u; // of them colormaps of api materials, rebuilt with their meshes
+			std::uint32_t volatile_textures = 0u;           // colormaps written every frame, their draws stay on D3D9
 			std::uint64_t cache_bytes = 0u;
 			std::uint32_t creates_this_frame = 0u;
 			std::uint32_t cache_hits_this_frame = 0u;
@@ -180,6 +184,12 @@ namespace gta4
 
 		static void on_begin_scene();
 		static void on_end_scene();
+
+		/// the first texture of the device installs the LockRect / UnlockRect hooks (texture writes rebuild the api materials bound to them)
+		static void on_texture_created(IDirect3DTexture9* texture);
+
+		/// the game wrote new content into a texture (UpdateTexture / UpdateSurface destination)
+		static void on_texture_written(IDirect3DBaseTexture9* texture);
 
 		/// destroys all api meshes and materials (settings change / rebuild button)
 		static void destroy_all();

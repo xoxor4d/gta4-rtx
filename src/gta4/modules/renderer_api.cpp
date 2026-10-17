@@ -9,6 +9,7 @@
 #include "renderer.hpp"
 #include "water.hpp"
 
+#include <mutex>
 #include <shared_mutex>
 
 #define XXH_INLINE_ALL
@@ -317,6 +318,26 @@ namespace gta4
 		std::unordered_map<std::uint64_t, mesh_record> g_meshes;    // mesh hash -> api mesh
 		std::unordered_map<std::uint64_t, material_record> g_materials; // material key -> api material
 		std::uint64_t g_cache_bytes = 0u;
+		std::unordered_map<IDirect3DBaseTexture9*, std::vector<std::uint64_t>> g_materials_by_texture; // colormap -> material keys
+
+		// the streaming system writes new content into existing texture objects; the api materials bound to them and the
+		// meshes bound to those materials are rebuilt (LockRect / UnlockRect hooks, UpdateTexture / UpdateSurface)
+		std::mutex g_written_textures_mutex;
+		std::unordered_set<IDirect3DTexture9*> g_write_locked_textures; // level 0 locked for writing, pending until the unlock
+		std::unordered_set<IDirect3DBaseTexture9*> g_written_textures;  // written since the last frame start
+
+		struct texture_writes_s
+		{
+			std::uint32_t last_frame = 0u;
+			std::uint32_t streak = 0u; // consecutive frames with a write
+			bool is_volatile = false;  // written every frame: its draws stay on D3D9 instead of rebuilding their meshes each frame
+		};
+		std::unordered_map<IDirect3DBaseTexture9*, texture_writes_s> g_texture_writes;
+		constexpr std::uint32_t VOLATILE_TEXTURE_FRAMES = 8u;
+		constexpr std::uint32_t VOLATILE_TEXTURE_DECAY_FRAMES = 300u;
+		std::uint32_t g_texture_writes_last_frame = 0u;
+		std::uint32_t g_texture_rebuilds_last_frame = 0u; // textures whose api materials were destroyed for a rebuild
+		std::uint32_t g_volatile_textures = 0u;
 
 		// the passes of a geometry for one shader technique, all owned by the api path (records by state key)
 		struct pass_set_s
@@ -900,6 +921,9 @@ namespace gta4
 				return nullptr;
 			}
 
+			if (color_base) {
+				g_materials_by_texture[color_base].push_back(key);
+			}
 			return &g_materials.emplace(key, std::move(rec)).first->second;
 		}
 
@@ -2592,18 +2616,18 @@ namespace gta4
 		}
 
 		// api materials bind the D3D texture (the runtime keeps its image), records and the content hash cache are keyed by
-		// it; a texture created later at the same address must not find any of them
-		void on_texture_destroyed(IDirect3DBaseTexture9* texture)
+		// it; a texture created later at the same address, or new content written into it, must not find any of them
+		// @note caller holds the unique lock
+		// @return true if anything was bound to the texture
+		bool invalidate_texture_locked(IDirect3DBaseTexture9* texture)
 		{
-			std::unique_lock lock(g_mutex);
 			g_texture_hashes.erase(texture);
 
 			std::vector<std::uint64_t> material_keys;
-			for (const auto& [key, mat] : g_materials)
+			if (const auto it = g_materials_by_texture.find(texture); it != g_materials_by_texture.end())
 			{
-				if (mat.colormap == texture) {
-					material_keys.push_back(key);
-				}
+				material_keys = std::move(it->second);
+				g_materials_by_texture.erase(it);
 			}
 
 			if (!material_keys.empty())
@@ -2633,9 +2657,105 @@ namespace gta4
 				}
 			}
 
+			bool had_records = false;
 			for (auto& [geom, records] : g_records) {
-				std::erase_if(records, [texture](const geometry_record& rec) { return rec.texture == texture; });
+				had_records |= std::erase_if(records, [texture](const geometry_record& rec) { return rec.texture == texture; }) != 0u;
 			}
+			return !material_keys.empty() || had_records;
+		}
+
+		void on_texture_destroyed(IDirect3DBaseTexture9* texture)
+		{
+			std::unique_lock lock(g_mutex);
+			invalidate_texture_locked(texture);
+			g_texture_writes.erase(texture);
+		}
+
+		// the texture of stage 0 (the colormap of a fixed function draw)
+		IDirect3DBaseTexture9* bound_colormap(IDirect3DDevice9* dev)
+		{
+			IDirect3DBaseTexture9* texture = nullptr;
+			if (SUCCEEDED(dev->GetTexture(0, &texture)) && texture) {
+				texture->Release(); // the game keeps its own reference
+			}
+			return texture;
+		}
+
+		// @note caller holds the lock
+		bool is_volatile_texture_locked(IDirect3DBaseTexture9* texture)
+		{
+			const auto it = g_texture_writes.find(texture);
+			if (it == g_texture_writes.end() || !it->second.is_volatile) {
+				return false;
+			}
+			if (g_frame - it->second.last_frame > VOLATILE_TEXTURE_DECAY_FRAMES)
+			{
+				it->second.is_volatile = false;
+				g_volatile_textures--;
+				return false;
+			}
+			return true;
+		}
+
+		// frame start: rebuild what was bound to the textures the game wrote since the last frame
+		void process_texture_writes()
+		{
+			std::vector<IDirect3DBaseTexture9*> written;
+			{
+				std::lock_guard guard(g_written_textures_mutex);
+				written.assign(g_written_textures.begin(), g_written_textures.end());
+				g_written_textures.clear();
+			}
+
+			g_texture_writes_last_frame = static_cast<std::uint32_t>(written.size());
+			g_texture_rebuilds_last_frame = 0u;
+			if (written.empty()) {
+				return;
+			}
+
+			std::unique_lock lock(g_mutex);
+			for (const auto texture : written)
+			{
+				auto& writes = g_texture_writes[texture];
+				writes.streak = writes.last_frame + 1u == g_frame ? writes.streak + 1u : 1u;
+				writes.last_frame = g_frame;
+				if (!writes.is_volatile && writes.streak >= VOLATILE_TEXTURE_FRAMES)
+				{
+					writes.is_volatile = true;
+					g_volatile_textures++;
+				}
+				if (invalidate_texture_locked(texture)) {
+					g_texture_rebuilds_last_frame++;
+				}
+			}
+		}
+
+		DETOUR_TYPEDEF(IDirect3DTexture9_LockRect, HRESULT, __stdcall, IDirect3DTexture9* self, UINT level, D3DLOCKED_RECT* locked, const RECT* rect, DWORD flags);
+		DETOUR_TYPEDEF(IDirect3DTexture9_UnlockRect, HRESULT, __stdcall, IDirect3DTexture9* self, UINT level);
+
+		// a level 0 lock without D3DLOCK_READONLY is a write; the content is complete at the unlock
+		HRESULT __stdcall IDirect3DTexture9_LockRect_hk(IDirect3DTexture9* self, const UINT level, D3DLOCKED_RECT* locked, const RECT* rect, const DWORD flags)
+		{
+			const auto hr = IDirect3DTexture9_LockRect_og(self, level, locked, rect, flags);
+			if (SUCCEEDED(hr) && level == 0u && !(flags & D3DLOCK_READONLY))
+			{
+				std::lock_guard guard(g_written_textures_mutex);
+				g_write_locked_textures.insert(self);
+			}
+			return hr;
+		}
+
+		HRESULT __stdcall IDirect3DTexture9_UnlockRect_hk(IDirect3DTexture9* self, const UINT level)
+		{
+			const auto hr = IDirect3DTexture9_UnlockRect_og(self, level);
+			if (level == 0u)
+			{
+				std::lock_guard guard(g_written_textures_mutex);
+				if (g_write_locked_textures.erase(self)) {
+					g_written_textures.insert(self);
+				}
+			}
+			return hr;
 		}
 
 		DETOUR_TYPEDEF(grcTexturePC_dtor, void, __thiscall, void* texture);
@@ -2688,6 +2808,7 @@ namespace gta4
 		case reject_reason::material_failed: return "material create failed";
 		case reject_reason::mesh_failed: return "mesh create failed";
 		case reject_reason::bone_range: return "too many bones";
+		case reject_reason::volatile_texture: return "colormap written every frame";
 		default: return "?";
 		}
 	}
@@ -3020,8 +3141,14 @@ namespace gta4
 			const auto rec = find_record();
 
 			// not owned without a reason: its mesh was destroyed (cache budget, morph, vertex color change), build again below
-			if (rec && !rec->owned && rec->reason != reject_reason::none) {
-				return false;
+			if (rec && !rec->owned && rec->reason != reject_reason::none)
+			{
+				// a colormap written every frame is checked again now and then, the texture may be gone or calm by now
+				if (rec->reason != reject_reason::volatile_texture || g_frame - rec->last_frame < VOLATILE_TEXTURE_DECAY_FRAMES
+					|| is_volatile_texture_locked(color_texture ? color_texture : bound_colormap(dev))) {
+					return false;
+				}
+				*rec = { .state_key = rec->state_key };
 			}
 
 			const auto mesh_it = rec && rec->owned && !rec->hidden ? g_meshes.find(mesh_variant_hash(rec->mesh_hash, pose)) : g_meshes.end();
@@ -3125,6 +3252,13 @@ namespace gta4
 		if (!read_geometry_bytes(dev, geom, bytes, double_buffered))
 		{
 			rec.reason = reject_reason::no_cpu_data;
+			return false;
+		}
+
+		if (is_volatile_texture_locked(color_texture ? color_texture : bound_colormap(dev)))
+		{
+			rec.reason = reject_reason::volatile_texture;
+			rec.last_frame = g_frame;
 			return false;
 		}
 
@@ -3326,9 +3460,33 @@ namespace gta4
 		return is_enabled() && g_debug_hide_d3d9_static;
 	}
 
+	void renderer_api::on_texture_created(IDirect3DTexture9* texture)
+	{
+		static bool hooked = false;
+		if (hooked || !texture) {
+			return;
+		}
+		hooked = true;
+
+		// every texture of the bridge client shares one vtable: LockRect slot 19, UnlockRect slot 20
+		const auto vtbl = *reinterpret_cast<void** const*>(texture);
+		shared::utils::hook::detour(reinterpret_cast<DWORD>(vtbl[19]), &IDirect3DTexture9_LockRect_hk, DETOUR_CAST(IDirect3DTexture9_LockRect_og));
+		shared::utils::hook::detour(reinterpret_cast<DWORD>(vtbl[20]), &IDirect3DTexture9_UnlockRect_hk, DETOUR_CAST(IDirect3DTexture9_UnlockRect_og));
+	}
+
+	void renderer_api::on_texture_written(IDirect3DBaseTexture9* texture)
+	{
+		if (!texture) {
+			return;
+		}
+		std::lock_guard guard(g_written_textures_mutex);
+		g_written_textures.insert(texture);
+	}
+
 	void renderer_api::on_begin_scene()
 	{
 		g_frame++;
+		process_texture_writes();
 		g_creates_this_frame = 0u;
 		g_cache_hits_this_frame = 0u;
 		g_instances_this_frame = 0u;
@@ -3455,6 +3613,7 @@ namespace gta4
 
 		g_meshes.clear();
 		g_materials.clear();
+		g_materials_by_texture.clear();
 		g_records.clear();
 		g_pass_sets.clear();
 		g_entity_frames.clear();
@@ -3491,6 +3650,9 @@ namespace gta4
 			}
 		}
 		s.materials = static_cast<std::uint32_t>(g_materials.size());
+		s.texture_writes_last_frame = g_texture_writes_last_frame;
+		s.texture_rebuilds_last_frame = g_texture_rebuilds_last_frame;
+		s.volatile_textures = g_volatile_textures;
 		s.cache_bytes = g_cache_bytes;
 		s.creates_this_frame = g_creates_this_frame;
 		s.cache_hits_this_frame = g_cache_hits_this_frame;
@@ -3641,6 +3803,8 @@ namespace gta4
 		ImGui::Text("Meshes %u (%.1f MB), materials %u, frames with exhausted create budget %u",
 			s.meshes_cached, static_cast<double>(s.cache_bytes) / (1024.0 * 1024.0), s.materials, s.budget_exhausted_frames);
 		ImGui::Text("Meshes keyed for USD replacements by their D3D9 geometry hash %u of %u", s.meshes_with_replacement_hash, s.meshes_cached);
+		ImGui::Text("Textures the game wrote last frame %u, of them api colormaps (materials and meshes rebuilt) %u, colormaps written every frame (kept on D3D9) %u",
+			s.texture_writes_last_frame, s.texture_rebuilds_last_frame, s.volatile_textures);
 
 		if (ImGui::TreeNode("Static geometry##api_static_stats"))
 		{

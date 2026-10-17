@@ -173,7 +173,11 @@ namespace gta4
 	{
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
-		return m_pIDirect3DDevice9->CreateTexture(Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
+		const auto hr = m_pIDirect3DDevice9->CreateTexture(Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
+		if (SUCCEEDED(hr) && ppTexture && *ppTexture) {
+			renderer_api::on_texture_created(*ppTexture);
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::CreateVolumeTexture(UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle)
@@ -216,12 +220,26 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::UpdateSurface(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint)
 	{
-		return m_pIDirect3DDevice9->UpdateSurface(pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
+		const auto hr = m_pIDirect3DDevice9->UpdateSurface(pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
+		if (SUCCEEDED(hr) && pDestinationSurface)
+		{
+			IDirect3DBaseTexture9* texture = nullptr;
+			if (SUCCEEDED(pDestinationSurface->GetContainer(__uuidof(IDirect3DBaseTexture9), reinterpret_cast<void**>(&texture))) && texture)
+			{
+				renderer_api::on_texture_written(texture);
+				texture->Release();
+			}
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::UpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture)
 	{
-		return m_pIDirect3DDevice9->UpdateTexture(pSourceTexture, pDestinationTexture);
+		const auto hr = m_pIDirect3DDevice9->UpdateTexture(pSourceTexture, pDestinationTexture);
+		if (SUCCEEDED(hr)) {
+			renderer_api::on_texture_written(pDestinationTexture);
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface)
