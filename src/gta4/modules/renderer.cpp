@@ -2769,13 +2769,18 @@ namespace gta4
 									}
 								}
 
-								if (gs->timecycle_wetness_world_variation_enable._bool()) {
-									rain_flags |= WETNESS_FLAG_ENABLE_VARIATION;
-								}
+								// patches and puddles belong to the static world: not on peds and not on anything the engine
+								// draws through a shader (vehicles come through their own branch above)
+								const bool is_ped = pidx >= GTA_PED && pidx <= GTA_PED_SKIN_BLENDSHAPE;
+								if (render_with_ff && !is_ped)
+								{
+									if (gs->timecycle_wetness_world_variation_enable._bool()) {
+										rain_flags |= WETNESS_FLAG_ENABLE_VARIATION;
+									}
 
-
-								if (gs->timecycle_wetness_world_puddle_layer_enable._bool()) {
-									rain_flags |= WETNESS_FLAG_ENABLE_PUDDLE_LAYER;
+									if (gs->timecycle_wetness_world_puddle_layer_enable._bool()) {
+										rain_flags |= WETNESS_FLAG_ENABLE_PUDDLE_LAYER;
+									}
 								}
 
 								// only do occlusion tests on FF rendered surfs (mostly static)

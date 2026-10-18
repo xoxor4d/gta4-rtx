@@ -295,10 +295,33 @@ namespace gta4
 			mix(should_apply_heavy_raindrops() ? 1u : 0u);
 			mix(should_apply_light_raindrops() ? 1u : 0u);
 			mix(game::m_game_clock_hours ? *game::m_game_clock_hours : 0u); // emissive night windows are hour based
-			
+
+			// every setting renderer.cpp packs into the wetness render state (flags, normal blend, raindrops), for the
+			// world, vehicle and ped branches; records owned by the api path are only recaptured when this changes
+			const bool toggles[] =
+			{
+				gs->timecycle_wetness_enabled._bool(),
+				gs->timecycle_wetness_world_variation_enable._bool(), gs->timecycle_wetness_world_puddle_layer_enable._bool(),
+				gs->timecycle_wetness_world_raindrop_enable._bool(),
+				gs->timecycle_wetness_world_occlusion_check_enable._bool(), gs->timecycle_wetness_world_occlusion_smoothing_enable._bool(),
+				gs->timecycle_wetness_vehicle_raindrop_enable._bool(), gs->timecycle_wetness_ped_raindrop_enable._bool(),
+				im->m_dbg_global_wetness_occl_allow_on_ignored,
+			};
+
+			for (const auto t : toggles) {
+				mix(t ? 1u : 0u);
+			}
+
 			const float settings[] = 
 			{
 				gs->timecycle_wetness_world_scalar.get_as<float>(), gs->timecycle_wetness_world_offset.get_as<float>(),
+				gs->timecycle_wetness_world_z_normal.get_as<float>(), gs->timecycle_wetness_world_blending.get_as<float>(),
+				gs->timecycle_wetness_world_raindrop_scalar.get_as<float>(),
+				gs->timecycle_wetness_vehicle_scalar.get_as<float>(), gs->timecycle_wetness_vehicle_z_normal.get_as<float>(),
+				gs->timecycle_wetness_vehicle_blending.get_as<float>(), gs->timecycle_wetness_vehicle_raindrop_scalar.get_as<float>(),
+				gs->timecycle_wetness_vehicle_dirt_roughness_scalar.get_as<float>(), gs->timecycle_wetness_vehicle_dirt_z_normal.get_as<float>(),
+				gs->timecycle_wetness_vehicle_dirt_blending.get_as<float>(), gs->timecycle_wetness_vehicle_dirt_intensity_scalar.get_as<float>(),
+				gs->timecycle_wetness_ped_raindrop_scalar.get_as<float>(),
 				gs->emissive_night_surfaces_emissive_scalar.get_as<float>(), gs->emissive_generic_scale.get_as<float>(),
 			};
 
