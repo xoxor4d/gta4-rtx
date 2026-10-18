@@ -54,17 +54,6 @@ jobs:
       - name: Build Release binaries
         run: msbuild /m /v:minimal /p:Configuration=Release /p:Platform=Win32 build/gta4-rtx.sln
 
-      - name: Extract d3d9 runtime
-        shell: pwsh
-        run: |
-          if (Test-Path "assets/.trex/d3d9_runtime.zip") {
-            Expand-Archive `
-              -Path assets/.trex/d3d9_runtime.zip `
-              -DestinationPath assets/.trex `
-              -Force
-            Remove-Item assets/.trex/d3d9_runtime.zip
-          }
-
       - name: Prepare release files
         shell: pwsh
         run: |
@@ -185,6 +174,9 @@ jobs:
           # So we'll use the base tag here and update links later if needed
           $baseTag = "${{ steps.version.outputs.tag }}"
           $modZipLink = "https://github.com/${{ github.repository }}/releases/download/$baseTag/$zipName"
+          # The remix runtime zip is built from dxvk-remix and uploaded to the release by hand under this name
+          $runtimeZipName = "GTAIV-Remix-RemixRuntime-$version.zip"
+          $runtimeZipLink = "https://github.com/${{ github.repository }}/releases/download/$baseTag/$runtimeZipName"
           $installerLink = "https://github.com/${{ github.repository }}/releases/download/$baseTag/GTAIV-Remix-CompMod-Installer.exe"
 
           $readmePath = ".github/README_INSTALL.md"
@@ -198,6 +190,9 @@ jobs:
           # Replace placeholders with simple markdown links [Name](url) - no backticks
           $zipLinkReplacement = '[' + $zipName + '](' + $modZipLink + ')'
           $readme = $readme -replace '<LINK_TO_MOD_ZIP>', $zipLinkReplacement
+
+          $runtimeZipLinkReplacement = '[' + $runtimeZipName + '](' + $runtimeZipLink + ')'
+          $readme = $readme -replace '<LINK_TO_RUNTIME_ZIP>', $runtimeZipLinkReplacement
           
           # Replace installer link placeholder
           $installerLinkReplacement = '[GTAIV-Remix-CompMod-Installer.exe](' + $installerLink + ')'

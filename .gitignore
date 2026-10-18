@@ -72,9 +72,6 @@ user*.bat
 !.vscode/tracked
 !.vscode/readme.txt
 
-!assets/.trex/d3d9_runtime.zip
-!assets/.trex/d3d9_runtime_pdb.zip
-
 # IDA
 # =========================
 *.id0
