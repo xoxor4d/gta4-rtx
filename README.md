@@ -46,12 +46,12 @@ It comes with a [Baseline Remix Mod](https://github.com/xoxor4d/gta4-rtx-base-mo
 RTX Remix has a certain overhead because of how it works and intercepts the game's draw calls and   
 there are obvious drawbacks and things that will not work with such a new title. Don't expect this to be perfect.  
 
-You'll likely experience a CPU bottleneck because of the amount of detailed meshes the game is rendering.  
+You can run into CPU bottlenecks because of the amount of detailed meshes the game is rendering.  
 This means that the performance you'll see in certain places is not entirely due to pathtracing.  
 
 <br>
 
-The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4_atmos10_nr2) required for a few game specific features,   
+The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4) required for game specific features and optimizations,   
 with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/tag/v9.0.0) to load the Compatibility Mod itself and a custom fork of [FusionFix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix) tailored for RTX-Remix.
 
 </div>
@@ -64,17 +64,17 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 
 ###### The good:  
 - **DLSS 4.5 (Ray Reconstruction 2) support**
-- **DLSS 5.0 (Neural Rendering) support** (if you provide the necessary dll) - Integration made by [Sparkles](https://github.com/Kim2091/dxvk-remix/tree/gta4-atmos-dlss5)
+- **DLSS 5.0 (V2) (Neural Rendering) support** - Official NV version (with additional changes by [Sparkles (RemixPlus)](https://github.com/RemixProjGroup/dxvk-remix/commits/rebased-9-19/)
 - Includes an **Atmospheric sky system with Volumetric Clouds** made by the Community [Remix Plus / Numos](https://github.com/RemixProjGroup/dxvk-remix)
-- Most objects rendered via fixed function to increase performance (compared to grabbing data from Vertexshaders)
-- Cascaded anti culling of meshes
+- **99% of Meshes are Rendered via the RemixApi** - this drastically improves performance and reduces the CPU-Bottleneck
+- Full fixed-function fallback in case the API isn't used. Still increases performance compared to grabbing data from Vertexshaders
+- Cascaded Anti Culling of meshes
 - All game lights (including the sun) are translated to remix lights
 - Ability to create overrides for translated game lights (change position, color, intensity etc.)
 - Vehicles now feature two headlights and two rear lights instead of single, centered ones
 - Dynamic emissive surfaces work (vehicle lights, building-windows, shops etc.)
-- Dynamic wetness that works similar to the original game  
-  (only outdoors and with falloff on angled surfaces + raindroplets/impacts)
-- Raindroplets on vehicles and character clothing
+- Dynamic wetness with forming puddles + wetness stays longer after it rained
+- Raindroplets on vehicles and characters
 - Working vehicle dirt and livery
 - Modification of remix runtime variables based on current timecycle settings
 - Mobilephone works (but it is 3D and currently scales with the camera fov)
@@ -82,13 +82,13 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - Ability to spawn unique _marker_ meshes that can be hidden based on distance, weather or time of day (these can be used to attach remix replacements or scene lights)
 - Screenshot Mode, FreeCam Mode and other Utilities
 - FusionFix compatible (custom fork: [GTAIV.EFLC.FusionFix.RTXRemix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix))
-- Many many tweakable settings via the in-game __F4__ menu
+- Many tweakable settings via the in-game __F4__ menu
 - A few PBR materials, hq-meshes (vegetation, modeled fences ..) and texture fixes
 - Mod Installer / Updater
 
 ###### The bad:
-- CPU Bottlenecked - Nvidia is constantly updating RTX-Remix and already made changes to improve this
-- Can be stuttery when traversing the world
+- ~~CPU Bottlenecked~~ - Rendering via RemixApi + Improvements to the Bridge by [Sparkles (RemixPlus)](https://github.com/RemixProjGroup/dxvk-remix/commits/rebased-9-19/) and me mostly fixes this
+- Can still be stuttery when traversing the world as new meshes load in
 - No blood on peds
 
 <br>
