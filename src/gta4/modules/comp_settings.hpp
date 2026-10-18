@@ -1645,6 +1645,15 @@ namespace gta4
 				1.0f
 			};
 
+			variable timecycle_wetness_vehicle_wet_seconds =
+			{
+				"timecycle_wetness_vehicle_wet_seconds",
+				("Seconds it takes vehicles to get fully wet once it starts to rain.\n"
+				 "Vehicles dry up over half of 'timecycle_wetness_afterrain_fade_seconds', starting with the after-rain hold."),
+				"1.7.0",
+				8.0f
+			};
+
 
 			variable timecycle_wetness_vehicle_raindrop_enable = {
 				"timecycle_wetness_vehicle_raindrop_enable",
@@ -1884,7 +1893,7 @@ namespace gta4
 				"timecycle_colorcorrection_influence",
 				("Controls how much the timecycle color correction variable influences 'rtx.tonemap.colorBalance'"),
 				"1.3.2",
-				1.8f
+				2.0f
 			};
 
 			variable timecycle_colortemp_enabled = {
@@ -1935,7 +1944,7 @@ namespace gta4
 				"timecycle_gamma_enabled",
 				("Enables automatic adjustment of 'rtx.tonemap.exposureBias' based on timecycle settings."),
 				"1.3.0",
-				true
+				false
 			};
 
 			variable timecycle_gamma_offset = {

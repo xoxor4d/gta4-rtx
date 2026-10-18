@@ -330,6 +330,7 @@ namespace gta4
 				ASSIGN(timecycle_wetness_vehicle_scalar);
 				ASSIGN(timecycle_wetness_vehicle_z_normal);
 				ASSIGN(timecycle_wetness_vehicle_blending);
+				ASSIGN(timecycle_wetness_vehicle_wet_seconds);
 
 				ASSIGN(timecycle_wetness_vehicle_raindrop_enable);
 				ASSIGN(timecycle_wetness_vehicle_raindrop_scalar);

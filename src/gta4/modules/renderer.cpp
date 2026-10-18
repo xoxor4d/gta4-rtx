@@ -355,6 +355,16 @@ namespace gta4
 		return false;
 	}
 
+	// the fork wetness shader (rtx_fork_wetness.slangh) lowers roughness on top of the scalar, by about 10% at a scalar of 1.
+	// around 1.1 both cancel out, so vehicles fade towards it and the modifier can be dropped once they are dry
+	constexpr float VEHICLE_DRY_ROUGHNESS_SCALAR = 1.1f;
+
+	float get_vehicle_draw_wetness()
+	{
+		const auto im = imgui::get();
+		return im->m_dbg_global_wetness_override ? im->m_dbg_global_wetness : timecycle::get_vehicle_wetness();
+	}
+
 	void handle_vehicle_roughness_when_wet(IDirect3DDevice9* dev, [[maybe_unused]] const drawcall_mod_context& ctx)
 	{
 		const auto gs = comp_settings::get();
@@ -375,7 +385,7 @@ namespace gta4
 		}
 
 		renderer::set_remix_roughness_scalar(dev,
-			gs->timecycle_wetness_vehicle_scalar.get_as<float>(),
+			std::lerp(VEHICLE_DRY_ROUGHNESS_SCALAR, gs->timecycle_wetness_vehicle_scalar.get_as<float>(), get_vehicle_draw_wetness()),
 			gs->timecycle_wetness_vehicle_z_normal.get_as<float>(),
 			gs->timecycle_wetness_vehicle_blending.get_as<float>(),
 			gs->timecycle_wetness_vehicle_raindrop_scalar.get_as<float>(),
@@ -386,7 +396,7 @@ namespace gta4
 	{
 		const auto gs = comp_settings::get();
 		renderer::set_remix_roughness_scalar(dev,
-			gs->timecycle_wetness_vehicle_dirt_roughness_scalar.get_as<float>(),
+			std::lerp(VEHICLE_DRY_ROUGHNESS_SCALAR, gs->timecycle_wetness_vehicle_dirt_roughness_scalar.get_as<float>(), get_vehicle_draw_wetness()),
 			gs->timecycle_wetness_vehicle_dirt_z_normal.get_as<float>(),
 			gs->timecycle_wetness_vehicle_dirt_blending.get_as<float>());
 	}
@@ -442,7 +452,7 @@ namespace gta4
 
 		float dirtscale = powf(ctx.info.ps_const_73_veh_dirt.x, gs->vehicle_dirt_expo.get_as<float>());
 		if (ctx.modifiers.is_vehicle_wet) {
-			dirtscale *= gs->timecycle_wetness_vehicle_dirt_intensity_scalar.get_as<float>();
+			dirtscale *= std::lerp(1.0f, gs->timecycle_wetness_vehicle_dirt_intensity_scalar.get_as<float>(), get_vehicle_draw_wetness());
 		}
 
 		if (gs->vehicle_dirt_custom_color_enabled.get_as<bool>())
@@ -2655,7 +2665,8 @@ namespace gta4
 				dev->SetVertexShader(nullptr);
 			}
 
-			if ((gs->timecycle_wetness_enabled.get_as<bool>() && timecycle::get_wetness() > 0.0f) || im->m_dbg_global_wetness_override || im->m_dbg_visualize_stencil_state)
+			if ((gs->timecycle_wetness_enabled.get_as<bool>() && (timecycle::get_wetness() > 0.0f || timecycle::get_vehicle_wetness() > 0.0f))
+				|| im->m_dbg_global_wetness_override || im->m_dbg_visualize_stencil_state)
 			{
 				// check for stencil
 				DWORD stencil_ref = 0u, stencil_enabled = 0u;
@@ -2702,7 +2713,8 @@ namespace gta4
 					|| pidx == GTA_VEHICLE_VEHGLASS)
 				{
 					const float wetness_value = timecycle::get_wetness();
-					if (wetness_value > 0.0f || im->m_dbg_global_wetness_override)
+					const bool is_vehicle_surface = g_is_rendering_vehicle || pidx == GTA_VEHICLE_VEHGLASS;
+					if ((is_vehicle_surface ? timecycle::get_vehicle_wetness() : wetness_value) > 0.0f || im->m_dbg_global_wetness_override)
 					{
 						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_world_scalar.get_as<float>(), 0.0f, 1.0f);
 						float scalar = 1.0f - adjusted_wetness;
@@ -2714,7 +2726,7 @@ namespace gta4
 							scalar = std::clamp((1.0f - im->m_dbg_global_wetness), 0.0f, 1.0f);
 						}
 
-						if (g_is_rendering_vehicle || pidx == GTA_VEHICLE_VEHGLASS)
+						if (is_vehicle_surface)
 						{
 							ctx.modifiers.is_vehicle_wet = true;
 							handle_vehicle_roughness_when_wet(dev, ctx);

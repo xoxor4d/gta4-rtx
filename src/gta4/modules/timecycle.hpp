@@ -33,11 +33,15 @@ namespace gta4
 			float timer = 0.0f; // seconds spent in after_rain
 			float effective = 0.0f;
 			float ripple_strength = 0.0f;
+			float vehicle_progress = 0.0f; // linear, shaped into vehicle
+			float vehicle_drying_from = 0.0f; // vehicle_progress when the hold started
+			float vehicle = 0.0f;
 		};
 
 		static float	get_bad_weather_factor();
 		static float	get_game_wetness();
 		static float	get_wetness() { return m_wetness.effective; }
+		static float	get_vehicle_wetness() { return m_wetness.vehicle; }
 		static const wetness_state_s& get_wetness_state() { return m_wetness; }
 		static void		reset_wetness() { m_wetness = {}; }
 		static void		translate_and_apply_timecycle_settings();

@@ -1195,6 +1195,7 @@ namespace gta4
 			ImGui::Text("After-Rain Level: %.3f (Peak: %.3f)", wet.level, wet.peak);
 			ImGui::Text("After-Rain Timer: %.1fs", wet.timer);
 			ImGui::Text("Ripple Strength: %.4f", wet.ripple_strength);
+			ImGui::Text("Vehicle Wetness: %.3f", wet.vehicle);
 
 			if (ImGui::Button("Reset After-Rain Wetness")) {
 				timecycle::reset_wetness();
@@ -2590,6 +2591,7 @@ namespace gta4
 					compsettings_float_widget("Vehicle Wetness Scalar", cs->timecycle_wetness_vehicle_scalar, 0.0f, 1.0f, 0.005f);
 					compsettings_float_widget("Min Surface Z-Normal", cs->timecycle_wetness_vehicle_z_normal, 0.0f, 1.0f, 0.005f);
 					compsettings_float_widget("Blending Strength", cs->timecycle_wetness_vehicle_blending, 0.0f, 1.0f, 0.005f);
+					compsettings_float_widget("Wet Duration (s)", cs->timecycle_wetness_vehicle_wet_seconds, 0.0f, 120.0f, 0.1f, "%.1f");
 
 					compsettings_bool_widget("Enable Vehicle Raindrops", cs->timecycle_wetness_vehicle_raindrop_enable);
 					compsettings_float_widget("Vehicle Raindrop Scale", cs->timecycle_wetness_vehicle_raindrop_scalar, 0.0f, 10.0f, 0.005f);
@@ -2966,7 +2968,7 @@ namespace gta4
 		{
 			static float cont_wip_water_height = 0.0f;
 			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Water", cont_wip_water_height, wip_water_container,
-				true, ICON_FA_WATER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+				false, ICON_FA_WATER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// wetness

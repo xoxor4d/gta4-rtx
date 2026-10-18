@@ -71,8 +71,9 @@ namespace gta4
 		return std::clamp(*game::pTimeCycleSpecularOffset * std::clamp(*game::pTimeCycleWetnessChange, 0.0f, 1.0f), 0.0f, 1.0f);
 	}
 
-	// follows the game wetness while it rains and holds + fades out a level derived from the rain peak once the game dries up.
-	// the result never exceeds the rain peak and the game takes over again as soon as it is wetter than the held level
+	// follows the game wetness while it rains and holds + fades out a level derived from the rain peak once the weather clears.
+	// the result never exceeds the rain peak and the game takes over again as soon as it rains or is wetter than the held level.
+	// vehicles get wet within a few seconds of rain and dry up over half the fade time, starting with the hold
 	void timecycle::update_wetness()
 	{
 		const auto gs = comp_settings::get();
@@ -80,6 +81,14 @@ namespace gta4
 
 		// clamped so a single hitch does not eat the hold time
 		const float dt = remix_vars::is_paused() ? 0.0f : std::min(remix_vars::get_frametime() * 0.001f, 0.25f);
+
+		const auto is_rain_weather = [](const game::eWeatherType wt)
+			{
+				return wt == game::WEATHER_RAIN || wt == game::WEATHER_DRIZZLE || wt == game::WEATHER_LIGHTNING;
+			};
+
+		// the game wetness dips while it rains, the hold only starts once the weather moves away from rain
+		const bool rain_ahead = game::weather_type_new && is_rain_weather(*game::weather_type_new);
 
 		w.game = get_game_wetness();
 
@@ -89,40 +98,57 @@ namespace gta4
 			w.timer += dt;
 		}
 
-		w.level = w.peak * std::clamp(gs->timecycle_wetness_afterrain_scalar._float(), 0.0f, 1.0f);
+		const float level_scalar = std::clamp(gs->timecycle_wetness_afterrain_scalar._float(), 0.0f, 1.0f);
+		w.level = w.peak * level_scalar;
 
-		if (w.phase == wetness_phase::follow_game && w.game < w.level)
+		if (w.phase == wetness_phase::follow_game && !rain_ahead && (w.game < w.level || w.game <= 0.0f))
 		{
 			w.phase = wetness_phase::after_rain;
 			w.timer = 0.0f;
+			w.vehicle_drying_from = w.vehicle_progress;
 		}
 
-		float held = 0.0f;
+		const float fade_duration = std::max(gs->timecycle_wetness_afterrain_fade_seconds._float(), 0.0f);
+
+		float level_left = 1.0f;
 		if (w.phase == wetness_phase::after_rain)
 		{
 			const float fade_time = w.timer - std::max(gs->timecycle_wetness_afterrain_hold_seconds._float(), 0.0f);
-			const float fade_duration = std::max(gs->timecycle_wetness_afterrain_fade_seconds._float(), 0.0f);
 
-			if (fade_time <= 0.0f) {
-				held = w.level;
-			}
-			else if (fade_time < fade_duration)
+			if (fade_time > 0.0f)
 			{
-				const float x = fade_time / fade_duration;
-				held = w.level * (1.0f - x * x * (3.0f - 2.0f * x));
+				const float x = fade_duration > 0.0f ? std::min(fade_time / fade_duration, 1.0f) : 1.0f;
+				level_left = 1.0f - x * x * (3.0f - 2.0f * x);
 			}
 
-			// raining again or dried up
-			if (w.game >= held)
+			// raining again: the faded peak keeps the world where it is
+			if (w.game > w.level * level_left || (rain_ahead && w.game > 0.0f))
 			{
 				w.phase = wetness_phase::follow_game;
-				w.peak = w.game;
+				w.peak = std::max(w.game, w.peak * level_left);
+				w.level = w.peak * level_scalar;
 				w.timer = 0.0f;
-				held = 0.0f;
+				level_left = 1.0f;
 			}
 		}
 
-		w.effective = std::max(w.game, held);
+		w.effective = std::max(w.game, w.level * level_left);
+
+		if (w.phase == wetness_phase::follow_game)
+		{
+			if (w.game > 0.0f)
+			{
+				const float wet_duration = std::max(gs->timecycle_wetness_vehicle_wet_seconds._float(), 0.0f);
+				w.vehicle_progress = wet_duration > 0.0f ? std::min(w.vehicle_progress + dt / wet_duration, 1.0f) : 1.0f;
+			}
+		}
+		else
+		{
+			const float dry_duration = fade_duration * 0.5f;
+			w.vehicle_progress = dry_duration > 0.0f ? w.vehicle_drying_from * std::max(1.0f - w.timer / dry_duration, 0.0f) : 0.0f;
+		}
+
+		w.vehicle = w.vehicle_progress * w.vehicle_progress * (3.0f - 2.0f * w.vehicle_progress);
 
 		// ripples follow the rain itself so they settle at the min value while the after-rain wetness is held
 		const float ripple_min = gs->timecycle_wetness_ripple_min._float();
