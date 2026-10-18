@@ -339,6 +339,15 @@ namespace gta4
 				ASSIGN(timecycle_wetness_vehicle_dirt_z_normal);
 				ASSIGN(timecycle_wetness_vehicle_dirt_blending);
 
+				ASSIGN(timecycle_wetness_afterrain_hold_seconds);
+				ASSIGN(timecycle_wetness_afterrain_fade_seconds);
+				ASSIGN(timecycle_wetness_afterrain_scalar);
+
+				ASSIGN(timecycle_wetness_ripple_enabled);
+				ASSIGN(timecycle_wetness_ripple_min);
+				ASSIGN(timecycle_wetness_ripple_max);
+				ASSIGN(timecycle_wetness_ripple_curve);
+
 				ASSIGN(timecycle_fogcolor_enabled);
 				ASSIGN(timecycle_fogcolor_base_strength);
 				ASSIGN(timecycle_fogcolor_influence_scalar);

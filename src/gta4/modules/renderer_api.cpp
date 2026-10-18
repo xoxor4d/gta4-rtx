@@ -7,6 +7,7 @@
 #include "natives.hpp"
 #include "performance_logger.hpp"
 #include "renderer.hpp"
+#include "timecycle.hpp"
 #include "water.hpp"
 
 #include <mutex>
@@ -276,15 +277,8 @@ namespace gta4
 				return g_overrides_fingerprint;
 			}
 
-			// the wetness the world draws derive their roughness from (renderer.cpp get_wetness), 1/64 steps
-			float wetness = 0.0f;
-			if (game::pTimeCycleWetnessChange && game::pTimeCycleSpecularOffset) {
-				wetness = std::clamp(*game::pTimeCycleSpecularOffset * std::clamp(*game::pTimeCycleWetnessChange, 0.0f, 1.0f), 0.0f, 1.0f);
-			}
-
-			if (im->m_dbg_global_wetness_override) {
-				wetness = im->m_dbg_global_wetness;
-			}
+			// the wetness the world draws derive their roughness from (renderer.cpp), 1/64 steps
+			const float wetness = im->m_dbg_global_wetness_override ? im->m_dbg_global_wetness : timecycle::get_wetness();
 
 			std::uint64_t h = static_cast<std::uint32_t>(wetness * 64.0f + 0.5f);
 			const auto mix = [&h](const std::uint32_t v) {

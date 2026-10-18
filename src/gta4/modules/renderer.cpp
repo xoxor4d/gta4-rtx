@@ -8,6 +8,7 @@
 #include "natives.hpp"
 #include "remix_markers.hpp"
 #include "renderer_ff.hpp"
+#include "timecycle.hpp"
 #include "shared/common/flags.hpp"
 
 namespace gta4
@@ -2654,7 +2655,7 @@ namespace gta4
 				dev->SetVertexShader(nullptr);
 			}
 
-			if ((gs->timecycle_wetness_enabled.get_as<bool>() && *game::pTimeCycleWetnessChange > 0.0f) || im->m_dbg_global_wetness_override || im->m_dbg_visualize_stencil_state)
+			if ((gs->timecycle_wetness_enabled.get_as<bool>() && timecycle::get_wetness() > 0.0f) || im->m_dbg_global_wetness_override || im->m_dbg_visualize_stencil_state)
 			{
 				// check for stencil
 				DWORD stencil_ref = 0u, stencil_enabled = 0u;
@@ -2700,32 +2701,7 @@ namespace gta4
 					|| (g_is_rendering_vehicle && !(pidx == GTA_VEHICLE_INTERIOR || pidx == GTA_VEHICLE_INTERIOR2))
 					|| pidx == GTA_VEHICLE_VEHGLASS)
 				{
-					auto get_wetness = []()
-						{
-							const auto wetness_value = game::pTimeCycleWetnessChange; // normally pTimeCycleWetness but we use wetness change
-							const auto specularOffset = game::pTimeCycleSpecularOffset;
-
-							float w = *wetness_value;
-							if (*wetness_value >= 0.0f)
-							{
-								if (*wetness_value > 1.0f) {
-									w = 1.0f;
-								}
-							}
-
-							const float s = *specularOffset * w;
-							if (*specularOffset * w < 0.0f) {
-								return 0.0f;
-							}
-
-							if (s <= 1.0f) {
-								return s;
-							}
-
-							return 1.0f;
-						};
-
-					const float wetness_value = get_wetness();
+					const float wetness_value = timecycle::get_wetness();
 					if (wetness_value > 0.0f || im->m_dbg_global_wetness_override)
 					{
 						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_world_scalar.get_as<float>(), 0.0f, 1.0f);

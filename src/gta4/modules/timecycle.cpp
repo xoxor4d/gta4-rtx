@@ -54,6 +54,82 @@ namespace gta4
 		return std::clamp(weather_factor, 0.0f, 1.0f);
 	}
 
+	timecycle::wetness_state_s timecycle::m_wetness = {};
+
+	// wetness of the game's weather blend or the debug override
+	float timecycle::get_game_wetness()
+	{
+		if (const auto im = imgui::get(); im && im->m_dbg_global_wetness_override) {
+			return im->m_dbg_global_wetness;
+		}
+
+		if (!game::pTimeCycleWetnessChange || !game::pTimeCycleSpecularOffset) {
+			return 0.0f;
+		}
+
+		// normally pTimeCycleWetness but we use wetness change
+		return std::clamp(*game::pTimeCycleSpecularOffset * std::clamp(*game::pTimeCycleWetnessChange, 0.0f, 1.0f), 0.0f, 1.0f);
+	}
+
+	// follows the game wetness while it rains and holds + fades out a level derived from the rain peak once the game dries up.
+	// the result never exceeds the rain peak and the game takes over again as soon as it is wetter than the held level
+	void timecycle::update_wetness()
+	{
+		const auto gs = comp_settings::get();
+		auto& w = m_wetness;
+
+		// clamped so a single hitch does not eat the hold time
+		const float dt = remix_vars::is_paused() ? 0.0f : std::min(remix_vars::get_frametime() * 0.001f, 0.25f);
+
+		w.game = get_game_wetness();
+
+		if (w.phase == wetness_phase::follow_game) {
+			w.peak = std::max(w.peak, w.game);
+		} else {
+			w.timer += dt;
+		}
+
+		w.level = w.peak * std::clamp(gs->timecycle_wetness_afterrain_scalar._float(), 0.0f, 1.0f);
+
+		if (w.phase == wetness_phase::follow_game && w.game < w.level)
+		{
+			w.phase = wetness_phase::after_rain;
+			w.timer = 0.0f;
+		}
+
+		float held = 0.0f;
+		if (w.phase == wetness_phase::after_rain)
+		{
+			const float fade_time = w.timer - std::max(gs->timecycle_wetness_afterrain_hold_seconds._float(), 0.0f);
+			const float fade_duration = std::max(gs->timecycle_wetness_afterrain_fade_seconds._float(), 0.0f);
+
+			if (fade_time <= 0.0f) {
+				held = w.level;
+			}
+			else if (fade_time < fade_duration)
+			{
+				const float x = fade_time / fade_duration;
+				held = w.level * (1.0f - x * x * (3.0f - 2.0f * x));
+			}
+
+			// raining again or dried up
+			if (w.game >= held)
+			{
+				w.phase = wetness_phase::follow_game;
+				w.peak = w.game;
+				w.timer = 0.0f;
+				held = 0.0f;
+			}
+		}
+
+		w.effective = std::max(w.game, held);
+
+		// ripples follow the rain itself so they settle at the min value while the after-rain wetness is held
+		const float ripple_min = gs->timecycle_wetness_ripple_min._float();
+		const float ripple_max = gs->timecycle_wetness_ripple_max._float();
+		w.ripple_strength = ripple_min + (ripple_max - ripple_min) * std::pow(w.game, std::max(gs->timecycle_wetness_ripple_curve._float(), 0.0f));
+	}
+
 	void timecycle::translate_and_apply_timecycle_settings()
 	{
 		auto unpack_uint32 = [](const uint32_t& in, float* out)
@@ -127,6 +203,16 @@ namespace gta4
 			}
 
 			// ----------------
+
+			update_wetness();
+
+			static auto rtxWetRippleStrength = vars->get_option("rtx.wet.rippleStrength", "0.08");
+			if (gs->timecycle_wetness_enabled._bool() && gs->timecycle_wetness_ripple_enabled._bool() && rtxWetRippleStrength)
+			{
+				val.value = m_wetness.ripple_strength;
+				vars->add_queue_entry(rtxWetRippleStrength, val, 0.0f, false, 0.0005f); // the ripple range is smaller than the default epsilon
+			}
+
 
 			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness", "0.1");
 			if (!using_atmos && gs->timecycle_skylight_enabled.get_as<bool>() && rtxSkybrightness)

@@ -93,6 +93,20 @@ namespace gta4
 				m_var_default.value[0] = x; m_var_default.value[1] = y; m_var_default.value[2] = z; m_var_default.value[3] = w;
 			}
 	
+			// at least two decimals, more only when needed to read back the same value
+			static std::string float_to_str(const float v)
+			{
+				for (int precision = 2; precision < 6; precision++)
+				{
+					const auto str = std::format("{:.{}f}", v, precision);
+					if (std::strtof(str.c_str(), nullptr) == v) {
+						return str;
+					}
+				}
+
+				return std::format("{:.6f}", v);
+			}
+
 			const char* get_str_value(bool get_default = false) const
 			{
 				const bool is_dirty = get_dirty_state();
@@ -107,16 +121,16 @@ namespace gta4
 					return shared::utils::va("%d", !get_default ? (is_dirty ? m_var_base_user.integer : m_var.integer) : m_var_default.integer);
 	
 				case var_type_value:
-					return shared::utils::va("%.2f", pvec[0]);
+					return shared::utils::va("%s", float_to_str(pvec[0]).c_str());
 	
 				case var_type_vec2:
-					return shared::utils::va("[ %.2f, %.2f ]", pvec[0], pvec[1]);
+					return shared::utils::va("[ %s, %s ]", float_to_str(pvec[0]).c_str(), float_to_str(pvec[1]).c_str());
 	
 				case var_type_vec3:
-					return shared::utils::va("[ %.2f, %.2f, %.2f ]", pvec[0], pvec[1], pvec[2]);
+					return shared::utils::va("[ %s, %s, %s ]", float_to_str(pvec[0]).c_str(), float_to_str(pvec[1]).c_str(), float_to_str(pvec[2]).c_str());
 	
 				case var_type_vec4:
-					return shared::utils::va("[ %.2f, %.2f, %.2f, %.2f ]", pvec[0], pvec[1], pvec[2], pvec[3]);
+					return shared::utils::va("[ %s, %s, %s, %s ]", float_to_str(pvec[0]).c_str(), float_to_str(pvec[1]).c_str(), float_to_str(pvec[2]).c_str(), float_to_str(pvec[3]).c_str());
 				}
 	
 				return nullptr;
@@ -1680,6 +1694,64 @@ namespace gta4
 				("Defines the blending strength used to go from original roughness to adjusted roughness."),
 				"1.3.0",
 				1.0f
+			};
+
+			// -----
+
+			variable timecycle_wetness_afterrain_hold_seconds =
+			{
+				"timecycle_wetness_afterrain_hold_seconds",
+				("Seconds surfaces stay at the after-rain wetness level once the game's own wetness dropped below it."),
+				"1.7.0",
+				90.0f
+			};
+
+			variable timecycle_wetness_afterrain_fade_seconds =
+			{
+				"timecycle_wetness_afterrain_fade_seconds",
+				("Seconds it takes to dry up after the hold time ran out."),
+				"1.7.0",
+				120.0f
+			};
+
+			variable timecycle_wetness_afterrain_scalar =
+			{
+				"timecycle_wetness_afterrain_scalar",
+				("After-rain wetness level relative to the highest wetness reached while it rained (0-1).\n"
+				 "0 disables the prolonged wetness, 1 holds the full rain wetness."),
+				"1.7.0",
+				1.0f
+			};
+
+			variable timecycle_wetness_ripple_enabled = {
+				"timecycle_wetness_ripple_enabled",
+				("Scales 'rtx.wet.rippleStrength' with the game's wetness. Ripples settle at the min value once the rain stopped."),
+				"1.7.0",
+				true
+			};
+
+			variable timecycle_wetness_ripple_min =
+			{
+				"timecycle_wetness_ripple_min",
+				("Value of 'rtx.wet.rippleStrength' when it does not rain."),
+				"1.7.0",
+				0.006f
+			};
+
+			variable timecycle_wetness_ripple_max =
+			{
+				"timecycle_wetness_ripple_max",
+				("Value of 'rtx.wet.rippleStrength' at full rain wetness."),
+				"1.7.0",
+				0.08f
+			};
+
+			variable timecycle_wetness_ripple_curve =
+			{
+				"timecycle_wetness_ripple_curve",
+				("Exponent applied to the wetness before it is mapped onto the ripple range. Values above 1 keep light rain subtle."),
+				"1.7.0",
+				0.1f
 			};
 
 			// -----

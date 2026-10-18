@@ -10,6 +10,7 @@
 #include "remix_lights.hpp"
 #include "remix_vars.hpp"
 #include "renderer.hpp"
+#include "timecycle.hpp"
 #include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
 #include "shared/common/toml_ext.hpp"
@@ -141,6 +142,7 @@ namespace gta4
 
 		auto set_weather = [n](uint32_t idx) 
 			{
+				shared::common::remix_api::get().m_bridge.SetGameValue("__weather.blend_absolute", "1.0");
 				n->ForceWeatherNow(idx);
 				n->ReleaseWeather();
 			};
@@ -1184,6 +1186,19 @@ namespace gta4
 
 			ImGui::Checkbox("Wetness OcclTest Allow on Ignored", &im->m_dbg_global_wetness_occl_allow_on_ignored); TT("Allows occlusion tests on ignored surfaces.");
 			ImGui::DragFloat("Wetness Rain Marker Height Offset", &im->m_dbg_global_wetness_rain_marker_height_offset, 0.05f, -100.0f, 100.0f, "%.0f");
+
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			const auto& wet = timecycle::get_wetness_state();
+			ImGui::Text("Game Wetness: %.3f", wet.game);
+			ImGui::Text("Effective Wetness: %.3f", wet.effective);
+			ImGui::Text("Phase: %s", wet.phase == timecycle::wetness_phase::after_rain ? "After Rain" : "Follow Game");
+			ImGui::Text("After-Rain Level: %.3f (Peak: %.3f)", wet.level, wet.peak);
+			ImGui::Text("After-Rain Timer: %.1fs", wet.timer);
+			ImGui::Text("Ripple Strength: %.4f", wet.ripple_strength);
+
+			if (ImGui::Button("Reset After-Rain Wetness")) {
+				timecycle::reset_wetness();
+			}
 
 			ImGui::TreePop();
 		}
@@ -2586,6 +2601,32 @@ namespace gta4
 					compsettings_float_widget("Blending Strength", cs->timecycle_wetness_vehicle_dirt_blending, 0.0f, 1.0f, 0.005f);
 					ImGui::PopID();
 
+					ImGui::PopID();
+				});
+
+
+			ImGui::Spacing(0, SEPARATOR_SPACING);
+			ImGui::Widget_CategoryWithVerticalLabel("After Rain", [&]() 
+				{
+					ImGui::PushID("afterrain");
+					compsettings_float_widget("Hold Duration (s)", cs->timecycle_wetness_afterrain_hold_seconds, 0.0f, 3600.0f, 0.5f, "%.0f");
+					compsettings_float_widget("Fade Duration (s)", cs->timecycle_wetness_afterrain_fade_seconds, 0.0f, 3600.0f, 0.5f, "%.0f");
+					compsettings_float_widget("Wetness Level", cs->timecycle_wetness_afterrain_scalar, 0.0f, 1.0f, 0.005f);
+					ImGui::PopID();
+				});
+
+
+			ImGui::Spacing(0, SEPARATOR_SPACING);
+			ImGui::Widget_CategoryWithVerticalLabel("Ripples", [&]() 
+				{
+					ImGui::PushID("ripples");
+					compsettings_bool_widget("Scale Ripples with Wetness", cs->timecycle_wetness_ripple_enabled);
+
+					ImGui::BeginDisabled(!cs->timecycle_wetness_ripple_enabled.get_as<bool>());
+					compsettings_float_widget("Min Ripple Strength", cs->timecycle_wetness_ripple_min, 0.0f, 1.0f, 0.0005f, "%.3f");
+					compsettings_float_widget("Max Ripple Strength", cs->timecycle_wetness_ripple_max, 0.0f, 1.0f, 0.0005f, "%.3f");
+					compsettings_float_widget("Wetness Curve", cs->timecycle_wetness_ripple_curve, 0.1f, 8.0f, 0.01f);
+					ImGui::EndDisabled();
 					ImGui::PopID();
 				});
 
