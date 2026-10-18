@@ -413,6 +413,10 @@ namespace gta4
 	 */
 	void remix_vars::parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name, const float delay)
 	{
+		if (!std::filesystem::exists(sub_dir + "\\" + file_name)) {
+			return;
+		}
+
 		std::ifstream file;
 		if (shared::utils::open_file_homepath(sub_dir, file_name, file))
 		{

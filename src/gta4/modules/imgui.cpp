@@ -2262,6 +2262,7 @@ namespace gta4
 			}
 		}
 
+		ImGui::SameLine(0, 20.0f);
 		if (ImGui::Button(ICON_FA_REDO "   Reload Weather Presets", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			remix_vars::parse_and_apply_weather_presets();
 		} TT("Parse and apply all conf files stored in 'rtx_comp/weather_presets/'");
@@ -2695,7 +2696,7 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 	}
 
-	void wip_cs_container()
+	void wip_general_container()
 	{
 		//const auto& im = imgui::get();
 		const auto& gs = comp_settings::get();
@@ -2707,13 +2708,12 @@ namespace gta4
 
 		compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
 
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Version 1.5.X and lower ");
 		ImGui::Spacing(0, 4);
-
 		remix_atmospheric_toggle();
 
 		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Version 1.5.X and lower ");
+		ImGui::Spacing(0, 4);
 
 		ImGui::Widget_CategoryWithVerticalLabel("Anti Culling", [&]()
 			{
@@ -2901,6 +2901,48 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 	}
 
+	void wip_wetness_container()
+	{
+		const auto& im = imgui::get();
+
+		ImGui::Spacing(0, 4);
+		ImGui::TextUnformatted("More In-Depth Options can be found within the Advanced Remix Menu (Alt+X):\n> Game Setup - Step2: Parameter Tuning - Global Wetness.");
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+
+		const auto button_3way_width = (ImGui::GetContentRegionAvail().x * 0.33f) - (ImGui::GetStyle().ItemSpacing.x);
+		if (ImGui::Button("Performance", ImVec2(button_3way_width, 0)))
+		{
+			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_performance.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_performance.conf", 1);
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("Standard", ImVec2(button_3way_width, 0)))
+		{
+			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_standard.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_standard.conf", 1);
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("High (Puddles++)", ImVec2(button_3way_width, 0)))
+		{
+			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_high_more_puddles.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_high_more_puddles.conf", 1);
+		}
+
+		ImGui::Spacing(0, 4);
+
+		// 
+		ImGui::Checkbox("Override Global Wetness Scale", &im->m_dbg_global_wetness_override); TT("Not a saved setting.");
+		ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
+		{
+			ImGui::SliderFloat("Global Wetness", &im->m_dbg_global_wetness, 0, 1, "%.2f", ImGuiSliderFlags_AlwaysClamp); TT("Not a saved setting.");
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing(0, 4);
+	}
+
 	void imgui::tab_wip()
 	{
 		ImGui::Spacing(0, 4);
@@ -2916,7 +2958,7 @@ namespace gta4
 		// remix api
 		{
 			static float cont_wip_api_height = 0.0f;
-			cont_wip_api_height = ImGui::Widget_ContainerWithCollapsingTitle("Remix API", cont_wip_api_height, wip_api_container,
+			cont_wip_api_height = ImGui::Widget_ContainerWithCollapsingTitle("Remix API Drawing", cont_wip_api_height, wip_api_container,
 				false, ICON_FA_MICROCHIP, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
@@ -2927,10 +2969,17 @@ namespace gta4
 				true, ICON_FA_WATER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
-		// cs
+		// wetness
+		{
+			static float cont_wip_water_height = 0.0f;
+			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Global Wetness", cont_wip_water_height, wip_wetness_container,
+				true, ICON_FA_WAVEFORM, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// general settingsd
 		{
 			static float cont_wip_comp_settings_height = 0.0f;
-			cont_wip_comp_settings_height = ImGui::Widget_ContainerWithCollapsingTitle("Settings", cont_wip_comp_settings_height, wip_cs_container,
+			cont_wip_comp_settings_height = ImGui::Widget_ContainerWithCollapsingTitle("Settings", cont_wip_comp_settings_height, wip_general_container,
 				true, ICON_FA_CAMERA, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
