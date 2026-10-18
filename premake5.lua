@@ -279,6 +279,10 @@ project "installer"
 
 	flags { "NoManifest" }     -- prevents VS/mt.exe from generating its own
 
+	-- Control Flow Guard on top of the default ASLR/DEP; cheap reputation signals for AV heuristics
+	buildoptions { "/guard:cf" }
+	linkoptions { "/guard:cf" }
+
 	dependencies.imports()
 
 	group "Dependencies"
