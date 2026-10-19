@@ -16,6 +16,11 @@
 
 #pragma comment(lib, "winhttp.lib")
 
+// Packaged AutoPBR mod (single usd + pkg files) - downloaded and extracted by the user
+static const char* autopbr_packaged_mega_url = "https://mega.nz/file/PkZjGJjI#d9oHWdUOV7XQG6oRRfEqBGSA5_8MtbbArMwo7oU-RG4";
+static const char* autopbr_packaged_drive_url = "https://drive.google.com/file/d/1eaLnOcZI6n5CYMLwG_d0DWCzdxlinCsx";
+static const char* autopbr_packaged_zip_name = "GTAIV-AutoPBR-X.X.X.zip";
+
 static const char* line_pad = "  ";
 #define PAD line_pad
 #define PAD_INL "  "
@@ -834,7 +839,8 @@ int select_console_option(const std::string& prompt, const std::vector<std::stri
 enum class DeliveryMode
 {
 	Zip,
-	Git
+	Git,
+	Packaged
 };
 
 struct RemoteModConfig
@@ -854,6 +860,11 @@ struct RemoteModConfig
 	std::string missing_prompt;
 	std::string missing_description;
 	std::string update_prompt;
+
+	// Empty when the mod has no packaged (manual install) variant
+	std::string packaged_mega_url;
+	std::string packaged_drive_url;
+	std::string packaged_zip_name;
 };
 
 std::filesystem::path remote_mods_dir(const std::string& game_dir) {
@@ -889,8 +900,14 @@ bool sparse_git_metadata_exists(const std::string& game_dir, const RemoteModConf
 	return std::filesystem::exists(remote_mod_git_dir(game_dir, config) / "config");
 }
 
-std::string delivery_mode_to_string(DeliveryMode mode) {
-	return mode == DeliveryMode::Git ? "git" : "zip";
+std::string delivery_mode_to_string(DeliveryMode mode)
+{
+	switch (mode)
+	{
+	case DeliveryMode::Git: return "git";
+	case DeliveryMode::Packaged: return "packaged";
+	default: return "zip";
+	}
 }
 
 bool read_delivery_mode(const std::string& game_dir, const RemoteModConfig& config, DeliveryMode& mode)
@@ -909,6 +926,12 @@ bool read_delivery_mode(const std::string& game_dir, const RemoteModConfig& conf
 		return true;
 	}
 
+	if (content == "delivery=packaged" || content == "packaged")
+	{
+		mode = DeliveryMode::Packaged;
+		return true;
+	}
+
 	return false;
 }
 
@@ -920,7 +943,7 @@ bool write_delivery_mode(const std::string& game_dir, const RemoteModConfig& con
 DeliveryMode select_delivery_mode()
 {
 	const int choice = select_console_option(
-		"\n  Select how the base and optional AutoPBR mods should be installed/updated:",
+		"\n  Select how the base mod (and the AutoPBR mod, if installed via GitHub) should be installed/updated:",
 		{
 			"Use Git checkout (RECOMMENDED, only download new/modified files without redownloading everything.",
 			"Use GitHub zip downloads (Downloads the complete mod even if only a single file has changed since the installer was last run.)"
@@ -1290,6 +1313,193 @@ bool download_and_extract_zip_mod(const std::string& game_dir, const RemoteModCo
 	return true;
 }
 
+// --------------
+// Packaged mod (downloaded and extracted by the user)
+
+// The packaged zip ships a version.txt inside the mod folder
+std::string installed_packaged_version(const std::string& game_dir, const RemoteModConfig& config) {
+	return trim_whitespace(read_file_from_disk((remote_mod_target_dir(game_dir, config) / "version.txt").string()));
+}
+
+bool delivery_mode_is_packaged(const std::string& game_dir, const RemoteModConfig& config)
+{
+	DeliveryMode mode = DeliveryMode::Zip;
+	return read_delivery_mode(game_dir, config, mode) && mode == DeliveryMode::Packaged;
+}
+
+// Either marked by the installer or extracted by hand (version.txt present)
+bool has_packaged_install(const std::string& game_dir, const RemoteModConfig& config) {
+	return delivery_mode_is_packaged(game_dir, config) || !installed_packaged_version(game_dir, config).empty();
+}
+
+// Packaged version selected but the zip was not extracted yet
+bool packaged_install_pending(const std::string& game_dir, const RemoteModConfig& config) {
+	return delivery_mode_is_packaged(game_dir, config) && installed_packaged_version(game_dir, config).empty();
+}
+
+std::string packaged_version_text(const std::string& installed_version) {
+	return installed_version.empty() ? "none found (zip not extracted yet?)" : installed_version;
+}
+
+// Drops the git metadata and commit marker; `remove_mod_folder` also wipes the loose-file install itself
+bool remove_installer_managed_mod(const std::string& game_dir, const RemoteModConfig& config, bool remove_mod_folder)
+{
+	const std::filesystem::path target_dir = remote_mod_target_dir(game_dir, config);
+	std::error_code ec;
+
+	if (remove_mod_folder && std::filesystem::exists(target_dir))
+	{
+		std::cout << PAD << "Removing " << target_dir.string() << " ...\n";
+		std::filesystem::remove_all(target_dir, ec);
+
+		if (ec)
+		{
+			log_error("Failed to remove " + target_dir.string() + " (" + ec.message() + ")");
+			return false;
+		}
+
+		log_yellow(true);
+		std::cout << PAD << "> Removed the existing loose-file install of the " << config.display_name << " because it would conflict with the packaged version.\n\n";
+		log_default();
+	}
+
+	std::filesystem::remove_all(remote_mod_git_dir(game_dir, config), ec);
+	std::filesystem::remove(remote_mod_commit_file(game_dir, config), ec);
+	return true;
+}
+
+// Opens a mirror in the browser, removes conflicting installer-managed files and prints the manual install steps
+bool install_packaged_mod_manually(const std::string& game_dir, const RemoteModConfig& config)
+{
+	const std::filesystem::path target_dir = remote_mod_target_dir(game_dir, config);
+	const bool keep_existing = has_packaged_install(game_dir, config);
+	const std::string installed_version = installed_packaged_version(game_dir, config);
+
+	const int mirror = select_console_option(
+		"Which download mirror should be opened in your browser?",
+		{
+			"Mega (recommended)",
+			"Google Drive"
+		});
+
+	const std::string& mirror_url = mirror == 1 ? config.packaged_drive_url : config.packaged_mega_url;
+	ShellExecuteA(nullptr, "open", mirror_url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+
+	if (!remove_installer_managed_mod(game_dir, config, !keep_existing)) {
+		return false;
+	}
+
+	if (keep_existing) {
+		std::cout << PAD << "> Installed packaged version: " << packaged_version_text(installed_version) << "\n\n";
+	}
+
+	if (!write_delivery_mode(game_dir, config, DeliveryMode::Packaged)) {
+		log_warn("Failed to write delivery marker.");
+	}
+
+	std::vector<std::string> steps;
+	steps.push_back(
+		"Download the newest '" + config.packaged_zip_name + "' from the page that just opened.\n"
+		PAD_INL "   Mega:         " + config.packaged_mega_url + "\n"
+		PAD_INL "   Google Drive: " + config.packaged_drive_url);
+
+	if (keep_existing)
+	{
+		steps.push_back(
+			"Compare its version with the installed one (" + packaged_version_text(installed_version) + ").\n"
+			PAD_INL "   If it is not newer, you are done. Otherwise delete everything inside:\n"
+			PAD_INL "   " + target_dir.string());
+	}
+
+	steps.push_back(
+		"Extract the zip into your GTA IV folder (the one containing GTAIV.exe):\n"
+		PAD_INL "   " + game_dir + "\n"
+		PAD_INL "   The zip already contains 'rtx-remix\\mods\\" + config.mod_folder_name + "', so everything lands in the right place.");
+
+	steps.push_back("Done. Re-run the installer and pick the packaged version again whenever you want to check for updates.");
+
+	log_blue(true);
+	std::cout << PAD << config.display_name << " - manual install of the packaged version:\n\n";
+	log_default();
+
+	for (size_t i = 0; i < steps.size(); i++) {
+		std::cout << PAD << i + 1 << ". " << steps[i] << "\n\n";
+	}
+
+	MessageBoxA(nullptr,
+		("The packaged " + config.display_name + " has to be installed manually (takes a minute).\n\n"
+		 "Download the zip from the page that just opened and extract it into your GTA IV folder.\n\n"
+		 "The console shows the exact steps and paths.").c_str(),
+		(config.display_name + " - Manual Install").c_str(), MB_OK | MB_ICONINFORMATION);
+	return true;
+}
+
+// Asks which variant to use; returns true when the packaged variant handled everything (or nothing is to do)
+bool handle_packaged_mod_choice(const std::string& game_dir, const RemoteModConfig& config, bool& handled)
+{
+	handled = true;
+	const std::filesystem::path target_dir = remote_mod_target_dir(game_dir, config);
+
+	if (!has_packaged_install(game_dir, config))
+	{
+		const int choice = select_console_option(
+			"Which version of the optional " + config.display_name + " do you want to use?",
+			{
+				"Packaged version - manual install (HIGHLY RECOMMENDED: loads much faster. Opens the download page and shows 2 easy steps.)",
+				"GitHub version - installed by this installer (loose files, slow to load. Uses the Git/zip method selected for the base mod.)"
+			});
+
+		if (choice == 0) {
+			return install_packaged_mod_manually(game_dir, config);
+		}
+
+		handled = false;
+		return true;
+	}
+
+	std::cout << PAD << "Installed packaged version: " << packaged_version_text(installed_packaged_version(game_dir, config)) << "\n\n";
+
+	const int choice = select_console_option(
+		"The packaged (manually installed) version of the " + config.display_name + " is selected. What do you want to do?",
+		{
+			"Check the mirrors for a newer packaged version (opens the download page and shows the install steps)",
+			"Nothing, keep it as is",
+			"Switch to the GitHub version (loose files, slower to load, managed by this installer)"
+		});
+
+	if (choice == 0) {
+		return install_packaged_mod_manually(game_dir, config);
+	}
+
+	if (choice == 1) {
+		return true;
+	}
+
+	// Both variants in one folder would load twice, so the packaged files have to go
+	const int res = MessageBoxA(nullptr,
+		("This removes all packaged files in " + config.mod_folder_name + ".\n\nContinue?").c_str(),
+		(config.display_name + " - Switch to GitHub").c_str(),
+		MB_YESNO | MB_ICONQUESTION);
+
+	if (res != IDYES) {
+		return true;
+	}
+
+	std::error_code ec;
+	std::filesystem::remove_all(target_dir, ec);
+	if (ec)
+	{
+		log_error("Failed to remove " + target_dir.string() + " (" + ec.message() + ")");
+		return false;
+	}
+
+	std::filesystem::remove(remote_mod_delivery_file(game_dir, config), ec);
+	std::cout << PAD << "> Removed the packaged version. Continuing with the GitHub version ...\n";
+
+	handled = false;
+	return true;
+}
+
 bool install_or_update_remote_mod(const std::string& game_dir, const RemoteModConfig& config, DeliveryMode selected_mode, bool selected_mode_valid)
 {
 	const std::filesystem::path mods_dir = remote_mods_dir(game_dir);
@@ -1308,8 +1518,17 @@ bool install_or_update_remote_mod(const std::string& game_dir, const RemoteModCo
 	std::cout << "\n" << PAD << "----------- " << config.display_name << " ----------------------------------------------- \n";
 	log_default(false);
 
+	if (!config.packaged_mega_url.empty())
+	{
+		bool handled = false;
+		const bool ok = handle_packaged_mod_choice(game_dir, config, handled);
+		if (handled) {
+			return ok;
+		}
+	}
+
 	DeliveryMode mode = selected_mode;
-	if (!selected_mode_valid && !read_delivery_mode(game_dir, config, mode)) {
+	if (!selected_mode_valid && (!read_delivery_mode(game_dir, config, mode) || mode == DeliveryMode::Packaged)) {
 		mode = select_delivery_mode();
 	}
 
@@ -1865,7 +2084,10 @@ int main()
 		false,
 		"Optional: Download and extract the AutoPBR remix-mod?\n" PAD_INL "You can skip this if you're not interested or if you've installed it manually.",
 		"It contains ~18k automatically converted PBR materials.\n" PAD_INL "Download size: ~1GB",
-		"A newer version of the AutoPBR mod is available on GitHub.\n\n" PAD_INL "Would you like to update?"
+		"A newer version of the AutoPBR mod is available on GitHub.\n\n" PAD_INL "Would you like to update?",
+		autopbr_packaged_mega_url,
+		autopbr_packaged_drive_url,
+		autopbr_packaged_zip_name
 	};
 
 	bool has_selected_delivery_mode = false;
@@ -1889,6 +2111,14 @@ int main()
 		}
 	}
 
+	const bool autopbr_zip_pending = packaged_install_pending(game_dir, autopbr_mod);
+	if (autopbr_zip_pending)
+	{
+		log_yellow(true);
+		std::cout << "\n" << PAD << "Reminder: download and extract the packaged AutoPBR zip (see the steps above).\n";
+		log_default();
+	}
+
 	log_green(true);
 	std::cout << "\n"
 		<< PAD << "Done! - If you run into issues, visit:\n"
@@ -1899,6 +2129,10 @@ int main()
 		<< PAD << "> A short description and anything else that might help to identify the issue.\n";
 	log_default();
 
-	MessageBoxA(nullptr, "Installation complete!\nYou can now launch GTA IV.", "Success", MB_ICONINFORMATION);
+	MessageBoxA(nullptr,
+		autopbr_zip_pending
+			? "Installation complete!\n\nRemember to download and extract the packaged AutoPBR zip (see the installer console).\nYou can then launch GTA IV."
+			: "Installation complete!\nYou can now launch GTA IV.",
+		"Success", MB_ICONINFORMATION);
     return 0;
 }

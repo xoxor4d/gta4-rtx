@@ -15,8 +15,12 @@
     - Press YES - The CompMod will not function correctly without it - so make sure to install it.
     - Use the `GIT` install method (recommended) because its easier and faster to update to new versions (and uses less bandwidth)
 
-8. The installer will ask you if you want to download the optional [gta4-autopbr-mod](https://github.com/xoxor4d/gta4-rtx-autopbr-mod).
+8. The installer will ask which version of the optional [gta4-autopbr-mod](https://github.com/xoxor4d/gta4-rtx-autopbr-mod) you want to use.
     - This mod converts a bunch of game materials to approximated PBR-materials and makes the game less plasticy. It is entirely optional.
+    - `Packaged version` (highly recommended, loads much faster): the installer opens a download page (Mega or Google Drive) and shows two steps:  
+      download `GTAIV-AutoPBR-X.X.X.zip` and extract it into your GTAIV folder (next to `GTAIV.exe`). The zip already contains `rtx-remix/mods/z_gta4rtx_autopbr`.  
+      To update later, re-run the installer, pick the packaged version again and compare the installed version it shows with the newest zip. Delete everything inside `rtx-remix/mods/z_gta4rtx_autopbr` before extracting a newer zip.
+    - `GitHub version`: loose files downloaded by the installer using the `GIT`/zip method chosen for the base mod. Slower to load.
 
 9. Make sure that you remove all custom launch arguments for GTAIV in Steam (if you have any set and use Steam to run the game)
 
