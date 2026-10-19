@@ -16,6 +16,7 @@ Feel free to join the discord server: https://discord.gg/FMnfhpfZy9
 <br>
 
 ![img](.github/img/overview.jpg)
+![img](.github/img/06.jpg)
 
 </div>
 
@@ -58,7 +59,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 
 <br>
 
-![img](.github/img/03.jpg)
+![img](.github/img/01.jpg)
 
 <br>
 
@@ -165,7 +166,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [KapibosRU](https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ)
 - [Budgie](https://www.patreon.com/c/BudgieGames)
 - [Alex from Digital Foundry](https://www.youtube.com/watch?v=vGxPdcMQfwg)
-- [Sparkles (Remix Plus - Numos - DLSS5 Integration)](https://github.com/Kim2091)
+- [Sparkles (Remix Plus - Numos - Initial DLSS5 Integration)](https://github.com/Kim2091)
 - [CR (Remix Plus)](https://github.com/sambow23)
 - [TheGreatHMMMM (Remix Plus)](https://github.com/TheGreatHMMMM)
 - [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)
@@ -179,6 +180,6 @@ and all the people that helped along the way!
 <br>
 
 ![img](.github/img/02.jpg)
-![img](.github/img/06.jpg)
+![img](.github/img/03.jpg)
 
 </div>
