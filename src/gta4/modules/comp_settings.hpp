@@ -1951,7 +1951,7 @@ namespace gta4
 				"timecycle_gamma_offset",
 				("Controls the offset that's added to the gamma timecycle variable which influences 'rtx.tonemap.exposureBias'."),
 				"1.3.0",
-				0.3f
+				0.0f
 			};
 
 			// -----
@@ -1988,6 +1988,27 @@ namespace gta4
 				("Min value of bloom intensity at night with no cutscene playing. Needs 'timecycle_bloom_night_min_clamp_enabled'"),
 				"1.3.0",
 				1.5f
+			};
+
+			variable timecycle_bloom_day_min_clamp_enabled = {
+				"timecycle_bloom_day_min_clamp_enabled",
+				("Enable min. bloom intensity at day with no cutscene playing."),
+				"1.7.0",
+				true
+			};
+
+			variable timecycle_bloom_day_min_clamp_value = {
+				"timecycle_bloom_day_min_clamp_value",
+				("Min value of bloom intensity at day with no cutscene playing. Needs 'timecycle_bloom_day_min_clamp_enabled'"),
+				"1.7.0",
+				1.5f
+			};
+
+			variable timecycle_bloomthreshold_day_min_clamp_value = {
+				"timecycle_bloomthreshold_day_min_clamp_value",
+				("Min value of bloom threshold at day with no cutscene playing. Needs 'timecycle_bloom_day_min_clamp_enabled'"),
+				"1.7.0",
+				4.0f
 			};
 
 			// ----------------------------------

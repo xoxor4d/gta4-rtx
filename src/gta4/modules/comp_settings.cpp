@@ -379,7 +379,10 @@ namespace gta4
 				ASSIGN(timecycle_bloomthreshold_scalar);
 				ASSIGN(timecycle_bloom_night_min_clamp_enabled);
 				ASSIGN(timecycle_bloom_night_min_clamp_value);
-
+				ASSIGN(timecycle_bloom_day_min_clamp_enabled);
+				ASSIGN(timecycle_bloom_day_min_clamp_value);
+				ASSIGN(timecycle_bloomthreshold_day_min_clamp_value);
+			
 				// misc settings
 				ASSIGN(discord_rpc);
 				ASSIGN(limit_option_sliders);

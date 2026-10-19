@@ -2526,10 +2526,19 @@ namespace gta4
 					compsettings_float_widget("Bloom Threshold Scalar", cs->timecycle_bloomthreshold_scalar, 0.0f, 0.0f, 0.005f);
 
 					ImGui::Spacing(0, SEPARATOR_SPACING);
-					compsettings_bool_widget("Clamp Min Intensity at Night", cs->timecycle_bloom_night_min_clamp_enabled);
+					compsettings_bool_widget("Clamp Bloom Min at Night", cs->timecycle_bloom_night_min_clamp_enabled);
 					ImGui::BeginDisabled(!cs->timecycle_bloom_night_min_clamp_enabled.get_as<bool>());
 					{
-						compsettings_float_widget("Bloom Night Min Value", cs->timecycle_bloom_night_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						compsettings_float_widget("Intensity Night Min", cs->timecycle_bloom_night_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						ImGui::EndDisabled();
+					}
+
+					ImGui::Spacing(0, SEPARATOR_SPACING);
+					compsettings_bool_widget("Clamp Bloom Min at Day", cs->timecycle_bloom_day_min_clamp_enabled);
+					ImGui::BeginDisabled(!cs->timecycle_bloom_day_min_clamp_enabled.get_as<bool>());
+					{
+						compsettings_float_widget("Intensity Day Min", cs->timecycle_bloom_day_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						compsettings_float_widget("Threshold Day Min", cs->timecycle_bloomthreshold_day_min_clamp_value, 0.0f, 0.0f, 0.005f);
 						ImGui::EndDisabled();
 					}
 

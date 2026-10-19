@@ -279,36 +279,45 @@ namespace gta4
 			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold", "0");
 			if (gs->timecycle_bloom_enabled.get_as<bool>() && rtxBloomBurnIntensity && rtxBloomLuminanceThreshold)
 			{
-				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
-
-				// allow min clamping at night with no cutscene playing
-				if (gs->timecycle_bloom_night_min_clamp_enabled._bool() && !is_playing_cutscene && game::m_game_clock_hours && game::m_game_clock_minutes &&
-					(*game::m_game_clock_hours < 6 || *game::m_game_clock_hours >= 19)) 
+				float night_factor = 0.0f;
+				const bool can_clamp = !is_playing_cutscene && game::m_game_clock_hours && game::m_game_clock_minutes;
+				if (can_clamp)
 				{
 					const int& hour = *game::m_game_clock_hours;
 					const int& minute = *game::m_game_clock_minutes;
-					float fade_scale = 1.0f;
 
 					if (hour >= 20 || hour < 5) {
-						fade_scale = 1.0f;
+						night_factor = 1.0f;
 					}
-					else if (hour >= 19) {
-						fade_scale = static_cast<float>(minute) / 60.0f; // 0.0 at 18:00, 1.0 at 19:00
+					else if (hour == 19) {
+						night_factor = static_cast<float>(minute) / 60.0f;
 					}
-					else if (hour == 5)
-					{
-						const float fade_progress = static_cast<float>(minute) / 60.0f; // 0.0 at 05:00, 1.0 at 06:00
-						fade_scale = 1.0f - fade_progress;
+					else if (hour == 5) {
+						night_factor = 1.0f - static_cast<float>(minute) / 60.0f;
 					}
-					
-					val.value = std::max(gs->timecycle_bloom_night_min_clamp_value._float() * fade_scale, val.value);
+				}
+
+				const bool clamp_night = can_clamp && gs->timecycle_bloom_night_min_clamp_enabled._bool();
+				const bool clamp_day = can_clamp && gs->timecycle_bloom_day_min_clamp_enabled._bool();
+				const float day_factor = 1.0f - night_factor;
+
+				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
+				if (clamp_night) {
+					val.value = std::max(gs->timecycle_bloom_night_min_clamp_value._float() * night_factor, val.value);
+				}
+				if (clamp_day) {
+					val.value = std::max(gs->timecycle_bloom_day_min_clamp_value._float() * day_factor, val.value);
 				}
 
 				vars->add_queue_entry(rtxBloomBurnIntensity, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mBloomIntensity);
-				
+
 
 				val.value = timecycle->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
+				if (clamp_day) {
+					val.value = std::max(gs->timecycle_bloomthreshold_day_min_clamp_value._float() * day_factor, val.value);
+				}
+
 				vars->add_queue_entry(rtxBloomLuminanceThreshold, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mBloomThreshold);
 			}
