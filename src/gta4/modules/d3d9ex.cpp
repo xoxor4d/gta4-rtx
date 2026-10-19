@@ -127,13 +127,39 @@ namespace gta4
 		s_calls_this_frame = {};
 	}
 
+	// D3D9 resets viewport and scissor to the full target on SetRenderTarget(0) and Reset but the bridge's cached state does not.
+	// The game reads the viewport back after switching targets, so it would keep re-applying the pre-resolution-change viewport.
+	static void reset_viewport_to_target(IDirect3DDevice9* dev, IDirect3DSurface9* target)
+	{
+		D3DSURFACE_DESC desc = {};
+		if (!target || FAILED(target->GetDesc(&desc))) {
+			return;
+		}
+
+		const D3DVIEWPORT9 vp = { 0u, 0u, desc.Width, desc.Height, 0.0f, 1.0f };
+		dev->SetViewport(&vp);
+
+		const RECT rect = { 0, 0, static_cast<LONG>(desc.Width), static_cast<LONG>(desc.Height) };
+		dev->SetScissorRect(&rect);
+	}
+
 	HRESULT d3d9ex::D3D9Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
 	{
 		shared::common::g_shader_cache.clear_cache();
-		tex_addons::init_texture_addons(true);
+		shared::imgui::blur::release_resources();
 		ImGui_ImplDX9_InvalidateDeviceObjects();
 		const auto hr = m_pIDirect3DDevice9->Reset(pPresentationParameters);
-		tex_addons::init_texture_addons();
+
+		if (SUCCEEDED(hr))
+		{
+			IDirect3DSurface9* backbuffer = nullptr;
+			if (SUCCEEDED(m_pIDirect3DDevice9->GetRenderTarget(0, &backbuffer)) && backbuffer)
+			{
+				reset_viewport_to_target(m_pIDirect3DDevice9, backbuffer);
+				backbuffer->Release();
+			}
+		}
+
 		ImGui_ImplDX9_CreateDeviceObjects();
 		return hr;
 	}
@@ -271,7 +297,11 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget)
 	{
-		return m_pIDirect3DDevice9->SetRenderTarget(RenderTargetIndex, pRenderTarget);
+		const auto hr = m_pIDirect3DDevice9->SetRenderTarget(RenderTargetIndex, pRenderTarget);
+		if (SUCCEEDED(hr) && RenderTargetIndex == 0u) {
+			reset_viewport_to_target(m_pIDirect3DDevice9, pRenderTarget);
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget)

@@ -16,6 +16,9 @@ namespace shared::imgui
 
 	namespace blur
 	{
+		// D3DPOOL_DEFAULT resources, release before device Reset
+		void release_resources();
+
 		template <std::size_t N>
 		constexpr auto decode_base85(const char(&input)[N]) noexcept
 		{
