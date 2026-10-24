@@ -1990,6 +1990,13 @@ namespace gta4
 				1.5f
 			};
 
+			variable timecycle_bloomthreshold_night_min_clamp_value = {
+				"timecycle_bloomthreshold_night_min_clamp_value",
+				("Min value of bloom threshold at night with no cutscene playing. Needs 'timecycle_bloom_night_min_clamp_enabled'"),
+				"1.7.0",
+				0.5f
+			};
+
 			variable timecycle_bloom_day_min_clamp_enabled = {
 				"timecycle_bloom_day_min_clamp_enabled",
 				("Enable min. bloom intensity at day with no cutscene playing."),
@@ -2001,7 +2008,7 @@ namespace gta4
 				"timecycle_bloom_day_min_clamp_value",
 				("Min value of bloom intensity at day with no cutscene playing. Needs 'timecycle_bloom_day_min_clamp_enabled'"),
 				"1.7.0",
-				1.5f
+				2.0f
 			};
 
 			variable timecycle_bloomthreshold_day_min_clamp_value = {

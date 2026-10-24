@@ -2530,6 +2530,7 @@ namespace gta4
 					ImGui::BeginDisabled(!cs->timecycle_bloom_night_min_clamp_enabled.get_as<bool>());
 					{
 						compsettings_float_widget("Intensity Night Min", cs->timecycle_bloom_night_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						compsettings_float_widget("Threshold Night Min", cs->timecycle_bloomthreshold_night_min_clamp_value, 0.0f, 0.0f, 0.005f);
 						ImGui::EndDisabled();
 					}
 
