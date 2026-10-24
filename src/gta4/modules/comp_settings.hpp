@@ -520,7 +520,7 @@ namespace gta4
 				("Maximum number of Remix API meshes created per frame.\n"
 				 "Geometry that could not be built yet stays on the fixed function path for that frame, which spreads streaming spikes."),
 				"1.7.0",
-				64
+				18
 			};
 
 			variable api_static_cache_mb = {
@@ -1524,7 +1524,7 @@ namespace gta4
 				"api_distant_lights_emissive_scale",
 				("Emissive intensity multiplier of the distant light sprites drawn through the Remix API."),
 				"1.7.0",
-				1.0f
+				2.0f
 			};
 
 			variable api_distant_cars_emissive_scale =
@@ -1532,7 +1532,7 @@ namespace gta4
 				"api_distant_cars_emissive_scale",
 				("Emissive intensity multiplier of the fake distant car headlights drawn through the Remix API (night only)."),
 				"1.7.0",
-				1.0f
+				20.0f
 			};
 
 			variable api_distant_lights_size_scale =

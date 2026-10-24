@@ -68,18 +68,21 @@
 // fields from callers reporting >= 0.1000.1, so binaries built against 0.1000.0
 // keep working and receive upstream's defaults.
 //
-// PATCH 2 added remixapi_MaterialInfoGameTexturesEXT (game colormap as albedo
+// PATCH 2 adds remixapi_MaterialInfoGameTexturesEXT (game colormap as albedo
 // and replacement key of an API material).
 //
-// PATCH 3 reduces remixapi_MaterialInfoGameTexturesEXT to that single texture,
-// removes the AutoPBR surface (SetDrawGameTextures interface slot, texture
-// usages and names) and adds remixapi_InstanceInfoD3DOverridesEXT.
+// PATCH 3 adds remixapi_InstanceInfoD3DOverridesEXT (the per draw values the
+// D3D9 path reads from unused render states).
 //
 // PATCH 4 adds remixapi_MeshInfoReplacementHashEXT (the key a mesh is looked up
 // by for USD replacements and named by in captures).
+//
+// PATCH 5 adds remixapi_MaterialInfoGameTexturesEXT::colorIsEmissive (the game
+// colormap doubles as the emissive texture of the keyed material). Read from
+// callers reporting >= 0.1000.5 only.
 #define REMIXAPI_VERSION_MAJOR 0
 #define REMIXAPI_VERSION_MINOR 1000
-#define REMIXAPI_VERSION_PATCH 4
+#define REMIXAPI_VERSION_PATCH 5
 
 
 // External
@@ -983,6 +986,11 @@ extern "C" {
     remixapi_StructType sType;
     void*               pNext;
     IDirect3DTexture9*  colorTexture;
+    // The colormap is also the emissive texture: emission is enabled on the keyed material with the
+    // emissiveIntensity / emissiveColorConstant of the remixapi_MaterialInfo (a USD replacement of the
+    // key still takes precedence). Unlike an additive blend state this keeps the instance in the
+    // ordered geometry (motion vectors, G-buffer).
+    remixapi_Bool       colorIsEmissive;
   } remixapi_MaterialInfoGameTexturesEXT;
 
 

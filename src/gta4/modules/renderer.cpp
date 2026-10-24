@@ -50,7 +50,6 @@ namespace gta4
 		LPDIRECT3DTEXTURE9 veh_light_ems_glass = nullptr;
 		LPDIRECT3DTEXTURE9 berry = nullptr;
 		LPDIRECT3DTEXTURE9 mirror = nullptr;
-		LPDIRECT3DTEXTURE9 vehimposter = nullptr;
 
 		void init_texture_addons(bool release)
 		{
@@ -62,7 +61,6 @@ namespace gta4
 				if (tex_addons::veh_light_ems_glass) tex_addons::veh_light_ems_glass->Release();
 				if (tex_addons::berry) tex_addons::berry->Release();
 				if (tex_addons::mirror) tex_addons::mirror->Release();
-				if (tex_addons::vehimposter) tex_addons::vehimposter->Release();
 				return;
 			}
 
@@ -82,7 +80,6 @@ namespace gta4
 			load_texture(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
 			load_texture(dev, "rtx_comp\\textures\\berry.png", &tex_addons::berry);
 			load_texture(dev, "rtx_comp\\textures\\mirror.png", &tex_addons::mirror);
-			load_texture(dev, "rtx_comp\\textures\\vehimposter.png", &tex_addons::vehimposter);
 			tex_addons::initialized = true;
 		}
 	}

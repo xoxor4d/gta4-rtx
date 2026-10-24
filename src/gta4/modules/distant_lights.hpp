@@ -6,7 +6,7 @@ namespace gta4
 	/// The game's "vehicle imposters" (-disableimposters): distant street light / aircraft sprites and fake cars along the
 	/// road light strings (headlight models at night, car models by day), optionally drawn through the Remix API:
 	/// - sprites: every flush of the game's sprite buffer is collected into one api mesh per frame
-	/// - cars: the instanced model becomes a cached api mesh, every car record one api instance (colour and fade as texture factor)
+	/// - cars: the instanced model becomes a cached api mesh, every car record one api instance (colour as texture factor)
 	class distant_lights final : public shared::common::loader::component_module
 	{
 	public:
@@ -24,31 +24,15 @@ namespace gta4
 			std::uint32_t sprite_flushes = 0u;  // game flushes = D3D9 draws on the D3D9 path
 			std::uint32_t sprite_vertices = 0u;
 			std::uint32_t sprite_triangles = 0u;
-			bool sprite_state_captured = false;
-			bool sprite_alpha_blend = false;
-			std::uint32_t sprite_src_blend = 0u;
-			std::uint32_t sprite_dst_blend = 0u;
-			std::uint32_t sprite_blend_op = 0u;
-			const void* sprite_texture = nullptr;
 
 			bool cars_rendered = false;
 			bool cars_night = false;
 			bool cars_api = false;
 			std::uint32_t car_records = 0u;
-			std::uint32_t car_flushes = 0u;     // game flushes
-			std::uint32_t car_d3d9_draws = 0u;  // indexed draws the engine issued inside the flushes (both paths)
+			std::uint32_t car_flushes = 0u;     // game flushes = instanced D3D9 draws on the D3D9 path
 			std::uint32_t car_warmups = 0u;     // flushes left on D3D9 so the runtime uploads a new texture
 			std::uint32_t car_instances = 0u;   // api instances drawn
 			std::uint32_t car_meshes = 0u;      // cached api meshes
-			std::uint32_t car_mesh_vertices = 0u;
-			std::uint32_t car_mesh_triangles = 0u;
-			float car_mesh_bounds[6] = {};      // local min xyz, max xyz of the last created car mesh
-			const void* car_texture = nullptr;
-			std::uint32_t car_texture_width = 0u;  // level 0 of the bound texture, 0 when it is not a 2D texture
-			std::uint32_t car_texture_height = 0u;
-			std::uint32_t car_texture_format = 0u; // D3DFORMAT
-			float car_first_position[3] = {};   // first record of the last flush
-			float car_first_color[4] = {};
 			renderer_api::reject_reason car_reject = renderer_api::reject_reason::none;
 		};
 

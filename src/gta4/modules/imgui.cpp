@@ -2754,6 +2754,10 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 		remix_atmospheric_toggle();
 
+		ImGui::Spacing(0, 4);
+		compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
+		compsettings_bool_widget("Render Imposter Vehicles", gs->distant_cars_enabled);
+
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Version 1.5.X and lower ");
 		ImGui::Spacing(0, 4);
@@ -2856,16 +2860,21 @@ namespace gta4
 	{
 		const auto& gs = comp_settings::get();
 
+		const auto half_width_x = ImGui::GetContentRegionAvail().x * 0.5f;
+
 		ImGui::Spacing(0, 4);
-		ImGui::TextUnformatted("Geometry drawn through the Remix API instead of D3D9. Changes apply from the next frame.");
+		ImGui::TextUnformatted("Draw meshes via the RemixApi instead of D3D9.");
 		ImGui::Spacing(0, SEPARATOR_SPACING);
 
 		compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
-		compsettings_bool_widget("Peds", gs->api_peds_enabled);
-		compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
+		ImGui::SameLine(half_width_x);
 		compsettings_bool_widget("Water", gs->api_water_enabled);
-		compsettings_bool_widget("Distant Light Sprites", gs->api_distant_lights_enabled);
-		compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
+
+		compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
+		ImGui::SameLine(half_width_x);
+		compsettings_bool_widget("Peds", gs->api_peds_enabled);
+
+		// no need to have imposter vehicles / distant light sprites in here
 
 		ImGui::Spacing(0, 4);
 	}
@@ -2875,7 +2884,8 @@ namespace gta4
 		const auto& gs = comp_settings::get();
 
 		ImGui::Spacing(0, 4);
-		ImGui::TextUnformatted("Presets for the tessellated water area and the waves (needs water drawn through the Remix API).");
+		ImGui::TextUnformatted(	"Presets for the tessellated water area and the waves (needs water drawn through the Remix API).\n"
+								"More advanced settings can be found inside the CompSettings tab (Rendering > Water).");
 		ImGui::Spacing(0, SEPARATOR_SPACING);
 
 		// every preset starts from the defaults of the tessellation and wave settings
@@ -2979,6 +2989,7 @@ namespace gta4
 
 		// 
 		ImGui::Checkbox("Override Global Wetness Scale", &im->m_dbg_global_wetness_override); TT("Not a saved setting.");
+		ImGui::SameLine(0, 20);
 		ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
 		{
 			ImGui::SliderFloat("Global Wetness", &im->m_dbg_global_wetness, 0, 1, "%.2f", ImGuiSliderFlags_AlwaysClamp); TT("Not a saved setting.");

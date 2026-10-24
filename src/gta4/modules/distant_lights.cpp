@@ -20,6 +20,7 @@ namespace gta4
 		constexpr std::uint32_t SPRITE_STRIDE = 4u;      // float4 positions
 		constexpr std::uint32_t CAR_RECORD_FLOATS = 20u; // three rotation rows, position, colour (float4 each)
 		constexpr int CAR_MODELS = 3;                    // day: string type % 3 picks the model, night: model 0
+		constexpr float FADE_STEPS = 8.0f;
 
 		// api material of a game texture; the handle is the hash, so two hashes alternate and the replaced one lives
 		// until the last mesh using it is destroyed
@@ -35,17 +36,16 @@ namespace gta4
 		{
 			bool in_render = false;
 			bool capturing = false;
+			bool warming_up = false; // this render stays on D3D9 so the runtime gets the texture
 			std::vector<remixapi_HardcodedVertex> vertices;
 			std::vector<std::uint32_t> indices;
 			std::uint32_t count = 0u;
 			std::uint32_t flushes = 0u;
 
 			bool state_captured = false;
-			bool warming_up = false;               // this render stays on D3D9 so the runtime gets the texture
-			IDirect3DBaseTexture9* texture = nullptr;
-			IDirect3DBaseTexture9* last_texture = nullptr; // texture the last render bound, the material follows it a render later
 			remixapi_InstanceInfoBlendEXT blend = {};
 			float normal[3] = { 0.0f, 0.0f, 1.0f };
+			IDirect3DBaseTexture9* last_texture = nullptr; // texture the last render bound, the material follows it a render later
 
 			material_s material;
 			remixapi_MeshHandle mesh = nullptr; // mesh of the last render, destroyed once the next one is drawn
@@ -68,29 +68,20 @@ namespace gta4
 			bool rendering = false;  // inside the game's night / day car render
 			bool night = false;
 			bool api = false;
-			bool in_flush = false;   // inside the game's flush (both paths)
+			bool in_flush = false;   // inside the game's flush
 			bool capturing = false;  // inside a flush the api path takes
 			bool drawn = false;      // the first D3D9 draw of the flush was replaced, further passes are dropped
+			bool green = false;      // the cached materials are the green debug ones
 			const float* records = nullptr;
 			int count = 0;
 			int model = 0;
 
 			std::uint32_t render_serial = 0u;
 			std::uint32_t flushes = 0u;
-			std::uint32_t d3d9_draws = 0u;
 			std::uint32_t warmups = 0u;
 			std::uint32_t records_total = 0u;
 			std::uint32_t instances = 0u;
-			std::uint32_t mesh_vertices = 0u;
-			std::uint32_t mesh_triangles = 0u;
-			const void* texture = nullptr;
-			float first_position[3] = {};
-			float first_color[4] = {};
 			renderer_api::reject_reason reject = renderer_api::reject_reason::none;
-
-			bool debug_material = false; // the cached materials are the green debug ones
-			float mesh_bounds[6] = {};
-			D3DSURFACE_DESC texture_desc = {};
 
 			car_mesh_s meshes[2][CAR_MODELS]; // [night][model]
 		};
@@ -124,17 +115,20 @@ namespace gta4
 			m.texture = nullptr;
 		}
 
-		// the game texture is the albedo and the replacement key (renderer_api's material recipe), blending comes from the instance;
-		// debug: a solid green emissive material without the texture
-		bool create_material(material_s& m, IDirect3DBaseTexture9* texture, const std::uint64_t base_hash, const bool debug = false)
+		// the game texture is the albedo and the replacement key (renderer_api's material recipe): the runtime draws the
+		// legacy defaults material of that texture, keyed by its image hash like a D3D9 draw (rtx.conf texture lists apply).
+		// emissive: the texture is the emission as well (unit intensity, scaled per instance by the emissive scalar modifier).
+		// green: a solid emissive material without a texture, nothing of it is keyed
+		bool create_material(material_s& m, IDirect3DBaseTexture9* texture, const std::uint64_t base_hash, const bool emissive, const bool green)
 		{
-			const auto colormap = !debug && texture && texture->GetType() == D3DRTYPE_TEXTURE ? static_cast<IDirect3DTexture9*>(texture) : nullptr;
+			const auto colormap = !green && texture && texture->GetType() == D3DRTYPE_TEXTURE ? static_cast<IDirect3DTexture9*>(texture) : nullptr;
 
 			remixapi_MaterialInfoGameTexturesEXT game_textures =
 			{
 				.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_GAME_TEXTURES_EXT,
 				.pNext = nullptr,
 				.colorTexture = colormap,
+				.colorIsEmissive = emissive,
 			};
 
 			remixapi_MaterialInfoOpaqueEXT opaque = {};
@@ -143,7 +137,7 @@ namespace gta4
 			opaque.roughnessTexture = L"";
 			opaque.metallicTexture = L"";
 			opaque.heightTexture = L"";
-			opaque.albedoConstant = debug ? remixapi_Float3D{ 0.0f, 1.0f, 0.0f } : remixapi_Float3D{ 1.0f, 1.0f, 1.0f };
+			opaque.albedoConstant = green ? remixapi_Float3D{ 0.0f, 1.0f, 0.0f } : remixapi_Float3D{ 1.0f, 1.0f, 1.0f };
 			opaque.opacityConstant = 1.0f;
 			opaque.roughnessConstant = 0.7f;
 			opaque.metallicConstant = 0.1f;
@@ -168,8 +162,8 @@ namespace gta4
 				.normalTexture = L"",
 				.tangentTexture = L"",
 				.emissiveTexture = L"",
-				.emissiveIntensity = debug ? 20.0f : 0.0f,
-				.emissiveColorConstant = debug ? remixapi_Float3D{ 0.0f, 1.0f, 0.0f } : remixapi_Float3D{ 0.0f, 0.0f, 0.0f },
+				.emissiveIntensity = green ? 20.0f : (emissive ? 1.0f : 0.0f),
+				.emissiveColorConstant = green ? remixapi_Float3D{ 0.0f, 1.0f, 0.0f } : (emissive ? remixapi_Float3D{ 1.0f, 1.0f, 1.0f } : remixapi_Float3D{ 0.0f, 0.0f, 0.0f }),
 				.filterMode = 1,
 				.wrapModeU = 1,
 				.wrapModeV = 1,
@@ -195,16 +189,33 @@ namespace gta4
 			return texture;
 		}
 
-		remixapi_InstanceInfoD3DOverridesEXT make_overrides(const float emissive_scale, const bool particle)
+		// the game bound the corona texture for its im shader (rage::grcBindTexture); the skipped grcBegin never puts it on sampler 0
+		IDirect3DBaseTexture9* im_texture(IDirect3DDevice9* dev)
 		{
-			remixapi_InstanceInfoD3DOverridesEXT o = {};
-			o.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO_D3D_OVERRIDES_EXT;
-			o.modifierFlags = static_cast<std::uint32_t>(RemixModifier::EmissiveScalar);
-			o.emissiveScale = emissive_scale;
-			if (particle) {
-				o.categoryFlags = static_cast<std::uint32_t>(InstanceCategories::Particle);
+			if (game::pCurrentImTexture && *game::pCurrentImTexture) {
+				return static_cast<const game::grcTexturePC*>(*game::pCurrentImTexture)->d3d_texture_handle;
 			}
-			return o;
+			return bound_texture(dev);
+		}
+
+		void set_emissive_scale(remixapi_InstanceInfoD3DOverridesEXT& overrides, const float emissive_scale)
+		{
+			overrides.modifierFlags |= static_cast<std::uint32_t>(RemixModifier::EmissiveScalar);
+			overrides.emissiveScale = std::max(emissive_scale, 0.0f);
+		}
+
+		// additive blending: the runtime treats the instance as emissive (its albedo texture is the emission) and draws it
+		// unordered, like a particle: fine for the static sprites, moving geometry would lose its motion vectors
+		void make_additive_emissive(remixapi_InstanceInfoBlendEXT& blend, remixapi_InstanceInfoD3DOverridesEXT& overrides, const float emissive_scale)
+		{
+			blend.alphaBlendEnabled = TRUE;
+			blend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			blend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			blend.colorBlendOp = VK_BLEND_OP_ADD;
+			blend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			blend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			blend.alphaBlendOp = VK_BLEND_OP_ADD;
+			set_emissive_scale(overrides, emissive_scale);
 		}
 
 		// ----- sprites
@@ -215,20 +226,10 @@ namespace gta4
 			destroy_material(g_sprites.material);
 		}
 
-		// the game bound the corona texture for its im shader (rage::grcBindTexture); the skipped grcBegin never puts it on sampler 0
-		IDirect3DBaseTexture9* im_texture(IDirect3DDevice9* dev)
-		{
-			if (game::pCurrentImTexture && *game::pCurrentImTexture) {
-				return static_cast<const game::grcTexturePC*>(*game::pCurrentImTexture)->d3d_texture_handle;
-			}
-			return bound_texture(dev);
-		}
-
 		// the billboards face the camera: their normal is the camera's back axis, pointing from the sprites to the camera
 		void capture_sprite_state(IDirect3DDevice9* dev, const float* first_position)
 		{
 			auto& s = g_sprites;
-			s.texture = im_texture(dev);
 			s.blend = renderer_api::capture_blend(dev);
 			s.state_captured = true;
 
@@ -316,7 +317,6 @@ namespace gta4
 		void submit_sprites()
 		{
 			static const auto gs = comp_settings::get();
-			const auto im = imgui::get();
 			auto& s = g_sprites;
 			const auto& bridge = shared::common::remix_api::get().m_bridge;
 
@@ -353,10 +353,10 @@ namespace gta4
 				return;
 			}
 
-			const bool particle = im->m_dbg_distant_lights_particle_category;
-			auto overrides = make_overrides(std::max(gs->api_distant_lights_emissive_scale.get_as<float>(), 0.0f), particle);
-
 			// the game's im shader: texture x vertex colour, the colour carries fade and flicker per sprite
+			remixapi_InstanceInfoD3DOverridesEXT overrides = {};
+			overrides.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO_D3D_OVERRIDES_EXT;
+
 			remixapi_InstanceInfoBlendEXT blend = s.blend;
 			blend.textureColorOperation = TEXTURE_OP_MODULATE;
 			blend.textureColorArg1Source = TEXTURE_ARG_TEXTURE;
@@ -366,12 +366,12 @@ namespace gta4
 			blend.textureAlphaArg2Source = TEXTURE_ARG_VERTEX_COLOR0;
 			blend.isTextureFactorBlend = FALSE;
 			blend.isVertexColorBakedLighting = FALSE;
+			make_additive_emissive(blend, overrides, gs->api_distant_lights_emissive_scale.get_as<float>());
 			blend.pNext = &overrides;
 
 			remixapi_InstanceInfo instance = {};
 			instance.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO;
 			instance.pNext = &blend;
-			instance.categoryFlags = particle ? REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE : 0u;
 			instance.mesh = mesh;
 			instance.transform.matrix[0][0] = 1.0f;
 			instance.transform.matrix[1][1] = 1.0f;
@@ -389,23 +389,22 @@ namespace gta4
 		int __cdecl CDistantLights_Render_hk(float night_fade)
 		{
 			static const auto gs = comp_settings::get();
-			const auto im = imgui::get();
 			auto& s = g_sprites;
 			auto& st = g_stats;
 
-			if (!gs->distant_lights_enabled.get_as<bool>() || im->m_dbg_do_not_render_distant_lights)
+			if (!gs->distant_lights_enabled.get_as<bool>())
 			{
 				st.sprites_rendered = false;
 				destroy_sprites();
 				return 0;
 			}
 
-			const bool want_api = gs->api_distant_lights_enabled.get_as<bool>() && renderer_api::is_runtime_supported() && !im->m_dbg_distant_lights_force_d3d9;
+			const bool want_api = gs->api_distant_lights_enabled.get_as<bool>() && renderer_api::is_runtime_supported();
 
 			// the runtime only has a game texture once a D3D9 draw uploaded it: the first render with a new texture stays
 			// on D3D9 (warm up), its api material is created the render after
 			if (want_api && s.last_texture && (!s.material.handle || s.material.texture != s.last_texture)) {
-				create_material(s.material, s.last_texture, shared::utils::string_hash64("api_distant_lights_material"));
+				create_material(s.material, s.last_texture, shared::utils::string_hash64("api_distant_lights_material"), false, false);
 			}
 
 			s.in_render = true;
@@ -416,7 +415,6 @@ namespace gta4
 			s.count = 0u;
 			s.flushes = 0u;
 			s.state_captured = false;
-			s.texture = nullptr;
 
 			const auto result = CDistantLights_Render_og(night_fade);
 
@@ -446,12 +444,6 @@ namespace gta4
 			st.sprite_flushes = s.flushes;
 			st.sprite_vertices = static_cast<std::uint32_t>(s.vertices.size());
 			st.sprite_triangles = static_cast<std::uint32_t>(s.indices.size() / 3u);
-			st.sprite_state_captured = s.state_captured;
-			st.sprite_alpha_blend = s.blend.alphaBlendEnabled != 0;
-			st.sprite_src_blend = s.blend.srcColorBlendFactor;
-			st.sprite_dst_blend = s.blend.dstColorBlendFactor;
-			st.sprite_blend_op = s.blend.colorBlendOp;
-			st.sprite_texture = s.texture;
 			return result;
 		}
 
@@ -486,10 +478,10 @@ namespace gta4
 			return n;
 		}
 
-		DWORD pack_color(const float* rgba)
+		DWORD pack_color(const float* rgb, const float alpha)
 		{
 			const auto channel = [](const float v) { return static_cast<DWORD>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
-			return (channel(rgba[3]) << 24) | (channel(rgba[0]) << 16) | (channel(rgba[1]) << 8) | channel(rgba[2]);
+			return (channel(alpha) << 24) | (channel(rgb[0]) << 16) | (channel(rgb[1]) << 8) | channel(rgb[2]);
 		}
 
 		int render_cars(const bool night, const VehicleImposters_RenderNight_t og)
@@ -499,25 +491,24 @@ namespace gta4
 			auto& c = g_cars;
 			auto& st = g_stats;
 
-			if (!gs->distant_cars_enabled.get_as<bool>() || im->m_dbg_do_not_render_distant_cars)
+			if (!gs->distant_cars_enabled.get_as<bool>())
 			{
 				st.cars_rendered = false;
 				destroy_cars();
 				return 0;
 			}
 
-			if (c.debug_material != im->m_dbg_distant_cars_debug_material)
+			if (c.green != im->m_dbg_distant_cars_green_material)
 			{
-				c.debug_material = im->m_dbg_distant_cars_debug_material;
+				c.green = im->m_dbg_distant_cars_green_material;
 				destroy_cars();
 			}
 
 			c.rendering = true;
 			c.night = night;
-			c.api = gs->api_distant_cars_enabled.get_as<bool>() && renderer_api::is_runtime_supported() && !im->m_dbg_distant_cars_force_d3d9;
+			c.api = gs->api_distant_cars_enabled.get_as<bool>() && renderer_api::is_runtime_supported();
 			c.render_serial++;
 			c.flushes = 0u;
-			c.d3d9_draws = 0u;
 			c.warmups = 0u;
 			c.records_total = 0u;
 			c.instances = 0u;
@@ -538,19 +529,9 @@ namespace gta4
 			st.cars_api = c.api;
 			st.car_records = c.records_total;
 			st.car_flushes = c.flushes;
-			st.car_d3d9_draws = c.d3d9_draws;
 			st.car_warmups = c.warmups;
 			st.car_instances = c.instances;
 			st.car_meshes = car_mesh_count();
-			st.car_mesh_vertices = c.mesh_vertices;
-			st.car_mesh_triangles = c.mesh_triangles;
-			std::copy_n(c.mesh_bounds, 6, st.car_mesh_bounds);
-			st.car_texture = c.texture;
-			st.car_texture_width = c.texture_desc.Width;
-			st.car_texture_height = c.texture_desc.Height;
-			st.car_texture_format = static_cast<std::uint32_t>(c.texture_desc.Format);
-			std::copy_n(c.first_position, 3, st.car_first_position);
-			std::copy_n(c.first_color, 4, st.car_first_color);
 			st.car_reject = c.reject;
 			return result;
 		}
@@ -577,8 +558,6 @@ namespace gta4
 
 			c.flushes++;
 			c.records_total += static_cast<std::uint32_t>(*count);
-			std::copy_n(records + 12, 3, c.first_position);
-			std::copy_n(records + 16, 4, c.first_color);
 
 			c.in_flush = true;
 			c.capturing = c.api && model >= 0 && model < CAR_MODELS;
@@ -601,10 +580,6 @@ namespace gta4
 		static const auto gs = comp_settings::get();
 		auto& c = g_cars;
 
-		if (c.in_flush) {
-			c.d3d9_draws++;
-		}
-
 		if (!c.capturing || !c.records) {
 			return false;
 		}
@@ -621,14 +596,6 @@ namespace gta4
 		auto& m = c.meshes[c.night ? 1 : 0][c.model];
 		const auto texture = bound_texture(dev);
 		const auto index = static_cast<std::uint64_t>((c.night ? CAR_MODELS : 0) + c.model);
-		c.texture = texture;
-		c.mesh_vertices = num_vertices;
-		c.mesh_triangles = prim_count;
-
-		c.texture_desc = {};
-		if (texture && texture->GetType() == D3DRTYPE_TEXTURE) {
-			static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0, &c.texture_desc);
-		}
 
 		IDirect3DVertexBuffer9* vb = nullptr;
 		UINT offset = 0u, stride = 0u;
@@ -641,7 +608,7 @@ namespace gta4
 		{
 			// the runtime only has a game texture once a D3D9 draw uploaded it: this flush stays on D3D9 (warm up),
 			// the api material is created the render after
-			if (m.warm_texture != texture || m.warm_render == c.render_serial)
+			if (!c.green && (m.warm_texture != texture || m.warm_render == c.render_serial))
 			{
 				m.warm_texture = texture;
 				m.warm_render = c.render_serial;
@@ -650,7 +617,7 @@ namespace gta4
 			}
 
 			destroy_mesh(m.mesh);
-			if (!create_material(m.material, texture, shared::utils::string_hash64("api_distant_cars_material") + index * 2u, c.debug_material))
+			if (!create_material(m.material, texture, shared::utils::string_hash64("api_distant_cars_material") + index * 2u, c.night, c.green))
 			{
 				c.reject = renderer_api::reject_reason::material_failed;
 				return false;
@@ -664,7 +631,7 @@ namespace gta4
 		if (!m.mesh)
 		{
 			m.mesh = renderer_api::create_mesh_from_bound_draw(dev, base_vertex, min_index, num_vertices, start_index, prim_count,
-				shared::utils::string_hash64("api_distant_cars_mesh") + index, m.material.handle, &c.reject, c.mesh_bounds);
+				shared::utils::string_hash64("api_distant_cars_mesh") + index, m.material.handle, &c.reject);
 
 			if (!m.mesh) {
 				return false;
@@ -677,13 +644,13 @@ namespace gta4
 		}
 
 		// the colour of every car rides in the texture factor (the instanced shader multiplies it in), the model's vertex
-		// colours stay out of it. No alpha at all: the texture alpha is not meant for the api material and the game's distance
-		// fade would only make the opaque day cars disappear, so the fade scales the night headlights instead
+		// colours stay out of it. No alpha at all: the game's distance fade would make the opaque day cars disappear, so it
+		// scales the brightness of the night headlights instead
 		auto blend = renderer_api::capture_blend(dev);
 		blend.textureColorOperation = TEXTURE_OP_SELECT_ARG1;
 		blend.textureColorArg1Source = TEXTURE_ARG_TEXTURE;
 		blend.textureColorArg2Source = TEXTURE_ARG_TFACTOR;
-		blend.isTextureFactorBlend = !c.debug_material;
+		blend.isTextureFactorBlend = !c.green;
 		blend.textureAlphaOperation = TEXTURE_OP_SELECT_ARG2;
 		blend.textureAlphaArg1Source = TEXTURE_ARG_TEXTURE;
 		blend.textureAlphaArg2Source = TEXTURE_ARG_TFACTOR;
@@ -695,19 +662,9 @@ namespace gta4
 		overrides.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO_D3D_OVERRIDES_EXT;
 		overrides.categoryFlags = static_cast<std::uint32_t>(InstanceCategories::IgnoreAlphaChannel);
 
-		if (c.night && !c.debug_material)
-		{
-			// the game draws the headlights unlit with alpha blending; additive blending makes the runtime treat them as
-			// emissive (like the sprites) and the emissive scalar then scales that
-			blend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-			blend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
-			blend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			blend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			blend.colorBlendOp = VK_BLEND_OP_ADD;
-			blend.alphaBlendOp = VK_BLEND_OP_ADD;
-			blend.alphaBlendEnabled = TRUE;
-			overrides.modifierFlags = static_cast<std::uint32_t>(RemixModifier::EmissiveScalar);
-			overrides.emissiveScale = std::max(gs->api_distant_cars_emissive_scale.get_as<float>(), 0.0f);
+		// the game draws the headlights unlit; their material emits its texture (colorIsEmissive), scaled per instance
+		if (c.night && !c.green) {
+			set_emissive_scale(overrides, gs->api_distant_cars_emissive_scale.get_as<float>());
 		}
 		blend.pNext = &overrides;
 
@@ -734,10 +691,11 @@ namespace gta4
 				instance.transform.matrix[r][3] = rec[12 + r];
 			}
 
-			// night: the distance fade scales the brightness instead of the opacity
-			const float fade = c.night ? std::clamp(rec[19], 0.0f, 1.0f) : 1.0f;
-			const float rgba[4] = { rec[16] * fade, rec[17] * fade, rec[18] * fade, 1.0f };
-			blend.tFactor = pack_color(rgba);
+			// the texture factor is part of the material hash the runtime matches instances with between frames (motion
+			// vectors), so the night fade is quantized: a car only re-matches as a new instance when it crosses a step
+			const float fade = c.night ? std::round(std::clamp(rec[19], 0.0f, 1.0f) * FADE_STEPS) / FADE_STEPS : 1.0f;
+			const float rgb[3] = { rec[16] * fade, rec[17] * fade, rec[18] * fade };
+			blend.tFactor = pack_color(rgb, 1.0f);
 			bridge.DrawInstance(&instance);
 		}
 
@@ -767,14 +725,10 @@ namespace gta4
 
 		ImGui::TextDisabled("The game's 'vehicle imposters': street light / aircraft sprites and fake cars along the road light strings at night, fake cars by day.");
 		ImGui::TextDisabled("Sprites: one api mesh per frame. Cars: the instanced model as cached api mesh, one api instance per car.");
+		ImGui::TextDisabled("A material of a game texture is keyed by the texture's image hash: rtx.conf texture lists and replacements apply like on the D3D9 path.");
 
 		ImGui::SeparatorText("Debug");
-		ImGui::Checkbox("Do not render sprites##dl", &im->m_dbg_do_not_render_distant_lights);
-		ImGui::Checkbox("Do not render cars##dl", &im->m_dbg_do_not_render_distant_cars);
-		ImGui::Checkbox("Sprites through D3D9 while checked##dl", &im->m_dbg_distant_lights_force_d3d9);
-		ImGui::Checkbox("Cars through D3D9 while checked##dl", &im->m_dbg_distant_cars_force_d3d9);
-		ImGui::Checkbox("Sprites: Particle category##dl", &im->m_dbg_distant_lights_particle_category);
-		ImGui::Checkbox("Cars: solid green emissive debug material##dl", &im->m_dbg_distant_cars_debug_material);
+		ImGui::Checkbox("Cars: solid green emissive material (no texture, no key)##dl", &im->m_dbg_distant_cars_green_material);
 
 		if (ImGui::Button("Destroy api meshes and materials##dl")) {
 			destroy_all();
@@ -794,25 +748,13 @@ namespace gta4
 			ImGui::Text("Sprites: %u game flushes drawn through D3D9%s", s.sprite_flushes, s.sprites_warming_up ? " (texture warm up, api from the next render)" : "");
 		}
 
-		if (s.sprite_state_captured)
-		{
-			ImGui::Text("Sprite draw state: texture %p, alpha blend %s, src factor %u, dst factor %u, op %u (vulkan enums)",
-				s.sprite_texture, s.sprite_alpha_blend ? "on" : "off", s.sprite_src_blend, s.sprite_dst_blend, s.sprite_blend_op);
-		}
-
 		if (!s.cars_rendered) {
 			ImGui::TextUnformatted("Cars: not rendered (disabled or -disableimposters)");
 		}
 		else
 		{
-			ImGui::Text("Cars (%s): %u records in %u game flushes (%u indexed draws seen, %u texture warm ups) -> %s, %u api instances, %u cached meshes",
-				s.cars_night ? "night headlights" : "day models", s.car_records, s.car_flushes, s.car_d3d9_draws, s.car_warmups, s.cars_api ? "Remix API" : "D3D9", s.car_instances, s.car_meshes);
-			ImGui::Text("Car model draw: %u vertices, %u triangles, texture %p (2D texture: %ux%u, D3DFORMAT %u). First record: pos %.1f %.1f %.1f, colour %.2f %.2f %.2f alpha %.2f",
-				s.car_mesh_vertices, s.car_mesh_triangles, s.car_texture, s.car_texture_width, s.car_texture_height, s.car_texture_format,
-				s.car_first_position[0], s.car_first_position[1], s.car_first_position[2],
-				s.car_first_color[0], s.car_first_color[1], s.car_first_color[2], s.car_first_color[3]);
-			ImGui::Text("Car mesh local bounds: min %.2f %.2f %.2f, max %.2f %.2f %.2f",
-				s.car_mesh_bounds[0], s.car_mesh_bounds[1], s.car_mesh_bounds[2], s.car_mesh_bounds[3], s.car_mesh_bounds[4], s.car_mesh_bounds[5]);
+			ImGui::Text("Cars (%s): %u records in %u game flushes (%u texture warm ups) -> %s, %u api instances, %u cached meshes",
+				s.cars_night ? "night headlights" : "day models", s.car_records, s.car_flushes, s.car_warmups, s.cars_api ? "Remix API" : "D3D9", s.car_instances, s.car_meshes);
 
 			if (s.car_reject != renderer_api::reject_reason::none) {
 				ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Cars stayed on D3D9: %s", renderer_api::reject_reason_name(s.car_reject));

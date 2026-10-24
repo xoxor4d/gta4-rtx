@@ -3461,7 +3461,7 @@ namespace gta4
 	}
 
 	remixapi_MeshHandle renderer_api::create_mesh_from_bound_draw(IDirect3DDevice9* dev, const INT base_vertex, const UINT min_index, const UINT num_vertices, const UINT start_index,
-		const UINT prim_count, const std::uint64_t hash, const remixapi_MaterialHandle material, reject_reason* out_reason, float* out_bounds)
+		const UINT prim_count, const std::uint64_t hash, const remixapi_MaterialHandle material, reject_reason* out_reason)
 	{
 		const auto fail = [out_reason](const reject_reason r) { if (out_reason) { *out_reason = r; } return static_cast<remixapi_MeshHandle>(nullptr); };
 
@@ -3525,26 +3525,17 @@ namespace gta4
 		bytes.locked_ib = ib;
 		bytes.indices = static_cast<const std::uint16_t*>(idata) + start_index;
 
-		std::unique_lock lock(g_mutex);
+		// the shared vertex scratch buffers; a caller inside another api draw never waits here, it retries next frame
+		std::unique_lock lock(g_mutex, std::try_to_lock);
+		if (!lock.owns_lock()) {
+			return fail(reject_reason::mesh_failed);
+		}
+
 		std::uint32_t bone_count = 0u;
 		bool uv_fallback = false;
 		const auto reason = build_vertices(bytes, prim_count, false, false, false, 0u, false, nullptr, 0.0f, nullptr, bone_count, uv_fallback);
 		if (reason != reject_reason::none) {
 			return fail(reason);
-		}
-
-		if (out_bounds)
-		{
-			out_bounds[0] = out_bounds[1] = out_bounds[2] = FLT_MAX;
-			out_bounds[3] = out_bounds[4] = out_bounds[5] = -FLT_MAX;
-			for (const auto& v : g_vertices)
-			{
-				for (auto i = 0; i < 3; i++)
-				{
-					out_bounds[i] = std::min(out_bounds[i], v.position[i]);
-					out_bounds[3 + i] = std::max(out_bounds[3 + i], v.position[i]);
-				}
-			}
 		}
 
 		const remixapi_MeshInfoSurfaceTriangles triangles =
