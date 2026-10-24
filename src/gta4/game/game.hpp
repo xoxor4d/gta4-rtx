@@ -213,6 +213,14 @@ namespace gta4::game
 	extern float* pWaterDynamicHeightRT;     // [2][100][100] simulation heights, 2 units per cell
 	extern std::uint8_t* pWaterRectFrustumCull; // block scan tests each water rectangle against the render phase frustum
 
+	// "vehicle imposters" (-disableimposters): distant street light / aircraft sprites and instanced fake cars, render thread
+	extern uint32_t func_addr__CDistantLights_Render;               // (float night_fade): street light + aircraft sprites
+	extern uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer; // flushes the sprite buffer through grcBegin / grcEnd (also used by CScrollBars)
+	extern uint32_t func_addr__VehicleImposters_RenderNight;        // instanced headlight model along the light strings
+	extern uint32_t func_addr__VehicleImposters_RenderDay;          // instanced car models along the light strings
+	extern uint32_t func_addr__VehicleImposters_FlushInstances;     // uploads the instance records and issues the instanced draw
+	extern void** pCurrentImTexture;                                // grcTexturePC* of the immediate mode draws (rage::grcBindTexture)
+
 	extern uint32_t retn_addr__pre_draw_statics;
 	extern uint32_t hk_addr__post_draw_statics;
 

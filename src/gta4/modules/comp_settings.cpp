@@ -305,6 +305,13 @@ namespace gta4
 				ASSIGN(water_disable_seabed_plane);
 				ASSIGN(api_water_enabled);
 				ASSIGN(api_water_cull_pieces);
+				ASSIGN(distant_lights_enabled);
+				ASSIGN(distant_cars_enabled);
+				ASSIGN(api_distant_lights_enabled);
+				ASSIGN(api_distant_cars_enabled);
+				ASSIGN(api_distant_lights_emissive_scale);
+				ASSIGN(api_distant_cars_emissive_scale);
+				ASSIGN(api_distant_lights_size_scale);
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 				ASSIGN(rain_particle_system_enabled);

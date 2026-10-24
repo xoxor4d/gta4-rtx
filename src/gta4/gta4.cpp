@@ -15,6 +15,7 @@
 #include "modules/renderer_ff.hpp"
 #include "modules/timecycle.hpp"
 #include "modules/water.hpp"
+#include "modules/distant_lights.hpp"
 #include "shared/common/remix_api.hpp"
 
 namespace gta4
@@ -820,6 +821,7 @@ namespace gta4
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer_ff>());
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer_api>());
 		shared::common::loader::module_loader::register_module(std::make_unique<water>());
+		shared::common::loader::module_loader::register_module(std::make_unique<distant_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<dinput>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<game_lights>());

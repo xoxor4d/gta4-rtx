@@ -191,6 +191,13 @@ namespace gta4::game
 	float* pWaterDynamicHeightRT = nullptr;
 	std::uint8_t* pWaterRectFrustumCull = nullptr;
 
+	uint32_t func_addr__CDistantLights_Render = 0u;
+	uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer = 0u;
+	uint32_t func_addr__VehicleImposters_RenderNight = 0u;
+	uint32_t func_addr__VehicleImposters_RenderDay = 0u;
+	uint32_t func_addr__VehicleImposters_FlushInstances = 0u;
+	void** pCurrentImTexture = nullptr;
+
 	uint32_t retn_addr__pre_draw_statics = 0u;
 	uint32_t hk_addr__post_draw_statics = 0u;
 
@@ -715,6 +722,14 @@ namespace gta4::game
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDetailDist, int*, "66 0F 6E 05 ? ? ? ? F3 0F 10 27 0F 5B C0 F3 0F 5C E0", 4, 0xAD9E58);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterRectFrustumCull, std::uint8_t*, "80 3D ? ? ? ? 00 0F BF 8F ? ? ? ? 0F BF 04 CD", 2, 0xAD7204);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDynamicHeightRT, float*, "F3 0F 10 A7 ? ? ? ? F3 0F 59 E2 89 44 24 18", 4, 0xAD5683);
+
+		// vehicle imposters (distant lights)
+		PATTERN_OFFSET_SIMPLE(func_addr__CDistantLights_Render, "55 8B EC 83 E4 F0 81 EC ? ? 00 00 F3 0F 10 45 08 F3 0F 59 05 ? ? ? ? 56 57 F3 0F 2C C0 C7 44 24 3C 00 00 00 00", 0, 0xD65650);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDistantLights_RenderOutSpriteBuffer, "55 8B EC 83 E4 F0 81 EC ? ? 00 00 8B 4D 14 8B 45 18 ? ? ? ? F3 0F 10 18 F3 0F 10 60 04 F3 0F 10 68 08", 0, 0xD670B0);
+		PATTERN_OFFSET_SIMPLE(func_addr__VehicleImposters_RenderNight, "55 8B EC 83 E4 F0 81 EC B8 0A 00 00 A1 ? ? ? ? 33 C4 89 84 24 B4 0A 00 00 56 57", 0, 0xD66070);
+		PATTERN_OFFSET_SIMPLE(func_addr__VehicleImposters_RenderDay, "55 8B EC 83 E4 F0 81 EC A8 0A 00 00 A1 ? ? ? ? 33 C4 89 84 24 A4 0A 00 00 56 57", 0, 0xD64970);
+		PATTERN_OFFSET_SIMPLE(func_addr__VehicleImposters_FlushInstances, "55 8B EC 83 E4 F0 83 EC 58 56 57 8B 7D 0C 83 3F 00 0F 8E A6 03 00 00 A1 ? ? ? ? C7 44 24 20 00 00 80 3F", 0, 0xD66CE0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pCurrentImTexture, void**, "8B 44 24 04 85 C0 0F 44 05 ? ? ? ? 50 FF 35 ? ? ? ? B9 ? ? ? ? 68 ? ? ? ? A3", 31, 0x432B8F); // rage::grcBindTexture
 
 		// CWater::GetCameraRangeForRender
 		if (const auto offset = shared::utils::mem::find_pattern("8B 0D ? ? ? ? C1 E1 04 F3 0F 2C 81 ? ? ? ? A3 ? ? ? ?", 0, "CWater::GetCameraRangeForRender", use_pattern, 0xAD5AB0); offset)

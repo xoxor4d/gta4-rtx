@@ -2,6 +2,7 @@
 #include "renderer.hpp"
 #include "renderer_api.hpp"
 #include "water.hpp"
+#include "distant_lights.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui.hpp"
@@ -49,6 +50,7 @@ namespace gta4
 		LPDIRECT3DTEXTURE9 veh_light_ems_glass = nullptr;
 		LPDIRECT3DTEXTURE9 berry = nullptr;
 		LPDIRECT3DTEXTURE9 mirror = nullptr;
+		LPDIRECT3DTEXTURE9 vehimposter = nullptr;
 
 		void init_texture_addons(bool release)
 		{
@@ -60,6 +62,7 @@ namespace gta4
 				if (tex_addons::veh_light_ems_glass) tex_addons::veh_light_ems_glass->Release();
 				if (tex_addons::berry) tex_addons::berry->Release();
 				if (tex_addons::mirror) tex_addons::mirror->Release();
+				if (tex_addons::vehimposter) tex_addons::vehimposter->Release();
 				return;
 			}
 
@@ -79,6 +82,7 @@ namespace gta4
 			load_texture(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
 			load_texture(dev, "rtx_comp\\textures\\berry.png", &tex_addons::berry);
 			load_texture(dev, "rtx_comp\\textures\\mirror.png", &tex_addons::mirror);
+			load_texture(dev, "rtx_comp\\textures\\vehimposter.png", &tex_addons::vehimposter);
 			tex_addons::initialized = true;
 		}
 	}
@@ -1842,6 +1846,14 @@ namespace gta4
 
 		ctx.info.draw_base_vertex = BaseVertexIndex;
 		ctx.info.draw_start_index = startIndex;
+
+		// the instanced draw of the fake distant cars, replaced by api instances
+		if (distant_lights::try_draw_cars(dev, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount))
+		{
+			ctx.restore_all(dev);
+			ctx.reset_context();
+			return S_OK;
+		}
 
 		bool render_with_ff = false;
 		const auto& pidx = ctx.info.preset_index;

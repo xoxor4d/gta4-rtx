@@ -109,22 +109,7 @@ namespace gta4
 		constexpr std::uint32_t ENTITY_DC_SIZE = 64u;
 		constexpr std::uint32_t MAX_SKIP_PASSES = 4u;
 
-		// remix legacy draw state values (VkCompareOp, VkBlendFactor, VkBlendOp, RtTextureArgSource, DxvkRtTextureOperation)
-		constexpr std::uint32_t VK_COMPARE_ALWAYS = 7u;
-		constexpr std::uint32_t VK_BLEND_FACTOR_ZERO = 0u;
-		constexpr std::uint32_t VK_BLEND_FACTOR_ONE = 1u;
-		constexpr std::uint32_t VK_BLEND_OP_ADD = 0u;
-		constexpr std::uint32_t TEXTURE_ARG_NONE = 0u;
-		constexpr std::uint32_t TEXTURE_ARG_TEXTURE = 1u;
-		constexpr std::uint32_t TEXTURE_ARG_VERTEX_COLOR0 = 2u;
-		constexpr std::uint32_t TEXTURE_ARG_TFACTOR = 3u;
-		constexpr std::uint32_t TEXTURE_OP_DISABLE = 0u;
-		constexpr std::uint32_t TEXTURE_OP_SELECT_ARG1 = 1u;
-		constexpr std::uint32_t TEXTURE_OP_SELECT_ARG2 = 2u;
-		constexpr std::uint32_t TEXTURE_OP_MODULATE = 3u;
-		constexpr std::uint32_t TEXTURE_OP_MODULATE_2X = 4u;
-		constexpr std::uint32_t TEXTURE_OP_MODULATE_4X = 5u;
-		constexpr std::uint32_t TEXTURE_OP_ADD = 6u;
+		using namespace remix_draw_state;
 
 		// D3DBLEND (1..11) -> VkBlendFactor
 		constexpr std::uint32_t D3D_BLEND_TO_VK[] = { 1u, 0u, 1u, 2u, 3u, 6u, 7u, 8u, 9u, 4u, 5u, 10u };
@@ -3464,6 +3449,133 @@ namespace gta4
 
 	void renderer_api::submit_camera() {
 		submit_camera_once();
+	}
+
+	remixapi_InstanceInfoBlendEXT renderer_api::capture_blend(IDirect3DDevice9* dev, bool* out_double_sided)
+	{
+		const auto state = capture_draw_state(dev);
+		if (out_double_sided) {
+			*out_double_sided = state.double_sided;
+		}
+		return make_blend(state);
+	}
+
+	remixapi_MeshHandle renderer_api::create_mesh_from_bound_draw(IDirect3DDevice9* dev, const INT base_vertex, const UINT min_index, const UINT num_vertices, const UINT start_index,
+		const UINT prim_count, const std::uint64_t hash, const remixapi_MaterialHandle material, reject_reason* out_reason, float* out_bounds)
+	{
+		const auto fail = [out_reason](const reject_reason r) { if (out_reason) { *out_reason = r; } return static_cast<remixapi_MeshHandle>(nullptr); };
+
+		IDirect3DVertexDeclaration9* decl = nullptr;
+		if (FAILED(dev->GetVertexDeclaration(&decl)) || !decl) {
+			return fail(reject_reason::vertex_format);
+		}
+
+		D3DVERTEXELEMENT9 elements[MAXD3DDECLLENGTH + 1] = {};
+		UINT element_count = 0u;
+		const auto decl_ok = SUCCEEDED(decl->GetDeclaration(elements, &element_count)) && element_count;
+		decl->Release();
+		if (!decl_ok) {
+			return fail(reject_reason::vertex_format);
+		}
+
+		IDirect3DIndexBuffer9* ib = nullptr;
+		D3DINDEXBUFFER_DESC ib_desc = {};
+		if (FAILED(dev->GetIndices(&ib)) || !ib) {
+			return fail(reject_reason::no_cpu_data);
+		}
+
+		if (FAILED(ib->GetDesc(&ib_desc)) || ib_desc.Format != D3DFMT_INDEX16)
+		{
+			ib->Release();
+			return fail(reject_reason::vertex_format);
+		}
+
+		geometry_bytes_s bytes;
+		bytes.elements = elements;
+		bytes.vertex_count = min_index + num_vertices;
+		bytes.index_count = prim_count * 3u;
+
+		IDirect3DVertexBuffer9* vb = nullptr;
+		UINT offset = 0u, stride = 0u;
+		void* vdata = nullptr;
+		if (FAILED(dev->GetStreamSource(0, &vb, &offset, &stride)) || !vb || !stride)
+		{
+			ib->Release();
+			return fail(reject_reason::no_cpu_data);
+		}
+
+		if (FAILED(vb->Lock(0, 0, &vdata, D3DLOCK_READONLY)) || !vdata)
+		{
+			vb->Release();
+			ib->Release();
+			return fail(reject_reason::no_cpu_data);
+		}
+
+		bytes.locked_vb = vb;
+		bytes.stride = stride;
+		bytes.vertices = static_cast<const std::uint8_t*>(vdata) + offset + static_cast<std::size_t>(base_vertex) * stride;
+
+		void* idata = nullptr;
+		if (FAILED(ib->Lock(0, 0, &idata, D3DLOCK_READONLY)) || !idata)
+		{
+			ib->Release();
+			return fail(reject_reason::no_cpu_data);
+		}
+
+		bytes.locked_ib = ib;
+		bytes.indices = static_cast<const std::uint16_t*>(idata) + start_index;
+
+		std::unique_lock lock(g_mutex);
+		std::uint32_t bone_count = 0u;
+		bool uv_fallback = false;
+		const auto reason = build_vertices(bytes, prim_count, false, false, false, 0u, false, nullptr, 0.0f, nullptr, bone_count, uv_fallback);
+		if (reason != reject_reason::none) {
+			return fail(reason);
+		}
+
+		if (out_bounds)
+		{
+			out_bounds[0] = out_bounds[1] = out_bounds[2] = FLT_MAX;
+			out_bounds[3] = out_bounds[4] = out_bounds[5] = -FLT_MAX;
+			for (const auto& v : g_vertices)
+			{
+				for (auto i = 0; i < 3; i++)
+				{
+					out_bounds[i] = std::min(out_bounds[i], v.position[i]);
+					out_bounds[3 + i] = std::max(out_bounds[3 + i], v.position[i]);
+				}
+			}
+		}
+
+		const remixapi_MeshInfoSurfaceTriangles triangles =
+		{
+			.vertices_values = g_vertices.data(),
+			.vertices_count = static_cast<std::uint32_t>(g_vertices.size()),
+			.indices_values = g_indices.data(),
+			.indices_count = static_cast<std::uint32_t>(g_indices.size()),
+			.skinning_hasvalue = FALSE,
+			.skinning_value = {},
+			.material = material,
+		};
+
+		const remixapi_MeshInfo info =
+		{
+			.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
+			.pNext = nullptr,
+			.hash = hash ? hash : 1u,
+			.surfaces_values = &triangles,
+			.surfaces_count = 1u,
+		};
+
+		remixapi_MeshHandle mesh = nullptr;
+		if (shared::common::remix_api::get().m_bridge.CreateMesh(&info, &mesh) != REMIXAPI_ERROR_CODE_SUCCESS || !mesh) {
+			return fail(reject_reason::mesh_failed);
+		}
+
+		if (out_reason) {
+			*out_reason = reject_reason::none;
+		}
+		return mesh;
 	}
 
 	void renderer_api::note_static_draw()

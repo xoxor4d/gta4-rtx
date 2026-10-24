@@ -1483,6 +1483,67 @@ namespace gta4
 			};
 
 			// -----
+			variable distant_lights_enabled =
+			{
+				"distant_lights_enabled",
+				("Render the distant street light and aircraft sprites along the road light strings at night (CDistantLights).\n"
+				 "Off skips the game's render like the commandline argument 'disableimposters' does for this part."),
+				"1.7.0",
+				true
+			};
+
+			variable distant_cars_enabled =
+			{
+				"distant_cars_enabled",
+				("Render the fake distant cars along the road light strings: headlight models at night, car models by day (vehicle imposters).\n"
+				 "Off skips the game's render like the commandline argument 'disableimposters' does for this part."),
+				"1.7.0",
+				true
+			};
+
+			variable api_distant_lights_enabled =
+			{
+				"api_distant_lights_enabled",
+				("Draw the distant light sprites through the Remix API (one mesh per frame) instead of the game's D3D9 draw.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.7.0",
+				true
+			};
+
+			variable api_distant_cars_enabled =
+			{
+				"api_distant_cars_enabled",
+				("Draw the fake distant cars through the Remix API (one instance per car) instead of the game's hardware instanced D3D9 draw.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.7.0",
+				true
+			};
+
+			variable api_distant_lights_emissive_scale =
+			{
+				"api_distant_lights_emissive_scale",
+				("Emissive intensity multiplier of the distant light sprites drawn through the Remix API."),
+				"1.7.0",
+				1.0f
+			};
+
+			variable api_distant_cars_emissive_scale =
+			{
+				"api_distant_cars_emissive_scale",
+				("Emissive intensity multiplier of the fake distant car headlights drawn through the Remix API (night only)."),
+				"1.7.0",
+				1.0f
+			};
+
+			variable api_distant_lights_size_scale =
+			{
+				"api_distant_lights_size_scale",
+				("Size multiplier of the distant light sprites drawn through the Remix API."),
+				"1.7.0",
+				1.0f
+			};
+
+			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =
 			{
 				"gta_rmptfx_litsprite_alpha_scalar",

@@ -2,6 +2,7 @@
 #include "imgui.hpp"
 #include "renderer_api.hpp"
 #include "water.hpp"
+#include "distant_lights.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui_internal.h"
@@ -734,6 +735,14 @@ namespace gta4
 		{
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 			renderer_api::devgui();
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Remix API: Distant Lights ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			distant_lights::devgui();
 			ImGui::TreePop();
 		}
 
@@ -1842,6 +1851,28 @@ namespace gta4
 			});
 
 		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Distant Lights", [&]()
+			{
+				ImGui::PushID("distantlights_api");
+				compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
+				compsettings_bool_widget("Distant Light Sprites", gs->api_distant_lights_enabled);
+
+				ImGui::BeginDisabled(!gs->api_distant_lights_enabled.get_as<bool>());
+				compsettings_float_widget("Sprite Emissive Scale", gs->api_distant_lights_emissive_scale, 0.0f, 50.0f, 0.01f);
+				compsettings_float_widget("Sprite Size Scale", gs->api_distant_lights_size_scale, 0.1f, 10.0f, 0.01f);
+				ImGui::EndDisabled();
+
+				ImGui::Spacing(0, 4);
+				compsettings_bool_widget("Render Fake Distant Cars", gs->distant_cars_enabled);
+				compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
+
+				ImGui::BeginDisabled(!gs->api_distant_cars_enabled.get_as<bool>());
+				compsettings_float_widget("Headlight Emissive Scale", gs->api_distant_cars_emissive_scale, 0.0f, 50.0f, 0.01f);
+				ImGui::EndDisabled();
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
 		ImGui::Widget_CategoryWithVerticalLabel("Mesh Cache", [&]()
 			{
 				ImGui::PushID("meshcache");
@@ -2833,6 +2864,8 @@ namespace gta4
 		compsettings_bool_widget("Peds", gs->api_peds_enabled);
 		compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
 		compsettings_bool_widget("Water", gs->api_water_enabled);
+		compsettings_bool_widget("Distant Light Sprites", gs->api_distant_lights_enabled);
+		compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
 
 		ImGui::Spacing(0, 4);
 	}
