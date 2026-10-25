@@ -1763,32 +1763,50 @@ namespace gta4
 				return &g_materials.emplace(key, std::move(rec)).first->second;
 			}
 
-			void destroy_mesh_locked(const std::uint64_t hash)
+			/// destroys the api meshes and resets every record drawn with one of them, in one pass over the records
+			/// @note caller holds the unique lock
+			void destroy_meshes_locked(const std::unordered_set<std::uint64_t>& hashes)
 			{
 				PROFILE_ZONE();
-				const auto it = g_meshes.find(hash);
-				if (it == g_meshes.end()) {
+				PROFILE_ZONE_VALUE(hashes.size());
+
+				std::unordered_set<std::uint64_t> destroyed;
+				for (const auto hash : hashes)
+				{
+					const auto it = g_meshes.find(hash);
+					if (it == g_meshes.end()) {
+						continue;
+					}
+
+					if (it->second.mesh) {
+						shared::common::remix_api::get().m_bridge.DestroyMesh(it->second.mesh);
+					}
+
+					g_cache_bytes -= it->second.bytes;
+					g_meshes.erase(it);
+					destroyed.insert(hash);
+				}
+
+				if (destroyed.empty()) {
 					return;
 				}
-
-				if (it->second.mesh) {
-					shared::common::remix_api::get().m_bridge.DestroyMesh(it->second.mesh);
-				}
-
-				g_cache_bytes -= it->second.bytes;
-				g_meshes.erase(it);
 
 				for (auto& [geom, records] : g_records)
 				{
 					for (auto& rec : records)
 					{
-						if (rec.owned && rec.mesh_hash == hash)
+						if (rec.owned && destroyed.contains(rec.mesh_hash))
 						{
 							peds::destroy_wounds_locked(rec);
 							rec = { .state_key = rec.state_key };
 						}
 					}
 				}
+			}
+
+			/// @note caller holds the unique lock
+			void destroy_mesh_locked(const std::uint64_t hash) {
+				destroy_meshes_locked({ hash });
 			}
 
 			void enforce_cache_budget_locked()
@@ -1959,6 +1977,23 @@ namespace gta4
 			};
 			std::unordered_map<const void*, texture_hash_entry_s> g_texture_hashes;
 
+			/// every texture a record was keyed with (ped / vehicle records): may still hold textures no record uses
+			/// anymore, but never misses one a record uses
+			std::unordered_set<IDirect3DBaseTexture9*> g_record_textures;
+
+			/// dev toggle (A/B): invalidate the textures written in a frame in one batch and skip the record pass for
+			/// textures no record uses; off = per texture with full scans
+			bool g_batched_invalidation = true;
+
+			/// @note caller holds the unique lock
+			void set_record_texture_locked(geometry_record& rec, IDirect3DBaseTexture9* texture)
+			{
+				rec.texture = texture;
+				if (texture) {
+					g_record_textures.insert(texture);
+				}
+			}
+
 			/// session stable identity of a texture: size, format and top mip (read-only lock of the bridge's copy), cached per texture.
 			/// Peds of different models share component meshes and texture names (skin tones, clothing), the name is not enough.
 			std::uint64_t texture_content_hash(IDirect3DBaseTexture9* base)
@@ -2004,31 +2039,43 @@ namespace gta4
 			/// api materials bind the D3D texture (the runtime keeps its image), records and the content hash cache are keyed by it;
 			/// a texture created later at the same address, or new content written into it, must not find any of them
 			/// @note caller holds the unique lock
-			/// @return true if anything was bound to the texture
-			bool invalidate_texture_locked(IDirect3DBaseTexture9* texture)
+			/// @return number of the textures that had materials or records bound to them
+			std::uint32_t invalidate_textures_locked(const std::vector<IDirect3DBaseTexture9*>& targets)
 			{
-				g_texture_hashes.erase(texture);
+				PROFILE_ZONE();
+				PROFILE_ZONE_VALUE(targets.size());
 
-				std::vector<std::uint64_t> material_keys;
-				if (const auto it = g_materials_by_texture.find(texture); it != g_materials_by_texture.end())
+				std::unordered_set<IDirect3DBaseTexture9*> bound;
+				std::unordered_set<std::uint64_t> material_keys;
+				std::unordered_set<IDirect3DBaseTexture9*> record_textures;
+
+				for (const auto texture : targets)
 				{
-					material_keys = std::move(it->second);
-					g_materials_by_texture.erase(it);
+					g_texture_hashes.erase(texture);
+
+					if (const auto it = g_materials_by_texture.find(texture); it != g_materials_by_texture.end())
+					{
+						material_keys.insert(it->second.begin(), it->second.end());
+						g_materials_by_texture.erase(it);
+						bound.insert(texture);
+					}
+
+					if (!g_batched_invalidation || g_record_textures.contains(texture)) {
+						record_textures.insert(texture);
+					}
 				}
 
 				if (!material_keys.empty())
 				{
-					std::vector<std::uint64_t> mesh_hashes;
+					std::unordered_set<std::uint64_t> mesh_hashes;
 					for (const auto& [hash, mesh] : g_meshes)
 					{
-						if (std::find(material_keys.begin(), material_keys.end(), mesh.material_key) != material_keys.end()) {
-							mesh_hashes.push_back(hash);
+						if (material_keys.contains(mesh.material_key)) {
+							mesh_hashes.insert(hash);
 						}
 					}
 
-					for (const auto hash : mesh_hashes) {
-						cache::destroy_mesh_locked(hash);
-					}
+					cache::destroy_meshes_locked(mesh_hashes);
 
 					const auto& bridge = shared::common::remix_api::get().m_bridge;
 					for (const auto key : material_keys)
@@ -2043,11 +2090,32 @@ namespace gta4
 					}
 				}
 
-				bool had_records = false;
-				for (auto& [geom, records] : g_records) {
-					had_records |= std::erase_if(records, [texture](const geometry_record& rec) { return rec.texture == texture; }) != 0u;
+				if (!record_textures.empty())
+				{
+					for (auto& [geom, records] : g_records)
+					{
+						std::erase_if(records, [&](const geometry_record& rec)
+						{
+							if (rec.texture && record_textures.contains(rec.texture))
+							{
+								bound.insert(rec.texture);
+								return true;
+							}
+							return false;
+						});
+					}
+
+					for (const auto texture : record_textures) {
+						g_record_textures.erase(texture);
+					}
 				}
-				return !material_keys.empty() || had_records;
+
+				return static_cast<std::uint32_t>(bound.size());
+			}
+
+			/// @note caller holds the unique lock
+			bool invalidate_texture_locked(IDirect3DBaseTexture9* texture) {
+				return invalidate_textures_locked({ texture }) != 0u;
 			}
 
 			void on_texture_destroyed(IDirect3DBaseTexture9* texture)
@@ -2106,9 +2174,13 @@ namespace gta4
 						g_volatile_textures++;
 					}
 
-					if (invalidate_texture_locked(texture)) {
+					if (!g_batched_invalidation && invalidate_texture_locked(texture)) {
 						g_texture_rebuilds_last_frame++;
 					}
+				}
+
+				if (g_batched_invalidation) {
+					g_texture_rebuilds_last_frame = invalidate_textures_locked(written);
 				}
 			}
 
@@ -3835,7 +3907,7 @@ namespace gta4
 			auto& rec = new_record();
 			rec.owned = true;
 			rec.hidden = true;
-			rec.texture = color_texture;
+			textures::set_record_texture_locked(rec, color_texture);
 			rec.last_frame = g_frame;
 			return true;
 		}
@@ -4034,7 +4106,7 @@ namespace gta4
 		rec.owned = true;
 		rec.mesh_hash = hash;
 		rec.vertex_hash = double_buffered ? hash_words(bytes.vertices, static_cast<std::size_t>(bytes.vertex_count) * bytes.stride) : 0u;
-		rec.texture = color_texture;
+		textures::set_record_texture_locked(rec, color_texture);
 		rec.last_frame = g_frame;
 		rec.overrides = convert::make_overrides(ctx);
 		rec.tfactor = state.tfactor;
@@ -4349,18 +4421,16 @@ namespace gta4
 		{
 			PROFILE_ZONE_N("renderer_api::release_unused_meshes");
 			std::unique_lock lock(g_mutex);
-			std::vector<std::uint64_t> unused;
+			std::unordered_set<std::uint64_t> unused;
 
 			for (const auto& [hash, mesh] : g_meshes)
 			{
 				if (mesh.transient && g_frame - mesh.last_used_frame > 1u) {
-					unused.push_back(hash);
+					unused.insert(hash);
 				}
 			}
 
-			for (const auto hash : unused) {
-				cache::destroy_mesh_locked(hash);
-			}
+			cache::destroy_meshes_locked(unused);
 
 			if ((g_frame & 0x3Fu) == 0u) {
 				cache::enforce_cache_budget_locked();
@@ -4635,6 +4705,7 @@ namespace gta4
 
 		ImGui::Text("Textures the game wrote last frame: %u ---- of them api colormaps: %u\ncolormaps written every frame (kept on D3D9): %u",
 			s.texture_writes_last_frame, s.texture_rebuilds_last_frame, s.volatile_textures);
+		ImGui::Checkbox("Debug: batched texture invalidation (off = per texture full scans)", &textures::g_batched_invalidation);
 
 		ImGui::Spacing(0, 4);
 		if (ImGui::TreeNode("Static geometry##api_static_stats"))
