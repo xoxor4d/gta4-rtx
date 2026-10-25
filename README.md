@@ -75,8 +75,10 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - Vehicles now feature two headlights and two rear lights instead of single, centered ones
 - Dynamic emissive surfaces work (vehicle lights, building-windows, shops etc.)
 - Dynamic wetness with forming puddles + wetness stays longer after it rained
+- Improved water / ocean rendering
 - Raindroplets on vehicles and characters
 - Working vehicle dirt and livery
+- Working distant light sprites and vehicle imposters
 - Modification of remix runtime variables based on current timecycle settings
 - Mobilephone works (but it is 3D and currently scales with the camera fov)
 - Modified vertex shaders (based on FusionFix) so that remix is able to capture surface normals
@@ -89,8 +91,8 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 
 ###### The bad:
 - ~~CPU Bottlenecked~~ - Rendering via RemixApi + Improvements to the Bridge by [Sparkles (RemixPlus)](https://github.com/RemixProjGroup/dxvk-remix/commits/rebased-9-19/) and me mostly fixes this
-- Can still be stuttery when traversing the world as new meshes load in
-- No blood on peds
+- ~~Can still be stuttery when traversing the world as new meshes load in~~ - Mostly fixed as of 1.7.0
+- ~~No blood on peds~~ - Fixed as of 1.7.0
 
 <br>
 <br>
@@ -119,14 +121,14 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - Run the game like normal
 - Press `F4` to open the in-game gui for some compatibility tweaks or debug settings
 - If you notice heavy stuttering, launch the game with one of the included affinity batch files.  
-  They give GTA IV its own physical cores and the rest to Remix, so the two never compete for the same core (SMT is taken into account):
+  They give GTA IV its own physical cores and the rest to Remix, so the two never compete for the same core:
   - `_LaunchWithProcessorAffinity_4Cores_GTA4.bat`: 4 physical cores for GTA IV (CPUs with 8 or more cores)
   - `_LaunchWithProcessorAffinity_2Cores_GTA4.bat`: 2 physical cores for GTA IV (CPUs with fewer cores)
 
 <br>
 
 > [!TIP]  
-> **Troubleshooting / in-depth guides, usage information and remix runtime changes can be found in the [[Wiki]](https://github.com/xoxor4d/gta4-rtx/wiki)**
+> **Performance Tips / Troubleshooting and Usage information can be found in the [[Wiki]](https://github.com/xoxor4d/gta4-rtx/wiki)**
 
 <br>
 
@@ -141,11 +143,11 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - Make sure to also install: [gta4-rtx-base-mod](https://github.com/xoxor4d/gta4-rtx-base-mod)
 
 #### Profiling with Tracy
-- Build the `ReleaseTracy` configuration: a `Release` build with the [Tracy](https://github.com/wolfpld/tracy) client (v0.13.4, `deps/tracy`) compiled in.  
+- Build the `ReleaseTracy` configuration - includes [Tracy](https://github.com/wolfpld/tracy) client (v0.13.4, `deps/tracy`)  
   All other configurations contain no profiling code.
-- Start the game, open the Tracy 0.13.x profiler and connect to `localhost`. Data is only recorded while the profiler is connected.
+- Start the game, open the Tracy 0.13.x profiler and connect
 - The trace contains frame marks for the render thread (`Render`) and the game thread tick (`Game`), zones for the D3D9 and Remix API render paths, every Remix API bridge call, the culling and draw list hooks, plots (frame time, draw calls, api instances) and the locks of the api renderer
-- Run `GTAIV.exe` as administrator to also get CPU sampling and context switches of all threads (game functions without zones show up there)
+- Run `GTAIV.exe` as administrator to also get CPU sampling and context switches of all threads
 
 <br>
 <br>
@@ -161,6 +163,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [miniz](https://github.com/richgel999/miniz)
 - [Rapidjson](https://github.com/Tencent/rapidjson)
 - [DiscordRPC](https://github.com/discord/discord-rpc)
+- [Tracy](https://github.com/wolfpld/tracy)
 - [FusionFix](https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix)
 - [FusionShaders](https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders)
 - [Rage-Shader-Editor](https://github.com/ImpossibleEchoes/rage-shader-editor-cpp)
@@ -173,9 +176,9 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [Hemry](https://www.youtube.com/@Hemry81)
 - [Danlopand / Thundery_Dan](https://github.com/DANLOPAND)
 - [KapibosRU](https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ)
-- [Budgie](https://www.patreon.com/c/BudgieGames)
+- [Budgie (Vegetation)](https://www.patreon.com/c/BudgieGames)
 - [Alex from Digital Foundry](https://www.youtube.com/watch?v=vGxPdcMQfwg)
-- [Sparkles (Remix Plus - Numos - Initial DLSS5 Integration)](https://github.com/Kim2091)
+- [Sparkles (Remix Plus - Numos - Remix Optimization)](https://github.com/Kim2091)
 - [CR (Remix Plus)](https://github.com/sambow23)
 - [TheGreatHMMMM (Remix Plus)](https://github.com/TheGreatHMMMM)
 - [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)

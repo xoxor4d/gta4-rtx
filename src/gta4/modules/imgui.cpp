@@ -266,6 +266,7 @@ namespace gta4
 		CENTER_URL("Miniz", "https://github.com/richgel999/miniz");
 		CENTER_URL("Rapidjson", "https://github.com/Tencent/rapidjson");
 		CENTER_URL("DiscordRPC", "https://github.com/discord/discord-rpc");
+		CENTER_URL("Tracy", "https://github.com/wolfpld/tracy");
 
 		CENTER_URL("FusionFix", "https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix");
 		CENTER_URL("FusionShaders", "https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders");
@@ -280,7 +281,7 @@ namespace gta4
 		CENTER_URL("Hemry", "https://www.youtube.com/@Hemry81");
 		CENTER_URL("Thundery_Dan", "https://github.com/DANLOPAND");
 		CENTER_URL("KapibosRU", "https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ");
-		CENTER_URL("Budgie", "https://www.patreon.com/c/BudgieGames");
+		CENTER_URL("Budgie (Vegetation)", "https://www.patreon.com/c/BudgieGames");
 		CENTER_URL("Alex from Digital Foundry", "https://www.youtube.com/watch?v=vGxPdcMQfwg");
 		CENTER_URL("Sparkles (Remix Plus - Numos - Initial DLSS5 Integration)", "https://github.com/Kim2091");
 		CENTER_URL("CR (Remix Plus)", "https://github.com/sambow23");
