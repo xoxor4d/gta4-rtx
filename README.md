@@ -118,8 +118,10 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 ## Usage
 - Run the game like normal
 - Press `F4` to open the in-game gui for some compatibility tweaks or debug settings
-- If you notice heavy stuttering, launch the game with the included `_LaunchWithProcessorAffinity_2Cores_GTA4.bat`.  
-  Doing this will assign 2 cores to GTA4 and the rest to Remix. If you want a 50/50 split, use `_LaunchWithProcessorAffinity_Half_GTA4__Half_Remix.bat`
+- If you notice heavy stuttering, launch the game with one of the included affinity batch files.  
+  They give GTA IV its own physical cores and the rest to Remix, so the two never compete for the same core (SMT is taken into account):
+  - `_LaunchWithProcessorAffinity_4Cores_GTA4.bat`: 4 physical cores for GTA IV (CPUs with 8 or more cores)
+  - `_LaunchWithProcessorAffinity_2Cores_GTA4.bat`: 2 physical cores for GTA IV (CPUs with fewer cores)
 
 <br>
 

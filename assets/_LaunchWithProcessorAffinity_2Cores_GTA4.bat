@@ -13,25 +13,28 @@ cd /d "%~dp0"
 setlocal enabledelayedexpansion
 
 echo Initializing GTA IV launch and CPU affinity setup...
-echo Assigning 2 Cores to GTA4 and the rest to RTX Remix
+echo Assigning 2 physical cores to GTA4 and the rest to RTX Remix (no shared cores)
 echo.
 
 :: Launch GTA IV
 start GTAIV.exe
 
 :: Compute CPU core masks (64-bit, capped at 64 logical processors = one Windows processor group)
+:: With SMT both threads of a core are adjacent logical processors, so N physical cores span 2N of them
+:: (hybrid Intel CPUs list their hyperthreaded performance cores first)
 echo Detecting system CPU cores...
-powershell -Command "$total = (Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum; if ($total -le 0) { $total = 4 }; if ($total -gt 64) { $total = 64 }; if ($total -ge 64) { [long]$allMask = -1 } else { [long]$allMask = (1L -shl $total) - 1 }; [long]$gtaMask = 3 -band $allMask; [long]$nvMask = $allMask -band (-bnot $gtaMask); if ($nvMask -eq 0) { $nvMask = $allMask }; Write-Output \"$total $gtaMask $nvMask $($gtaMask.ToString('X')) $($nvMask.ToString('X'))\"" > masks.txt
+powershell -Command "$cpus = Get-CimInstance Win32_Processor; $total = ($cpus | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum; $physical = ($cpus | Measure-Object -Property NumberOfCores -Sum).Sum; if ($total -le 0) { $total = 4 }; if ($physical -le 0) { $physical = $total }; [int]$threadsPerCore = 1; if ($total -gt $physical) { $threadsPerCore = 2 }; if ($total -gt 64) { $total = 64 }; $gtaBits = 2 * $threadsPerCore; if ($gtaBits -ge $total) { $gtaBits = [Math]::Max(1, [Math]::Floor($total / 2)) }; if ($total -ge 64) { [long]$allMask = -1 } else { [long]$allMask = (1L -shl $total) - 1 }; if ($gtaBits -ge 64) { [long]$gtaMask = -1 } else { [long]$gtaMask = ((1L -shl $gtaBits) - 1) -band $allMask }; [long]$nvMask = $allMask -band (-bnot $gtaMask); if ($nvMask -eq 0) { $nvMask = $allMask }; Write-Output \"$total $gtaMask $nvMask $($gtaMask.ToString('X')) $($nvMask.ToString('X')) $physical\"" > masks.txt
 set /p line=<masks.txt
 del masks.txt 2>nul
-for /f "tokens=1-5" %%a in ("%line%") do (
+for /f "tokens=1-6" %%a in ("%line%") do (
     set "totalCores=%%a"
     set "gtaMask=%%b"
     set "nvMask=%%c"
     set "gtaHex=%%d"
     set "nvHex=%%e"
+    set "physicalCores=%%f"
 )
-echo Detected %totalCores% logical processors.
+echo Detected %totalCores% logical processors on %physicalCores% physical cores.
 echo Assigned mask 0x%gtaHex% to GTA IV and 0x%nvHex% to NvRemixBridge.
 
 :: Wait for both processes to start (up to 120 seconds)
