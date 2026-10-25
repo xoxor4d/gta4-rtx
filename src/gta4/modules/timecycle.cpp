@@ -510,28 +510,40 @@ namespace gta4
 				const char* const game_prev = weather_type_to_preset(*game::weather_type_prev);
 				const char* const game_new  = weather_type_to_preset(*game::weather_type_new);
 
-				static char game_val_buff[256] = {};
-				uint32_t game_val_str_size = 0u;
+				// reading the runtime's weather blocks until the runtime has processed everything queued before the call,
+				// so it is only compared when the game's weather changes and every few hundred frames
+				constexpr std::uint32_t WEATHER_CHECK_INTERVAL_FRAMES = 300u;
+				constexpr std::uint32_t WEATHER_MISMATCH_CHECK_INTERVAL_FRAMES = 30u;
 
-				const auto bridge = shared::common::remix_api::get().m_bridge;
+				static game::eWeatherType s_checked_prev = static_cast<game::eWeatherType>(~0u);
+				static game::eWeatherType s_checked_new = static_cast<game::eWeatherType>(~0u);
+				static std::uint32_t s_frames_until_check = 0u;
+				static bool s_mismatch = true;
 
-				bridge.GetGameValue("__weather.previous", game_val_buff, sizeof(game_val_buff), &game_val_str_size);
-				const auto remix_prev = std::string_view(game_val_buff);
+				const auto& bridge = shared::common::remix_api::get().m_bridge;
 
-				bridge.GetGameValue("__weather.target", game_val_buff, sizeof(game_val_buff), &game_val_str_size);
-				const auto remix_target = std::string_view(game_val_buff);
+				if (!s_frames_until_check || s_checked_prev != *game::weather_type_prev || s_checked_new != *game::weather_type_new)
+				{
+					char remix_prev[256] = {};
+					char remix_target[256] = {};
+					uint32_t str_size = 0u;
 
-				const bool mismatch =	remix_prev.empty() || remix_prev == "(initial)" ||
-										remix_prev != game_prev || remix_target != game_new;
+					bridge.GetGameValue("__weather.previous", remix_prev, sizeof(remix_prev), &str_size);
+					bridge.GetGameValue("__weather.target", remix_target, sizeof(remix_target), &str_size);
+
+					const std::string_view prev = remix_prev;
+					s_mismatch = prev.empty() || prev == "(initial)" || prev != game_prev || std::string_view(remix_target) != game_new;
+
+					s_checked_prev = *game::weather_type_prev;
+					s_checked_new = *game::weather_type_new;
+					s_frames_until_check = s_mismatch ? WEATHER_MISMATCH_CHECK_INTERVAL_FRAMES : WEATHER_CHECK_INTERVAL_FRAMES;
+				}
+
+				s_frames_until_check--;
 
 				bridge.SetGameValue("__weather.target", game_new);
 				bridge.SetGameValue("__weather.blend_absolute", std::to_string(*game::weather_change_value).c_str());
-
-				if (mismatch) {
-					bridge.SetGameValue("__weather.previous_target", game_prev);
-				} else {
-					bridge.SetGameValue("__weather.previous_target", "");
-				}
+				bridge.SetGameValue("__weather.previous_target", s_mismatch ? game_prev : "");
 			}
 		}
 	}
