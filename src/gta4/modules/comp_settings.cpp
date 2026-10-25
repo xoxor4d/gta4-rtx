@@ -316,6 +316,7 @@ namespace gta4
 				ASSIGN(api_distant_lights_size_scale);
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
+				ASSIGN(gta_rmptfx_litsprite_unlit);
 				ASSIGN(rain_particle_system_enabled);
 
 				// timecycle related settings

@@ -1825,6 +1825,7 @@ namespace gta4
 			{
 				ImGui::PushID("effects");
 				compsettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
+				compsettings_bool_widget("GTA_RMPTFX_Litsprite Unlit", gs->gta_rmptfx_litsprite_unlit);
 				ImGui::PopID();
 			});
 	}

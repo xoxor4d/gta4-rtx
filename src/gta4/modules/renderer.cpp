@@ -636,6 +636,21 @@ namespace gta4
 		return ctx;
 	}
 
+	void SetupTextureAndSampler_call(uint32_t texture_slot, game::grcTextureReference* arg2, int sampler_state_count, int arg4)
+	{
+		__asm
+		{
+			pushad;
+			push	arg4;
+			push	sampler_state_count;
+			mov		edx, arg2;
+			mov		ecx, texture_slot;
+			call	game::func_addr__SetupTextureAndSampler;
+			add     esp, 8;
+			popad;
+		}
+	}
+
 	// every mesh goes through here (besides in-game ui and particles)
 	void SetupVertexShaderAndConstants(game::vs_info_s* info, game::vs_data_s* data, game::shader_info_sub_s* constant_data_struct, game::shader_data_sub_s* sampler_data)
 	{
@@ -696,6 +711,28 @@ namespace gta4
 			}
 			else if (pidx == GTA_VEHICLE_LIGHTSEMISSIVE /*ctx.info.shader_name.ends_with("lightsemissive.fxc")*/) {
 				is_lightsemissive_shader = true;
+			}
+
+			if ((g_is_rendering_fx_instance || g_is_rendering_fx) && !ctx.info.checked_for_gta_rmptfx_litsprite_shader)
+			{
+				ctx.info.checked_for_gta_rmptfx_litsprite_shader = true;
+
+				if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
+				{
+					im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check(true);
+					ctx.info.is_gta_rmptfx_litsprite_shader = true;
+				}
+			}
+
+			// litsprite lights its particles in the vertex shader and remix captures that colour as the particle colour.
+			// zeroing gDiffuse, gExtraLights and gAmbientAmount reduces the output to the particle colour, but only in the
+			// techniques that have gExtraLights (draw_old multiplies everything by gDiffuse and would turn black)
+			bool is_unlit_litsprite = false;
+			if (ctx.info.is_gta_rmptfx_litsprite_shader && gs->gta_rmptfx_litsprite_unlit._bool())
+			{
+				for (int c = 0; c < info->num_vs_constants && !is_unlit_litsprite; c++) {
+					is_unlit_litsprite = constant_data_struct->mEntriesHashes[info->vs_constant_stack[c].constant_pool_index] == 0xA9D068CF /*gExtraLights*/;
+				}
 			}
 
 			int i = 0;
@@ -796,25 +833,20 @@ namespace gta4
 							modified_world_matrix = true;
 						}*/
 
-						if ((register_num == 69u || register_num == 70u) 
+						if (is_unlit_litsprite
+							&& (entry_hash == 0x48C10F15 /*gDiffuse*/ || entry_hash == 0xA9D068CF /*gExtraLights*/ || entry_hash == 0x336972A6 /*gAmbientAmount*/))
+						{
+							const float zero[4] = {};
+							game_device->SetVertexShaderConstantF(register_num, zero, 1);
+						}
+						else if ((register_num == 69u || register_num == 70u) 
 							&& pidx == -1
 							&& entry_hash == 0x490C2A6B /*gSuperAlpha*/
-							&& (g_is_rendering_fx_instance || g_is_rendering_fx)) // constantly need to check
+							&& ctx.info.is_gta_rmptfx_litsprite_shader)
 						{
-							if (im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check() && ctx.info.shader_name.ends_with("gta_rmptfx_litsprite.fxc"))
-							{
-								im->m_stats._gta_rmptfx_litsprite_shader_name_checks.track_check(true);
-								ctx.info.is_gta_rmptfx_litsprite_shader = true;
-
-								// gSuperAlpha constant
-								float constant[4] = { *constant_data_struct->constants[dataPoolIndex].float_arr * gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float>(), 0.0f, 0.0f, 0.0f };
-								game_device->SetVertexShaderConstantF(register_num, constant, 1);
-							}
-							else
-							{
-								// stock
-								game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
-							}
+							// gSuperAlpha constant
+							float constant[4] = { *constant_data_struct->constants[dataPoolIndex].float_arr * gs->gta_rmptfx_litsprite_alpha_scalar.get_as<float>(), 0.0f, 0.0f, 0.0f };
+							game_device->SetVertexShaderConstantF(register_num, constant, 1);
 						}
 						else if (  (register_num == 208u || register_num == 209u) 
 								&& (pidx == GTA_EMISSIVE || pidx == GTA_EMISSIVE_ALPHA || pidx == GTA_EMISSIVESTRONG || pidx == GTA_EMISSIVESTRONG_ALPHA)
@@ -861,36 +893,11 @@ namespace gta4
 					auto arg3 = sampler_data->sampler_constant_data[dataPoolIndex].unk3_lo >> 1;
 					auto arg4 = sampler_data->sampler_constant_data[dataPoolIndex].unk9;
 
-					__asm
-					{
-						pushad;
-						push	arg4;
-						push	arg3;
-						mov		edx, arg2;
-						mov		ecx, arg1;
-						call	game::func_addr__SetupTextureAndSampler;
-						add     esp, 8;
-						popad;
-					}
+					SetupTextureAndSampler_call(arg1, arg2, arg3, arg4);
 				}
 
 				++i;
 			} while (i < info->num_vs_constants);
-		}
-	}
-
-	void SetupTextureAndSampler_call(uint32_t texture_slot, game::grcTextureReference* arg2, int sampler_state_count, int arg4)
-	{
-		__asm
-		{
-			pushad;
-			push	arg4;
-			push	sampler_state_count;
-			mov		edx, arg2;
-			mov		ecx, texture_slot;
-			call	game::func_addr__SetupTextureAndSampler;
-			add     esp, 8;
-			popad;
 		}
 	}
 

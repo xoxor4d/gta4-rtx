@@ -1568,6 +1568,16 @@ namespace gta4
 				1.5f
 			};
 
+			variable gta_rmptfx_litsprite_unlit =
+			{
+				"gta_rmptfx_litsprite_unlit",
+				("Remove the game lighting from gta_rmptfx_litsprite particles (smoke, dust) so only Remix lights them.\n"
+				 "The game lights them in the vertex shader and Remix takes that colour, clamped per channel, as the particle colour,\n"
+				 "which shows as yellow or green tints near game lights."),
+				"1.7.0",
+				true
+			};
+
 			variable rain_particle_system_enabled =
 			{
 				"rain_particle_system_enabled",
