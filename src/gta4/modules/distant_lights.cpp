@@ -727,24 +727,20 @@ namespace gta4
 		ImGui::TextDisabled("Sprites: one api mesh per frame. Cars: the instanced model as cached api mesh, one api instance per car.");
 		ImGui::TextDisabled("A material of a game texture is keyed by the texture's image hash: rtx.conf texture lists and replacements apply like on the D3D9 path.");
 
+		ImGui::Spacing(0, 4);
+		ImGui::PushID("devimpost");
+
 		ImGui::SeparatorText("Debug");
-		ImGui::Checkbox("Cars: solid green emissive material (no texture, no key)##dl", &im->m_dbg_distant_cars_green_material);
+		ImGui::Checkbox("Cars: solid green emissive material (no texture, no key)", &im->m_dbg_distant_cars_green_material);
 
-		if (ImGui::Button("Destroy api meshes and materials##dl")) {
-			destroy_all();
-		}
-
+		ImGui::Spacing(0, 8);
 		ImGui::SeparatorText("Last render");
 
 		if (!s.sprites_rendered) {
 			ImGui::TextUnformatted("Sprites: not rendered (day, disabled or -disableimposters)");
-		}
-		else if (s.sprites_api)
-		{
-			ImGui::Text("Sprites: %u in %u game flushes -> Remix API, one mesh with %u vertices, %u triangles",
-				s.sprites, s.sprite_flushes, s.sprite_vertices, s.sprite_triangles);
-		}
-		else {
+		} else if (s.sprites_api) {
+			ImGui::Text("Sprites: %u in %u game flushes -> Remix API, one mesh with %u vertices, %u triangles", s.sprites, s.sprite_flushes, s.sprite_vertices, s.sprite_triangles);
+		} else {
 			ImGui::Text("Sprites: %u game flushes drawn through D3D9%s", s.sprite_flushes, s.sprites_warming_up ? " (texture warm up, api from the next render)" : "");
 		}
 
@@ -760,6 +756,9 @@ namespace gta4
 				ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Cars stayed on D3D9: %s", renderer_api::reject_reason_name(s.car_reject));
 			}
 		}
+
+		ImGui::PopID();
+		ImGui::Spacing(0, 4);
 	}
 
 	distant_lights::distant_lights()

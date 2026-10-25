@@ -179,6 +179,8 @@ namespace gta4
 				ASSIGN(api_static_pass_refresh_frames);
 				ASSIGN(api_peds_enabled);
 				ASSIGN(api_peds_blendshapes);
+				ASSIGN(api_peds_wounds_enabled);
+				ASSIGN(api_peds_wounds_opacity);
 				ASSIGN(api_peds_skip_pass_setup);
 				ASSIGN(api_vehicles_enabled);
 				ASSIGN(remix_override_rtxdi_samplecount);

@@ -1365,10 +1365,14 @@ namespace gta4
 						is_dirt = (arg3 == 6 && (texture_slot == 1 || texture_slot == 2));
 					}
 
+					// the wound texture the ped shaders blend at slot 1, drawn as an overlay by the api ped path (renderer_api)
+					const bool is_ped_wound = gs->api_peds_wounds_enabled.get_as<bool>() && texture_slot == 1u
+						&& constant_data_struct->mEntriesHashes[dataPoolIndex] == 0xF6543DD6 /*damageTextureSampler (damageTex)*/;
+
 					if (gs->load_colormaps_only.get_as<bool>() && !g_is_sky_rendering)
 					{
 						// everything that is not 0 is not a colormap (I hope)
-						if (texture_slot && !is_livery && !is_dirt && !is_dirt_s2)
+						if (texture_slot && !is_livery && !is_dirt && !is_dirt_s2 && !is_ped_wound)
 						{
 							++i;
 							continue;

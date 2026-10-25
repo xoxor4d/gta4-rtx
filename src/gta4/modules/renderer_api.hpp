@@ -31,19 +31,17 @@ namespace gta4
 		constexpr std::uint32_t TEXTURE_OP_ADD = 6u;
 	}
 
-	/// Renders static map geometry (everything the engine draws through CDrawEntityDC) via the Remix API.
-	/// Phase A: the fixed function draw of a geometry is captured into an api mesh + material and replaced by DrawInstance.
-	/// Phase B: once every geometry of a drawable is owned, the engine's entity draw command is replaced by our own
-	///          command that only submits instances, so the entity never touches D3D9.
-	/// Pass skip: a geometry whose shader passes are all owned skips the engine's pass setup (grmShader::DrawGeometry)
-	///            and only submits its instances.
-	/// Peds: their vertex shader draws are replaced the same way, skinned geometry as skinned api meshes that get the
-	///       bone palette of each draw (no vertex capture).
+	/// Draws the game's geometry through the Remix API instead of D3D9: the fixed function draw of a geometry is captured
+	/// into an api mesh + material once and replaced by DrawInstance afterwards.
+	/// - pass skip: a geometry whose shader passes are all owned skips the engine's pass setup (grmShader::DrawGeometry)
+	/// - entity skip: a drawable whose geometries are all owned is drawn by our own draw list command, the engine never walks it
+	/// - peds and vehicles: their vertex shader draws are replaced the same way, skinned geometry as skinned api meshes that
+	///   get the bone palette of each draw; peds carry their wound overlays, vehicles their damage deformation
+	/// renderer_api.cpp is organised by subsystem: convert, vehicles, geometry, cache, textures, peds, passes, entities.
 	class renderer_api final : public shared::common::loader::component_module
 	{
 	public:
 		renderer_api();
-		~renderer_api();
 
 		static inline renderer_api* p_this = nullptr;
 		static renderer_api* get() { return p_this; }
@@ -67,7 +65,7 @@ namespace gta4
 
 		static constexpr std::uint32_t MAX_BONES = 48u; // gBoneMtx[48] at c64 of the skinned ped / vehicle vertex shaders
 
-		/// placement of an api instance: skinned draws carry their bone palette, the transform then only translates
+		// placement of an api instance: skinned draws carry their bone palette, the transform then only translates
 		struct draw_pose_s
 		{
 			remixapi_Transform transform = {};
@@ -83,6 +81,16 @@ namespace gta4
 			bool flat_tyre = false;       // tyreDeformSwitchOn: flattened against the ground, a new shape every frame
 			float tyre_constants[6][4] = {}; // matWheelTransform rows, tyreDeformParams, tyreDeformParams2
 			std::uint64_t flat_hash = 0u;
+
+			// ped wounds: the per bone damage the ped shaders blend their wound texture (sampler 1) with, in the bone palette
+			// space of the draw (the game's CustomBoneDamageArray)
+			struct wound_s
+			{
+				bool enabled = false;
+				std::uint64_t hash = 0u; // of the palette, identity of the wound mesh
+				float palette[MAX_BONES] = {};
+			};
+			wound_s wound;
 		};
 
 		static const char* reject_reason_name(reject_reason r);
@@ -143,6 +151,7 @@ namespace gta4
 			std::uint32_t pass_full_refresh_last_frame = 0u;
 			std::uint32_t pass_full_stale_last_frame = 0u;
 			std::uint32_t pass_full_too_many_passes_last_frame = 0u;
+			std::uint32_t pass_full_wound_last_frame = 0u; // the wound of the draw had no overlay yet
 
 			// what the captures of these engine draws found (last frame)
 			std::uint32_t pass_capture_complete_last_frame = 0u;
@@ -158,6 +167,9 @@ namespace gta4
 			std::uint32_t ped_skips_stream_last_frame = 0u;  // geometry with a second vertex stream
 			std::uint32_t ped_skips_blendshape_last_frame = 0u; // blendshape heads while 'api_peds_blendshapes' is off
 			std::uint32_t ped_skips_rejected_last_frame = 0u;
+			std::uint32_t ped_wound_instances_last_frame = 0u; // wound overlays drawn over ped instances
+			std::uint32_t ped_wound_builds_last_frame = 0u;    // wound meshes built (damage appeared or changed)
+			std::uint32_t ped_wound_meshes = 0u;               // cached wound meshes
 
 			// vehicle draws (last frame)
 			std::uint32_t vehicle_instances_last_frame = 0u;

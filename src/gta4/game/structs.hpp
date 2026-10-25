@@ -977,14 +977,49 @@ namespace gta4::game
 		D3DRS_COUNT = 0x28,
 	};
 
+	struct grcVertexBufferD3D
+	{
+		void* vtbl;
+		std::uint16_t vertex_count;
+		std::uint8_t locked;
+		std::uint8_t dynamic;
+		void* lock_ptr;
+		std::uint32_t stride;
+		void* fvf;
+		std::uint32_t lock_timestamp;
+		void* resource_data;				// zeroed after the D3D buffer was created
+		IDirect3DVertexBuffer9* d3d_buffer;	// created lazily at the first draw
+		const std::uint8_t* cpu_data;		// persistent copy, freed in the destructor (null after a defrag re-place)
+	};
+	static_assert(offsetof(grcVertexBufferD3D, cpu_data) == 0x20);
+
+	struct grcIndexBufferD3D
+	{
+		void* vtbl;
+		std::uint32_t index_count;
+		void* resource_data;
+		IDirect3DIndexBuffer9* d3d_buffer;
+		const std::uint16_t* cpu_data;		// persistent copy
+	};
+	static_assert(offsetof(grcIndexBufferD3D, cpu_data) == 0x10);
+
+	struct grcVertexDeclaration
+	{
+		IDirect3DVertexDeclaration9* d3d_decl;	// created lazily
+		std::uint32_t ref_count;
+		std::uint32_t stream_frequency;
+		D3DVERTEXELEMENT9 elements[1];			// terminated with D3DDECL_END()
+	};
+	static_assert(offsetof(grcVertexDeclaration, elements) == 0x0C);
+
 	// rage::grmGeometryQB (PC 1.2.0.59)
 	struct grmGeometryQB
 	{
 		void* vtbl;
-		void* vertex_declaration;		// grcVertexDeclaration*, D3DVERTEXELEMENT9[] at +0x0C
+		grcVertexDeclaration* vertex_declaration; // D3DVERTEXELEMENT9[] at +0x0C
 		int pad08;
-		void* vertex_buffers[4];		// grcVertexBufferD3D*
-		void* index_buffers[4];			// grcIndexBufferD3D*
+		grcVertexBufferD3D* vertex_buffers[4];
+		grcIndexBufferD3D* index_buffers[4]; 
 		std::uint32_t index_count;
 		std::uint32_t primitive_count;
 		std::uint16_t vertex_count;

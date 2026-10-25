@@ -94,6 +94,7 @@ namespace gta4
 		bool m_dbg_do_not_render_tri_surface = false;
 		bool m_dbg_do_not_render_map_markers = false;
 		bool m_dbg_distant_cars_green_material = false;
+		int m_dbg_ped_wound_mode = 0; // 0 decal, 1 alpha blended without the decal category, 2 opaque textured (placement / texture check)
 		bool m_dbg_toggle_ff = false;
 		bool m_dbg_do_not_restore_drawcall_context = false;
 		bool m_dbg_do_not_restore_drawcall_context_on_early_out = false;

@@ -575,6 +575,22 @@ namespace gta4
 				true
 			};
 
+			variable api_peds_wounds_enabled = {
+				"api_peds_wounds_enabled",
+				("Blood on peds (needs 'api_peds_enabled'). The ped shaders blend a wound texture by the damage of every bone; the Remix API\n"
+				 "path draws that as an alpha blended decal instance over the ped mesh, rebuilt when the ped's damage changes."),
+				"1.7.0",
+				true
+			};
+
+			variable api_peds_wounds_opacity = {
+				"api_peds_wounds_opacity",
+				("Strength of the blood on peds drawn through the Remix API: multiplies the wound weight of the ped shaders (1.0 = the game's).\n"
+				 "Values above 1 use the x2 / x4 alpha stage ops of the overlay material."),
+				"1.7.0",
+				1.2f
+			};
+
 			variable api_peds_skip_pass_setup = {
 				"api_peds_skip_pass_setup",
 				("Skip the engine's pass setup (render states, shader constants, textures) and draw of ped geometry the Remix API\n"

@@ -731,7 +731,7 @@ namespace gta4
 		}
 
 		ImGui::Spacing(0, TREENODE_SPACING);
-		if (ImGui::TreeNode("Remix API: Static Geometry ..."))
+		if (ImGui::TreeNode("Remix Api: World Meshes ..."))
 		{
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 			renderer_api::devgui();
@@ -739,7 +739,7 @@ namespace gta4
 		}
 
 		ImGui::Spacing(0, TREENODE_SPACING);
-		if (ImGui::TreeNode("Remix API: Distant Lights ..."))
+		if (ImGui::TreeNode("Remix Api: Distant Imposters ..."))
 		{
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 			distant_lights::devgui();
@@ -1838,6 +1838,15 @@ namespace gta4
 				ImGui::PushID("geometry");
 				compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
 				compsettings_bool_widget("Peds", gs->api_peds_enabled);
+				compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
+
+				ImGui::SameLine(275, 0);
+				ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
+				{
+					compsettings_float_widget("Ped Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
+					ImGui::EndDisabled();
+				}
+				
 				compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
 				ImGui::PopID();
 			});
@@ -1851,7 +1860,7 @@ namespace gta4
 			});
 
 		ImGui::Spacing(0, SEPARATOR_SPACING);
-		ImGui::Widget_CategoryWithVerticalLabel("Distant Lights", [&]()
+		ImGui::Widget_CategoryWithVerticalLabel("Distant Imposters", [&]()
 			{
 				ImGui::PushID("distantlights_api");
 				compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
@@ -1862,7 +1871,7 @@ namespace gta4
 				compsettings_float_widget("Sprite Size Scale", gs->api_distant_lights_size_scale, 0.1f, 10.0f, 0.01f);
 				ImGui::EndDisabled();
 
-				ImGui::Spacing(0, 4);
+				ImGui::Spacing(0, 8);
 				compsettings_bool_widget("Render Fake Distant Cars", gs->distant_cars_enabled);
 				compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
 
@@ -1892,10 +1901,10 @@ namespace gta4
 				ImGui::PushID("generalwater");
 				compsettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
 				compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
-				compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
-				compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
 				compsettings_bool_widget("Apply Shoreline Modifier", gs->water_apply_shoreline_modifier);
 				compsettings_bool_widget("Disable Seabed Plane", gs->water_disable_seabed_plane);
+				compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
+				compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
 				ImGui::PopID();
 			});
 
@@ -1906,7 +1915,7 @@ namespace gta4
 				compsettings_float_widget("Wave Simulation Edge Fade", gs->water_sim_edge_fade, 1.0f, 100.0f, 0.5f, "%.1f");
 				compsettings_float_widget("Wave Normal Strength", gs->water_vertex_normal_scale, 0.0f, 4.0f, 0.01f);
 
-				ImGui::Spacing(0, 4);
+				ImGui::Spacing(0, 6);
 				compsettings_bool_widget("Procedural Far Waves", gs->water_far_waves);
 				compsettings_float_widget("Far Wave Strength", gs->water_far_wave_scale, 0.0f, 4.0f, 0.01f);
 				compsettings_float_widget("Far Wave Length", gs->water_far_wave_length, 0.5f, 100.0f, 0.1f, "%.1f");
@@ -1928,12 +1937,13 @@ namespace gta4
 				compsettings_float_widget("8 Unit Cells From", gs->water_lod_radius_8, 32.0f, 600.0f, 1.0f, "%.0f");
 				ImGui::EndDisabled();
 
-				ImGui::Spacing(0, 4);
-				compsettings_float_widget("Water Block Distance Scale", gs->water_block_distance_scale, 0.1f, 10.0f, 0.01f);
-
+				ImGui::Spacing(0, 6);
 				ImGui::BeginDisabled(!api_water);
 				compsettings_bool_widget("Cull Water Outside The View", gs->api_water_cull_pieces);
 				ImGui::EndDisabled();
+				compsettings_float_widget("Water Block Distance Scale", gs->water_block_distance_scale, 0.1f, 10.0f, 0.01f);
+
+				
 				ImGui::PopID();
 			});
 
@@ -2294,7 +2304,7 @@ namespace gta4
 			}
 		}
 
-		ImGui::SameLine(0, 20.0f);
+		ImGui::SameLine(275, 0.0f);
 		if (ImGui::Button(ICON_FA_REDO "   Reload Weather Presets", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			remix_vars::parse_and_apply_weather_presets();
 		} TT("Parse and apply all conf files stored in 'rtx_comp/weather_presets/'");
@@ -2747,16 +2757,25 @@ namespace gta4
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Version 1.7.X ");
-		ImGui::Spacing(0, 4);
+		ImGui::Spacing(0, 6);
 
 		compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
 
-		ImGui::Spacing(0, 4);
+		ImGui::Spacing(0, 6);
 		remix_atmospheric_toggle();
 
-		ImGui::Spacing(0, 4);
+		ImGui::Spacing(0, 6);
 		compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
 		compsettings_bool_widget("Render Imposter Vehicles", gs->distant_cars_enabled);
+
+		ImGui::Spacing(0, 6);
+		compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
+		ImGui::SameLine(275, 0);
+		ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
+		{
+			compsettings_float_widget("Ped Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
+			ImGui::EndDisabled();
+		}
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Version 1.5.X and lower ");
@@ -3029,7 +3048,7 @@ namespace gta4
 		{
 			static float cont_wip_water_height = 0.0f;
 			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Global Wetness", cont_wip_water_height, wip_wetness_container,
-				true, ICON_FA_WAVEFORM, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+				true, ICON_FA_TOILET_PAPER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// general settingsd

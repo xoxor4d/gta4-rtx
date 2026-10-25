@@ -151,6 +151,7 @@ namespace gta4::game
 	uint32_t func_addr__CDrawPedPropDC_Execute = 0u;
 	uint32_t func_addr__CDrawPedPropsDC_Execute = 0u;
 	uint32_t func_addr__CDrawSLODPedDC_Execute = 0u;
+	uint32_t func_addr__CCustomShaderEffectPedBoneDamageFX_SetShaderVariables = 0u;
 	DWORD func_addr__CGtaDrawable_BeforeAddToDrawList = 0u;
 	DWORD func_addr__CGtaDrawable_AfterDraw = 0u;
 	void* pgDrawListMgr = nullptr;
@@ -638,6 +639,7 @@ namespace gta4::game
 		PATTERN_OFFSET_SIMPLE(func_addr__CDrawPedPropDC_Execute, "51 56 8B F1 51 0F B6 86 EF 00 00 00 66 0F 6E C0 0F B6 86 EE 00 00 00", 0, 0x8DD310);
 		PATTERN_OFFSET_SIMPLE(func_addr__CDrawPedPropsDC_Execute, "51 56 8B F1 80 BE AD 00 00 00 00 0F 84", 0, 0x8DD3B0);
 		PATTERN_OFFSET_SIMPLE(func_addr__CDrawSLODPedDC_Execute, "51 56 8B F1 51 0F B6 46 15 66 0F 6E C0 0F B6 46 14", 0, 0x8DD8B0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CCustomShaderEffectPedBoneDamageFX_SetShaderVariables, "55 8B EC 83 E4 F0 81 EC ? ? 00 00 A1 ? ? ? ? 33 C4 89 84 24 ? ? 00 00 8B 45 0C 56 8B 75 08 57 8B F9 89 7C 24 10 89 74 24 14 89 44 24 0C", 0, 0xAC6180);
 		PATTERN_OFFSET_SIMPLE(func_addr__grmShader_DrawGeometry, "A1 ? ? ? ? 53 56 8B D9 83 F8 FF 75 ? 83 3D ? ? ? ? 00 A1 ? ? ? ? 0F 45 05 ? ? ? ? 8D 0C 40 8B 43 40 0F B6 0C 01", 0, 0x42EBE0);
 		PATTERN_OFFSET_SIMPLE(func_addr__grmShader_DrawSkinned, "80 3D ? ? ? ? 00 53 55 8B 6C 24 0C 56 57 8B 7C 24 18 8B D9 74", 0, 0x42ECC0);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pBikeHelmetDrawFlag, std::uint8_t*, "80 3D ? ? ? ? 00 53 55 8B 6C 24 0C 56 57 8B 7C 24 18 8B D9 74", 2, 0x42ECC0);

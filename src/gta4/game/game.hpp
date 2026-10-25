@@ -173,6 +173,7 @@ namespace gta4::game
 	extern uint32_t func_addr__CDrawPedPropDC_Execute;
 	extern uint32_t func_addr__CDrawPedPropsDC_Execute;
 	extern uint32_t func_addr__CDrawSLODPedDC_Execute; // super low lod ped (one shared skinned model, gta_default)
+	extern uint32_t func_addr__CCustomShaderEffectPedBoneDamageFX_SetShaderVariables; // per component: bone damage palette and wound textures of a ped
 	extern DWORD func_addr__CGtaDrawable_BeforeAddToDrawList;
 	extern DWORD func_addr__CGtaDrawable_AfterDraw;
 	extern void* pgDrawListMgr;
