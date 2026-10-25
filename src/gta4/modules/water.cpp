@@ -610,6 +610,7 @@ namespace gta4
 
 		int __cdecl CWater_RenderWaterRectangle_hk(int x1, int x2, int y1, int y2, float z1, float z2, float z3, float z4)
 		{
+			PROFILE_ZONE_N("CWater::RenderWaterRectangle");
 			if (!g_api.active) {
 				return CWater_RenderWaterRectangle_og(x1, x2, y1, y2, z1, z2, z3, z4);
 			}
@@ -769,6 +770,7 @@ namespace gta4
 
 		int __cdecl CWater_RenderHighDetailWaterRectangle_hk(int x1, int x2, int y1, int y2, float z1, float z2, float z3, float z4)
 		{
+			PROFILE_ZONE_N("CWater::RenderHighDetailWaterRectangle");
 			if (!g_params.valid || !g_params.lod || bypassed()) {
 				return CWater_RenderHighDetailWaterRectangle_og(x1, x2, y1, y2, z1, z2, z3, z4);
 			}
@@ -793,6 +795,7 @@ namespace gta4
 		// the block footprint reaches out to the render phase's far distance, scaled for the water scan only
 		void __cdecl CWater_ScanThroughBlocks_hk(int phase_index)
 		{
+			PROFILE_ZONE_N("CWater::ScanThroughBlocks");
 			static const auto gs = comp_settings::get();
 
 			if (bypassed())
@@ -830,6 +833,7 @@ namespace gta4
 
 	void water::on_render_begin()
 	{
+		PROFILE_ZONE();
 		static const auto gs = comp_settings::get();
 		g_api.active = false;
 		sync_overrides();
@@ -899,6 +903,7 @@ namespace gta4
 
 	void water::on_render_end()
 	{
+		PROFILE_ZONE();
 		if (!get()) {
 			return;
 		}

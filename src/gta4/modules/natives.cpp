@@ -9,6 +9,10 @@ namespace gta4
 {
 	void on_cgame_process_hk()
 	{
+		shared::common::profiler::name_current_thread("Game");
+		PROFILE_FRAME_MARK_NAMED("Game");
+		PROFILE_ZONE();
+
 		const auto im = imgui::get();
 		const auto n = natives::get();
 

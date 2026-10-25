@@ -120,6 +120,8 @@ namespace gta4
 	DETOUR_TYPEDEF(static_world_culling_check, BOOL, __thiscall, void* this_ptr, unkown_struct_culling* unk);
 	BOOL __fastcall static_world_culling_check_hk(game::CEntity* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
 	{
+		PROFILE_ZONE_N("static world culling check");
+		PROFILE_ZONE_VALUE(this_ptr->m_wModelIndex);
 		// this = AVCBuilding : AVCEntity : AUCVirtualBase
 		auto im = imgui::get();
 		auto gs = comp_settings::get();
@@ -289,6 +291,7 @@ namespace gta4
 	// extended anti culling for objects defined via map_settings
 	int extended_anticull_hk(game::CEntity* ent)
 	{
+		PROFILE_ZONE_N("extended anti culling check");
 		const auto im = imgui::get();
 		const auto cs = comp_settings::get();
 
@@ -501,6 +504,7 @@ namespace gta4
 
 	void add_far_grid_map_sections(const int render_context)
 	{
+		PROFILE_ZONE();
 		const auto cs = comp_settings::get();
 		const auto sector_count = cs->nocull_map_areas_count._int();
 
@@ -621,6 +625,7 @@ namespace gta4
 
 	void add_near_grid_map_sections(const int render_context)
 	{
+		PROFILE_ZONE();
 		const auto cs = comp_settings::get();
 		const auto sector_count = 1;
 

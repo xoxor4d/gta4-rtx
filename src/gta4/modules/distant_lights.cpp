@@ -266,6 +266,7 @@ namespace gta4
 		// CDistantLights::RenderOutSpriteBuffer: 1820 sprites at most per flush, one grcBegin / grcEnd draw each
 		void __cdecl CDistantLights_RenderOutSpriteBuffer_hk(const float* positions, const DWORD* colors, int* count, const float* right, const float* up)
 		{
+			PROFILE_ZONE_N("CDistantLights::RenderOutSpriteBuffer");
 			static const auto gs = comp_settings::get();
 			auto& s = g_sprites;
 
@@ -388,6 +389,7 @@ namespace gta4
 
 		int __cdecl CDistantLights_Render_hk(float night_fade)
 		{
+			PROFILE_ZONE_N("CDistantLights::Render");
 			static const auto gs = comp_settings::get();
 			auto& s = g_sprites;
 			auto& st = g_stats;
@@ -536,12 +538,15 @@ namespace gta4
 			return result;
 		}
 
-		int __cdecl VehicleImposters_RenderNight_hk() {
+		int __cdecl VehicleImposters_RenderNight_hk()
+		{
+			PROFILE_ZONE_N("VehicleImposters::RenderNight");
 			return render_cars(true, VehicleImposters_RenderNight_og);
 		}
 
 		int __cdecl VehicleImposters_RenderDay_hk()
 		{
+			PROFILE_ZONE_N("VehicleImposters::RenderDay");
 			// no sprite render by day, nothing references the last sprite mesh anymore
 			destroy_mesh(g_sprites.mesh);
 			return render_cars(false, VehicleImposters_RenderDay_og);
@@ -550,6 +555,7 @@ namespace gta4
 		// uploads up to 1820 records into the instance vertex buffer and issues the instanced draw (try_draw_cars replaces it)
 		void __cdecl VehicleImposters_FlushInstances_hk(const float* records, int* count, const float* right, const float* up, int model)
 		{
+			PROFILE_ZONE_N("VehicleImposters::FlushInstances");
 			auto& c = g_cars;
 
 			if (!c.rendering || *count <= 0) {

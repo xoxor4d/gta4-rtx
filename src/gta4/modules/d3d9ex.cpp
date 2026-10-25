@@ -125,6 +125,7 @@ namespace gta4
 	{
 		s_calls_last_frame = s_calls_this_frame;
 		s_calls_this_frame = {};
+		PROFILE_PLOT("d3d9 draw calls", s_calls_last_frame[static_cast<std::size_t>(call_type::Draw)]);
 	}
 
 	// D3D9 resets viewport and scissor to the full target on SetRenderTarget(0) and Reset but the bridge's cached state does not.
@@ -145,6 +146,8 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
 	{
+		PROFILE_ZONE();
+		PROFILE_MESSAGE("D3D9 device reset");
 		shared::common::g_shader_cache.clear_cache();
 		shared::imgui::blur::release_resources();
 		ImGui_ImplDX9_InvalidateDeviceObjects();
@@ -197,6 +200,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		const auto hr = m_pIDirect3DDevice9->CreateTexture(Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
@@ -208,6 +212,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateVolumeTexture(UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateVolumeTexture(Width, Height, Depth, Levels, Usage, Format, Pool, ppVolumeTexture, pSharedHandle);
@@ -215,6 +220,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateCubeTexture(EdgeLength, Levels, Usage, Format, Pool, ppCubeTexture, pSharedHandle);
@@ -222,6 +228,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateVertexBuffer(Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle);
@@ -229,6 +236,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateIndexBuffer(Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle);
@@ -236,16 +244,19 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateRenderTarget(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle);
 	}
 
 	HRESULT d3d9ex::D3D9Device::CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateDepthStencilSurface(Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle);
 	}
 
 	HRESULT d3d9ex::D3D9Device::UpdateSurface(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint)
 	{
+		PROFILE_ZONE();
 		const auto hr = m_pIDirect3DDevice9->UpdateSurface(pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
 		if (SUCCEEDED(hr) && pDestinationSurface)
 		{
@@ -261,6 +272,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::UpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture)
 	{
+		PROFILE_ZONE();
 		const auto hr = m_pIDirect3DDevice9->UpdateTexture(pSourceTexture, pDestinationTexture);
 		if (SUCCEEDED(hr)) {
 			renderer_api::on_texture_written(pDestinationTexture);
@@ -270,6 +282,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->GetRenderTargetData(pRenderTarget, pDestSurface);
 	}
 
@@ -280,6 +293,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::StretchRect(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->StretchRect(pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter);
 	}
 
@@ -290,6 +304,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateOffscreenPlainSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; }
 
 		return m_pIDirect3DDevice9->CreateOffscreenPlainSurface(Width, Height, Format, Pool, ppSurface, pSharedHandle);
@@ -321,6 +336,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::BeginScene()
 	{
+		PROFILE_ZONE();
 		if (const auto p = performance_logger::get(); p) {
 			p->begin_frame();
 		}
@@ -334,6 +350,8 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::EndScene()
 	{
+		shared::common::profiler::name_current_thread("Render");
+
 		if (imgui::is_initialized()) {
 			imgui::get()->on_present();
 		}
@@ -364,7 +382,7 @@ namespace gta4
 
 		HRESULT hr = D3D_OK;
 		{
-			GTA4_PERF_SCOPE(performance_section::AntiCull);
+			GTA4_PERF_SCOPE(performance_section::Submit);
 			hr = m_pIDirect3DDevice9->EndScene();
 		}
 
@@ -372,11 +390,14 @@ namespace gta4
 			p->end_frame(shared::globals::frame_time_ms);
 		}
 
+		PROFILE_PLOT("frame time (ms)", shared::globals::frame_time_ms);
+		PROFILE_FRAME_MARK();
 		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::Clear(DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
 	{
+		PROFILE_ZONE();
 		g_is_rendering_phone = shared::utils::float_equal(Z, 0.1337f);
 
 		if (g_is_rendering_phone) 
@@ -613,6 +634,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 	{
+		PROFILE_ZONE();
 		count_call(call_type::Draw);
 		//return D3D_OK;
 		//pre_drawindexedprim();
@@ -631,6 +653,7 @@ namespace gta4
 		[[maybe_unused]] CONST void* pVertexStreamZeroData,
 		[[maybe_unused]] UINT VertexStreamZeroStride)
 	{
+		PROFILE_ZONE();
 		count_call(call_type::Draw);
 		//return D3D_OK;
 		return m_pIDirect3DDevice9->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -643,6 +666,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateVertexDeclaration(CONST D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateVertexDeclaration(pVertexElements, ppDecl);
 	}
 
@@ -670,6 +694,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateVertexShader(CONST DWORD* pFunction, IDirect3DVertexShader9** ppShader)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateVertexShader(pFunction, ppShader);
 	}
 
@@ -751,6 +776,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreatePixelShader(CONST DWORD* pFunction, IDirect3DPixelShader9** ppShader)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreatePixelShader(pFunction, ppShader);
 	}
 
@@ -815,6 +841,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery)
 	{
+		PROFILE_ZONE();
 		//shared::common::log("d3d9", "m_pIDirect3DDevice9->CreateQuery", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		return m_pIDirect3DDevice9->CreateQuery(Type, ppQuery);
 	}

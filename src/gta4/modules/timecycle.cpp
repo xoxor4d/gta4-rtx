@@ -158,6 +158,7 @@ namespace gta4
 
 	void timecycle::translate_and_apply_timecycle_settings()
 	{
+		PROFILE_ZONE();
 		auto unpack_uint32 = [](const uint32_t& in, float* out)
 			{
 				out[0] = static_cast<float>(in >> 16 & 0xFF) / 255.0f;

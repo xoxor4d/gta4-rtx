@@ -40,6 +40,7 @@ workspace "gta4-rtx"
     configurations { 
         "Debug", 
         "Release",
+		"ReleaseTracy",
 		"DebugSteam", 
         "ReleaseSteam",
     }
@@ -77,7 +78,7 @@ workspace "gta4-rtx"
 
 	-- Release
 
-	filter "configurations:Release"
+	filter "configurations:Release or configurations:ReleaseTracy"
 		optimize "Full"
 
 		buildoptions {
@@ -211,7 +212,7 @@ workspace "gta4-rtx"
 		"/Zm100 -Zm100" 
 	}
 
-	filter "configurations:Debug or configurations:Release"
+	filter "configurations:Debug or configurations:Release or configurations:ReleaseTracy"
 		if(os.getenv("GTA4_ROOT")) then
 			print ("Setup paths using environment variable 'GTA4_ROOT' :: '" .. os.getenv("GTA4_ROOT") .. "'")
 			targetdir(os.getenv("GTA4_ROOT"))

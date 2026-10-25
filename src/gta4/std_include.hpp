@@ -72,6 +72,7 @@ constexpr auto COMP_MOD_PRE_RELEASE_NUM = 0;
 #include "../shared/utils/memory.hpp"
 #include "../shared/utils/function.hpp"
 #include "../shared/common/console.hpp"
+#include "../shared/common/profiler.hpp"
 #include "../shared/common/loader.hpp"
 #include "game/structs.hpp"
 #include "game/model_hashes.hpp"

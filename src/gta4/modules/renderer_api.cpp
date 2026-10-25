@@ -158,7 +158,7 @@ namespace gta4
 		// shared state of every api draw, guarded by g_mutex
 
 		// one mutex for everything the render thread, the game thread (entity hook) and the streaming code touch
-		std::shared_mutex g_mutex;
+		PROFILE_SHARED_LOCKABLE(std::shared_mutex, g_mutex);
 		std::unordered_map<const void*, std::vector<geometry_record>> g_records;	// grmGeometryQB* -> records per draw state
 		std::unordered_map<std::uint64_t, mesh_record> g_meshes;					// mesh hash -> api mesh
 		std::unordered_map<std::uint64_t, material_record> g_materials;				// material key -> api material
@@ -569,6 +569,7 @@ namespace gta4
 
 			draw_state_s capture_draw_state(IDirect3DDevice9* dev)
 			{
+				PROFILE_ZONE();
 				draw_state_s s = {};
 				DWORD v = 0u;
 				dev->GetRenderState(D3DRS_ALPHATESTENABLE, &v); s.alpha_test = v != 0u;
@@ -1131,6 +1132,7 @@ namespace gta4
 			///                      (blendshape morphs) draws the pair grmGeometryQB::Draw picked this frame
 			bool read_geometry_bytes(IDirect3DDevice9* dev, const game::grmGeometryQB* geom, geometry_bytes_s& out, const bool bound_buffers = false)
 			{
+				PROFILE_ZONE();
 				const auto vb = reinterpret_cast<const game::grcVertexBufferD3D*>(geom->vertex_buffers[0]);
 				const auto ib = reinterpret_cast<const game::grcIndexBufferD3D*>(geom->index_buffers[0]);
 				const auto decl = reinterpret_cast<const game::grcVertexDeclaration*>(geom->vertex_declaration);
@@ -1477,6 +1479,7 @@ namespace gta4
 					const bool skinned,					const std::uint32_t uv_set,		const bool uv0_fallback,	const vehicles::damage_map_s* damage,	const float bound_radius,
 					const float (*flat_tyre)[4],		std::uint32_t& out_bone_count,	bool& out_uv_fallback)
 			{
+				PROFILE_ZONE();
 				const D3DVERTEXELEMENT9* pos = nullptr;
 				const D3DVERTEXELEMENT9* normal = nullptr;
 				const D3DVERTEXELEMENT9* color = nullptr;
@@ -1686,6 +1689,7 @@ namespace gta4
 			/// @note caller holds the unique lock
 			material_record* find_or_create_material(IDirect3DBaseTexture9* color_base, const char* colormap_name, const std::string_view shader_name, const draw_state_s& state, std::uint64_t& out_key)
 			{
+				PROFILE_ZONE();
 				std::uint64_t key = state.key();
 				key ^= reinterpret_cast<std::uintptr_t>(color_base) * 0x9E3779B97F4A7C15ull;
 				out_key = key;
@@ -1761,6 +1765,7 @@ namespace gta4
 
 			void destroy_mesh_locked(const std::uint64_t hash)
 			{
+				PROFILE_ZONE();
 				const auto it = g_meshes.find(hash);
 				if (it == g_meshes.end()) {
 					return;
@@ -1788,6 +1793,7 @@ namespace gta4
 
 			void enforce_cache_budget_locked()
 			{
+				PROFILE_ZONE();
 				const auto budget = static_cast<std::uint64_t>(std::max(0, comp_settings::get()->api_static_cache_mb.get_as<int>())) << 20;
 				while (g_cache_bytes > budget && !g_meshes.empty())
 				{
@@ -1879,6 +1885,7 @@ namespace gta4
 			void submit_record_locked(	const geometry_record& rec,			const remixapi_Transform& transform,	const remixapi_Transform* bones = nullptr, 
 										const std::uint64_t mesh_hash = 0u, const renderer_api::draw_pose_s::wound_s* wound = nullptr)
 			{
+				PROFILE_ZONE();
 				const auto mesh_it = g_meshes.find(mesh_hash ? mesh_hash : rec.mesh_hash);
 				if (mesh_it == g_meshes.end()) {
 					return;
@@ -1956,6 +1963,7 @@ namespace gta4
 			/// Peds of different models share component meshes and texture names (skin tones, clothing), the name is not enough.
 			std::uint64_t texture_content_hash(IDirect3DBaseTexture9* base)
 			{
+				PROFILE_ZONE();
 				if (!base || base->GetType() != D3DRTYPE_TEXTURE) {
 					return 0u;
 				}
@@ -2070,6 +2078,7 @@ namespace gta4
 			/// frame start: rebuild what was bound to the textures the game wrote since the last frame
 			void process_texture_writes()
 			{
+				PROFILE_ZONE();
 				std::vector<IDirect3DBaseTexture9*> written;
 				{
 					std::lock_guard guard(g_written_textures_mutex);
@@ -2106,6 +2115,7 @@ namespace gta4
 			DETOUR_TYPEDEF(IDirect3DTexture9_LockRect, HRESULT, __stdcall, IDirect3DTexture9* self, UINT level, D3DLOCKED_RECT* locked, const RECT* rect, DWORD flags);
 			HRESULT __stdcall IDirect3DTexture9_LockRect_hk(IDirect3DTexture9* self, const UINT level, D3DLOCKED_RECT* locked, const RECT* rect, const DWORD flags)
 			{
+				PROFILE_ZONE_N("IDirect3DTexture9::LockRect");
 				// a level 0 lock without D3DLOCK_READONLY is a write; the content is complete at the unlock
 
 				const auto hr = IDirect3DTexture9_LockRect_og(self, level, locked, rect, flags);
@@ -2120,6 +2130,7 @@ namespace gta4
 			DETOUR_TYPEDEF(IDirect3DTexture9_UnlockRect, HRESULT, __stdcall, IDirect3DTexture9* self, UINT level);
 			HRESULT __stdcall IDirect3DTexture9_UnlockRect_hk(IDirect3DTexture9* self, const UINT level)
 			{
+				PROFILE_ZONE_N("IDirect3DTexture9::UnlockRect");
 				const auto hr = IDirect3DTexture9_UnlockRect_og(self, level);
 				if (level == 0u)
 				{
@@ -2134,6 +2145,7 @@ namespace gta4
 			DETOUR_TYPEDEF(grcTexturePC_dtor, void, __thiscall, void* texture);
 			void __fastcall grcTexturePC_dtor_hk(void* texture, [[maybe_unused]] void* edx)
 			{
+				PROFILE_ZONE_N("rage::grcTexturePC::~grcTexturePC");
 				if (const auto handle = *reinterpret_cast<IDirect3DBaseTexture9* const*>(static_cast<const std::uint8_t*>(texture) + 0x18); handle) {
 					on_texture_destroyed(handle);
 				}
@@ -2239,11 +2251,11 @@ namespace gta4
 				return result;
 			}
 
-			int __fastcall CDrawPedDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { return run_in_ped_window(dc, CDrawPedDC_Execute_og); }
-			int __fastcall CDrawPlayerDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { return run_in_ped_window(dc, CDrawPlayerDC_Execute_og); }
-			int __fastcall CDrawPedPropDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { return run_in_ped_window(dc, CDrawPedPropDC_Execute_og); }
-			int __fastcall CDrawPedPropsDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { return run_in_ped_window(dc, CDrawPedPropsDC_Execute_og); }
-			int __fastcall CDrawSLODPedDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { return run_in_ped_window(dc, CDrawSLODPedDC_Execute_og); }
+			int __fastcall CDrawPedDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { PROFILE_ZONE_N("CDrawPedDC::Execute"); return run_in_ped_window(dc, CDrawPedDC_Execute_og); }
+			int __fastcall CDrawPlayerDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { PROFILE_ZONE_N("CDrawPlayerDC::Execute"); return run_in_ped_window(dc, CDrawPlayerDC_Execute_og); }
+			int __fastcall CDrawPedPropDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { PROFILE_ZONE_N("CDrawPedPropDC::Execute"); return run_in_ped_window(dc, CDrawPedPropDC_Execute_og); }
+			int __fastcall CDrawPedPropsDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { PROFILE_ZONE_N("CDrawPedPropsDC::Execute"); return run_in_ped_window(dc, CDrawPedPropsDC_Execute_og); }
+			int __fastcall CDrawSLODPedDC_Execute_hk(void* dc, [[maybe_unused]] void* edx) { PROFILE_ZONE_N("CDrawSLODPedDC::Execute"); return run_in_ped_window(dc, CDrawSLODPedDC_Execute_og); }
 
 			/// rigid ped draws use the full world matrix (c0 - c3); skinned ones get world oriented bones (c64, three registers each)
 			/// and the vertex shader only adds the world translation (c3)
@@ -2899,6 +2911,7 @@ namespace gta4
 
 			void __fastcall grmShader_DrawGeometry_hk(void* shader, [[maybe_unused]] void* edx, const game::grmModel* model, const int geometry_index, const int lod, const std::uint32_t is_last)
 			{
+				PROFILE_ZONE_N("rage::grmShader::DrawGeometry");
 				const bool enabled = peds::g_in_draw_ped_dc ? ped_pass_skip_enabled() : renderer_api::is_pass_skip_enabled();
 				if (!enabled || !in_api_draw_window() || g_is_instance_rendering || imgui::get()->m_dbg_do_not_render_static)
 				{
@@ -2949,6 +2962,7 @@ namespace gta4
 			void __fastcall grmShader_DrawSkinned_hk(void* shader,		[[maybe_unused]] void* edx,		const game::grmModel* model,	const int geometry_index, 
 													 const void* matrix_set,		 const int lod,		const std::uint32_t is_last)
 			{
+				PROFILE_ZONE_N("rage::grmShader::DrawSkinned");
 				if (!ped_pass_skip_enabled() || !peds::g_in_draw_ped_dc || g_is_instance_rendering || !game::pBikeHelmetDrawFlag || *game::pBikeHelmetDrawFlag)
 				{
 					grmShader_DrawSkinned_og(shader, model, geometry_index, matrix_set, lod, is_last);
@@ -3013,6 +3027,7 @@ namespace gta4
 
 			void __fastcall grmGeometryQB_Draw_hk(const game::grmGeometryQB* geom, [[maybe_unused]] void* edx)
 			{
+				PROFILE_ZONE_N("rage::grmGeometryQB::Draw");
 				g_current_geometry = geom;
 				grmGeometryQB_Draw_og(geom);
 				g_current_geometry = nullptr;
@@ -3020,6 +3035,7 @@ namespace gta4
 
 			void __fastcall grmGeometryQB_dtor_hk(const game::grmGeometryQB* geom, [[maybe_unused]] void* edx)
 			{
+				PROFILE_ZONE_N("rage::grmGeometryQB::~grmGeometryQB");
 				{
 					std::unique_lock lock(g_mutex);
 					if (const auto it = g_records.find(geom); it != g_records.end())
@@ -3105,6 +3121,7 @@ namespace gta4
 
 			void submit_drawable_instances(const rmcDrawable* drawable, const remixapi_Transform& transform)
 			{
+				PROFILE_ZONE();
 				const auto lod = drawable->lods[0];
 				if (!lod) {
 					return;
@@ -3142,6 +3159,7 @@ namespace gta4
 
 			void __fastcall api_entity_dc_execute(api_entity_dc* self, [[maybe_unused]] void* edx)
 			{
+				PROFILE_ZONE_N("renderer_api::api_entity_dc::Execute");
 				remixapi_Transform transform = {};
 				std::memcpy(transform.matrix, self->matrix, sizeof(transform.matrix));
 				submit_drawable_instances(self->drawable, transform);
@@ -3167,6 +3185,7 @@ namespace gta4
 			/// Skinned entries (matrix set at +0x27) use bone matrices the api path cannot carry, they stay on D3D9.
 			int __fastcall CEntityDrawInfo_RenderBuckets_hk(void* info, [[maybe_unused]] void* edx, const int bucket, const int render_mode)
 			{
+				PROFILE_ZONE_N("CEntityDrawInfo::RenderBuckets");
 				const bool skinned = *(static_cast<const std::uint8_t*>(info) + 0x27) != 0u;
 
 				g_in_draw_entity_info = skinned ? 0 : 1;
@@ -3181,6 +3200,7 @@ namespace gta4
 			/// only entries with the skinning flags at +0x1C use bone matrices, the rest draw with one world matrix like static entities
 			int __fastcall CDrawSkinnedEntityDC_Execute_hk(void* dc, [[maybe_unused]] void* edx)
 			{
+				PROFILE_ZONE_N("CDrawSkinnedEntityDC::Execute");
 				const bool skinned = *reinterpret_cast<const std::uint32_t*>(static_cast<const std::uint8_t*>(dc) + 0x1C) != 0u;
 
 				g_in_draw_dynamic_entity_dc = skinned ? 0 : 1;
@@ -3195,6 +3215,7 @@ namespace gta4
 			/// with the area lights of each geometry (T_CB_Generic_6Args draw command callback); the world matrix is set per model
 			int __cdecl CRenderer_RenderDrawableGeometriesWithLightsInArea_hk(const void* drawable, const float* matrix, const int bucket, const int lights_a, const int lights_b, const int lod)
 			{
+				PROFILE_ZONE_N("CRenderer::RenderDrawableGeometriesWithLightsInArea");
 				g_in_draw_lights_in_area = 1;
 				const auto result = CRenderer_RenderDrawableGeometriesWithLightsInArea_og(drawable, matrix, bucket, lights_a, lights_b, lod);
 				g_in_draw_lights_in_area = 0;
@@ -3211,6 +3232,9 @@ namespace gta4
 				const auto get_id = reinterpret_cast<std::uint32_t(__thiscall*)(void*)>(vtbl[0x24 / 4]);
 
 				g_current_phase_id = get_id(phase);
+
+				PROFILE_ZONE_N("CRenderPhase::BuildDrawListWrapper");
+				PROFILE_ZONE_VALUE(g_current_phase_id);
 				CRenderPhase_BuildDrawListWrapper_og(phase);
 				g_current_phase_id = 0u;
 			}
@@ -3255,6 +3279,7 @@ namespace gta4
 
 			int __fastcall CEntity_AddToDrawListBuckets_hk(CEntityPC* ent, [[maybe_unused]] void* edx, std::uint32_t bucket, std::uint32_t render_mode, std::uint8_t alpha, int lod)
 			{
+				PROFILE_ZONE_N("CEntity::AddToDrawListBuckets");
 				// the engine returns 0 unconditionally and ignores lod
 				const auto fallback = [&]() { return CEntity_AddToDrawListBuckets_og(ent, bucket, render_mode, alpha, lod); };
 
@@ -3343,6 +3368,7 @@ namespace gta4
 
 			void on_game_frame()
 			{
+				PROFILE_ZONE();
 				g_game_frame++;
 				if ((g_game_frame & 0x3FFu) == 0u)
 				{
@@ -3416,6 +3442,7 @@ namespace gta4
 
 	bool renderer_api::try_draw(IDirect3DDevice9* dev, drawcall_mod_context& ctx, const D3DPRIMITIVETYPE type, const UINT prim_count)
 	{
+		PROFILE_ZONE();
 		if (!is_enabled()) {
 			return false;
 		}
@@ -3464,6 +3491,7 @@ namespace gta4
 
 	bool renderer_api::try_draw_ped(IDirect3DDevice9* dev, drawcall_mod_context& ctx, const D3DPRIMITIVETYPE type, const UINT prim_count)
 	{
+		PROFILE_ZONE();
 		static const auto gs = comp_settings::get();
 		peds::g_ped_candidate = false;
 
@@ -3563,6 +3591,7 @@ namespace gta4
 
 	bool renderer_api::try_draw_vehicle(IDirect3DDevice9* dev, drawcall_mod_context& ctx, const D3DPRIMITIVETYPE type, const UINT prim_count, const bool overlay)
 	{
+		PROFILE_ZONE();
 		static const auto gs = comp_settings::get();
 		const bool is_tyre = ctx.info.preset_index == GTA_VEHICLE_TIRE;
 		
@@ -3894,6 +3923,7 @@ namespace gta4
 		}
 		else
 		{
+			PROFILE_ZONE_N("renderer_api::build_mesh");
 			const vehicles::damage_lock_s damage(pose && pose->damage_hash ? pose->damage_texture : nullptr);
 			
 			if (pose && pose->damage_hash && !damage.valid()) {
@@ -3912,6 +3942,8 @@ namespace gta4
 				rec.reason = reason;
 				return false;
 			}
+
+			PROFILE_ZONE_VALUE(g_vertices.size());
 
 			remixapi_MeshInfoSurfaceTriangles triangles =
 			{
@@ -4200,6 +4232,7 @@ namespace gta4
 
 	void renderer_api::on_begin_scene()
 	{
+		PROFILE_ZONE();
 		g_frame++;
 		textures::process_texture_writes();
 
@@ -4249,6 +4282,7 @@ namespace gta4
 
 	void renderer_api::on_end_scene()
 	{
+		PROFILE_ZONE();
 		{
 			const auto fingerprint = overrides_fingerprint();
 			if (fingerprint != g_overrides_fingerprint)
@@ -4301,11 +4335,19 @@ namespace gta4
 
 		std::copy(std::begin(vehicles::g_vehicle_stats_this_frame), std::end(vehicles::g_vehicle_stats_this_frame), std::begin(vehicles::g_vehicle_stats_last_frame));
 
-		if (cache::g_budget_exhausted_this_frame) {
+		if (cache::g_budget_exhausted_this_frame)
+		{
 			cache::g_budget_exhausted_frames++;
+			PROFILE_MESSAGE("renderer_api: cache budget exhausted");
 		}
 
+		PROFILE_PLOT("api instances", cache::g_instances_last_frame);
+		PROFILE_PLOT("api mesh creates", cache::g_creates_last_frame);
+		PROFILE_PLOT("api entity skips", entities::g_entity_skips_last_frame);
+		PROFILE_PLOT("api cache (MB)", g_cache_bytes >> 20u);
+
 		{
+			PROFILE_ZONE_N("renderer_api::release_unused_meshes");
 			std::unique_lock lock(g_mutex);
 			std::vector<std::uint64_t> unused;
 
@@ -4328,6 +4370,8 @@ namespace gta4
 
 	void renderer_api::destroy_all()
 	{
+		PROFILE_ZONE();
+		PROFILE_MESSAGE("renderer_api: destroyed all api meshes and materials");
 		std::unique_lock lock(g_mutex);
 		auto& bridge = shared::common::remix_api::get().m_bridge;
 

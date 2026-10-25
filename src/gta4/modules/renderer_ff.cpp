@@ -47,6 +47,7 @@ namespace gta4
 
 	void renderer_ff::on_ff_emissives(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
+		PROFILE_ZONE();
 		const auto im = imgui::get();
 		const auto cs = comp_settings::get();
 
@@ -236,6 +237,7 @@ namespace gta4
 
 	void renderer_ff::on_ff_emissives_alpha(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
+		PROFILE_ZONE();
 		const auto im = imgui::get();
 		const auto cs = comp_settings::get();
 

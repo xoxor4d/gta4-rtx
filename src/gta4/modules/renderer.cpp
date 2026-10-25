@@ -1528,6 +1528,7 @@ namespace gta4
 
 	HRESULT renderer::on_draw_primitive(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const UINT& StartVertex, const UINT& PrimitiveCount)
 	{
+		PROFILE_ZONE();
 		// needed for comp mod initialization 
 		if (!g_rendered_first_primitive) {
 			g_rendered_first_primitive = true;
@@ -3215,6 +3216,7 @@ namespace gta4
 
 	void renderer::manually_trigger_remix_injection(IDirect3DDevice9* dev)
 	{
+		PROFILE_ZONE();
 		/*if (game::CMenuManager__m_MenuActive && *game::CMenuManager__m_MenuActive) {
 			return;
 		}
@@ -3359,8 +3361,13 @@ namespace gta4
 
 	// ---
 
+	/// CWater::Render, from pre_water_render_stub to post_water_render_stub
+	shared::common::profiler::manual_zone g_water_render_zone("CWater::Render");
+
 	void on_water_render_begin()
 	{
+		g_water_render_zone.begin();
+
 		if (game::pWaterRectFrustumCull) {
 			*game::pWaterRectFrustumCull = imgui::get()->m_dbg_disable_water_rect_culling ? 0u : 1u;
 		}
@@ -3368,8 +3375,10 @@ namespace gta4
 		water::on_render_begin();
 	}
 
-	void on_water_render_end() {
+	void on_water_render_end()
+	{
 		water::on_render_end();
+		g_water_render_zone.end();
 	}
 
 	__declspec (naked) void pre_water_render_stub()

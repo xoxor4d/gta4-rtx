@@ -138,6 +138,13 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - If you have not installed a release build before, make sure to copy everything within the `assets` folder into the game directory
 - Make sure to also install: [gta4-rtx-base-mod](https://github.com/xoxor4d/gta4-rtx-base-mod)
 
+#### Profiling with Tracy
+- Build the `ReleaseTracy` configuration: a `Release` build with the [Tracy](https://github.com/wolfpld/tracy) client (v0.13.4, `deps/tracy`) compiled in.  
+  All other configurations contain no profiling code.
+- Start the game, open the Tracy 0.13.x profiler and connect to `localhost`. Data is only recorded while the profiler is connected.
+- The trace contains frame marks for the render thread (`Render`) and the game thread tick (`Game`), zones for the D3D9 and Remix API render paths, every Remix API bridge call, the culling and draw list hooks, plots (frame time, draw calls, api instances) and the locks of the api renderer
+- Run `GTAIV.exe` as administrator to also get CPU sampling and context switches of all threads (game functions without zones show up there)
+
 <br>
 <br>
 

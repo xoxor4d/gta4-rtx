@@ -187,6 +187,10 @@ namespace gta4
 		}
 		ImGui::Style_ColorButtonPop();
 
+		if constexpr (shared::common::profiler::enabled) {
+			ImGui::TextUnformatted(shared::common::profiler::is_connected() ? "Tracy: profiler connected" : "Tracy: waiting for a profiler connection");
+		}
+
 		if (ImGui::TreeNode("Performance Overlay Settings ..."))
 		{
 			ImGui::Spacing(0, 4);

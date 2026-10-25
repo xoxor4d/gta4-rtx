@@ -44,6 +44,13 @@ namespace gta4
 
 	DWORD WINAPI find_game_window_by_sha1([[maybe_unused]] LPVOID lpParam)
 	{
+		if constexpr (shared::common::profiler::enabled)
+		{
+			shared::common::profiler::name_current_thread("Mod Init");
+			shared::common::profiler::set_program_info("GTAIV",
+				std::format("GTAIV RTX Remix Compatibility Mod {}.{}.{}", COMP_MOD_VERSION_MAJOR, COMP_MOD_VERSION_MINOR, COMP_MOD_VERSION_PATCH));
+		}
+
 		shared::common::console();
 		std::uint32_t T = 0;
 
