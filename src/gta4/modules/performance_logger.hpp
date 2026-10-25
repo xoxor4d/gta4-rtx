@@ -108,11 +108,13 @@ namespace gta4
 		bool m_enabled = false;
 		bool m_popout_enabled = false;
 
-		float m_spike_hard_ms = 35.0f;
+		float m_spike_hard_ms = 21.0f;
 		float m_spike_ratio = 1.5f;
 		float m_window_bg_alpha = 0.35f;
+		float m_window_x = 0.0f;
+		float m_window_y = 0.0f;
 		float m_window_width = 600.0f;
-		float m_graph_height = 40.0f;
+		float m_graph_height = 60.0f;
 		float m_graph_bg_alpha = 0.50f;
 		bool m_display_section_table = false;
 
