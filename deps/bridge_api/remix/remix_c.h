@@ -80,9 +80,12 @@
 // PATCH 5 adds remixapi_MaterialInfoGameTexturesEXT::colorIsEmissive (the game
 // colormap doubles as the emissive texture of the keyed material). Read from
 // callers reporting >= 0.1000.5 only.
+//
+// PATCH 6 adds REMIXAPI_INSTANCE_CATEGORY_BIT_CARD_NORMALS (bent normals for
+// flat LOD card trees). Older callers never set the bit.
 #define REMIXAPI_VERSION_MAJOR 0
 #define REMIXAPI_VERSION_MINOR 1000
-#define REMIXAPI_VERSION_PATCH 5
+#define REMIXAPI_VERSION_PATCH 6
 
 
 // External
@@ -562,6 +565,8 @@ extern "C" {
     REMIXAPI_INSTANCE_CATEGORY_BIT_SMOOTH_NORMALS            = 1 << 24,
     REMIXAPI_INSTANCE_CATEGORY_BIT_HAIR_CARDS                = 1 << 25,
     REMIXAPI_INSTANCE_CATEGORY_BIT_VIEW_MODEL                = 1 << 26,
+    // 0.1000.6: shaded with a bent normal (card center to hit point, mixed with world up) instead of the vertex normals; for flat LOD card trees.
+    REMIXAPI_INSTANCE_CATEGORY_BIT_CARD_NORMALS              = 1 << 27,
   } remixapi_InstanceCategoryBit;
 
   typedef uint32_t remixapi_InstanceCategoryFlags;

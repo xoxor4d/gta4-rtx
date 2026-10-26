@@ -691,6 +691,7 @@ namespace gta4
 					REMIXAPI_INSTANCE_CATEGORY_BIT_SMOOTH_NORMALS,
 					REMIXAPI_INSTANCE_CATEGORY_BIT_HAIR_CARDS,
 					0u, // DisableBackfaceCulling: doubleSided
+					REMIXAPI_INSTANCE_CATEGORY_BIT_CARD_NORMALS,
 				};
 				static_assert(std::size(API_BITS) == static_cast<std::size_t>(InstanceCategories::Count));
 

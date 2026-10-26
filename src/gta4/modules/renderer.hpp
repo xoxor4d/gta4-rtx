@@ -147,7 +147,8 @@ namespace gta4
 		SmoothNormals = 1 << 23,
 		HairCards = 1 << 24,
 		DisableBackfaceCulling = 1 << 25,
-		Count = 26,
+		CardNormals = 1 << 26,
+		Count = 27,
 		None = 0u
 	};
 
