@@ -21,6 +21,9 @@ namespace gta4
 		void	draw_debug();
 		void	iterate_all_game_lights();
 
+		/// dev tab: readout, preview and key editor of the atmos sun's path through the day
+		static void devgui_atmos_sun();
+
 	private:
 		bool m_initialized = false;
 	};

@@ -3,6 +3,7 @@
 #include "renderer_api.hpp"
 #include "water.hpp"
 #include "distant_lights.hpp"
+#include "game_lights.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui_internal.h"
@@ -131,7 +132,11 @@ namespace gta4
 			ImGui::SetNextItemWidth(clock_widget_width - ImGui::CalcTextSize("Minutes").x - style.ItemInnerSpacing.x);
 			if (ImGui::InputInt("Minutes", &im->m_curr_game_minute, 1, 4))
 			{
-				im->m_curr_game_minute = im->m_curr_game_minute > 59 ? 0 : im->m_curr_game_minute < 0 ? 59 : im->m_curr_game_minute;
+				// minutes carry into the hour in both directions
+				const int total = im->m_curr_game_hour * 60 + im->m_curr_game_minute;
+				const int wrapped = ((total % 1440) + 1440) % 1440;
+				im->m_curr_game_hour = wrapped / 60;
+				im->m_curr_game_minute = wrapped % 60;
 				im->m_time_was_changed = true;
 			}
 			ImGui::EndDisabled();
@@ -974,240 +979,148 @@ namespace gta4
 		if (ImGui::TreeNode("Timecycle related ..."))
 		{
 			const auto bridge = shared::common::remix_api::get().m_bridge;
+			constexpr float end_padding = 12.0f;
+			const float width = ImGui::GetContentRegionAvail().x - end_padding;
+			const float half_width = width * 0.5f;
 
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::SeparatorText("Game weather and clock");
 
-			ImGui::SeparatorText("Remix Atmos System");
-			ImGui::TextUnformatted("Logic to adjust current Atmos Preset and Blending strength");
+			const auto weather_name = [](const game::eWeatherType* type) -> const char* {
+				return type && *type < game::WEATHER_NONE ? game::eWeatherTypeStr[*type] + 8 : "unknown"; // without the WEATHER_ prefix
+			};
+
+			ImGui::Text("Weather: %s -> %s, transition %.2f", weather_name(game::weather_type_prev), weather_name(game::weather_type_new),
+				game::weather_change_value ? *game::weather_change_value : 0.0f);
+			ImGui::Text("Clock: %02d:%02d", *game::m_game_clock_hours, *game::m_game_clock_minutes);
+
+			ImGui::SetNextItemWidth(half_width);
+			ImGui::SliderInt("Timecycle used for the Remix translation", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
+			TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
+				"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
+
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::SeparatorText("Remix atmos system");
 
-			ImGui::Checkbox("Atmos System - Manual Mode", &im->m_dbg_manual_atmos_system);
+			ImGui::Checkbox("Manual mode", &im->m_dbg_manual_atmos_system);
+			TT("The mod stops driving the atmos preset and blend, the controls below set them directly.");
 
 			ImGui::BeginDisabled(!im->m_dbg_manual_atmos_system);
 			{
 				/* clear, partlyCloudy, overcast, hazy, foggy, drizzle, rainstorm, thunderstorm, snow, blizzard,
 				 * sandstorm, smoggy. Empty string to return to dormant. */
 
-				if (ImGui::Button("clear")) {
-					bridge.SetGameValue("__weather.target", "clear");
-				} TT("EXTRASUNNY");
+				struct preset_s { const char* name; const char* game_weather; };
+				constexpr preset_s PRESETS[] =
+				{
+					{ "clear", "EXTRASUNNY" }, { "smoggy", "SUNNY" }, { "partlyCloudy", "SUNNY_WINDY" }, { "overcast", "CLOUDY" },
+					{ "drizzle", "DRIZZLE" }, { "foggy", "FOGGY" }, { "rainstorm", "RAIN" }, { "thunderstorm", "LIGHTNING" },
+				};
 
-				ImGui::SameLine();
-				if (ImGui::Button("smoggy")) {
-					bridge.SetGameValue("__weather.target", "smoggy");
-				} TT("SUNNY");
+				const float preset_width = (width - ImGui::GetStyle().ItemSpacing.x * 3.0f) * 0.25f;
+				for (std::size_t i = 0u; i < std::size(PRESETS); i++)
+				{
+					if (i % 4u) {
+						ImGui::SameLine();
+					}
 
-				ImGui::SameLine();
-				if (ImGui::Button("partlyCloudy")) {
-					bridge.SetGameValue("__weather.target", "partlyCloudy");
-				} TT("SUNNY_WINDY");
-
-				ImGui::SameLine();
-				if (ImGui::Button("overcast")) {
-					bridge.SetGameValue("__weather.target", "overcast");
-				} TT("CLOUDY");
-
-				if (ImGui::Button("drizzle")) {
-					bridge.SetGameValue("__weather.target", "drizzle");
+					if (ImGui::Button(PRESETS[i].name, ImVec2(preset_width, 0.0f))) {
+						bridge.SetGameValue("__weather.target", PRESETS[i].name);
+					}
+					TT(PRESETS[i].game_weather);
 				}
 
-				ImGui::SameLine();
-				if (ImGui::Button("foggy")) {
-					bridge.SetGameValue("__weather.target", "foggy");
-				}
-
-				ImGui::SameLine();
-				if (ImGui::Button("rainstorm")) {
-					bridge.SetGameValue("__weather.target", "rainstorm");
-				} TT("RAIN");
-
-				ImGui::SameLine();
-				if (ImGui::Button("thunderstorm")) {
-					bridge.SetGameValue("__weather.target", "thunderstorm");
-				} TT("LIGHTNING");
-
-				ImGui::SameLine();
-				
-
-				ImGui::Spacing(0, TREENODE_SPACING);
-				ImGui::Separator();
-				ImGui::Spacing(0, TREENODE_SPACING);
+				ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 
 				static float trans_val = 0.0f;
-				ImGui::SliderFloat("Absolute Val", &trans_val, 0.0f, 1.0f);
-
-				if (ImGui::Button("Apply Absolute Value", ImVec2(ImGui::CalcItemWidth(), 0))) {
+				ImGui::SetNextItemWidth(half_width);
+				ImGui::SliderFloat("##blend_absolute", &trans_val, 0.0f, 1.0f, "absolute blend %.2f");
+				ImGui::SameLine();
+				if (ImGui::Button("Apply##absolute")) {
 					bridge.SetGameValue("__weather.blend_absolute", std::to_string(trans_val).c_str());
 				}
 
-				if (ImGui::Button("Disable Absolute Mode", ImVec2(ImGui::CalcItemWidth(), 0))) 
+				ImGui::SameLine();
+				if (ImGui::Button("Disable absolute mode"))
 				{
 					bridge.SetGameValue("__weather.blend_absolute", "-1");
 					trans_val = -1.0f;
 				}
 
-				ImGui::Spacing(0, TREENODE_SPACING);
-				ImGui::Separator();
-				ImGui::Spacing(0, TREENODE_SPACING);
-
 				static float trans_blend_val = 0.0f;
-				ImGui::SliderFloat("Transition Blend Val", &trans_blend_val, 0.0f, 10.0f);
-				TT("Blend time in s");
-
-				if (ImGui::Button("Apply Blend Value", ImVec2(ImGui::CalcItemWidth(), 0)))
+				ImGui::SetNextItemWidth(half_width);
+				ImGui::SliderFloat("##blend_seconds", &trans_blend_val, 0.0f, 10.0f, "transition %.1f s");
+				ImGui::SameLine();
+				if (ImGui::Button("Apply##seconds"))
 				{
 					bridge.SetGameValue("__weather.blend_absolute", "-1.0");
 					bridge.SetGameValue("__weather.blend_seconds", std::to_string(trans_blend_val).c_str());
 				}
 
-				ImGui::Spacing(0, TREENODE_SPACING);
-				ImGui::Separator();
-				ImGui::Spacing(0, TREENODE_SPACING);
+				ImGui::EndDisabled();
+			}
 
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			if (ImGui::BeginTable("##atmos_state", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_PadOuterX, ImVec2(width, 0.0f)))
+			{
 				static char str_buff[512] = {};
 				static uint32_t str_len = 0u;
+				constexpr const char* VALUES[] = { "__weather.current", "__weather.target", "__weather.previous", "__weather.blend_absolute", "__weather.blend_progress" };
 
-				bridge.GetGameValue("__weather.current", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_current = str_buff;
+				for (const auto value : VALUES)
+				{
+					bridge.GetGameValue(value, str_buff, ARRAYSIZE(str_buff), &str_len);
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(value);
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(str_buff);
+				}
 
-				bridge.GetGameValue("__weather.target", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_target = str_buff;
-
-				bridge.GetGameValue("__weather.previous", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_previous = str_buff;
-
-				bridge.GetGameValue("__weather.blend_absolute", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_blend_absolute = str_buff;
-
-				bridge.GetGameValue("__weather.blend_progress", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_blend_progress = str_buff;
-
-				ImGui::TextUnformatted(std::format("__weather.current: {}", weather_current).c_str());
-				ImGui::TextUnformatted(std::format("__weather.target: {}", weather_target).c_str());
-				ImGui::TextUnformatted(std::format("__weather.previous: {}", weather_previous).c_str());
-				ImGui::TextUnformatted(std::format("__weather.blend_absolute: {}", weather_blend_absolute).c_str());
-				ImGui::TextUnformatted(std::format("__weather.blend_progress: {}", weather_blend_progress).c_str());
-
-				ImGui::EndDisabled();
+				ImGui::EndTable();
 			}
 
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			ImGui::Separator();
+			ImGui::SeparatorText("Atmos sun");
+			game_lights::devgui_atmos_sun();
+
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::SeparatorText("Wetness");
 
-			ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
-			TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
-				"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
+			ImGui::Checkbox("Override global wetness", &im->m_dbg_global_wetness_override);
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
+			ImGui::SetNextItemWidth(half_width);
+			ImGui::SliderFloat("##global_wetness", &im->m_dbg_global_wetness, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::EndDisabled();
 
-			if (game::weather_type_prev)
+			ImGui::Checkbox("Occlusion test allowed on ignored surfaces", &im->m_dbg_global_wetness_occl_allow_on_ignored);
+			ImGui::SetNextItemWidth(half_width);
+			ImGui::DragFloat("Rain marker height offset", &im->m_dbg_global_wetness_rain_marker_height_offset, 0.05f, -100.0f, 100.0f, "%.0f");
+
+			const auto& wet = timecycle::get_wetness_state();
+			if (ImGui::BeginTable("##wetness_state", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_PadOuterX, ImVec2(width, 0.0f)))
 			{
-				switch (*game::weather_type_prev)
+				const auto row = [](const char* name, const std::string& value)
 				{
-				case game::WEATHER_EXTRASUNNY:
-					ImGui::TextUnformatted("WeatherPrev: EXTRASUNNY"); break;
-				case game::WEATHER_SUNNY:
-					ImGui::TextUnformatted("WeatherPrev: SUNNY"); break;
-				case game::WEATHER_SUNNY_WINDY:
-					ImGui::TextUnformatted("WeatherPrev: SUNNY_WINDY"); break;
-				case game::WEATHER_CLOUDY:
-					ImGui::TextUnformatted("WeatherPrev: CLOUDY"); break;
-				case game::WEATHER_RAIN:
-					ImGui::TextUnformatted("WeatherPrev: RAIN"); break;
-				case game::WEATHER_DRIZZLE:
-					ImGui::TextUnformatted("WeatherPrev: DRIZZLE"); break;
-				case game::WEATHER_FOGGY:
-					ImGui::TextUnformatted("WeatherPrev: FOGGY"); break;
-				case game::WEATHER_LIGHTNING:
-					ImGui::TextUnformatted("WeatherPrev: LIGHTNING"); break;
-				default:
-					ImGui::TextUnformatted("WeatherPrev: UNKOWN"); break;
-				}
-			}
-
-			if (game::weather_type_new)
-			{
-				switch (*game::weather_type_new)
-				{
-				case game::WEATHER_EXTRASUNNY:
-					ImGui::TextUnformatted("WeatherNew: EXTRASUNNY"); break;
-				case game::WEATHER_SUNNY:
-					ImGui::TextUnformatted("WeatherNew: SUNNY"); break;
-				case game::WEATHER_SUNNY_WINDY:
-					ImGui::TextUnformatted("WeatherNew: SUNNY_WINDY"); break;
-				case game::WEATHER_CLOUDY:
-					ImGui::TextUnformatted("WeatherNew: CLOUDY"); break;
-				case game::WEATHER_RAIN:
-					ImGui::TextUnformatted("WeatherNew: RAIN"); break;
-				case game::WEATHER_DRIZZLE:
-					ImGui::TextUnformatted("WeatherNew: DRIZZLE"); break;
-				case game::WEATHER_FOGGY:
-					ImGui::TextUnformatted("WeatherNew: FOGGY"); break;
-				case game::WEATHER_LIGHTNING:
-					ImGui::TextUnformatted("WeatherNew: LIGHTNING"); break;
-				default:
-					ImGui::TextUnformatted("WeatherNew: UNKOWN"); break;
-				}
-			}
-
-			ImGui::Text("Weather Transition: %.2f", *game::weather_change_value);
-			ImGui::Text("Clock Hour: %d", *game::m_game_clock_hours);
-			ImGui::Text("Clock Minutes: %d", *game::m_game_clock_minutes);
-
-			auto frac = [](const float& x) {
-					return x - std::floor(x);
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(name);
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(value.c_str());
 				};
 
-			im->m_plot_sun_lerp.add(frac(im->m_dbg_vis_sun_lerp_t));
-			im->m_plot_sun_elevation.add(frac(im->m_dbg_vis_sun_elevation));
-			im->m_plot_sun_rotation.add(frac(im->m_dbg_vis_sun_rotation));
-			im->m_plot_sun_framecount.add(static_cast<float>(im->m_dbg_vis_sun_frame_count % 1000)); // count wrapped every 1000 frames
-
-			ImGui::PlotLines(	"Atmos Sun Lerp T", im->m_plot_sun_lerp.values,
-								imgui::debug_plot::history_size, im->m_plot_sun_lerp.offset, nullptr,
-								0.0f, 1.0f, ImVec2(0, 60));
-
-			ImGui::PlotLines(	"Atmos Sun Elevation", im->m_plot_sun_elevation.values,
-								imgui::debug_plot::history_size, im->m_plot_sun_elevation.offset, nullptr, 
-								0.0f, 1.0f, ImVec2(0, 60));
-
-			ImGui::PlotLines(	"Atmos Sun Rotation", im->m_plot_sun_rotation.values,
-								imgui::debug_plot::history_size, im->m_plot_sun_rotation.offset, nullptr,
-								0.0f, 1.0f, ImVec2(0, 60));
-
-			ImGui::PlotLines(	"Atmos Sun Framecount", im->m_plot_sun_framecount.values, 
-								imgui::debug_plot::history_size, im->m_plot_sun_framecount.offset, nullptr, 
-								0.0f, 1000.0f, ImVec2(0, 60));
-
-			ImGui::Text("Atmos Sun Lerp T: %.5f", im->m_dbg_vis_sun_lerp_t);
-			ImGui::Text("Atmos Sun Elevation: %.5f", im->m_dbg_vis_sun_elevation);
-			ImGui::Text("Atmos Sun Rotation: %.5f", im->m_dbg_vis_sun_rotation);
-			ImGui::Text("Atmos Sun Framecount: %d", im->m_dbg_vis_sun_frame_count);
-
-			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			ImGui::Separator();
-			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-
-			ImGui::Checkbox("Override Global Wetness Scale", &im->m_dbg_global_wetness_override);
-			ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
-			{
-				ImGui::SliderFloat("Global Wetness", &im->m_dbg_global_wetness, 0, 1, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				ImGui::EndDisabled();
+				row("Game wetness", std::format("{:.3f}", wet.game));
+				row("Effective wetness", std::format("{:.3f}", wet.effective));
+				row("Phase", wet.phase == timecycle::wetness_phase::after_rain ? "After rain" : "Follow game");
+				row("After-rain level (peak)", std::format("{:.3f} ({:.3f})", wet.level, wet.peak));
+				row("After-rain timer", std::format("{:.1f} s", wet.timer));
+				row("Ripple strength", std::format("{:.4f}", wet.ripple_strength));
+				row("Vehicle wetness", std::format("{:.3f}", wet.vehicle));
+				ImGui::EndTable();
 			}
 
-			ImGui::Checkbox("Wetness OcclTest Allow on Ignored", &im->m_dbg_global_wetness_occl_allow_on_ignored); TT("Allows occlusion tests on ignored surfaces.");
-			ImGui::DragFloat("Wetness Rain Marker Height Offset", &im->m_dbg_global_wetness_rain_marker_height_offset, 0.05f, -100.0f, 100.0f, "%.0f");
-
-			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			const auto& wet = timecycle::get_wetness_state();
-			ImGui::Text("Game Wetness: %.3f", wet.game);
-			ImGui::Text("Effective Wetness: %.3f", wet.effective);
-			ImGui::Text("Phase: %s", wet.phase == timecycle::wetness_phase::after_rain ? "After Rain" : "Follow Game");
-			ImGui::Text("After-Rain Level: %.3f (Peak: %.3f)", wet.level, wet.peak);
-			ImGui::Text("After-Rain Timer: %.1fs", wet.timer);
-			ImGui::Text("Ripple Strength: %.4f", wet.ripple_strength);
-			ImGui::Text("Vehicle Wetness: %.3f", wet.vehicle);
-
-			if (ImGui::Button("Reset After-Rain Wetness")) {
+			if (ImGui::Button("Reset after-rain wetness")) {
 				timecycle::reset_wetness();
 			}
 
@@ -1871,6 +1784,7 @@ namespace gta4
 				ImGui::BeginDisabled(!gs->api_distant_lights_enabled.get_as<bool>());
 				compsettings_float_widget("Sprite Emissive Scale", gs->api_distant_lights_emissive_scale, 0.0f, 50.0f, 0.01f);
 				compsettings_float_widget("Sprite Size Scale", gs->api_distant_lights_size_scale, 0.1f, 10.0f, 0.01f);
+				compsettings_float_widget("Sprite Size Scale (Foggy)", gs->api_distant_lights_size_scale_foggy, 0.1f, 10.0f, 0.01f);
 				ImGui::EndDisabled();
 
 				ImGui::Spacing(0, 8);
