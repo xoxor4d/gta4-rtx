@@ -150,6 +150,7 @@ namespace gta4
 		PROFILE_MESSAGE("D3D9 device reset");
 		shared::common::g_shader_cache.clear_cache();
 		shared::imgui::blur::release_resources();
+		imgui::on_device_reset();
 		ImGui_ImplDX9_InvalidateDeviceObjects();
 		const auto hr = m_pIDirect3DDevice9->Reset(pPresentationParameters);
 

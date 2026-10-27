@@ -6435,6 +6435,235 @@ namespace gta4
 		ImGui::End();
 	}
 
+	namespace
+	{
+		// Whether Windows has HDR on for the display showing `window`, asked the way Remix asks it when it
+		// creates the back buffers. Advanced color with wide color enforced is SDR auto color management.
+		bool windows_hdr_enabled(HWND window)
+		{
+			if (!window) {
+				return false;
+			}
+
+			MONITORINFOEXW monitor_info = {};
+			monitor_info.cbSize = sizeof(monitor_info);
+			if (!GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor_info)) {
+				return false;
+			}
+
+			UINT32 path_count = 0u;
+			UINT32 mode_count = 0u;
+			if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS) {
+				return false;
+			}
+
+			std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
+			std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
+			if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS) {
+				return false;
+			}
+
+			for (UINT32 i = 0u; i < path_count; i++)
+			{
+				DISPLAYCONFIG_SOURCE_DEVICE_NAME source_name = {};
+				source_name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+				source_name.header.size = sizeof(source_name);
+				source_name.header.adapterId = paths[i].sourceInfo.adapterId;
+				source_name.header.id = paths[i].sourceInfo.id;
+				if (DisplayConfigGetDeviceInfo(&source_name.header) != ERROR_SUCCESS
+					|| wcscmp(source_name.viewGdiDeviceName, monitor_info.szDevice) != 0) {
+					continue;
+				}
+
+				DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO color_info = {};
+				color_info.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
+				color_info.header.size = sizeof(color_info);
+				color_info.header.adapterId = paths[i].targetInfo.adapterId;
+				color_info.header.id = paths[i].targetInfo.id;
+				if (DisplayConfigGetDeviceInfo(&color_info.header) != ERROR_SUCCESS) {
+					return false;
+				}
+
+				return color_info.advancedColorEnabled && !color_info.wideColorEnforced;
+			}
+
+			return false;
+		}
+
+		// Remix creates a float back buffer while Windows HDR is on. D3DRS_SRGBWRITEENABLE has no effect on
+		// it, so the ImGui pass is rendered into an 8-bit target with its usual sRGB states and composited
+		// onto the back buffer as premultiplied color, which keeps the SDR look. The bridge reports the
+		// format the game asked for, so the decision repeats Remix's: Windows HDR at back buffer creation.
+		// On an SDR back buffer the detour only costs the extra target.
+		struct hdr_ui_target
+		{
+			IDirect3DTexture9* texture = nullptr;
+			IDirect3DSurface9* surface = nullptr;
+			IDirect3DSurface9* backup = nullptr;
+			D3DVIEWPORT9 game_viewport = {};
+			UINT width = 0u;
+			UINT height = 0u;
+			bool evaluated = false;
+			bool wanted = false;
+			bool active = false;
+
+			void release()
+			{
+				if (surface)
+				{
+					surface->Release();
+					surface = nullptr;
+				}
+
+				if (texture)
+				{
+					texture->Release();
+					texture = nullptr;
+				}
+
+				width = 0u;
+				height = 0u;
+				evaluated = false;
+			}
+
+			void begin(IDirect3DDevice9* dev)
+			{
+				active = false;
+
+				IDirect3DSurface9* back_buffer = nullptr;
+				if (FAILED(dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer)) || !back_buffer) {
+					return;
+				}
+
+				D3DSURFACE_DESC desc;
+				back_buffer->GetDesc(&desc);
+				back_buffer->Release();
+
+				if (texture && (width != desc.Width || height != desc.Height)) {
+					release();
+				}
+
+				if (!evaluated)
+				{
+					evaluated = true;
+					wanted = windows_hdr_enabled(shared::globals::main_window);
+				}
+
+				if (!wanted) {
+					return;
+				}
+
+				if (!texture)
+				{
+					if (FAILED(dev->CreateTexture(desc.Width, desc.Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, nullptr))
+						|| FAILED(texture->GetSurfaceLevel(0, &surface)))
+					{
+						release();
+						return;
+					}
+
+					width = desc.Width;
+					height = desc.Height;
+				}
+
+				if (FAILED(dev->GetRenderTarget(0, &backup))) {
+					return;
+				}
+
+				dev->GetViewport(&game_viewport);
+
+				// SetRenderTarget resets the viewport to the whole target. Clear still honours the scissor rect.
+				DWORD scissor = FALSE;
+				dev->GetRenderState(D3DRS_SCISSORTESTENABLE, &scissor);
+				dev->SetRenderTarget(0, surface);
+				dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+				dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0);
+				dev->SetRenderState(D3DRS_SCISSORTESTENABLE, scissor);
+				active = true;
+			}
+
+			void end(IDirect3DDevice9* dev)
+			{
+				if (!active) {
+					return;
+				}
+
+				active = false;
+				dev->SetRenderTarget(0, backup);
+				backup->Release();
+				backup = nullptr;
+
+				IDirect3DStateBlock9* state_block = nullptr;
+				if (FAILED(dev->CreateStateBlock(D3DSBT_ALL, &state_block)))
+				{
+					dev->SetViewport(&game_viewport);
+					return;
+				}
+				state_block->Capture();
+
+				struct vertex { float x, y, z, rhw, u, v; };
+				const float w = static_cast<float>(width);
+				const float h = static_cast<float>(height);
+				const vertex quad[4] =
+				{
+					{ -0.5f,    -0.5f,    0.0f, 1.0f, 0.0f, 0.0f },
+					{ w - 0.5f, -0.5f,    0.0f, 1.0f, 1.0f, 0.0f },
+					{ -0.5f,    h - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f },
+					{ w - 0.5f, h - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f },
+				};
+
+				const D3DVIEWPORT9 viewport = { 0, 0, width, height, 0.0f, 1.0f };
+				dev->SetViewport(&viewport);
+				dev->SetPixelShader(nullptr);
+				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+				dev->SetTexture(0, texture);
+				dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+				dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+				dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+				dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+				dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+				dev->SetRenderState(D3DRS_STENCILENABLE, FALSE);
+				dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+				dev->SetRenderState(D3DRS_LIGHTING, FALSE);
+				dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+				dev->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+				dev->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
+				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+				dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+				dev->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+				dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
+				dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+				dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+				dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+				dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+				dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+				dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(vertex));
+
+				state_block->Apply();
+				state_block->Release();
+				dev->SetViewport(&game_viewport);
+			}
+		};
+
+		hdr_ui_target g_hdr_ui_target;
+	}
+
+	// The back buffers are recreated on reset, and with them Remix's HDR decision.
+	void imgui::on_device_reset()
+	{
+		g_hdr_ui_target.release();
+	}
+
 	void imgui::on_present()
 	{
 		GTA4_PERF_SCOPE(performance_section::ImGui);
@@ -6524,7 +6753,9 @@ namespace gta4
 					shared::globals::imgui_is_rendering = true;
 					ImGui::EndFrame();
 					ImGui::Render();
+					g_hdr_ui_target.begin(dev);
 					ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+					g_hdr_ui_target.end(dev);
 					shared::globals::imgui_is_rendering = false;
 
 					// restore

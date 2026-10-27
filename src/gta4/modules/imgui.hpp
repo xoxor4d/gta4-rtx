@@ -12,6 +12,7 @@ namespace gta4
 		static imgui* get() { return p_this; }
 
 		static void on_present();
+		static void on_device_reset();
 
 		void draw_debug();
 		void devgui();
