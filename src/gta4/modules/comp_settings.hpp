@@ -1559,6 +1559,15 @@ namespace gta4
 				1.0f
 			};
 
+			variable api_distant_lights_size_scale_foggy =
+			{
+				"api_distant_lights_size_scale_foggy",
+				("Size multiplier of the distant light sprites drawn through the Remix API while the weather is foggy (the game enlarges them\n"
+				 "in fog). The game's weather transition blends between 'api_distant_lights_size_scale' and this value."),
+				"1.7.0",
+				1.5f
+			};
+
 			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =
 			{

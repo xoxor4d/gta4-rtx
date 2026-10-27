@@ -263,11 +263,30 @@ namespace gta4
 			g_sprites.vertices.push_back(vert);
 		}
 
+		// size multiplier of the sprites under a weather type: the game enlarges them in fog
+		float sprite_size_scale(const game::eWeatherType weather)
+		{
+			static const auto gs = comp_settings::get();
+			const auto& setting = weather == game::WEATHER_FOGGY ? gs->api_distant_lights_size_scale_foggy : gs->api_distant_lights_size_scale;
+			return std::max(setting._float(), 0.0f);
+		}
+
+		// the multiplier of the current weather: the game blends its previous weather into the new one with weather_change_value
+		// (0 = previous, 1 = new), the sprite size follows the same blend
+		float current_sprite_size_scale()
+		{
+			if (!game::weather_type_prev || !game::weather_type_new || !game::weather_change_value) {
+				return sprite_size_scale(game::WEATHER_NONE);
+			}
+
+			const float blend = std::clamp(*game::weather_change_value, 0.0f, 1.0f);
+			return std::lerp(sprite_size_scale(*game::weather_type_prev), sprite_size_scale(*game::weather_type_new), blend);
+		}
+
 		// CDistantLights::RenderOutSpriteBuffer: 1820 sprites at most per flush, one grcBegin / grcEnd draw each
 		void __cdecl CDistantLights_RenderOutSpriteBuffer_hk(const float* positions, const DWORD* colors, int* count, const float* right, const float* up)
 		{
 			PROFILE_ZONE_N("CDistantLights::RenderOutSpriteBuffer");
-			static const auto gs = comp_settings::get();
 			auto& s = g_sprites;
 
 			if (!s.capturing)
@@ -290,7 +309,7 @@ namespace gta4
 				capture_sprite_state(shared::globals::d3d_device, positions);
 			}
 
-			const float scale = std::max(gs->api_distant_lights_size_scale.get_as<float>(), 0.0f);
+			const float scale = current_sprite_size_scale();
 			const float r_minus_u[3] = { (right[0] - up[0]) * scale, (right[1] - up[1]) * scale, (right[2] - up[2]) * scale };
 			const float r_plus_u[3] = { (right[0] + up[0]) * scale, (right[1] + up[1]) * scale, (right[2] + up[2]) * scale };
 
@@ -749,6 +768,9 @@ namespace gta4
 		} else {
 			ImGui::Text("Sprites: %u game flushes drawn through D3D9%s", s.sprite_flushes, s.sprites_warming_up ? " (texture warm up, api from the next render)" : "");
 		}
+
+		ImGui::Text("Sprite size scale: %.2f (weather blend %.2f of previous -> new)", current_sprite_size_scale(),
+			game::weather_change_value ? std::clamp(*game::weather_change_value, 0.0f, 1.0f) : 1.0f);
 
 		if (!s.cars_rendered) {
 			ImGui::TextUnformatted("Cars: not rendered (disabled or -disableimposters)");

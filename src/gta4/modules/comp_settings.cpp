@@ -314,6 +314,7 @@ namespace gta4
 				ASSIGN(api_distant_lights_emissive_scale);
 				ASSIGN(api_distant_cars_emissive_scale);
 				ASSIGN(api_distant_lights_size_scale);
+				ASSIGN(api_distant_lights_size_scale_foggy);
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
 				ASSIGN(gta_rmptfx_litsprite_unlit);
