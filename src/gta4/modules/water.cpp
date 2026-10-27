@@ -284,25 +284,26 @@ namespace gta4
 			return s;
 		}
 
-		// height on the lattice of a cell size, bilinear in between: along axis aligned edges it is linear, so pieces of
-		// different cell sizes meet without cracks
-		float lattice_height(const int x, const int y, const int step)
+		// height inside a lattice cell, linear over the triangle the point lies in. The cell is split along the
+		// (x0 + step, y0) - (x0, y0 + step) diagonal like the quads of a piece (draw_piece orders the corners), so a vertex off
+		// the lattice lies on the surface the aligned pieces around it draw: the water quads the game stacks 0.2 mm apart
+		// (water.dat, some piers) stay coincident however each of them is tessellated
+		template <typename Height>
+		float lattice_interpolate(const int x, const int y, const int step, const Height& height)
 		{
 			const int x0 = floor_to(x, step);
 			const int y0 = floor_to(y, step);
-
-			if (x0 == x && y0 == y) {
-				return sample_combined(x, y, nullptr).h;
-			}
-
 			const float tx = static_cast<float>(x - x0) / step;
 			const float ty = static_cast<float>(y - y0) / step;
-			const float h00 = sample_combined(x0, y0, nullptr).h;
-			const float h10 = tx > 0.0f ? sample_combined(x0 + step, y0, nullptr).h : h00;
-			const float h01 = ty > 0.0f ? sample_combined(x0, y0 + step, nullptr).h : h00;
-			const float h11 = tx > 0.0f && ty > 0.0f ? sample_combined(x0 + step, y0 + step, nullptr).h : (tx > 0.0f ? h10 : h01);
 
-			return (h00 * (1.0f - tx) + h10 * tx) * (1.0f - ty) + (h01 * (1.0f - tx) + h11 * tx) * ty;
+			if (tx + ty >= 1.0f)
+			{
+				const float h11 = height(x0 + step, y0 + step);
+				return h11 + (height(x0, y0 + step) - h11) * (1.0f - tx) + (height(x0 + step, y0) - h11) * (1.0f - ty);
+			}
+
+			const float h00 = height(x0, y0);
+			return h00 + (height(x0 + step, y0) - h00) * tx + (height(x0, y0 + step) - h00) * ty;
 		}
 
 		int lod_cheb_distance(const int x, const int y) {
@@ -323,30 +324,48 @@ namespace gta4
 			return 2 << ring;
 		}
 
+		float ring_surface_height(int x, int y, int ring, float wave_height);
+
+		// height of a point on the ring's lattice: the waves, towards the outer border blended into the next ring's surface,
+		// on the border it matches it exactly
+		float ring_lattice_height(const int x, const int y, const int ring, const float wave_height)
+		{
+			float h = wave_height;
+
+			if (ring < 2)
+			{
+				const int next_step = lod_step(ring + 1);
+				const float t = 1.0f - smoothstep_to(static_cast<float>(2 * next_step), static_cast<float>(g_params.lod_radius[ring] - lod_cheb_distance(x, y)));
+
+				if (t > 0.0f) {
+					h += (ring_surface_height(x, y, ring + 1, wave_height) - h) * t;
+				}
+			}
+
+			return h;
+		}
+
+		// the surface of a ring: its lattice heights, linear over the lattice triangles in between
+		float ring_surface_height(const int x, const int y, const int ring, const float wave_height)
+		{
+			const int step = lod_step(ring);
+
+			if (x % step == 0 && y % step == 0) {
+				return ring_lattice_height(x, y, ring, wave_height);
+			}
+
+			return lattice_interpolate(x, y, step, [ring](const int lx, const int ly) {
+				return ring_lattice_height(lx, ly, ring, sample_combined(lx, ly, nullptr).h);
+			});
+		}
+
 		float vertex_height(const int x, const int y, const float fine_height)
 		{
 			if (!g_params.lod) {
 				return fine_height;
 			}
 
-			const int cheb = lod_cheb_distance(x, y);
-			const int ring = lod_ring(cheb);
-			const int step = lod_step(ring);
-
-			float h = (x % step || y % step) ? lattice_height(x, y, step) : fine_height;
-
-			if (ring < 2)
-			{
-				// towards the outer border the height follows the next ring's lattice, on the border it matches it exactly
-				const int next_step = lod_step(ring + 1);
-				const float t = 1.0f - smoothstep_to(static_cast<float>(2 * next_step), static_cast<float>(g_params.lod_radius[ring] - cheb));
-
-				if (t > 0.0f) {
-					h += (lattice_height(x, y, next_step) - h) * t;
-				}
-			}
-
-			return h;
+			return ring_surface_height(x, y, lod_ring(lod_cheb_distance(x, y)), fine_height);
 		}
 
 		int __cdecl CWater_CalculateWavesForCoordinate_hk(int x, int y, int unused1, int unused2, float* z, float* normal, DWORD* color)
@@ -480,9 +499,25 @@ namespace gta4
 		}
 
 		// replaces CWater::RenderHighDetailWaterRectangle while the LOD or the api path is on: pieces are split at the ring borders and
-		// aligned to the cell size of their ring, so neighbouring pieces share their border vertices or the lattice the heights follow
-		void draw_piece(const int x1, const int x2, const int y1, const int y2, const float z1, const float z2, const float z3, const float z4)
+		// aligned to the cell size of their ring, so neighbouring pieces share their border vertices or the lattice the heights follow.
+		// The corners are ordered x1 < x2, y1 < y2 first: the game lists most quads reversed, and the quads of a piece split along
+		// the diagonal of its corner order, which has to be the one lattice_interpolate uses
+		void draw_piece(int x1, int x2, int y1, int y2, float z1, float z2, float z3, float z4)
 		{
+			if (x1 > x2)
+			{
+				std::swap(x1, x2);
+				std::swap(z1, z2);
+				std::swap(z3, z4);
+			}
+
+			if (y1 > y2)
+			{
+				std::swap(y1, y2);
+				std::swap(z1, z3);
+				std::swap(z2, z4);
+			}
+
 			const float half_x = static_cast<float>(x2 - x1) * 0.5f;
 			const float half_y = static_cast<float>(y2 - y1) * 0.5f;
 			const auto is_sphere_visible = reinterpret_cast<IsSphereVisible_t>(game::func_addr__grcViewport_IsSphereVisible);
@@ -521,48 +556,43 @@ namespace gta4
 			int step = lod_step(ring);
 
 			// align to the lattice of the ring, the remainder strips get a finer cell size
-			const int min_x = std::min(x1, x2);
-			const int max_x = std::max(x1, x2);
-			const int min_y = std::min(y1, y2);
-			const int max_y = std::max(y1, y2);
-
-			if (const int a = ceil_to(min_x, step); strictly_inside(a, x1, x2) && a != min_x)
+			if (const int a = ceil_to(x1, step); strictly_inside(a, x1, x2))
 			{
 				split_x(draw_piece, a, x1, x2, y1, y2, z1, z2, z3, z4);
 				return;
 			}
 
-			if (const int a = floor_to(max_x, step); strictly_inside(a, x1, x2) && a != max_x)
+			if (const int a = floor_to(x2, step); strictly_inside(a, x1, x2))
 			{
 				split_x(draw_piece, a, x1, x2, y1, y2, z1, z2, z3, z4);
 				return;
 			}
 
-			if (const int a = ceil_to(min_y, step); strictly_inside(a, y1, y2) && a != min_y)
+			if (const int a = ceil_to(y1, step); strictly_inside(a, y1, y2))
 			{
 				split_y(draw_piece, a, x1, x2, y1, y2, z1, z2, z3, z4);
 				return;
 			}
 
-			if (const int a = floor_to(max_y, step); strictly_inside(a, y1, y2) && a != max_y)
+			if (const int a = floor_to(y2, step); strictly_inside(a, y1, y2))
 			{
 				split_y(draw_piece, a, x1, x2, y1, y2, z1, z2, z3, z4);
 				return;
 			}
 
-			while (step > 2 && (min_x % step || max_x % step || min_y % step || max_y % step)) {
+			while (step > 2 && (x1 % step || x2 % step || y1 % step || y2 % step)) {
 				step >>= 1;
 			}
 
-			const int polys_x = std::max((max_x - min_x) / step, 1);
-			const int polys_y = std::max((max_y - min_y) / step, 1);
+			const int polys_x = std::max((x2 - x1) / step, 1);
+			const int polys_y = std::max((y2 - y1) / step, 1);
 
 			if (polys_x > MAX_POLYS_PER_SIDE || polys_y > MAX_POLYS_PER_SIDE)
 			{
 				if (polys_x >= polys_y) {
-					split_x(draw_piece, min_x + (polys_x / 2) * step, x1, x2, y1, y2, z1, z2, z3, z4);
+					split_x(draw_piece, x1 + (polys_x / 2) * step, x1, x2, y1, y2, z1, z2, z3, z4);
 				} else {
-					split_y(draw_piece, min_y + (polys_y / 2) * step, x1, x2, y1, y2, z1, z2, z3, z4);
+					split_y(draw_piece, y1 + (polys_y / 2) * step, x1, x2, y1, y2, z1, z2, z3, z4);
 				}
 
 				return;
