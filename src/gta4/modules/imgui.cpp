@@ -1032,7 +1032,7 @@ namespace gta4
 
 				ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
 
-				static float trans_val = 0.0f;
+				static float trans_val = 1.0f;
 				ImGui::SetNextItemWidth(half_width);
 				ImGui::SliderFloat("##blend_absolute", &trans_val, 0.0f, 1.0f, "absolute blend %.2f");
 				ImGui::SameLine();
@@ -1047,7 +1047,7 @@ namespace gta4
 					trans_val = -1.0f;
 				}
 
-				static float trans_blend_val = 0.0f;
+				static float trans_blend_val = 1.0f;
 				ImGui::SetNextItemWidth(half_width);
 				ImGui::SliderFloat("##blend_seconds", &trans_blend_val, 0.0f, 10.0f, "transition %.1f s");
 				ImGui::SameLine();
@@ -1421,7 +1421,7 @@ namespace gta4
 
 				// remix config (CONF)
 				shared::common::log("ImGui", std::format("Preset: Parsing Addon Config 'rtx_comp/addon_settings/presets/{}' ...", presets[selected_preset]), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
-				remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", presets[selected_preset] + ".conf", 1);
+				remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", presets[selected_preset] + ".conf", 0.1f, true);
 			};
 
 		if (ImGui::BeginListBox("##preset_list", ImVec2(-FLT_MIN, 80.0f)))
@@ -2791,6 +2791,66 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 	}
 
+	void wip_help_container()
+	{
+		//ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+
+		ImGui::PushFont(shared::imgui::font::FONTS::BOLD_LARGE);
+		ImGui::SeparatorText("Graphic Settings");
+		ImGui::PopFont();
+		ImGui::Spacing(0, 2);
+
+		ImGui::Indent(4);
+		ImGui::TextURL("Game Graphic Settings", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#game-graphic-settings", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Performance / Quality Tipps", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#performance--quality-tipps", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Weather / Sky Tweaking", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#weather--sky-tweaking", true);
+		ImGui::Unindent(4);
+
+		// ---
+
+		ImGui::Spacing(0, 6);
+		ImGui::PushFont(shared::imgui::font::FONTS::BOLD_LARGE);
+		ImGui::SeparatorText("Post Processing");
+		ImGui::PopFont();
+		ImGui::Spacing(0, 2);
+
+		ImGui::Indent(4);
+		ImGui::TextURL("Timecyle Post Processing", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#timecyle-post-processing", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Remix Post Processing and HDR", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#remix-post-processing-and-hdr", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("DLSS5 / Neural Rendering", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#dlss5--neural-rendering", true);
+		ImGui::Unindent(4);
+
+		// ---
+
+		ImGui::Spacing(0, 6);
+		ImGui::PushFont(shared::imgui::font::FONTS::BOLD_LARGE);
+		ImGui::SeparatorText("Troubleshooting");
+		ImGui::PopFont();
+		ImGui::Spacing(0, 2);
+
+		ImGui::Indent(4);
+		ImGui::TextURL("Stuttering", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#stuttering", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Input Lag", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#input-lag", true);
+
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Instability", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#instability", true);
+		
+		ImGui::Unindent(4);
+	
+
+		//ImGui::PopFont();
+	}
+
 	void wip_api_container()
 	{
 		const auto& gs = comp_settings::get();
@@ -2903,21 +2963,21 @@ namespace gta4
 		if (ImGui::Button("Performance", ImVec2(button_3way_width, 0)))
 		{
 			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_performance.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
-			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_performance.conf", 1);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_performance.conf", 0.1f, true);
 		}
 
 		ImGui::SameLine();
 		if (ImGui::Button("Standard", ImVec2(button_3way_width, 0)))
 		{
 			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_standard.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
-			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_standard.conf", 1);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_standard.conf", 0.1f, true);
 		}
 
 		ImGui::SameLine();
 		if (ImGui::Button("High (Puddles++)", ImVec2(button_3way_width, 0)))
 		{
 			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_high_more_puddles.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
-			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_high_more_puddles.conf", 1);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_high_more_puddles.conf", 0.1f, true);
 		}
 
 		ImGui::Spacing(0, 4);
@@ -2945,6 +3005,13 @@ namespace gta4
 			"Options listed here are still WIP, might cause problems, instability or reduce Performance.");
 		ImGui::Unindent(4);
 		ImGui::Spacing(0, 16);
+
+		// help
+		{
+			static float cont_wip_help_height = 0.0f;
+			cont_wip_help_height = ImGui::Widget_ContainerWithCollapsingTitle("Help", cont_wip_help_height, wip_help_container,
+				false, ICON_FA_MUG_HOT, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
 
 		// remix api
 		{

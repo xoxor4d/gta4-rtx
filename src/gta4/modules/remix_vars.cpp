@@ -410,8 +410,9 @@ namespace gta4
 	 * @param sub_dir				config name without extension
 	 * @param file_name				name of config without extension
 	 * @param delay					delay before the option is set (in seconds)
+	 * @param as_user				apply option on the user level - derived otherwise
 	 */
-	void remix_vars::parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name, const float delay)
+	void remix_vars::parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name, const float delay, bool as_user)
 	{
 		if (!std::filesystem::exists(sub_dir + "\\" + file_name)) {
 			return;
@@ -441,7 +442,7 @@ namespace gta4
 					if (const auto o = remix_vars::get_option(pair[0].c_str(), pair[1]); o)
 					{
 						const auto& v = string_to_option_value(o->second.type, pair[1]);
-						remix_vars::get()->add_queue_entry(o, v, delay, true);
+						remix_vars::get()->add_queue_entry(o, v, delay, true, 0.01f, as_user);
 						//DEBUG_PRINT("[VAR-SET] Queue var: %s to: %s\n", o->first.c_str(), pair[1].c_str());
 					}
 				}
@@ -467,25 +468,13 @@ namespace gta4
 	  * @param delay					delay before the option is set (seconds); 0 applies immediately
 	  * @param always					set even if the cached value already matches the goal (Remix may have changed it)
 	  * @param epsilon					skip the API write when !always and the cached value is within this epsilon of the goal
-	  * @param remix_var_name			can be used if handle = nullptr
+	  * @param as_user					apply option on the user level - derived otherwise
 	  * @return							true if the entry was accepted (queued or applied)
 	  */
-	bool remix_vars::add_queue_entry(option_handle handle, const option_value& goal, const float delay, const bool always, const float epsilon, const std::string& remix_var_name)
+	bool remix_vars::add_queue_entry(option_handle handle, const option_value& goal, const float delay, const bool always, const float epsilon, bool as_user)
 	{
 		std::unique_lock lock(get()->mutex_);
-
 		option_handle h = handle;
-		if (!h)
-		{
-			if (remix_var_name.empty()) {
-				return false;
-			}
-
-			// look up under the lock we already hold (get_option would deadlock on mutex_)
-			if (const auto it = get()->options.find(remix_var_name); it != get()->options.end()) {
-				h = &*it;
-			}
-		}
 
 		if (!h) {
 			return false;
@@ -516,16 +505,17 @@ namespace gta4
 			}
 
 			lock.unlock();
-			return set_option(h, goal);
+			return set_option(h, goal, false, as_user);
 		}
 
-		var_queue.emplace_back(queue_entry_s {
+		var_queue.emplace_back(queue_entry_s{
 			.option = h,
 			.goal = goal,
 			.type = h->second.type,
 			._time_elapsed = -delay,
 			.always = always,
 			.epsilon = epsilon,
+			.as_user = as_user,
 		});
 
 		return true;
@@ -619,7 +609,7 @@ namespace gta4
 					{
 						static auto rtxdi_samplecount = get_option("rtx.di.initialSampleCount", "64");
 						option_value val { .value = (float)rtxdi_override_val };
-						set_option(rtxdi_samplecount, val);
+						set_option(rtxdi_samplecount, val, false, true);
 					}
 				}
 
@@ -645,7 +635,7 @@ namespace gta4
 								continue;
 							}
 
-							set_option(ip.option, ip.goal);
+							set_option(ip.option, ip.goal, false, ip.as_user);
 							ip._complete = true;
 						}
 

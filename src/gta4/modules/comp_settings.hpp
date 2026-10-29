@@ -1988,8 +1988,8 @@ namespace gta4
 			variable timecycle_colorcorrection_influence = {
 				"timecycle_colorcorrection_influence",
 				("Controls how much the timecycle color correction variable influences 'rtx.tonemap.colorBalance'"),
-				"1.3.2",
-				2.0f
+				"1.7.0",
+				1.5f
 			};
 
 			variable timecycle_colortemp_enabled = {
@@ -2039,14 +2039,14 @@ namespace gta4
 			variable timecycle_gamma_enabled = {
 				"timecycle_gamma_enabled",
 				("Enables automatic adjustment of 'rtx.tonemap.exposureBias' based on timecycle settings."),
-				"1.3.0",
+				"1.7.0",
 				false
 			};
 
 			variable timecycle_gamma_offset = {
 				"timecycle_gamma_offset",
 				("Controls the offset that's added to the gamma timecycle variable which influences 'rtx.tonemap.exposureBias'."),
-				"1.3.0",
+				"1.7.0",
 				0.0f
 			};
 
@@ -2054,35 +2054,35 @@ namespace gta4
 			variable timecycle_bloom_enabled = {
 				"timecycle_bloom_enabled",
 				("Enables automatic adjustment of 'rtx.bloom.burnIntensity' and 'rtx.bloom.luminanceThreshold' based on timecycle settings."),
-				"1.3.0",
+				"1.7.0",
 				true
 			};
 
 			variable timecycle_bloomintensity_scalar = {
 				"timecycle_bloomintensity_scalar",
 				("Scales the bloom intensity timecycle variable which influences 'rtx.tonemap.saturation'."),
-				"1.3.0",
+				"1.7.0",
 				1.5f
 			};
 
 			variable timecycle_bloomthreshold_scalar = {
 				"timecycle_bloomthreshold_scalar",
 				("Scales the bloom threshold timecycle variable which influences 'rtx.tonemap.luminanceThreshold'."),
-				"1.3.0",
+				"1.7.0",
 				1.0f
 			};
 
 			variable timecycle_bloom_night_min_clamp_enabled = {
 				"timecycle_bloom_night_min_clamp_enabled",
 				("Lower bound clamp bloom intensity at night with no cutscene playing."),
-				"1.3.0",
+				"1.7.0",
 				true
 			};
 
 			variable timecycle_bloom_night_min_clamp_value = {
 				"timecycle_bloom_night_min_clamp_value",
 				("Min value of bloom intensity at night with no cutscene playing. Needs 'timecycle_bloom_night_min_clamp_enabled'"),
-				"1.3.0",
+				"1.7.0",
 				1.5f
 			};
 
