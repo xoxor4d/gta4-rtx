@@ -3,4 +3,3 @@
 -nomemrestrict
 -forcer2vb
 -noswapdelay
--noprecache
