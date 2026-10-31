@@ -733,12 +733,46 @@ namespace gta4
 		}
 	}
 
+	// the record can be the uninitialized fill pattern or any garbage value (seen as a float bit pattern in TLAD "Shifting Weight")
+	bool is_invalid_model_record(const void* record)
+	{
+		return record == reinterpret_cast<const void*>(0xCDCDCDCD) || shared::utils::memory::is_bad_read_ptr(record);
+	}
+
 	__declspec(naked) void veh_nullptr_invalid_model_fix_stub()
 	{
 		__asm
 		{
-			cmp		ecx, 0xCDCDCDCD;
-			jz		INVALID_MODEL;
+			pushad;
+			sub		esp, 0x80;
+			movups	[esp + 0x00], xmm0;
+			movups	[esp + 0x10], xmm1;
+			movups	[esp + 0x20], xmm2;
+			movups	[esp + 0x30], xmm3;
+			movups	[esp + 0x40], xmm4;
+			movups	[esp + 0x50], xmm5;
+			movups	[esp + 0x60], xmm6;
+			movups	[esp + 0x70], xmm7;
+
+			push	ecx;
+			call	is_invalid_model_record;
+			add		esp, 4;
+			movzx	eax, al;
+			mov		[esp + 0x80 + 0x1C], eax; // pushad eax slot
+
+			movups	xmm0, [esp + 0x00];
+			movups	xmm1, [esp + 0x10];
+			movups	xmm2, [esp + 0x20];
+			movups	xmm3, [esp + 0x30];
+			movups	xmm4, [esp + 0x40];
+			movups	xmm5, [esp + 0x50];
+			movups	xmm6, [esp + 0x60];
+			movups	xmm7, [esp + 0x70];
+			add		esp, 0x80;
+			popad;
+
+			test	eax, eax;
+			jnz		INVALID_MODEL;
 
 			// model valid:
 			mov     eax, [ecx + 5]; // og
