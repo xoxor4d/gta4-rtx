@@ -752,7 +752,7 @@ namespace gta4
 		static void set_remix_modifier(IDirect3DDevice9* dev, RemixModifier mod, bool remove_mod = false);
 		static void set_remix_emissive_intensity(IDirect3DDevice9* dev, float intensity, bool no_overrides = false);
 
-		enum eWetnessFlags : uint8_t
+		enum eWetnessFlags : uint16_t
 		{
 			WETNESS_FLAG_ENABLE_VARIATION = 1 << 0,
 			WETNESS_FLAG_ENABLE_RAINDROPS = 1 << 1,				// either expensive or normal raindrops
@@ -762,10 +762,11 @@ namespace gta4
 			WETNESS_FLAG_ENABLE_PUDDLE_LAYER = 1 << 5,			// adds a puddle layer to wet surfaces 
 			WETNESS_FLAG_ENABLE_OCCLUSION_TEST = 1 << 6,		// test if something is covering this surface
 			WETNESS_FLAG_ENABLE_OCCLUSION_SMOOTHING = 1 << 7,	// smooth occlusion edges - needs DLSS RR
+			WETNESS_FLAG_GLOBAL_WETNESS = 1 << 8,				// the scalar is the fully wet value, the runtime's rtx.wet.globalWetness takes it there from dry
 			WETNESS_FLAG_NONE = 0u
 		};
 
-		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float raindrop_scale = 0.0f, uint8_t flags = WETNESS_FLAG_NONE);
+		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float raindrop_scale = 0.0f, uint16_t flags = WETNESS_FLAG_NONE);
 		static void set_remix_use_worldpos_instead_of_surface_uvs(IDirect3DDevice9* dev, float scale = 0.01f);
 		static void set_remix_translucent_fade_out_normal_after_distance(IDirect3DDevice9* dev, float distance);
 

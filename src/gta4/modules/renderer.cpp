@@ -124,7 +124,7 @@ namespace gta4
 	/// @param blend_width			the blending width going from unmodified roughness to scaled roughness when max_z is hit
 	/// @param raindrop_scale		scale of raindrops (if enabled via flags)
 	/// @param flags				renderer::eWetnessFlags - additional modifiers
-	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width, float raindrop_scale, uint8_t flags)
+	void renderer::set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z, float blend_width, float raindrop_scale, uint16_t flags)
 	{
 		set_remix_modifier(dev, RemixModifier::RoughnessScalar);
 
@@ -143,11 +143,12 @@ namespace gta4
 		const uint16_t wetness_params1 = (scalar_bits << 10) | (max_z_bits << 5) | blend_width_bits;
 
 		// pack wetness_params2 (upper 16 bits):
-		// lower 8 bits = raindrop_scale (0-10)
+		// lower 7 bits = raindrop_scale (0-10), bit 7 = global wetness
 		// upper 8 bits = flags
-		const uint16_t raindrop_scale_bits = encode_range(raindrop_scale, 8, 10.0f);
-		const uint16_t wetness_modifier_bits = uint16_t(flags) << 8; // shift flags to upper 8 bits
-		const uint16_t wetness_params2 = raindrop_scale_bits | wetness_modifier_bits;
+		const uint16_t raindrop_scale_bits = encode_range(raindrop_scale, 7, 10.0f);
+		const uint16_t global_wetness_bit = (flags & WETNESS_FLAG_GLOBAL_WETNESS) ? uint16_t(1u << 7) : uint16_t(0u);
+		const uint16_t wetness_modifier_bits = uint16_t(flags & 0xFFu) << 8; // shift flags to upper 8 bits
+		const uint16_t wetness_params2 = raindrop_scale_bits | global_wetness_bit | wetness_modifier_bits;
 
 		// pack into DWORD: lower 16 bits = wetness_params1, upper 16 bits = wetness_params2
 		uint32_t packedDword = (uint32_t(wetness_params2) << 16) | uint32_t(wetness_params1);
@@ -2737,15 +2738,9 @@ namespace gta4
 					const bool is_vehicle_surface = g_is_rendering_vehicle || pidx == GTA_VEHICLE_VEHGLASS;
 					if ((is_vehicle_surface ? timecycle::get_vehicle_wetness() : wetness_value) > 0.0f || im->m_dbg_global_wetness_override)
 					{
-						const float adjusted_wetness = std::clamp(wetness_value * gs->timecycle_wetness_world_scalar.get_as<float>(), 0.0f, 1.0f);
-						float scalar = 1.0f - adjusted_wetness;
-						scalar += gs->timecycle_wetness_world_offset.get_as<float>();
-						scalar = std::clamp(scalar * 0.8f, 0.0f, 1.0f);
-						scalar = scalar < 0.0f ? 0.0f : scalar;
-
-						if (im->m_dbg_global_wetness_override) {
-							scalar = std::clamp((1.0f - im->m_dbg_global_wetness), 0.0f, 1.0f);
-						}
+						// world and ped surfaces send their fully wet scalar; the frame's wetness is the runtime constant
+						// rtx.wet.globalWetness (renderer_api::send_global_wetness), so retained placements need no update while it rains
+						const float scalar = im->m_dbg_global_wetness_override ? 0.0f : std::clamp(gs->timecycle_wetness_world_offset.get_as<float>() * 0.8f, 0.0f, 1.0f);
 
 						if (is_vehicle_surface)
 						{
@@ -2755,7 +2750,7 @@ namespace gta4
 						else 
 						{
 							const float rain_size = pidx == GTA_PED_REFLECT ? gs->timecycle_wetness_ped_raindrop_scalar.get_as<float>() : gs->timecycle_wetness_world_raindrop_scalar.get_as<float>();
-							uint8_t rain_flags = WETNESS_FLAG_NONE;
+							uint16_t rain_flags = WETNESS_FLAG_GLOBAL_WETNESS;
 
 							if (pidx == GTA_PED_REFLECT)
 							{
@@ -3231,6 +3226,9 @@ namespace gta4
 
 		if (!m_triggered_remix_injection)
 		{
+			// the quad below ends the runtime's frame: everything the api path still owes this frame goes first
+			renderer_api::on_before_injection();
+
 			//const auto& dev = shared::globals::d3d_device;
 			auto& ctx = dc_ctx;
 

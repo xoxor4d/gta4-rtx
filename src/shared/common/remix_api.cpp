@@ -48,6 +48,11 @@ namespace shared::common
 			PROFILED_BRIDGE_FUNCTION(SetConfigVariable);
 			PROFILED_BRIDGE_FUNCTION(SetGameValue);
 			PROFILED_BRIDGE_FUNCTION(GetGameValue);
+			PROFILED_BRIDGE_FUNCTION(CreateRetainedInstances);
+			PROFILED_BRIDGE_FUNCTION(UpdateRetainedInstance);
+			PROFILED_BRIDGE_FUNCTION(UpdateRetainedInstances);
+			PROFILED_BRIDGE_FUNCTION(DestroyRetainedInstances);
+			PROFILED_BRIDGE_FUNCTION(DrawRetainedInstances);
 #undef PROFILED_BRIDGE_FUNCTION
 		}
 	}

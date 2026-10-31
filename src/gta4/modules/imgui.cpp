@@ -1752,6 +1752,14 @@ namespace gta4
 			{
 				ImGui::PushID("geometry");
 				compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
+
+				ImGui::BeginDisabled(!gs->api_static_enabled.get_as<bool>());
+				compsettings_bool_widget("Static Geometry: Retained Instances", gs->api_static_retained);
+				ImGui::BeginDisabled(!gs->api_static_retained.get_as<bool>());
+				compsettings_int_widget("Hide Retained Placements After (frames)", gs->api_static_retained_hide_frames, 1, 600);
+				ImGui::EndDisabled();
+				ImGui::EndDisabled();
+
 				compsettings_bool_widget("Peds", gs->api_peds_enabled);
 				compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
 

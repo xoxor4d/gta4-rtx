@@ -83,9 +83,13 @@
 //
 // PATCH 6 adds REMIXAPI_INSTANCE_CATEGORY_BIT_CARD_NORMALS (bent normals for
 // flat LOD card trees). Older callers never set the bit.
+//
+// PATCH 7 adds retained instances (CreateRetainedInstances, UpdateRetainedInstance,
+// UpdateRetainedInstances, DestroyRetainedInstances, DrawRetainedInstances), appended
+// to remixapi_Interface. Older callers never read the new slots.
 #define REMIXAPI_VERSION_MAJOR 0
 #define REMIXAPI_VERSION_MINOR 1000
-#define REMIXAPI_VERSION_PATCH 6
+#define REMIXAPI_VERSION_PATCH 7
 
 
 // External
@@ -1077,6 +1081,40 @@ extern "C" {
 
   // NOTE: If adding a new function, append it at the END of the struct.
   //       Reordering or inserting in the middle breaks backwards compatibility.
+  // Retained instances (0.1000.7). A draw registered once and replayed by the runtime
+  // every frame with one DrawRetainedInstances call, instead of one DrawInstance per
+  // placement per frame. Handles are chosen by the host: nonzero, unique per live entry.
+  // Commands apply in call order at the next DrawRetainedInstances; every live visible
+  // entry is drawn every frame until destroyed, hidden is a sticky state. Destroy a
+  // retained instance before its mesh.
+#define REMIXAPI_RETAINED_UPDATE_TRANSFORM  0x1u
+#define REMIXAPI_RETAINED_UPDATE_VISIBILITY 0x2u
+  typedef struct remixapi_RetainedInstanceUpdate {
+    uint64_t           handle;
+    remixapi_Transform transform;   // valid with REMIXAPI_RETAINED_UPDATE_TRANSFORM
+    uint32_t           flags;       // REMIXAPI_RETAINED_UPDATE_*
+    remixapi_Bool      visible;     // valid with REMIXAPI_RETAINED_UPDATE_VISIBILITY
+  } remixapi_RetainedInstanceUpdate;
+
+  // Registers count draws under the host's handles. Nothing is created unless every item is valid.
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_CreateRetainedInstances)(
+    const remixapi_InstanceInfo* infos,
+    const uint64_t*              handles,
+    uint32_t                     count);
+  // Replaces the whole description of a registered draw. Keeps its visibility.
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_UpdateRetainedInstance)(
+    uint64_t                     handle,
+    const remixapi_InstanceInfo* info);
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_UpdateRetainedInstances)(
+    const remixapi_RetainedInstanceUpdate* updates,
+    uint32_t                               count);
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_DestroyRetainedInstances)(
+    const uint64_t* handles,
+    uint32_t        count);
+  // Once per frame. sceneOrigin must be NULL (no origin rebase on this runtime).
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_DrawRetainedInstances)(
+    const float* sceneOrigin);
+
   typedef struct remixapi_Interface {
     PFN_remixapi_Shutdown           Shutdown;
     PFN_remixapi_CreateMaterial     CreateMaterial;
@@ -1135,6 +1173,12 @@ extern "C" {
     PFN_remixapi_GetVramStats               GetVramStats;
     PFN_remixapi_RequestTextureVramFree     RequestTextureVramFree;
     PFN_remixapi_GetGameValue               GetGameValue;
+    // Retained instances (0.1000.7)
+    PFN_remixapi_CreateRetainedInstances    CreateRetainedInstances;
+    PFN_remixapi_UpdateRetainedInstance     UpdateRetainedInstance;
+    PFN_remixapi_UpdateRetainedInstances    UpdateRetainedInstances;
+    PFN_remixapi_DestroyRetainedInstances   DestroyRetainedInstances;
+    PFN_remixapi_DrawRetainedInstances      DrawRetainedInstances;
   } remixapi_Interface;
 
   REMIXAPI remixapi_ErrorCode REMIXAPI_CALL remixapi_InitializeLibrary(

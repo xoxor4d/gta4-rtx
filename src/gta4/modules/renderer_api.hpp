@@ -183,12 +183,28 @@ namespace gta4
 			std::uint32_t vehicle_skips_overlay_last_frame = 0u;  // overlay modes the api path does not mirror (lights)
 			std::uint32_t vehicle_skips_target_last_frame = 0u;
 			std::uint32_t vehicle_skips_rejected_last_frame = 0u;
+
+			// retained instances of the static world
+			std::uint32_t retained_entries = 0u;
+			std::uint32_t retained_visible = 0u;
+			std::uint32_t retained_touched_last_frame = 0u;  // placements the game drew
+			std::uint32_t retained_creates_last_frame = 0u;
+			std::uint32_t retained_updates_last_frame = 0u;
+			std::uint32_t retained_shows_last_frame = 0u;
+			std::uint32_t retained_hides_last_frame = 0u;
+			std::uint32_t retained_destroys_last_frame = 0u;
+			std::uint32_t retained_draw_calls_last_frame = 0u;
 		};
 
 		static bool is_runtime_supported();
 		static bool is_enabled();
 		static bool is_entity_skip_enabled();
 		static bool is_pass_skip_enabled();
+		static bool is_retained_supported();
+
+		/// Called right before the mod triggers the runtime's injection (the orthographic quad): the retained
+		/// instances of the frame are flushed and drawn here, since a draw after the injection lands in the next frame
+		static void on_before_injection();
 
 		/// Called right before the fixed function draw of a static geometry.
 		/// @return true if the draw was submitted through the api (the D3D9 draw must be skipped)

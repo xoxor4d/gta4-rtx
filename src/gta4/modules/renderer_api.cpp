@@ -184,10 +184,7 @@ namespace gta4
 				return g_overrides_fingerprint;
 			}
 
-			// the wetness the world draws derive their roughness from (renderer.cpp), 1/64 steps
-			const float wetness = im->m_dbg_global_wetness_override ? im->m_dbg_global_wetness : timecycle::get_wetness();
-
-			std::uint64_t h = static_cast<std::uint32_t>(wetness * 64.0f + 0.5f);
+			std::uint64_t h = 0x9E3779B97F4A7C15ull;
 			const auto mix = [&h](const std::uint32_t v) {
 					h = (h ^ v) * 0x9E3779B97F4A7C15ull;
 				};
@@ -196,6 +193,8 @@ namespace gta4
 			mix(should_apply_heavy_raindrops() ? 1u : 0u);
 			mix(should_apply_light_raindrops() ? 1u : 0u);
 			mix(game::m_game_clock_hours ? *game::m_game_clock_hours : 0u); // emissive night windows are hour based
+			mix(game::m_game_clock_minutes ? *game::m_game_clock_minutes / 15u : 0u); // the emission seed switches at :15 and :45
+			mix(game::weather_type_prev && (*game::weather_type_prev == game::WEATHER_DRIZZLE || *game::weather_type_new == game::WEATHER_DRIZZLE) ? 1u : 0u);
 
 			// every setting renderer.cpp packs into the wetness render state (flags, normal blend, raindrops), for the
 			// world, vehicle and ped branches; records owned by the api path are only recaptured when this changes
@@ -224,6 +223,7 @@ namespace gta4
 				gs->timecycle_wetness_vehicle_dirt_blending.get_as<float>(), gs->timecycle_wetness_vehicle_dirt_intensity_scalar.get_as<float>(),
 				gs->timecycle_wetness_ped_raindrop_scalar.get_as<float>(),
 				gs->emissive_night_surfaces_emissive_scalar.get_as<float>(), gs->emissive_generic_scale.get_as<float>(),
+				gs->emissive_surfaces_emissive_scalar.get_as<float>(), gs->emissive_strong_surfaces_emissive_scalar.get_as<float>(),
 			};
 
 			for (const auto f : settings)
@@ -234,6 +234,31 @@ namespace gta4
 			}
 
 			return h;
+		}
+
+		/// the frame's wetness for the surfaces that carry WETNESS_FLAG_GLOBAL_WETNESS (renderer.cpp): one runtime constant
+		/// instead of a value in every draw, so a retained placement needs no update while it rains or dries
+		void send_global_wetness()
+		{
+			static const auto gs = comp_settings::get();
+			static const auto im = imgui::get();
+			static float last_sent = -1.0f;
+
+			const auto& api = shared::common::remix_api::get();
+			if (!im || !api.is_initialized() || !api.m_bridge.SetConfigVariable) {
+				return;
+			}
+
+			const float wetness = im->m_dbg_global_wetness_override
+				? std::clamp(im->m_dbg_global_wetness, 0.0f, 1.0f)
+				: std::clamp(timecycle::get_wetness() * gs->timecycle_wetness_world_scalar.get_as<float>(), 0.0f, 1.0f);
+
+			if (wetness == last_sent) {
+				return;
+			}
+
+			last_sent = wetness;
+			api.m_bridge.SetConfigVariable("rtx.wet.globalWetness", std::format("{:.4f}", wetness).c_str());
 		}
 
 		std::uint32_t g_frame = 0u;			// counts scenes (api submissions) 
@@ -712,6 +737,24 @@ namespace gta4
 				blend.tFactor = tfactor;
 				blend.pNext = &overrides;
 				return &blend;
+			}
+
+			/// blend ext of an instance: the material's blend with the texture factor of the draw
+			remixapi_InstanceInfoBlendEXT build_blend(const material_record& mat, const remixapi_InstanceInfoD3DOverridesEXT& overrides, const DWORD tfactor)
+			{
+				remixapi_InstanceInfoBlendEXT blend = mat.blend;
+				blend.tFactor = tfactor;
+
+				// D3D9Rtx turns Beam (vehicle paint / rims with 'vehicle_force_vertex_colors') into texture x vertex color x texture factor
+				if (overrides.categoryFlags & static_cast<std::uint32_t>(InstanceCategories::Beam))
+				{
+					blend.textureColorOperation = TEXTURE_OP_MODULATE;
+					blend.textureColorArg1Source = TEXTURE_ARG_TEXTURE;
+					blend.textureColorArg2Source = TEXTURE_ARG_VERTEX_COLOR0;
+					blend.isTextureFactorBlend = TRUE;
+				}
+
+				return blend;
 			}
 		}
 
@@ -1663,6 +1706,369 @@ namespace gta4
 		}
 
 		// ----
+		// retained instances: static world placements the runtime keeps and replays every frame on one DrawRetainedInstances
+		// call. A placement is a mesh, a draw state and a transform; the game draws it through the entity skip, the pass skip or
+		// the engine draw and touch_locked marks it seen, creating or updating it when needed. The flush before the runtime's
+		// injection hides every placement the game did not draw this frame (api_static_retained_hide_frames lets them linger),
+		// so the scene holds what the game drew, like the per frame draws did, and a moved object (a plane, an antenna) hides
+		// its old placement in the flush that creates the new one. Wetness is not part of the description: the world surfaces
+		// carry their fully wet value and the frame's wetness is one runtime constant (send_global_wetness)
+
+		namespace retained
+		{
+			enum pending_bits : std::uint8_t
+			{
+				PENDING_CREATE = 1u << 0,
+				PENDING_UPDATE = 1u << 1,
+				PENDING_SHOW = 1u << 2,
+				PENDING_HIDE = 1u << 3,
+				PENDING_QUEUED = 1u << 4,
+			};
+
+			/// everything draw_mesh_locked feeds into an instance besides its mesh and transform, compared bytewise
+			struct desc_s
+			{
+				remixapi_InstanceInfoD3DOverridesEXT overrides;
+				remixapi_InstanceInfoBlendEXT blend;
+				std::uint32_t category_flags;
+				std::uint32_t double_sided;
+			};
+
+			struct entry_s
+			{
+				std::uint64_t mesh_hash = 0u;
+				remixapi_MeshHandle mesh = nullptr;
+				remixapi_Transform transform = {};
+				desc_s desc = {};
+				std::uint32_t last_seen = 0u;
+				bool visible = true;    // what the runtime has after the last flush
+				bool created = false;   // CreateRetainedInstances went out
+				std::uint8_t pending = 0u;
+			};
+
+			/// the blend and overrides an instance info points into
+			struct chain_s
+			{
+				remixapi_InstanceInfoBlendEXT blend;
+				remixapi_InstanceInfoD3DOverridesEXT overrides;
+			};
+
+			constexpr std::uint32_t PRUNE_HIDDEN_FRAMES = 120u; // hidden placements nobody drew for this long are forgotten
+			constexpr std::uint32_t CREATE_CHUNK = 512u;
+
+			std::unordered_map<std::uint64_t, entry_s> g_entries;                      // handle -> placement
+			std::unordered_map<std::uint64_t, std::vector<std::uint64_t>> g_by_mesh;   // mesh hash -> handles, destroyed before their mesh
+			std::vector<std::uint64_t> g_pending;  // handles with pending bits
+			std::vector<std::uint64_t> g_destroy;  // destroyed since the last DestroyRetainedInstances
+			std::uint32_t g_flushed_frame = 0u;
+
+			std::uint32_t g_touched_this_frame = 0u;
+			std::uint32_t g_creates_this_frame = 0u;
+			std::uint32_t g_updates_this_frame = 0u;
+			std::uint32_t g_shows_this_frame = 0u;
+			std::uint32_t g_hides_this_frame = 0u;
+			std::uint32_t g_destroys_this_frame = 0u;
+			std::uint32_t g_draw_calls_this_frame = 0u;
+
+			std::uint32_t g_touched_last_frame = 0u;
+			std::uint32_t g_creates_last_frame = 0u;
+			std::uint32_t g_updates_last_frame = 0u;
+			std::uint32_t g_shows_last_frame = 0u;
+			std::uint32_t g_hides_last_frame = 0u;
+			std::uint32_t g_destroys_last_frame = 0u;
+			std::uint32_t g_draw_calls_last_frame = 0u;
+
+			bool enabled()
+			{
+				static const auto gs = comp_settings::get();
+				return gs->api_static_retained.get_as<bool>() && renderer_api::is_retained_supported();
+			}
+
+			/// a placement never moves, so its identity is independent of the entity slot that draws it
+			std::uint64_t handle_of(const geometry_record& rec, const std::uint64_t mesh_hash, const remixapi_Transform& transform)
+			{
+				struct { std::uint64_t mesh_hash; std::uint64_t state_key; remixapi_Transform transform; } key = { mesh_hash, rec.state_key, transform };
+				const auto h = hash_words(&key, sizeof(key));
+				return h ? h : 1u;
+			}
+
+			desc_s make_desc(const geometry_record& rec, const material_record& mat)
+			{
+				desc_s d = {};
+				d.overrides = rec.overrides;
+				d.overrides.pNext = nullptr;
+				d.blend = convert::build_blend(mat, rec.overrides, rec.tfactor);
+				d.blend.pNext = nullptr;
+				d.category_flags = convert::to_api_categories(rec.overrides.categoryFlags);
+				d.double_sided = mat.state.double_sided ? 1u : 0u;
+				return d;
+			}
+
+			remixapi_InstanceInfo build_instance(const entry_s& e, chain_s& chain)
+			{
+				chain.overrides = e.desc.overrides;
+				chain.blend = e.desc.blend;
+				chain.blend.pNext = &chain.overrides;
+
+				return
+				{
+					.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO,
+					.pNext = &chain.blend,
+					.categoryFlags = e.desc.category_flags,
+					.mesh = e.mesh,
+					.transform = e.transform,
+					.doubleSided = e.desc.double_sided,
+				};
+			}
+
+			void queue_locked(const std::uint64_t handle, entry_s& e, const std::uint8_t bits)
+			{
+				e.pending |= bits;
+				if (!(e.pending & PENDING_QUEUED))
+				{
+					e.pending |= PENDING_QUEUED;
+					g_pending.push_back(handle);
+				}
+			}
+
+			/// a static world submission: the placement is marked seen and created, updated or shown as needed
+			/// @note caller holds the lock
+			void touch_locked(const geometry_record& rec, const std::uint64_t mesh_hash, const mesh_record& mesh, const material_record& mat, const remixapi_Transform& transform)
+			{
+				const auto handle = handle_of(rec, mesh_hash, transform);
+				const auto [it, inserted] = g_entries.try_emplace(handle);
+				auto& e = it->second;
+				e.last_seen = g_frame;
+				g_touched_this_frame++;
+
+				if (inserted)
+				{
+					e.mesh_hash = mesh_hash;
+					e.mesh = mesh.mesh;
+					e.transform = transform;
+					e.desc = make_desc(rec, mat);
+					g_by_mesh[mesh_hash].push_back(handle);
+					queue_locked(handle, e, PENDING_CREATE);
+					return;
+				}
+
+				const auto desc = make_desc(rec, mat);
+				if (std::memcmp(&e.desc, &desc, sizeof(desc)) != 0)
+				{
+					e.desc = desc;
+					if (e.created) {
+						queue_locked(handle, e, PENDING_UPDATE);
+					}
+				}
+
+				if (!e.visible)
+				{
+					e.pending &= static_cast<std::uint8_t>(~PENDING_HIDE);
+					queue_locked(handle, e, PENDING_SHOW);
+				}
+			}
+
+			void send_destroys_locked()
+			{
+				if (g_destroy.empty()) {
+					return;
+				}
+
+				shared::common::remix_api::get().m_bridge.DestroyRetainedInstances(g_destroy.data(), static_cast<std::uint32_t>(g_destroy.size()));
+				g_destroys_this_frame += static_cast<std::uint32_t>(g_destroy.size());
+				g_destroy.clear();
+			}
+
+			/// forgets a placement; the runtime's instance goes with the next send_destroys_locked
+			/// @note caller holds the unique lock
+			void destroy_entry_locked(const std::uint64_t handle)
+			{
+				const auto it = g_entries.find(handle);
+				if (it == g_entries.end()) {
+					return;
+				}
+
+				const auto& e = it->second;
+				if (const auto by = g_by_mesh.find(e.mesh_hash); by != g_by_mesh.end())
+				{
+					std::erase(by->second, handle);
+					if (by->second.empty()) {
+						g_by_mesh.erase(by);
+					}
+				}
+
+				if (e.created) {
+					g_destroy.push_back(handle);
+				}
+
+				g_entries.erase(it);
+			}
+
+			/// the placements of a mesh about to be destroyed, forgotten and destroyed in the runtime before it
+			/// @note caller holds the unique lock
+			void destroy_for_mesh_locked(const std::uint64_t mesh_hash)
+			{
+				const auto it = g_by_mesh.find(mesh_hash);
+				if (it == g_by_mesh.end()) {
+					return;
+				}
+
+				const auto handles = it->second; // destroy_entry_locked edits the list
+				for (const auto handle : handles) {
+					destroy_entry_locked(handle);
+				}
+			}
+
+			/// @note caller holds the unique lock
+			void destroy_all_locked()
+			{
+				for (const auto& [handle, e] : g_entries)
+				{
+					if (e.created) {
+						g_destroy.push_back(handle);
+					}
+				}
+
+				send_destroys_locked();
+				g_entries.clear();
+				g_by_mesh.clear();
+				g_pending.clear();
+			}
+
+			/// once per frame, before the runtime's injection: hides what the game stopped drawing, sends the pending
+			/// changes and the one draw call
+			void flush()
+			{
+				PROFILE_ZONE();
+				static const auto gs = comp_settings::get();
+				std::unique_lock lock(g_mutex);
+
+				if (g_flushed_frame == g_frame) {
+					return;
+				}
+				g_flushed_frame = g_frame;
+
+				if (!enabled())
+				{
+					if (!g_entries.empty()) {
+						destroy_all_locked();
+					}
+					return;
+				}
+
+				// a frame without a static draw (pause menu, loading) has no world camera: nothing is drawn, like the per
+				// frame path, and the runtime drops the instances until the world is drawn again
+				if (g_touched_this_frame == 0u) {
+					return;
+				}
+
+				auto& bridge = shared::common::remix_api::get().m_bridge;
+				const auto hide_frames = static_cast<std::uint32_t>(std::max(1, gs->api_static_retained_hide_frames.get_as<int>()));
+
+				// placements the game did not draw for hide_frames frames leave the scene with this flush, hidden ones
+				// nobody drew for long are forgotten
+				{
+					PROFILE_ZONE_N("renderer_api::retained_scan");
+					std::vector<std::uint64_t> prune;
+					for (auto& [handle, e] : g_entries)
+					{
+						const auto unseen = g_frame - e.last_seen;
+						if (e.visible && unseen >= hide_frames && !(e.pending & PENDING_SHOW)) {
+							queue_locked(handle, e, PENDING_HIDE);
+						}
+						else if (!e.visible && unseen > PRUNE_HIDDEN_FRAMES) {
+							prune.push_back(handle);
+						}
+					}
+
+					for (const auto handle : prune) {
+						destroy_entry_locked(handle);
+					}
+				}
+
+				// creates in chunks (the infos point into the chains, neither may reallocate), updates one by one,
+				// visibility in one batch, destroys in one batch
+				std::vector<remixapi_InstanceInfo> infos;
+				std::vector<chain_s> chains;
+				std::vector<std::uint64_t> handles;
+				std::vector<remixapi_RetainedInstanceUpdate> visibility;
+				infos.reserve(CREATE_CHUNK);
+				chains.reserve(CREATE_CHUNK);
+				handles.reserve(CREATE_CHUNK);
+
+				const auto send_creates = [&]()
+				{
+					if (infos.empty()) {
+						return;
+					}
+
+					bridge.CreateRetainedInstances(infos.data(), handles.data(), static_cast<std::uint32_t>(infos.size()));
+					g_creates_this_frame += static_cast<std::uint32_t>(infos.size());
+					infos.clear();
+					chains.clear();
+					handles.clear();
+				};
+
+				for (const auto handle : g_pending)
+				{
+					const auto it = g_entries.find(handle);
+					if (it == g_entries.end()) {
+						continue; // forgotten since it was queued
+					}
+
+					auto& e = it->second;
+					const auto pending = e.pending;
+					e.pending = 0u;
+
+					if (pending & PENDING_CREATE)
+					{
+						infos.push_back(build_instance(e, chains.emplace_back()));
+						handles.push_back(handle);
+						e.created = true;
+						e.visible = true;
+
+						if (infos.size() == CREATE_CHUNK) {
+							send_creates();
+						}
+						continue;
+					}
+
+					if (pending & PENDING_UPDATE)
+					{
+						chain_s chain;
+						const auto info = build_instance(e, chain);
+						bridge.UpdateRetainedInstance(handle, &info);
+						g_updates_this_frame++;
+					}
+
+					if (pending & (PENDING_SHOW | PENDING_HIDE))
+					{
+						const bool show = (pending & PENDING_SHOW) != 0u;
+						e.visible = show;
+						visibility.push_back({ .handle = handle, .transform = {}, .flags = REMIXAPI_RETAINED_UPDATE_VISIBILITY, .visible = show ? 1u : 0u });
+						(show ? g_shows_this_frame : g_hides_this_frame)++;
+					}
+				}
+
+				g_pending.clear();
+				send_creates();
+
+				if (!visibility.empty()) {
+					bridge.UpdateRetainedInstances(visibility.data(), static_cast<std::uint32_t>(visibility.size()));
+				}
+
+				send_destroys_locked();
+
+				// the camera went out with the first static submission of the frame
+				if (!g_entries.empty() && !g_debug_hide_api)
+				{
+					bridge.DrawRetainedInstances(nullptr);
+					g_draw_calls_this_frame = 1u;
+				}
+			}
+		}
+
+		// ----
 		// api meshes and materials: creation, cache budget, destruction and the submission of a record's instances
 
 		namespace cache
@@ -1771,6 +2177,11 @@ namespace gta4
 				PROFILE_ZONE();
 				PROFILE_ZONE_VALUE(hashes.size());
 
+				for (const auto hash : hashes) {
+					retained::destroy_for_mesh_locked(hash);
+				}
+				retained::send_destroys_locked();
+
 				std::unordered_set<std::uint64_t> destroyed;
 				for (const auto hash : hashes)
 				{
@@ -1862,16 +2273,7 @@ namespace gta4
 				const remixapi_Transform& transform,	const remixapi_Transform* bones,	const bool double_sided)
 			{
 				mesh.last_used_frame = g_frame;
-				remixapi_InstanceInfoBlendEXT blend = mat.blend;
-				
-				// D3D9Rtx turns Beam (vehicle paint / rims with 'vehicle_force_vertex_colors') into texture x vertex color x texture factor
-				if (overrides.categoryFlags & static_cast<std::uint32_t>(InstanceCategories::Beam))
-				{
-					blend.textureColorOperation = TEXTURE_OP_MODULATE;
-					blend.textureColorArg1Source = TEXTURE_ARG_TEXTURE;
-					blend.textureColorArg2Source = TEXTURE_ARG_VERTEX_COLOR0;
-					blend.isTextureFactorBlend = TRUE;
-				}
+				remixapi_InstanceInfoBlendEXT blend = convert::build_blend(mat, overrides, tfactor);
 
 				const remixapi_InstanceInfoBoneTransformsEXT bone_ext =
 				{
@@ -1902,7 +2304,7 @@ namespace gta4
 			/// submits one captured pass of a geometry; skinned meshes need the bone palette of the draw
 			/// @note caller holds the lock
 			void submit_record_locked(	const geometry_record& rec,			const remixapi_Transform& transform,	const remixapi_Transform* bones = nullptr, 
-										const std::uint64_t mesh_hash = 0u, const renderer_api::draw_pose_s::wound_s* wound = nullptr)
+										const std::uint64_t mesh_hash = 0u, const renderer_api::draw_pose_s::wound_s* wound = nullptr, const bool static_world = false)
 			{
 				PROFILE_ZONE();
 				const auto mesh_it = g_meshes.find(mesh_hash ? mesh_hash : rec.mesh_hash);
@@ -1925,7 +2327,19 @@ namespace gta4
 				}
 
 				submit_camera_once();
-				draw_mesh_locked(mesh_it->second, mat_it->second, rec.overrides, rec.tfactor, transform, bones, mat_it->second.state.double_sided);
+
+				// the retained path takes what never changes on its own: no bones, no shape of one frame, no wound and no
+				// animated uvs (UseGlobalUVs changes every frame and would update the placement every frame)
+				auto& mesh = mesh_it->second;
+				if (static_world && retained::enabled() && !bones && !mesh.bone_count && !mesh.transient && !mesh.wound
+					&& !(rec.overrides.modifierFlags & static_cast<std::uint32_t>(RemixModifier::UseGlobalUVs)))
+				{
+					mesh.last_used_frame = g_frame;
+					retained::touch_locked(rec, mesh_it->first, mesh, mat_it->second, transform);
+				}
+				else {
+					draw_mesh_locked(mesh, mat_it->second, rec.overrides, rec.tfactor, transform, bones, mat_it->second.state.double_sided);
+				}
 
 				if (wound && wound->enabled) {
 					peds::submit_wound_locked(rec, *wound, transform, bones);
@@ -2747,6 +3161,12 @@ namespace gta4
 						|| peds::g_in_draw_ped_dc; // rigid ped parts (props, unskinned lods) are drawn like static geometry
 			}
 
+			/// the draw windows of placements that never move: skinned objects, frag objects and rigid ped parts change
+			/// their transform and keep DrawInstance
+			bool static_window() {
+				return g_in_draw_entity_dc || g_in_draw_frag_type_dc || g_in_draw_entity_info || g_in_draw_lights_in_area;
+			}
+
 			DETOUR_TYPEDEF(grmGeometryQB_Draw, void, __thiscall, const game::grmGeometryQB* geom);
 			DETOUR_TYPEDEF(grmGeometryQB_dtor, void, __thiscall, const game::grmGeometryQB* geom);
 			DETOUR_TYPEDEF(grmShader_DrawGeometry, void, __thiscall, void* shader, const game::grmModel* model, int geometry_index, int lod, std::uint32_t is_last);
@@ -2967,7 +3387,7 @@ namespace gta4
 				for (auto i = 0u; i < set_it->count; i++)
 				{
 					if (!records[i]->hidden && !g_debug_hide_api) {
-						cache::submit_record_locked(*records[i], transform, bones, 0u, i == 0u ? wound : nullptr);
+						cache::submit_record_locked(*records[i], transform, bones, 0u, i == 0u ? wound : nullptr, !bones && !peds::g_in_draw_ped_dc && static_window());
 					}
 				}
 				return true;
@@ -3220,7 +3640,7 @@ namespace gta4
 						for (const auto& rec : rec_it->second)
 						{
 							if (rec.owned && !rec.hidden && !g_debug_hide_api) {
-								cache::submit_record_locked(rec, transform);
+								cache::submit_record_locked(rec, transform, nullptr, 0u, nullptr, true);
 							}
 						}
 					}
@@ -3499,6 +3919,13 @@ namespace gta4
 	{
 		const auto& api = shared::common::remix_api::get();
 		return api.is_initialized() && api.m_bridge.CreateMaterial != nullptr && api.m_bridge.CreateMesh != nullptr && api.m_bridge.DrawInstance != nullptr;
+	}
+
+	bool renderer_api::is_retained_supported()
+	{
+		const auto& api = shared::common::remix_api::get();
+		return is_runtime_supported() && api.m_bridge.CreateRetainedInstances != nullptr && api.m_bridge.UpdateRetainedInstance != nullptr
+			&& api.m_bridge.UpdateRetainedInstances != nullptr && api.m_bridge.DestroyRetainedInstances != nullptr && api.m_bridge.DrawRetainedInstances != nullptr;
 	}
 
 	bool renderer_api::is_enabled() {
@@ -3875,7 +4302,7 @@ namespace gta4
 
 				const auto wound = passes::first_pass_wound(pose);
 				peds::sync_wound_locked(dev, ctx, *rec, geom, prim_count, state, wound);
-				cache::submit_record_locked(*rec, transform, bones, mesh_it->first, wound);
+				cache::submit_record_locked(*rec, transform, bones, mesh_it->first, wound, pose == nullptr && passes::static_window());
 
 				if (count_uv_fallback && mesh_it->second.uv_fallback) {
 					vehicles::count_vehicle_stat(vehicles::vehicle_stat::overlay_uv_fallbacks);
@@ -4114,7 +4541,7 @@ namespace gta4
 
 		const auto wound = passes::first_pass_wound(pose);
 		peds::sync_wound_locked(dev, ctx, rec, geom, prim_count, state, wound);
-		cache::submit_record_locked(rec, transform, bones, draw_hash, wound);
+		cache::submit_record_locked(rec, transform, bones, draw_hash, wound, pose == nullptr && passes::static_window());
 
 		if (count_uv_fallback && mesh_it->second.uv_fallback) {
 			vehicles::count_vehicle_stat(vehicles::vehicle_stat::overlay_uv_fallbacks);
@@ -4308,8 +4735,17 @@ namespace gta4
 		PROFILE_ZONE();
 		g_frame++;
 		textures::process_texture_writes();
+		send_global_wetness();
 
 		g_modifier_skips_this_frame = 0u;
+
+		retained::g_touched_this_frame = 0u;
+		retained::g_creates_this_frame = 0u;
+		retained::g_updates_this_frame = 0u;
+		retained::g_shows_this_frame = 0u;
+		retained::g_hides_this_frame = 0u;
+		retained::g_destroys_this_frame = 0u;
+		retained::g_draw_calls_this_frame = 0u;
 
 		cache::g_creates_this_frame = 0u;
 		cache::g_cache_hits_this_frame = 0u;
@@ -4353,6 +4789,10 @@ namespace gta4
 		std::fill(std::begin(vehicles::g_vehicle_stats_this_frame), std::end(vehicles::g_vehicle_stats_this_frame), 0u);
 	}
 
+	void renderer_api::on_before_injection() {
+		retained::flush();
+	}
+
 	void renderer_api::on_end_scene()
 	{
 		PROFILE_ZONE();
@@ -4367,7 +4807,17 @@ namespace gta4
 			}
 		}
 
+		retained::flush(); // frames without an injection trigger (not in game)
+
 		g_modifier_skips_last_frame = g_modifier_skips_this_frame;
+
+		retained::g_touched_last_frame = retained::g_touched_this_frame;
+		retained::g_creates_last_frame = retained::g_creates_this_frame;
+		retained::g_updates_last_frame = retained::g_updates_this_frame;
+		retained::g_shows_last_frame = retained::g_shows_this_frame;
+		retained::g_hides_last_frame = retained::g_hides_this_frame;
+		retained::g_destroys_last_frame = retained::g_destroys_this_frame;
+		retained::g_draw_calls_last_frame = retained::g_draw_calls_this_frame;
 
 		cache::g_creates_last_frame = cache::g_creates_this_frame;
 		cache::g_instances_last_frame = cache::g_instances_this_frame;
@@ -4418,6 +4868,7 @@ namespace gta4
 		PROFILE_PLOT("api mesh creates", cache::g_creates_last_frame);
 		PROFILE_PLOT("api entity skips", entities::g_entity_skips_last_frame);
 		PROFILE_PLOT("api cache (MB)", g_cache_bytes >> 20u);
+		PROFILE_PLOT("api retained entries", retained::g_entries.size());
 
 		{
 			PROFILE_ZONE_N("renderer_api::release_unused_meshes");
@@ -4445,6 +4896,7 @@ namespace gta4
 		PROFILE_MESSAGE("renderer_api: destroyed all api meshes and materials");
 		std::unique_lock lock(g_mutex);
 		auto& bridge = shared::common::remix_api::get().m_bridge;
+		retained::destroy_all_locked();
 
 		for (auto& [hash, mesh] : g_meshes)
 		{
@@ -4496,6 +4948,16 @@ namespace gta4
 
 		s.meshes_cached = static_cast<std::uint32_t>(g_meshes.size());
 		s.ped_wound_meshes = static_cast<std::uint32_t>(std::count_if(g_meshes.begin(), g_meshes.end(), [](const auto& m) { return m.second.wound; }));
+
+		s.retained_entries = static_cast<std::uint32_t>(retained::g_entries.size());
+		s.retained_visible = static_cast<std::uint32_t>(std::count_if(retained::g_entries.begin(), retained::g_entries.end(), [](const auto& e) { return e.second.visible; }));
+		s.retained_touched_last_frame = retained::g_touched_last_frame;
+		s.retained_creates_last_frame = retained::g_creates_last_frame;
+		s.retained_updates_last_frame = retained::g_updates_last_frame;
+		s.retained_shows_last_frame = retained::g_shows_last_frame;
+		s.retained_hides_last_frame = retained::g_hides_last_frame;
+		s.retained_destroys_last_frame = retained::g_destroys_last_frame;
+		s.retained_draw_calls_last_frame = retained::g_draw_calls_last_frame;
 		
 		for (const auto& [hash, mesh] : g_meshes)
 		{
@@ -4609,6 +5071,10 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 		ImGui::Checkbox("Skip engine's entity draw", gs->api_static_entity_skip.get_as<bool*>());
 		ImGui::SliderInt("Entity draw refresh interval (frames, 0 = never)", gs->api_static_entity_refresh_frames.get_as<int*>(), 0, 1024);
+
+		ImGui::Spacing(0, 4);
+		ImGui::Checkbox("Retained instances (one DrawRetainedInstances per frame)", gs->api_static_retained.get_as<bool*>());
+		ImGui::SliderInt("Hide a retained placement after n frames without a draw", gs->api_static_retained_hide_frames.get_as<int*>(), 1, 600);
 		ImGui::PopID();
 
 		// ---
@@ -4688,6 +5154,10 @@ namespace gta4
 			s.vehicle_instances_last_frame + s.vehicle_tyres_last_frame + s.vehicle_flat_tyres_last_frame + s.vehicle_overlays_last_frame,
 			s.creates_last_frame, total_calls);
 		
+		ImGui::Text("Retained: %u placements (%u visible) ---- drawn by the game: %u ---- creates %u, updates %u, shows %u, hides %u, destroys %u ---- draw calls: %u",
+			s.retained_entries, s.retained_visible, s.retained_touched_last_frame, s.retained_creates_last_frame, s.retained_updates_last_frame,
+			s.retained_shows_last_frame, s.retained_hides_last_frame, s.retained_destroys_last_frame, s.retained_draw_calls_last_frame);
+
 		ImGui::Text("Geometry passes: %u ---- owned: %u (hidden by Ignore %u) ---- rejected: %u", s.records_total, s.records_owned, s.records_hidden, s.records_rejected);
 		
 		ImGui::Spacing(0, 4);

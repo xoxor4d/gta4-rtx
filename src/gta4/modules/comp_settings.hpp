@@ -557,6 +557,23 @@ namespace gta4
 				0
 			};
 
+			variable api_static_retained = {
+				"api_static_retained",
+				("Static map geometry drawn through the Remix API is registered with the runtime once (retained instance) and\n"
+				 "replayed by it every frame with one DrawRetainedInstances call, instead of one DrawInstance per placement per frame.\n"
+				 "Needs a runtime with retained instances, falls back to DrawInstance otherwise."),
+				"1.7.0",
+				true
+			};
+
+			variable api_static_retained_hide_frames = {
+				"api_static_retained_hide_frames",
+				("A retained placement the game did not draw for this many frames is hidden. 1 keeps the scene at what the game draws,\n"
+				 "like the per frame draws did; higher values keep objects the game culled resident, which costs scene build time every frame."),
+				"1.7.0",
+				1
+			};
+
 			variable api_peds_enabled = {
 				"api_peds_enabled",
 				("Render peds through the Remix API (needs 'api_static_enabled'). Skinned geometry becomes a skinned api mesh that gets\n"
