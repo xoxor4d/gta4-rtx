@@ -9,13 +9,22 @@ namespace gta4
 {
 	void on_cgame_process_hk()
 	{
+		shared::common::profiler::name_current_thread("Game");
+		PROFILE_FRAME_MARK_NAMED("Game");
+		PROFILE_ZONE();
+
 		const auto im = imgui::get();
 		const auto n = natives::get();
+
+		if (natives::on_game_frame_callback) {
+			natives::on_game_frame_callback();
+		}
 
 		// TODO: hack to fix issues with SSS-fixing commit (that makes head mesh invisible)
 		// + latest remix versions also make player char invisible
 		// + sometimes even parts of the world ...
 
+#if 0
 		static uint32_t frame_counter = 0u;
 		if (static auto first_frame = false; !first_frame)
 		{
@@ -45,7 +54,7 @@ namespace gta4
 				im->m_dbg_do_not_render_ff = false;
 			}
 		}
-
+#endif
 		discord::update_discord();
 
 		// ----

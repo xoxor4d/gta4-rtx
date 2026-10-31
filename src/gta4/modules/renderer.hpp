@@ -3,7 +3,23 @@
 
 namespace gta4
 {
+	/// dev tab: shaders ticked under "Enable Ignore Shader Logic" are not drawn (D3D9 and api path)
+	bool debug_ignore_shader_logic(const std::string_view& shader);
+
 	extern int g_is_instance_rendering;
+
+	// weather state the wetness overrides depend on (renderer.cpp)
+	bool should_apply_heavy_raindrops();
+	bool should_apply_light_raindrops();
+	extern const void* g_instanced_geometry; // grmGeometryQB drawn by RenderInstanced (tyres)
+	extern int g_in_draw_entity_dc; // inside CDrawEntityDC::ExecuteCommand (static map entities)
+	extern int g_in_draw_frag_type_dc; // inside rage::fragType::Draw of CDrawFragTypeDC::Execute (static entities with a fragment type)
+	extern int g_in_draw_frag_dc_object; // inside CDrawFragDC::Execute of a fragment instance that is not a vehicle (props with physics)
+	extern int g_in_draw_entity_info; // inside CEntityDrawInfo::RenderBuckets of an unskinned entity (sorted alpha entities)
+	extern int g_in_draw_dynamic_entity_dc; // inside CDrawSkinnedEntityDC::Execute of an unskinned dynamic entity (CObject)
+	extern int g_in_draw_lights_in_area; // inside CRenderer::RenderDrawableGeometriesWithLightsInArea (large alpha entities, wires)
+
+	void reset_world_transform();
 	extern int g_is_sky_rendering;
 	extern int g_is_water_rendering;
 	extern int g_is_rendering_mirror;
@@ -40,7 +56,7 @@ namespace gta4
 		EmissiveScalar = 1 << 0,
 		RoughnessScalar = 1 << 1,
 		EnableVertexColor = 1 << 2,
-		DecalDirt = 1 << 3,
+		WaterShoreline = 1 << 3,
 		RemoveVertexColorKeepAlpha = 1 << 4,
 		VehicleDecalDirt = 1 << 5,
 		UseGlobalUVs = 1 << 6, // use gta4's global uv constant to animate uvs
@@ -131,7 +147,8 @@ namespace gta4
 		SmoothNormals = 1 << 23,
 		HairCards = 1 << 24,
 		DisableBackfaceCulling = 1 << 25,
-		Count = 25,
+		CardNormals = 1 << 26,
+		Count = 27,
 		None = 0u
 	};
 
@@ -225,6 +242,14 @@ namespace gta4
 	constexpr InstanceCategories operator~(InstanceCategories e) {
 		return static_cast<InstanceCategories>(~static_cast<std::uint32_t>(e));
 	}
+
+	// texture of the current shader pass, captured in SetupPixelShaderAndConstants
+	struct pass_texture_s
+	{
+		std::uint32_t slot = 0u;
+		std::uint32_t param_hash = 0u;
+		game::grcTextureReference* ref = nullptr;
+	};
 
 	class drawcall_mod_context
 	{
@@ -359,6 +384,10 @@ namespace gta4
 			if (vs_set_)
 			{
 				device->SetVertexShader(vs_);
+				if (vs_set_) {
+					vs_->Release();
+				}
+
 				vs_set_ = false;
 			}
 		}
@@ -369,6 +398,10 @@ namespace gta4
 			if (ps_set_)
 			{
 				device->SetPixelShader(ps_);
+				if (ps_) {
+					ps_->Release();
+				}
+
 				ps_set_ = false;
 			}
 		}
@@ -381,6 +414,10 @@ namespace gta4
 				if (tex0_set_)
 				{
 					device->SetTexture(0, tex0_);
+					if (tex0_) {
+						tex0_->Release();
+					}
+
 					tex0_set_ = false;
 				}
 			}
@@ -389,6 +426,10 @@ namespace gta4
 				if (tex1_set_)
 				{
 					device->SetTexture(1, tex1_);
+					if (tex1_) {
+						tex1_->Release();
+					}
+
 					tex1_set_ = false;
 				}
 			}
@@ -579,6 +620,29 @@ namespace gta4
 			Vector4D ps_const_73_veh_dirt;
 			Vector4D ps_const_74_veh_dirt;
 
+			// vehicle damage parameters of the bound vertex shader (registers move between the vehicle shaders)
+			int vs_switch_on_register = -1;
+			int vs_bound_radius_register = -1;
+			int vs_damage_sampler = -1;
+			int vs_wheel_transform_register = -1; // matWheelTransform of the tyre shader
+			int vs_tyre_deform_register = -1;     // tyreDeformSwitchOn (flat tyre)
+
+			// DrawIndexedPrimitive range of the current draw (the runtime's geometry hash of the D3D9 draw depends on it)
+			INT draw_base_vertex = 0;
+			UINT draw_start_index = 0u;
+
+			pass_texture_s pass_textures[8];
+			std::uint32_t pass_texture_count = 0u;
+			int spec_map_channel = -1; // channel of the specular map the shader reads (specMapIntMask), -1 = unknown
+
+			// values the set_remix_* setters wrote to the unused render states for this draw (api path reads these)
+			std::uint32_t remix_hash_override = 0u;   // RS150
+			std::uint32_t remix_hash_seed = 0u;       // RS220
+			std::uint32_t remix_wetness_packed = 0u;  // RS210
+			float remix_temp_float01 = 0.0f;          // RS169
+			float remix_temp_float02 = 0.0f;          // RS177
+			float remix_multi_use[6] = {};            // RS211-216
+
 			void reset()
 			{
 				shader_name = "";
@@ -597,6 +661,16 @@ namespace gta4
 				global_anim_uv1.Zero();
 
 				shaderconst_emissive_intensity = -1.0f;
+				pass_texture_count = 0u;
+				spec_map_channel = -1;
+				remix_hash_override = 0u;
+				remix_hash_seed = 0u;
+				remix_wetness_packed = 0u;
+				remix_temp_float01 = 0.0f;
+				remix_temp_float02 = 0.0f;
+				for (auto& v : remix_multi_use) {
+					v = 0.0f;
+				}
 				shaderconst_uses_emissive_multiplier = false;
 
 				rs_alphablendenable = 0u;
@@ -610,6 +684,14 @@ namespace gta4
 				ps_const_72_veh_dirt.Zero();
 				ps_const_73_veh_dirt.Zero();
 				ps_const_74_veh_dirt.Zero();
+
+				vs_switch_on_register = -1;
+				vs_bound_radius_register = -1;
+				vs_damage_sampler = -1;
+				vs_wheel_transform_register = -1;
+				vs_tyre_deform_register = -1;
+				draw_base_vertex = 0;
+				draw_start_index = 0u;
 			}
 		};
 
@@ -670,7 +752,7 @@ namespace gta4
 		static void set_remix_modifier(IDirect3DDevice9* dev, RemixModifier mod, bool remove_mod = false);
 		static void set_remix_emissive_intensity(IDirect3DDevice9* dev, float intensity, bool no_overrides = false);
 
-		enum eWetnessFlags : uint8_t
+		enum eWetnessFlags : uint16_t
 		{
 			WETNESS_FLAG_ENABLE_VARIATION = 1 << 0,
 			WETNESS_FLAG_ENABLE_RAINDROPS = 1 << 1,				// either expensive or normal raindrops
@@ -680,10 +762,11 @@ namespace gta4
 			WETNESS_FLAG_ENABLE_PUDDLE_LAYER = 1 << 5,			// adds a puddle layer to wet surfaces 
 			WETNESS_FLAG_ENABLE_OCCLUSION_TEST = 1 << 6,		// test if something is covering this surface
 			WETNESS_FLAG_ENABLE_OCCLUSION_SMOOTHING = 1 << 7,	// smooth occlusion edges - needs DLSS RR
+			WETNESS_FLAG_GLOBAL_WETNESS = 1 << 8,				// the scalar is the fully wet value, the runtime's rtx.wet.globalWetness takes it there from dry
 			WETNESS_FLAG_NONE = 0u
 		};
 
-		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float raindrop_scale = 0.0f, uint8_t flags = WETNESS_FLAG_NONE);
+		static void set_remix_roughness_scalar(IDirect3DDevice9* dev, float roughness_scalar, float max_z = 0.35f, float blend_width = 0.65f, float raindrop_scale = 0.0f, uint16_t flags = WETNESS_FLAG_NONE);
 		static void set_remix_use_worldpos_instead_of_surface_uvs(IDirect3DDevice9* dev, float scale = 0.01f);
 		static void set_remix_translucent_fade_out_normal_after_distance(IDirect3DDevice9* dev, float distance);
 

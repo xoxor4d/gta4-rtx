@@ -44,6 +44,7 @@
 #include "bridge_remix_api.h"
 
 #include "common/console.hpp"
+#include "common/profiler.hpp"
 #include "utils/utils.hpp"
 #include "utils/vector.hpp"
 #include "utils/hooking.hpp"

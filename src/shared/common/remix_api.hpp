@@ -13,9 +13,9 @@ namespace shared::common
 
 		static remix_api& get();
 
-		static void begin_scene_callback_internal();
-		static void end_scene_callback_internal();
-		static void present_callback_internal();
+		static void __stdcall begin_scene_callback_internal();
+		static void __stdcall end_scene_callback_internal();
+		static void __stdcall present_callback_internal();
 
 
 		static constexpr std::uint32_t M_MAX_DEBUG_LINES = 512u;
@@ -43,8 +43,7 @@ namespace shared::common
 		static void initialize(
 			PFN_remixapi_BridgeCallback begin_scene_callback,
 			PFN_remixapi_BridgeCallback end_scene_callback,
-			PFN_remixapi_BridgeCallback present_callback,
-			bool is_asi = false);
+			PFN_remixapi_BridgeCallback present_callback);
 
 		static bool is_initialized() { return get().m_initialized; }
 

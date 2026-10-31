@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2023-2026, NVIDIA CORPORATION. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -56,9 +56,40 @@
 #define REMIXAPI_VERSION_GET_MINOR(version) (((uint64_t)(version) >> 16) & (uint64_t)0xFFFFFFFF)
 #define REMIXAPI_VERSION_GET_PATCH(version) (((uint64_t)(version)      ) & (uint64_t)0xFFFF)
 
+// Remix Plus carries its own ABI line, distinct from stock NVIDIA dxvk-remix
+// (which is 0.6.x). The reserved MINOR (1000) marks this fork and, because the
+// compat check treats every minor as breaking while MAJOR==0, makes the runtime
+// reject binaries built against stock Remix 0.6.x or older Remix Plus 0.6.x —
+// the struct layout and category-bit ABI differ. Bump MINOR again on any
+// further breaking ABI change.
+//
+// PATCH 1 tracks upstream 0.6.5: remixapi_MaterialInfoOpaqueEXT grew by the four
+// DLSS control-mask fields. The runtime (and the bridge client) only read those
+// fields from callers reporting >= 0.1000.1, so binaries built against 0.1000.0
+// keep working and receive upstream's defaults.
+//
+// PATCH 2 adds remixapi_MaterialInfoGameTexturesEXT (game colormap as albedo
+// and replacement key of an API material).
+//
+// PATCH 3 adds remixapi_InstanceInfoD3DOverridesEXT (the per draw values the
+// D3D9 path reads from unused render states).
+//
+// PATCH 4 adds remixapi_MeshInfoReplacementHashEXT (the key a mesh is looked up
+// by for USD replacements and named by in captures).
+//
+// PATCH 5 adds remixapi_MaterialInfoGameTexturesEXT::colorIsEmissive (the game
+// colormap doubles as the emissive texture of the keyed material). Read from
+// callers reporting >= 0.1000.5 only.
+//
+// PATCH 6 adds REMIXAPI_INSTANCE_CATEGORY_BIT_CARD_NORMALS (bent normals for
+// flat LOD card trees). Older callers never set the bit.
+//
+// PATCH 7 adds retained instances (CreateRetainedInstances, UpdateRetainedInstance,
+// UpdateRetainedInstances, DestroyRetainedInstances, DrawRetainedInstances), appended
+// to remixapi_Interface. Older callers never read the new slots.
 #define REMIXAPI_VERSION_MAJOR 0
-#define REMIXAPI_VERSION_MINOR 6
-#define REMIXAPI_VERSION_PATCH 4
+#define REMIXAPI_VERSION_MINOR 1000
+#define REMIXAPI_VERSION_PATCH 7
 
 
 // External
@@ -133,6 +164,9 @@ extern "C" {
     REMIXAPI_STRUCT_TYPE_INSTANCE_INFO_PARTICLE_SYSTEM_EXT    = 26,
     REMIXAPI_STRUCT_TYPE_INSTANCE_INFO_GPU_INSTANCING_EXT     = 27,
     REMIXAPI_STRUCT_TYPE_CAMERA_MEDIUM_INFO                   = 28,
+    REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_GAME_TEXTURES_EXT      = 29,
+    REMIXAPI_STRUCT_TYPE_INSTANCE_INFO_D3D_OVERRIDES_EXT      = 30,
+    REMIXAPI_STRUCT_TYPE_MESH_INFO_REPLACEMENT_HASH_EXT       = 31,
     // NOTE: if adding a new struct, register it in 'rtx_remix_specialization.inl'
     //       and only extend this enum by appending, never adjust the order of these 
     //       as that will break backwards compatibility.
@@ -254,6 +288,10 @@ extern "C" {
     int                 alphaTestType;
     uint8_t             alphaReferenceValue;
     float               displaceOut;
+    remixapi_Bool       enableDlssControlMask;
+    float               dlssControlMaskIntensity;
+    float               dlssControlMaskToneStrength;
+    float               dlssControlMaskStructuralStrength;
   } remixapi_MaterialInfoOpaqueEXT;
 
   // Valid only if remixapi_MaterialInfo contains remixapi_MaterialInfoOpaqueEXT in pNext chain
@@ -363,6 +401,17 @@ extern "C" {
     uint32_t                                 surfaces_count;
   } remixapi_MeshInfo;
 
+  // Chained to remixapi_MeshInfo: the geometry part of the key USD mesh replacements are looked up by and
+  // captures name the mesh by, instead of remixapi_MeshInfo::hash (which stays the handle). Like on D3D9 draws
+  // the key is replacementHash ^ the material key of the drawn instance (its game color texture hash with the
+  // instance's D3D hash overrides), so the geometry asset hash a D3D9 draw of the same geometry gets makes
+  // replacements authored against D3D9 captures apply. Several meshes may share it. 0 keeps the handle hash.
+  typedef struct remixapi_MeshInfoReplacementHashEXT {
+    remixapi_StructType sType;
+    void*               pNext;
+    uint64_t            replacementHash;
+  } remixapi_MeshInfoReplacementHashEXT;
+
   typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_CreateMesh)(
     const remixapi_MeshInfo*  info,
     remixapi_MeshHandle*      out_handle);
@@ -463,6 +512,22 @@ extern "C" {
     remixapi_Bool       isVertexColorBakedLighting;
   } remixapi_InstanceInfoBlendEXT;
 
+  // Per draw overrides that the D3D9 path reads from unused render states (GTA4 compatibility).
+  // Categories and modifier flags are applied like RS42 / RS149, the hash fields change the material
+  // hash used for replacement lookups, the remaining values feed the modifier flags. Absent fields
+  // behave like a D3D9 draw with those render states at 0.
+  typedef struct remixapi_InstanceInfoD3DOverridesEXT {
+    remixapi_StructType sType;
+    void*               pNext;
+    uint32_t            categoryFlags;   // RS42: runtime InstanceCategories bit order, OR'ed into the instance categories
+    uint32_t            modifierFlags;   // RS149: REMIX_MODIFIER_FROM_D3D bits
+    uint64_t            hashOverride;    // RS150: replaces the material hash when non-zero
+    uint32_t            hashSeed;        // RS220: re-hashes the material hash when non-zero, takes precedence over hashOverride
+    float               emissiveScale;   // RS169: emissive intensity multiplier (EMISSIVE_SCALAR modifier)
+    uint32_t            packedWetness;   // RS210: two 16 bit wetness parameters (ROUGHNESS_SCALAR modifier)
+    float               multiUse[6];     // RS211-216: UV animation / translucent parameters
+  } remixapi_InstanceInfoD3DOverridesEXT;
+
   typedef struct remixapi_InstanceInfoObjectPickingEXT {
     remixapi_StructType            sType;
     void*                          pNext;
@@ -470,35 +535,42 @@ extern "C" {
     uint32_t                       objectPickingValue;
   } remixapi_InstanceInfoObjectPickingEXT;
 
+  // Bit values match upstream NVIDIA dxvk-remix exactly. These are a published
+  // ABI contract — do NOT reorder or reassign. (An earlier fork build shifted
+  // IGNORE_ALPHA_CHANNEL to bit 8 to mirror the internal InstanceCategories
+  // order; that was reverted because the C<->internal mapping is by-name in
+  // toRtCategories(), so the bit values are free to match upstream and must.)
   typedef enum remixapi_InstanceCategoryBit {
-    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_UI = 1 << 0,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_MATTE = 1 << 1,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_SKY = 1 << 2,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE = 1 << 3,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_LIGHTS = 1 << 4,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ANTI_CULLING = 1 << 5,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_MOTION_BLUR = 1 << 6,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_OPACITY_MICROMAP = 1 << 7,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_HIDDEN = 1 << 8,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE = 1 << 9,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_BEAM = 1 << 10,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_STATIC = 1 << 11,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_DYNAMIC = 1 << 12,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_SINGLE_OFFSET = 1 << 13,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_NO_OFFSET = 1 << 14,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_ALPHA_BLEND_TO_CUTOUT = 1 << 15,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_TERRAIN = 1 << 16,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_ANIMATED_WATER = 1 << 17,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_UI                  = 1 << 0,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_WORLD_MATTE               = 1 << 1,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_SKY                       = 1 << 2,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE                    = 1 << 3,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_LIGHTS             = 1 << 4,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ANTI_CULLING       = 1 << 5,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_MOTION_BLUR        = 1 << 6,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_OPACITY_MICROMAP   = 1 << 7,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_HIDDEN                    = 1 << 8,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE                  = 1 << 9,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_BEAM                      = 1 << 10,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_STATIC              = 1 << 11,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_DYNAMIC             = 1 << 12,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_SINGLE_OFFSET       = 1 << 13,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_DECAL_NO_OFFSET           = 1 << 14,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_ALPHA_BLEND_TO_CUTOUT     = 1 << 15,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_TERRAIN                   = 1 << 16,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_ANIMATED_WATER            = 1 << 17,
     REMIXAPI_INSTANCE_CATEGORY_BIT_THIRD_PERSON_PLAYER_MODEL = 1 << 18,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_THIRD_PERSON_PLAYER_BODY = 1 << 19,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_BAKED_LIGHTING = 1 << 20,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ALPHA_CHANNEL = 1 << 21,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_THIRD_PERSON_PLAYER_BODY  = 1 << 19,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_BAKED_LIGHTING     = 1 << 20,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_ALPHA_CHANNEL      = 1 << 21,
+    // Deprecated. Reserved for API compatibility and ignored by the runtime.
     REMIXAPI_INSTANCE_CATEGORY_BIT_IGNORE_TRANSPARENCY_LAYER = 1 << 22,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE_EMITTER = 1 << 23,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_SMOOTH_NORMALS = 1 << 24,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_HAIR_CARDS = 1 << 25,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_VIEW_MODEL = 1 << 26,
-    REMIXAPI_INSTANCE_CATEGORY_BIT_DISABLE_BACKFACE_CULLING = 1 << 27,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_PARTICLE_EMITTER          = 1 << 23,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_SMOOTH_NORMALS            = 1 << 24,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_HAIR_CARDS                = 1 << 25,
+    REMIXAPI_INSTANCE_CATEGORY_BIT_VIEW_MODEL                = 1 << 26,
+    // 0.1000.6: shaded with a bent normal (card center to hit point, mixed with world up) instead of the vertex normals; for flat LOD card trees.
+    REMIXAPI_INSTANCE_CATEGORY_BIT_CARD_NORMALS              = 1 << 27,
   } remixapi_InstanceCategoryBit;
 
   typedef uint32_t remixapi_InstanceCategoryFlags;
@@ -786,15 +858,15 @@ extern "C" {
   typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_Present)(const remixapi_PresentInfo* info);
 
   // Optional frame-boundary callbacks (mirrors bridge API semantics)
-  typedef void (REMIXAPI_PTR* PFN_remixapi_BridgeCallback2)(void);
-  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_RegisterCallbacks2)(
-    PFN_remixapi_BridgeCallback2 beginSceneCallback,
-    PFN_remixapi_BridgeCallback2 endSceneCallback,
-    PFN_remixapi_BridgeCallback2 presentCallback);
-  REMIXAPI remixapi_ErrorCode REMIXAPI_CALL remixapi_RegisterCallbacks2(
-    PFN_remixapi_BridgeCallback2 beginSceneCallback,
-    PFN_remixapi_BridgeCallback2 endSceneCallback,
-    PFN_remixapi_BridgeCallback2 presentCallback);
+  typedef void (REMIXAPI_PTR* PFN_remixapi_BridgeCallback)(void);
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_RegisterCallbacks)(
+    PFN_remixapi_BridgeCallback beginSceneCallback,
+    PFN_remixapi_BridgeCallback endSceneCallback,
+    PFN_remixapi_BridgeCallback presentCallback);
+  REMIXAPI remixapi_ErrorCode REMIXAPI_CALL remixapi_RegisterCallbacks(
+    PFN_remixapi_BridgeCallback beginSceneCallback,
+    PFN_remixapi_BridgeCallback endSceneCallback,
+    PFN_remixapi_BridgeCallback presentCallback);
 
   // Internal helper to auto-instance persistent external API lights once per frame
   typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_AutoInstancePersistentLights)(void);
@@ -915,6 +987,21 @@ extern "C" {
     remixapi_Format   format,
     float             opacity);
 
+  // Chained from remixapi_MaterialInfoOpaqueEXT::pNext. On an opaque material with an empty
+  // albedoTexture, this D3D9 texture (filled before CreateMaterial) is used as albedo and its
+  // image hash becomes the material's replacement / capture / category key, the same key a
+  // D3D9 draw of that texture gets.
+  typedef struct remixapi_MaterialInfoGameTexturesEXT {
+    remixapi_StructType sType;
+    void*               pNext;
+    IDirect3DTexture9*  colorTexture;
+    // The colormap is also the emissive texture: emission is enabled on the keyed material with the
+    // emissiveIntensity / emissiveColorConstant of the remixapi_MaterialInfo (a USD replacement of the
+    // key still takes precedence). Unlike an additive blend state this keeps the instance in the
+    // ordered geometry (motion vectors, G-buffer).
+    remixapi_Bool       colorIsEmissive;
+  } remixapi_MaterialInfoGameTexturesEXT;
+
 
   typedef struct remixapi_InitializeLibraryInfo {
     remixapi_StructType sType;
@@ -992,6 +1079,42 @@ extern "C" {
   typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_GetVramStats)(
     remixapi_VramStats* out_stats);
 
+  // NOTE: If adding a new function, append it at the END of the struct.
+  //       Reordering or inserting in the middle breaks backwards compatibility.
+  // Retained instances (0.1000.7). A draw registered once and replayed by the runtime
+  // every frame with one DrawRetainedInstances call, instead of one DrawInstance per
+  // placement per frame. Handles are chosen by the host: nonzero, unique per live entry.
+  // Commands apply in call order at the next DrawRetainedInstances; every live visible
+  // entry is drawn every frame until destroyed, hidden is a sticky state. Destroy a
+  // retained instance before its mesh.
+#define REMIXAPI_RETAINED_UPDATE_TRANSFORM  0x1u
+#define REMIXAPI_RETAINED_UPDATE_VISIBILITY 0x2u
+  typedef struct remixapi_RetainedInstanceUpdate {
+    uint64_t           handle;
+    remixapi_Transform transform;   // valid with REMIXAPI_RETAINED_UPDATE_TRANSFORM
+    uint32_t           flags;       // REMIXAPI_RETAINED_UPDATE_*
+    remixapi_Bool      visible;     // valid with REMIXAPI_RETAINED_UPDATE_VISIBILITY
+  } remixapi_RetainedInstanceUpdate;
+
+  // Registers count draws under the host's handles. Nothing is created unless every item is valid.
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_CreateRetainedInstances)(
+    const remixapi_InstanceInfo* infos,
+    const uint64_t*              handles,
+    uint32_t                     count);
+  // Replaces the whole description of a registered draw. Keeps its visibility.
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_UpdateRetainedInstance)(
+    uint64_t                     handle,
+    const remixapi_InstanceInfo* info);
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_UpdateRetainedInstances)(
+    const remixapi_RetainedInstanceUpdate* updates,
+    uint32_t                               count);
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_DestroyRetainedInstances)(
+    const uint64_t* handles,
+    uint32_t        count);
+  // Once per frame. sceneOrigin must be NULL (no origin rebase on this runtime).
+  typedef remixapi_ErrorCode(REMIXAPI_PTR* PFN_remixapi_DrawRetainedInstances)(
+    const float* sceneOrigin);
+
   typedef struct remixapi_Interface {
     PFN_remixapi_Shutdown           Shutdown;
     PFN_remixapi_CreateMaterial     CreateMaterial;
@@ -1026,8 +1149,11 @@ extern "C" {
 
     PFN_remixapi_Startup            Startup;
     PFN_remixapi_Present            Present;
-
+    // Camera-in-medium material. Kept adjacent to Present to mirror the
+    // canonical upstream layout (upstream commit 2bac8874 moved it here to
+    // fix backwards-compat); fork extension functions are appended below.
     PFN_remixapi_SetCameraMediumMaterial SetCameraMediumMaterial;
+
     // NOTE: REMIXAPI_PTR is required so the calling convention matches the
     // actual remixapi_GetUIState / remixapi_SetUIState entry functions
     // (which are __stdcall via REMIXAPI_CALL). On x64 this is moot — there's
@@ -1038,7 +1164,7 @@ extern "C" {
     remixapi_ErrorCode              (REMIXAPI_PTR *SetUIState)(remixapi_UIState state);
 
     // Optional extension functions (present starting in v0.5.1+)
-    PFN_remixapi_RegisterCallbacks2          RegisterCallbacks;
+    PFN_remixapi_RegisterCallbacks          RegisterCallbacks;
     PFN_remixapi_AutoInstancePersistentLights AutoInstancePersistentLights;
     PFN_remixapi_UpdateLightDefinition      UpdateLightDefinition;
     PFN_remixapi_DrawScreenOverlay          DrawScreenOverlay;
@@ -1047,6 +1173,12 @@ extern "C" {
     PFN_remixapi_GetVramStats               GetVramStats;
     PFN_remixapi_RequestTextureVramFree     RequestTextureVramFree;
     PFN_remixapi_GetGameValue               GetGameValue;
+    // Retained instances (0.1000.7)
+    PFN_remixapi_CreateRetainedInstances    CreateRetainedInstances;
+    PFN_remixapi_UpdateRetainedInstance     UpdateRetainedInstance;
+    PFN_remixapi_UpdateRetainedInstances    UpdateRetainedInstances;
+    PFN_remixapi_DestroyRetainedInstances   DestroyRetainedInstances;
+    PFN_remixapi_DrawRetainedInstances      DrawRetainedInstances;
   } remixapi_Interface;
 
   REMIXAPI remixapi_ErrorCode REMIXAPI_CALL remixapi_InitializeLibrary(

@@ -12,6 +12,7 @@ namespace gta4
 		static imgui* get() { return p_this; }
 
 		static void on_present();
+		static void on_device_reset();
 
 		void draw_debug();
 		void devgui();
@@ -39,17 +40,11 @@ namespace gta4
 		float m_freecam_fwd_speed = 0.5f;
 		float m_freecam_rt_speed = 0.2f;
 		float m_freecam_up_speed = 0.2f;
-		float m_freecam_up_offset = 0.0f;
 
 		bool m_freeze_time = false;
 		bool m_time_was_changed = false;
 		int m_curr_game_hour = 0;
 		int m_curr_game_minute = 0;
-
-		float m_dbg_vis_sun_lerp_t = 0.0f;
-		float m_dbg_vis_sun_elevation = 0.0f;
-		float m_dbg_vis_sun_rotation = 0.0f;
-		uint32_t m_dbg_vis_sun_frame_count = 0u;
 
 		bool m_anti_cull_capture_toggle = false;
 
@@ -94,6 +89,8 @@ namespace gta4
 		bool m_dbg_do_not_render_water = false;
 		bool m_dbg_do_not_render_tri_surface = false;
 		bool m_dbg_do_not_render_map_markers = false;
+		bool m_dbg_distant_cars_green_material = false;
+		int m_dbg_ped_wound_mode = 0; // 0 decal, 1 alpha blended without the decal category, 2 opaque textured (placement / texture check)
 		bool m_dbg_toggle_ff = false;
 		bool m_dbg_do_not_restore_drawcall_context = false;
 		bool m_dbg_do_not_restore_drawcall_context_on_early_out = false;
@@ -131,6 +128,8 @@ namespace gta4
 		bool m_dbg_disable_global_uv_anims = false;
 		bool m_dbg_disable_omm_override_on_alpha_uv_anims = false;
 		bool m_dbg_disable_water_worldpos_logic = false;
+		bool m_dbg_disable_water_module = false;
+		bool m_dbg_disable_water_rect_culling = false;
 
 
 		int m_dbg_tag_exp_hair_as_index = -1;
@@ -179,10 +178,6 @@ namespace gta4
 			}
 		};
 
-		debug_plot m_plot_sun_lerp;
-		debug_plot m_plot_sun_elevation;
-		debug_plot m_plot_sun_rotation;
-		debug_plot m_plot_sun_framecount;
 
 		struct visualized_decal_rs_s
 		{

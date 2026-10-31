@@ -41,7 +41,10 @@
   #define DLLEXPORT __declspec(dllexport)
 #endif
 
-typedef void(__cdecl* PFN_remixapi_BridgeCallback)(void);
+// PFN_remixapi_BridgeCallback is declared in <remix/remix_c.h> (included above)
+// as __stdcall. The previous local __cdecl typedef conflicted on MSVC and also
+// disagreed with the server side's calling convention at runtime; the canonical
+// definition is now the only one in scope.
 typedef remixapi_ErrorCode(DLLEXPORT REMIXAPI_CALL* PFN_remixapi_RegisterCallbacks)(
   PFN_remixapi_BridgeCallback beginSceneCallback,
   PFN_remixapi_BridgeCallback endSceneCallback,
@@ -56,8 +59,8 @@ static constexpr char initRemixApi[] = "remixapi_InitializeLibrary";
 static constexpr char registerCallbacks[] = "remixapi_RegisterCallbacks";
 }
 
-inline remixapi_ErrorCode bridge_initRemixApi(remixapi_Interface* out_remixInterface, bool is_asi = false) {
-  HMODULE hModule = is_asi ? GetModuleHandleA("d3d9.asi") : GetModuleHandleA("d3d9.dll");
+inline remixapi_ErrorCode bridge_initRemixApi(remixapi_Interface* out_remixInterface) {
+  HMODULE hModule = GetModuleHandleA("d3d9.dll");
   if (hModule) {
     PFN_remixapi_InitializeLibrary const pfn_Initialize =
       (PFN_remixapi_InitializeLibrary)GetProcAddress(hModule, exported_func_name::initRemixApi);

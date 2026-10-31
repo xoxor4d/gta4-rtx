@@ -1,5 +1,9 @@
 #include "std_include.hpp"
 #include "imgui.hpp"
+#include "renderer_api.hpp"
+#include "water.hpp"
+#include "distant_lights.hpp"
+#include "game_lights.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui_internal.h"
@@ -8,6 +12,7 @@
 #include "remix_lights.hpp"
 #include "remix_vars.hpp"
 #include "renderer.hpp"
+#include "timecycle.hpp"
 #include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
 #include "shared/common/toml_ext.hpp"
@@ -104,20 +109,34 @@ namespace gta4
 		const auto im = imgui::get();
 		const auto n = natives::get();
 
-		if (ImGui::Checkbox("Modify / Freeze Time", &im->m_freeze_time)) {
+		if (ImGui::Checkbox("Modify Time", &im->m_freeze_time)) {
 			*game::m_game_timer_length = im->m_freeze_time ? 9999999 : 2000;
 		}
 
+		ImGui::SameLine(0, 16.0f);
+		const auto& style = ImGui::GetStyle();
+		constexpr auto clock_widget_gap = 12.0f;
+		constexpr auto clock_widget_end_padding = 12.0f;
+		const auto clock_widget_width = (ImGui::GetContentRegionAvail().x - clock_widget_gap - clock_widget_end_padding) * 0.5f;
+
 		ImGui::BeginDisabled(!im->m_freeze_time);
 		{
+			ImGui::SetNextItemWidth(clock_widget_width - ImGui::CalcTextSize("Hour").x - style.ItemInnerSpacing.x);
 			if (ImGui::InputInt("Hour", &im->m_curr_game_hour, 1, 2))
 			{
 				im->m_curr_game_hour = im->m_curr_game_hour > 23 ? 0 : im->m_curr_game_hour < 0 ? 23 : im->m_curr_game_hour;
 				im->m_time_was_changed = true;
 			}
+
+			ImGui::SameLine(0, clock_widget_gap);
+			ImGui::SetNextItemWidth(clock_widget_width - ImGui::CalcTextSize("Minutes").x - style.ItemInnerSpacing.x);
 			if (ImGui::InputInt("Minutes", &im->m_curr_game_minute, 1, 4))
 			{
-				im->m_curr_game_minute = im->m_curr_game_minute > 59 ? 0 : im->m_curr_game_minute < 0 ? 59 : im->m_curr_game_minute;
+				// minutes carry into the hour in both directions
+				const int total = im->m_curr_game_hour * 60 + im->m_curr_game_minute;
+				const int wrapped = ((total % 1440) + 1440) % 1440;
+				im->m_curr_game_hour = wrapped / 60;
+				im->m_curr_game_minute = wrapped % 60;
 				im->m_time_was_changed = true;
 			}
 			ImGui::EndDisabled();
@@ -129,6 +148,7 @@ namespace gta4
 
 		auto set_weather = [n](uint32_t idx) 
 			{
+				shared::common::remix_api::get().m_bridge.SetGameValue("__weather.blend_absolute", "1.0");
 				n->ForceWeatherNow(idx);
 				n->ReleaseWeather();
 			};
@@ -251,6 +271,7 @@ namespace gta4
 		CENTER_URL("Miniz", "https://github.com/richgel999/miniz");
 		CENTER_URL("Rapidjson", "https://github.com/Tencent/rapidjson");
 		CENTER_URL("DiscordRPC", "https://github.com/discord/discord-rpc");
+		CENTER_URL("Tracy", "https://github.com/wolfpld/tracy");
 
 		CENTER_URL("FusionFix", "https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix");
 		CENTER_URL("FusionShaders", "https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders");
@@ -265,11 +286,11 @@ namespace gta4
 		CENTER_URL("Hemry", "https://www.youtube.com/@Hemry81");
 		CENTER_URL("Thundery_Dan", "https://github.com/DANLOPAND");
 		CENTER_URL("KapibosRU", "https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ");
-		CENTER_URL("Budgie", "https://www.patreon.com/c/BudgieGames");
+		CENTER_URL("Budgie (Vegetation)", "https://www.patreon.com/c/BudgieGames");
 		CENTER_URL("Alex from Digital Foundry", "https://www.youtube.com/watch?v=vGxPdcMQfwg");
-		CENTER_URL("Sparkles (Remix Plus - Numos - DLSS5 Integration)", "https://github.com/Kim2091");
+		CENTER_URL("Sparkles (Remix Plus - Numos - Initial DLSS5 Integration)", "https://github.com/Kim2091");
 		CENTER_URL("CR (Remix Plus)", "https://github.com/sambow23");
-		CENTER_URL("TheGreatHMMMM (Remix Plus)", "https://github.com/TheGreatHMMMM");
+		CENTER_URL("TheGreatHMMMM (Remix Plus - HDR Impl.)", "https://github.com/TheGreatHMMMM");
 		CENTER_URL("Gokuwashere (Remix Plus)", "https://github.com/BrunchyChineapple");
 
 		ImGui::Spacing(0.0f, 24.0f);
@@ -706,8 +727,28 @@ namespace gta4
 			TT("Disables automatic ignore OMM tagging on alphatested emissive surfaces with animated UVs");
 
 			ImGui::Checkbox("Disable Water Worldpos Logic", &im->m_dbg_disable_water_worldpos_logic);
+			ImGui::Checkbox("Disable Water Module", &im->m_dbg_disable_water_module);
+			TT("All water module hooks behave like the game: no tessellation changes, far waves, simulation edge fade or block scan changes.");
+			ImGui::Checkbox("Disable Water Rectangle Culling", &im->m_dbg_disable_water_rect_culling);
+			TT("The water block scan keeps rectangles outside the camera frustum instead of dropping them.");
 
 			//ImGui::Checkbox("Disable Alphablend On VEHGLASS", &im->m_dbg_vehglass_disable_alphablend);
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Remix Api: World Meshes ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			renderer_api::devgui();
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing(0, TREENODE_SPACING);
+		if (ImGui::TreeNode("Remix Api: Distant Imposters ..."))
+		{
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			distant_lights::devgui();
 			ImGui::TreePop();
 		}
 
@@ -938,228 +979,150 @@ namespace gta4
 		if (ImGui::TreeNode("Timecycle related ..."))
 		{
 			const auto bridge = shared::common::remix_api::get().m_bridge;
+			constexpr float end_padding = 12.0f;
+			const float width = ImGui::GetContentRegionAvail().x - end_padding;
+			const float half_width = width * 0.5f;
 
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::SeparatorText("Game weather and clock");
 
-			ImGui::SeparatorText("Remix Atmos System");
-			ImGui::TextUnformatted("Logic to adjust current Atmos Preset and Blending strength");
+			const auto weather_name = [](const game::eWeatherType* type) -> const char* {
+				return type && *type < game::WEATHER_NONE ? game::eWeatherTypeStr[*type] + 8 : "unknown"; // without the WEATHER_ prefix
+			};
+
+			ImGui::Text("Weather: %s -> %s, transition %.2f", weather_name(game::weather_type_prev), weather_name(game::weather_type_new),
+				game::weather_change_value ? *game::weather_change_value : 0.0f);
+			ImGui::Text("Clock: %02d:%02d", *game::m_game_clock_hours, *game::m_game_clock_minutes);
+
+			ImGui::SetNextItemWidth(half_width);
+			ImGui::SliderInt("Timecycle used for the Remix translation", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
+			TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
+				"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
+
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::SeparatorText("Remix atmos system");
 
-			ImGui::Checkbox("Atmos System - Manual Mode", &im->m_dbg_manual_atmos_system);
+			ImGui::Checkbox("Manual mode", &im->m_dbg_manual_atmos_system);
+			TT("The mod stops driving the atmos preset and blend, the controls below set them directly.");
 
 			ImGui::BeginDisabled(!im->m_dbg_manual_atmos_system);
 			{
 				/* clear, partlyCloudy, overcast, hazy, foggy, drizzle, rainstorm, thunderstorm, snow, blizzard,
 				 * sandstorm, smoggy. Empty string to return to dormant. */
 
-				if (ImGui::Button("clear")) {
-					bridge.SetGameValue("__weather.target", "clear");
-				} TT("EXTRASUNNY");
+				struct preset_s { const char* name; const char* game_weather; };
+				constexpr preset_s PRESETS[] =
+				{
+					{ "clear", "EXTRASUNNY" }, { "smoggy", "SUNNY" }, { "partlyCloudy", "SUNNY_WINDY" }, { "overcast", "CLOUDY" },
+					{ "drizzle", "DRIZZLE" }, { "foggy", "FOGGY" }, { "rainstorm", "RAIN" }, { "thunderstorm", "LIGHTNING" },
+				};
 
-				ImGui::SameLine();
-				if (ImGui::Button("smoggy")) {
-					bridge.SetGameValue("__weather.target", "smoggy");
-				} TT("SUNNY");
+				const float preset_width = (width - ImGui::GetStyle().ItemSpacing.x * 3.0f) * 0.25f;
+				for (std::size_t i = 0u; i < std::size(PRESETS); i++)
+				{
+					if (i % 4u) {
+						ImGui::SameLine();
+					}
 
-				ImGui::SameLine();
-				if (ImGui::Button("partlyCloudy")) {
-					bridge.SetGameValue("__weather.target", "partlyCloudy");
-				} TT("SUNNY_WINDY");
-
-				ImGui::SameLine();
-				if (ImGui::Button("overcast")) {
-					bridge.SetGameValue("__weather.target", "overcast");
-				} TT("CLOUDY");
-
-				if (ImGui::Button("drizzle")) {
-					bridge.SetGameValue("__weather.target", "drizzle");
+					if (ImGui::Button(PRESETS[i].name, ImVec2(preset_width, 0.0f))) {
+						bridge.SetGameValue("__weather.target", PRESETS[i].name);
+					}
+					TT(PRESETS[i].game_weather);
 				}
 
+				ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+
+				static float trans_val = 1.0f;
+				ImGui::SetNextItemWidth(half_width);
+				ImGui::SliderFloat("##blend_absolute", &trans_val, 0.0f, 1.0f, "absolute blend %.2f");
 				ImGui::SameLine();
-				if (ImGui::Button("foggy")) {
-					bridge.SetGameValue("__weather.target", "foggy");
-				}
-
-				ImGui::SameLine();
-				if (ImGui::Button("rainstorm")) {
-					bridge.SetGameValue("__weather.target", "rainstorm");
-				} TT("RAIN");
-
-				ImGui::SameLine();
-				if (ImGui::Button("thunderstorm")) {
-					bridge.SetGameValue("__weather.target", "thunderstorm");
-				} TT("LIGHTNING");
-
-				ImGui::SameLine();
-				
-
-				ImGui::Spacing(0, TREENODE_SPACING);
-				ImGui::Separator();
-				ImGui::Spacing(0, TREENODE_SPACING);
-
-				static float trans_val = 0.0f;
-				ImGui::SliderFloat("Absolute Val", &trans_val, 0.0f, 1.0f);
-
-				if (ImGui::Button("Apply Absolute Value", ImVec2(ImGui::CalcItemWidth(), 0))) {
+				if (ImGui::Button("Apply##absolute")) {
 					bridge.SetGameValue("__weather.blend_absolute", std::to_string(trans_val).c_str());
 				}
 
-				if (ImGui::Button("Disable Absolute Mode", ImVec2(ImGui::CalcItemWidth(), 0))) 
+				ImGui::SameLine();
+				if (ImGui::Button("Disable absolute mode"))
 				{
 					bridge.SetGameValue("__weather.blend_absolute", "-1");
 					trans_val = -1.0f;
 				}
 
-				ImGui::Spacing(0, TREENODE_SPACING);
-				ImGui::Separator();
-				ImGui::Spacing(0, TREENODE_SPACING);
-
-				static float trans_blend_val = 0.0f;
-				ImGui::SliderFloat("Transition Blend Val", &trans_blend_val, 0.0f, 10.0f);
-				TT("Blend time in s");
-
-				if (ImGui::Button("Apply Blend Value", ImVec2(ImGui::CalcItemWidth(), 0)))
+				static float trans_blend_val = 1.0f;
+				ImGui::SetNextItemWidth(half_width);
+				ImGui::SliderFloat("##blend_seconds", &trans_blend_val, 0.0f, 10.0f, "transition %.1f s");
+				ImGui::SameLine();
+				if (ImGui::Button("Apply##seconds"))
 				{
 					bridge.SetGameValue("__weather.blend_absolute", "-1.0");
 					bridge.SetGameValue("__weather.blend_seconds", std::to_string(trans_blend_val).c_str());
 				}
 
-				ImGui::Spacing(0, TREENODE_SPACING);
-				ImGui::Separator();
-				ImGui::Spacing(0, TREENODE_SPACING);
+				ImGui::EndDisabled();
+			}
 
+			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			if (ImGui::BeginTable("##atmos_state", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_PadOuterX, ImVec2(width, 0.0f)))
+			{
 				static char str_buff[512] = {};
 				static uint32_t str_len = 0u;
+				constexpr const char* VALUES[] = { "__weather.current", "__weather.target", "__weather.previous", "__weather.blend_absolute", "__weather.blend_progress" };
 
-				bridge.GetGameValue("__weather.current", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_current = str_buff;
+				for (const auto value : VALUES)
+				{
+					bridge.GetGameValue(value, str_buff, ARRAYSIZE(str_buff), &str_len);
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(value);
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(str_buff);
+				}
 
-				bridge.GetGameValue("__weather.target", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_target = str_buff;
-
-				bridge.GetGameValue("__weather.previous", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_previous = str_buff;
-
-				bridge.GetGameValue("__weather.blend_absolute", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_blend_absolute = str_buff;
-
-				bridge.GetGameValue("__weather.blend_progress", str_buff, ARRAYSIZE(str_buff), &str_len);
-				const std::string weather_blend_progress = str_buff;
-
-				ImGui::TextUnformatted(std::format("__weather.current: {}", weather_current).c_str());
-				ImGui::TextUnformatted(std::format("__weather.target: {}", weather_target).c_str());
-				ImGui::TextUnformatted(std::format("__weather.previous: {}", weather_previous).c_str());
-				ImGui::TextUnformatted(std::format("__weather.blend_absolute: {}", weather_blend_absolute).c_str());
-				ImGui::TextUnformatted(std::format("__weather.blend_progress: {}", weather_blend_progress).c_str());
-
-				ImGui::EndDisabled();
+				ImGui::EndTable();
 			}
 
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			ImGui::Separator();
+			ImGui::SeparatorText("Atmos sun");
+			game_lights::devgui_atmos_sun();
+
 			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
+			ImGui::SeparatorText("Wetness");
 
-			ImGui::SliderInt("Used Timecycle for Remix Translation ..", &im->m_dbg_used_timecycle, -1, 2, "%d", ImGuiSliderFlags_AlwaysClamp);
-			TT("Sets the Timecycle to be used to translate its settings to fitting remix variables.\n"
-				"-1: No override\n0: Timecycle 1 (World/Interior)\n1: Timecycle 2 (World/Interior)\n3: Timecycle 3 (Cutscenes)");
+			ImGui::Checkbox("Override global wetness", &im->m_dbg_global_wetness_override);
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
+			ImGui::SetNextItemWidth(half_width);
+			ImGui::SliderFloat("##global_wetness", &im->m_dbg_global_wetness, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::EndDisabled();
 
-			if (game::weather_type_prev)
+			ImGui::Checkbox("Occlusion test allowed on ignored surfaces", &im->m_dbg_global_wetness_occl_allow_on_ignored);
+			ImGui::SetNextItemWidth(half_width);
+			ImGui::DragFloat("Rain marker height offset", &im->m_dbg_global_wetness_rain_marker_height_offset, 0.05f, -100.0f, 100.0f, "%.0f");
+
+			const auto& wet = timecycle::get_wetness_state();
+			if (ImGui::BeginTable("##wetness_state", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_PadOuterX, ImVec2(width, 0.0f)))
 			{
-				switch (*game::weather_type_prev)
+				const auto row = [](const char* name, const std::string& value)
 				{
-				case game::WEATHER_EXTRASUNNY:
-					ImGui::TextUnformatted("WeatherPrev: EXTRASUNNY"); break;
-				case game::WEATHER_SUNNY:
-					ImGui::TextUnformatted("WeatherPrev: SUNNY"); break;
-				case game::WEATHER_SUNNY_WINDY:
-					ImGui::TextUnformatted("WeatherPrev: SUNNY_WINDY"); break;
-				case game::WEATHER_CLOUDY:
-					ImGui::TextUnformatted("WeatherPrev: CLOUDY"); break;
-				case game::WEATHER_RAIN:
-					ImGui::TextUnformatted("WeatherPrev: RAIN"); break;
-				case game::WEATHER_DRIZZLE:
-					ImGui::TextUnformatted("WeatherPrev: DRIZZLE"); break;
-				case game::WEATHER_FOGGY:
-					ImGui::TextUnformatted("WeatherPrev: FOGGY"); break;
-				case game::WEATHER_LIGHTNING:
-					ImGui::TextUnformatted("WeatherPrev: LIGHTNING"); break;
-				default:
-					ImGui::TextUnformatted("WeatherPrev: UNKOWN"); break;
-				}
-			}
-
-			if (game::weather_type_new)
-			{
-				switch (*game::weather_type_new)
-				{
-				case game::WEATHER_EXTRASUNNY:
-					ImGui::TextUnformatted("WeatherNew: EXTRASUNNY"); break;
-				case game::WEATHER_SUNNY:
-					ImGui::TextUnformatted("WeatherNew: SUNNY"); break;
-				case game::WEATHER_SUNNY_WINDY:
-					ImGui::TextUnformatted("WeatherNew: SUNNY_WINDY"); break;
-				case game::WEATHER_CLOUDY:
-					ImGui::TextUnformatted("WeatherNew: CLOUDY"); break;
-				case game::WEATHER_RAIN:
-					ImGui::TextUnformatted("WeatherNew: RAIN"); break;
-				case game::WEATHER_DRIZZLE:
-					ImGui::TextUnformatted("WeatherNew: DRIZZLE"); break;
-				case game::WEATHER_FOGGY:
-					ImGui::TextUnformatted("WeatherNew: FOGGY"); break;
-				case game::WEATHER_LIGHTNING:
-					ImGui::TextUnformatted("WeatherNew: LIGHTNING"); break;
-				default:
-					ImGui::TextUnformatted("WeatherNew: UNKOWN"); break;
-				}
-			}
-
-			ImGui::Text("Weather Transition: %.2f", *game::weather_change_value);
-			ImGui::Text("Clock Hour: %d", *game::m_game_clock_hours);
-			ImGui::Text("Clock Minutes: %d", *game::m_game_clock_minutes);
-
-			auto frac = [](const float& x) {
-					return x - std::floor(x);
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(name);
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(value.c_str());
 				};
 
-			im->m_plot_sun_lerp.add(frac(im->m_dbg_vis_sun_lerp_t));
-			im->m_plot_sun_elevation.add(frac(im->m_dbg_vis_sun_elevation));
-			im->m_plot_sun_rotation.add(frac(im->m_dbg_vis_sun_rotation));
-			im->m_plot_sun_framecount.add(static_cast<float>(im->m_dbg_vis_sun_frame_count % 1000)); // count wrapped every 1000 frames
-
-			ImGui::PlotLines(	"Atmos Sun Lerp T", im->m_plot_sun_lerp.values,
-								imgui::debug_plot::history_size, im->m_plot_sun_lerp.offset, nullptr,
-								0.0f, 1.0f, ImVec2(0, 60));
-
-			ImGui::PlotLines(	"Atmos Sun Elevation", im->m_plot_sun_elevation.values,
-								imgui::debug_plot::history_size, im->m_plot_sun_elevation.offset, nullptr, 
-								0.0f, 1.0f, ImVec2(0, 60));
-
-			ImGui::PlotLines(	"Atmos Sun Rotation", im->m_plot_sun_rotation.values,
-								imgui::debug_plot::history_size, im->m_plot_sun_rotation.offset, nullptr,
-								0.0f, 1.0f, ImVec2(0, 60));
-
-			ImGui::PlotLines(	"Atmos Sun Framecount", im->m_plot_sun_framecount.values, 
-								imgui::debug_plot::history_size, im->m_plot_sun_framecount.offset, nullptr, 
-								0.0f, 1000.0f, ImVec2(0, 60));
-
-			ImGui::Text("Atmos Sun Lerp T: %.5f", im->m_dbg_vis_sun_lerp_t);
-			ImGui::Text("Atmos Sun Elevation: %.5f", im->m_dbg_vis_sun_elevation);
-			ImGui::Text("Atmos Sun Rotation: %.5f", im->m_dbg_vis_sun_rotation);
-			ImGui::Text("Atmos Sun Framecount: %d", im->m_dbg_vis_sun_frame_count);
-
-			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-			ImGui::Separator();
-			ImGui::Spacing(0, TREENODE_SPACING_INSIDE);
-
-			ImGui::Checkbox("Override Global Wetness Scale", &im->m_dbg_global_wetness_override);
-			ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
-			{
-				ImGui::SliderFloat("Global Wetness", &im->m_dbg_global_wetness, 0, 1, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				ImGui::EndDisabled();
+				row("Game wetness", std::format("{:.3f}", wet.game));
+				row("Effective wetness", std::format("{:.3f}", wet.effective));
+				row("Phase", wet.phase == timecycle::wetness_phase::after_rain ? "After rain" : "Follow game");
+				row("After-rain level (peak)", std::format("{:.3f} ({:.3f})", wet.level, wet.peak));
+				row("After-rain timer", std::format("{:.1f} s", wet.timer));
+				row("Ripple strength", std::format("{:.4f}", wet.ripple_strength));
+				row("Vehicle wetness", std::format("{:.3f}", wet.vehicle));
+				ImGui::EndTable();
 			}
 
-			ImGui::Checkbox("Wetness OcclTest Allow on Ignored", &im->m_dbg_global_wetness_occl_allow_on_ignored); TT("Allows occlusion tests on ignored surfaces.");
-			ImGui::DragFloat("Wetness Rain Marker Height Offset", &im->m_dbg_global_wetness_rain_marker_height_offset, 0.05f, -100.0f, 100.0f, "%.0f");
+			if (ImGui::Button("Reset after-rain wetness")) {
+				timecycle::reset_wetness();
+			}
 
 			ImGui::TreePop();
 		}
@@ -1458,7 +1421,7 @@ namespace gta4
 
 				// remix config (CONF)
 				shared::common::log("ImGui", std::format("Preset: Parsing Addon Config 'rtx_comp/addon_settings/presets/{}' ...", presets[selected_preset]), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
-				remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", presets[selected_preset] + ".conf", 1);
+				remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", presets[selected_preset] + ".conf", 0.1f, true);
 			};
 
 		if (ImGui::BeginListBox("##preset_list", ImVec2(-FLT_MIN, 80.0f)))
@@ -1759,99 +1722,236 @@ namespace gta4
 
 	// --------------------
 
-	void compsettings_rendering_container()
+	void rs_tab_general()
 	{
-		//const auto& im = imgui::get();
 		const auto& gs = comp_settings::get();
 
-		const float inbetween_spacing = SEPARATOR_SPACING;
+		ImGui::Widget_CategoryWithVerticalLabel("General", [&]()
+			{
+				ImGui::PushID("general");
+				compsettings_bool_widget("Load ColorMaps Only", gs->load_colormaps_only);
+				compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
+				ImGui::PopID();
+			});
 
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Effects", [&]()
+			{
+				ImGui::PushID("effects");
+				compsettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
+				compsettings_bool_widget("GTA_RMPTFX_Litsprite Unlit", gs->gta_rmptfx_litsprite_unlit);
+				ImGui::PopID();
+			});
+	}
+
+	void rs_tab_remix_api()
+	{
+		const auto& gs = comp_settings::get();
+
+		ImGui::Widget_CategoryWithVerticalLabel("Geometry", [&]()
+			{
+				ImGui::PushID("geometry");
+				compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
+
+				ImGui::BeginDisabled(!gs->api_static_enabled.get_as<bool>());
+				compsettings_bool_widget("Static Geometry: Retained Instances", gs->api_static_retained);
+				ImGui::EndDisabled();
+
+				compsettings_bool_widget("Peds", gs->api_peds_enabled);
+				compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
+
+				ImGui::SameLine(0, 30);
+				const auto curr_x = ImGui::GetCursorPosX();
+				ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
+				{
+					ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - ImGui::GetCursorPosX() - curr_x);
+					compsettings_float_widget("Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
+					ImGui::EndDisabled();
+				}
+				
+				compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Water", [&]()
+			{
+				ImGui::PushID("water");
+				compsettings_bool_widget("Water", gs->api_water_enabled);
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Distant Imposters", [&]()
+			{
+				ImGui::PushID("distantlights_api");
+				compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
+				compsettings_bool_widget("Distant Light Sprites", gs->api_distant_lights_enabled);
+
+				ImGui::BeginDisabled(!gs->api_distant_lights_enabled.get_as<bool>());
+				compsettings_float_widget("Sprite Emissive Scale", gs->api_distant_lights_emissive_scale, 0.0f, 50.0f, 0.01f);
+				compsettings_float_widget("Sprite Size Scale", gs->api_distant_lights_size_scale, 0.1f, 10.0f, 0.01f);
+				compsettings_float_widget("Sprite Size Scale (Foggy)", gs->api_distant_lights_size_scale_foggy, 0.1f, 10.0f, 0.01f);
+				ImGui::EndDisabled();
+
+				ImGui::Spacing(0, 8);
+				compsettings_bool_widget("Render Fake Distant Cars", gs->distant_cars_enabled);
+				compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
+
+				ImGui::BeginDisabled(!gs->api_distant_cars_enabled.get_as<bool>());
+				compsettings_float_widget("Headlight Emissive Scale", gs->api_distant_cars_emissive_scale, 0.0f, 50.0f, 0.01f);
+				ImGui::EndDisabled();
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Mesh Cache", [&]()
+			{
+				ImGui::PushID("meshcache");
+				compsettings_int_widget("Mesh Creates Per Frame", gs->api_static_creates_per_frame, 0, 256, 0.2f);
+				compsettings_int_widget("Mesh Cache Budget (MB)", gs->api_static_cache_mb, 0, 8192, 2.0f);
+				ImGui::PopID();
+			});
+	}
+
+	void rs_tab_water()
+	{
+		const auto& gs = comp_settings::get();
+		const bool api_water = gs->api_water_enabled.get_as<bool>();
+
+		ImGui::Widget_CategoryWithVerticalLabel("General", [&]()
+			{
+				ImGui::PushID("generalwater");
+				compsettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
+				compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
+				compsettings_bool_widget("Apply Shoreline Modifier", gs->water_apply_shoreline_modifier);
+				compsettings_bool_widget("Disable Seabed Plane", gs->water_disable_seabed_plane);
+				compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
+				compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Waves", [&]()
+			{
+				ImGui::PushID("waves");
+				compsettings_float_widget("Wave Simulation Edge Fade", gs->water_sim_edge_fade, 1.0f, 100.0f, 0.5f, "%.1f");
+				compsettings_float_widget("Wave Normal Strength", gs->water_vertex_normal_scale, 0.0f, 4.0f, 0.01f);
+
+				ImGui::Spacing(0, 6);
+				compsettings_bool_widget("Procedural Far Waves", gs->water_far_waves);
+				compsettings_float_widget("Far Wave Strength", gs->water_far_wave_scale, 0.0f, 4.0f, 0.01f);
+				compsettings_float_widget("Far Wave Length", gs->water_far_wave_length, 0.5f, 100.0f, 0.1f, "%.1f");
+				compsettings_float_widget("Far Wave Speed", gs->water_far_wave_speed, 0.0f, 4.0f, 0.01f);
+				compsettings_float_widget("Far Wave Direction", gs->water_far_wave_direction, -180.0f, 180.0f, 0.5f, "%.1f");
+				compsettings_float_widget("Far Wave Edge Fade", gs->water_far_wave_fade, 0.0f, 600.0f, 0.5f, "%.1f");
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Tessellation", [&]()
+			{
+				ImGui::PushID("tessellation");
+				compsettings_bool_widget("Coarser Tessellation Further Away", gs->water_lod);
+
+				ImGui::BeginDisabled(!gs->water_lod.get_as<bool>());
+				compsettings_float_widget("Tessellated Water Radius", gs->water_detail_radius, 100.0f, 600.0f, 1.0f, "%.0f");
+				compsettings_float_widget("4 Unit Cells From", gs->water_lod_radius_4, 16.0f, 600.0f, 1.0f, "%.0f");
+				compsettings_float_widget("8 Unit Cells From", gs->water_lod_radius_8, 32.0f, 600.0f, 1.0f, "%.0f");
+				ImGui::EndDisabled();
+
+				ImGui::Spacing(0, 6);
+				ImGui::BeginDisabled(!api_water);
+				compsettings_bool_widget("Cull Water Outside The View", gs->api_water_cull_pieces);
+				ImGui::EndDisabled();
+				compsettings_float_widget("Water Block Distance Scale", gs->water_block_distance_scale, 0.1f, 10.0f, 0.01f);
+
+				
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		water::devgui_stats();
+	}
+
+	void rs_tab_vehicles()
+	{
+		const auto& gs = comp_settings::get();
+
+		ImGui::Widget_CategoryWithVerticalLabel("Dirt", [&]()
+			{
+				ImGui::PushID("dirt");
+				compsettings_bool_widget("Enable Vehicle Dirt", gs->vehicle_dirt_enabled);
+
+				ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
+				compsettings_bool_widget("Enable Vehicle Dirt Color Override", gs->vehicle_dirt_custom_color_enabled);
+				compsettings_color_widget("Vehicle Dirt Color", gs->vehicle_dirt_custom_color, 3, ImGuiColorEditFlags_Float);
+
+				compsettings_float_widget("Dirt Roughness: Expo", gs->vehicle_dirt_expo, 0.5f, 5.0f, 0.005f);
+				compsettings_float_widget("Dirt Roughness: Min Z-Normal", gs->vehicle_dirt_roughness_z_normal, 0.0f, 1.0f, 0.005f);
+				compsettings_float_widget("Dirt Roughness: Blending", gs->vehicle_dirt_roughness_blending, 0.0f, 1.0f, 0.005f);
+				ImGui::EndDisabled();
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("General", [&]()
+			{
+				ImGui::PushID("vehgeneral");
+				compsettings_bool_widget("Enable Vehicle Livery", gs->vehicle_livery_enabled);
+				compsettings_bool_widget("Force Vertex Color Usage", gs->vehicle_force_vertex_colors);
+				ImGui::PopID();
+			});
+	}
+
+	void rs_tab_foliage_hair()
+	{
+		const auto& gs = comp_settings::get();
+
+		ImGui::Widget_CategoryWithVerticalLabel("Foliage", [&]()
+			{
+				ImGui::PushID("foliage");
+				compsettings_bool_widget("Fixed function Trees", gs->fixed_function_trees);
+				compsettings_float_widget("Tree Alpha Cutout Value", gs->tree_foliage_alpha_cutout_value, 0.0f, 20.0f);
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Hair", [&]()
+			{
+				ImGui::PushID("hair");
+				compsettings_bool_widget("NPC Hair Alpha Testing", gs->npc_expensive_hair_alpha_testing);
+
+				ImGui::BeginDisabled(!gs->npc_expensive_hair_alpha_testing.get_as<bool>());
+				compsettings_float_widget("NPC Hair Alpha Cutout Value", gs->npc_expensive_hair_alpha_cutout_value, 0.0f, 1.0f);
+				ImGui::EndDisabled();
+				ImGui::PopID();
+			});
+	}
+
+	void compsettings_rendering_container()
+	{
 		ImGui::Spacing(0, 4);
-		ImGui::SeparatorText(" General ");
-		ImGui::Spacing(0, 4);
 
-		compsettings_bool_widget("Load ColorMaps Only", gs->load_colormaps_only);
-		compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Water ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Stabilize Water Texture Hash", gs->override_water_texture_hash);
-		compsettings_bool_widget("Assign Animated Water Category", gs->water_apply_animated_water_category);
-		compsettings_float_widget("Water Texture Scale", gs->water_texture_uv_scale, 0.00001f, 100.0f, 0.001f, "%.4f");
-		compsettings_float_widget("Water Normal Fadeout Distance", gs->water_texture_normal_fadeout_distance, 0.0f, 1000.0f, 0.5f);
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Foliage ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Fixed function Trees", gs->fixed_function_trees);
-		compsettings_float_widget("Tree Alpha Cutout Value", gs->tree_foliage_alpha_cutout_value, 0.0f, 20.0f);
-		//compsettings_float_widget("Grass Alpha Cutout Value", gs->grass_foliage_alpha_cutout_value, 0.0f, 20.0f);
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Hair ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("NPC Hair Alpha Testing", gs->npc_expensive_hair_alpha_testing);
-		ImGui::BeginDisabled(!gs->npc_expensive_hair_alpha_testing.get_as<bool>());
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x + 12.0f, 8));
+		ImGui::PushStyleColor(ImGuiCol_TabSelected, ImGui::GetColorU32(ImGuiCol_Separator));
+		if (ImGui::BeginTabBar("##rstabs"))
 		{
-			compsettings_float_widget("NPC Hair Alpha Cutout Value", gs->npc_expensive_hair_alpha_cutout_value, 0.0f, 1.0f);
-			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar(1);
+
+			ADD_CONTAINER_TAB("General  " ICON_FA_SLIDERS_H, rs_tab_general, "General rendering Settings");
+			ADD_CONTAINER_TAB("Remix API  " ICON_FA_MICROCHIP, rs_tab_remix_api, "What is drawn through the Remix API");
+			ADD_CONTAINER_TAB("Water  " ICON_FA_WATER, rs_tab_water, "Water related Settings");
+			ADD_CONTAINER_TAB("Vehicles  " ICON_FA_CAR, rs_tab_vehicles, "Vehicle related Settings");
+			ADD_CONTAINER_TAB("Foliage / Hair  " ICON_FA_LEAF, rs_tab_foliage_hair, "Foliage and Hair related Settings");
+			ImGui::EndTabBar();
 		}
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Vehicle Dirt ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Enable Vehicle Dirt", gs->vehicle_dirt_enabled);
-		ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
+		else
 		{
-			compsettings_bool_widget("Enable Vehicle Dirt Color Override", gs->vehicle_dirt_custom_color_enabled);
-			compsettings_color_widget("Vehicle Dirt Color", gs->vehicle_dirt_custom_color, 3, ImGuiColorEditFlags_Float);
-
-			compsettings_float_widget("Dirt Roughness: Expo", gs->vehicle_dirt_expo, 0.5f, 5.0f, 0.005f);
-			compsettings_float_widget("Dirt Roughness: Min Z-Normal", gs->vehicle_dirt_roughness_z_normal, 0.0f, 1.0f, 0.005f);
-			compsettings_float_widget("Dirt Roughness: Blending", gs->vehicle_dirt_roughness_blending, 0.0f, 1.0f, 0.005f);
-	
-			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar(1);
 		}
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" General Vehicle Settings ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Enable Vehicle Livery", gs->vehicle_livery_enabled);
-		compsettings_bool_widget("Force Vertex Color Usage", gs->vehicle_force_vertex_colors);
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Interior Dirt ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Decal Dirt Shader Usage", gs->decal_dirt_shader_usage);
-		ImGui::BeginDisabled(!gs->vehicle_dirt_enabled.get_as<bool>());
-		{
-			compsettings_float_widget("Dirt Decal Shader Scalar", gs->decal_dirt_shader_scalar, 0.0f, 8.0f);
-			compsettings_float_widget("Dirt Decal Shader Contrast", gs->decal_dirt_shader_contrast, 0.0f, 8.0f);
-			ImGui::EndDisabled();
-		}
-
-
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Effects ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
-
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Enable Rain - Remix Particle System", gs->rain_particle_system_enabled);
 
 		ImGui::Spacing(0, 4);
 	}
@@ -1939,42 +2039,48 @@ namespace gta4
 		static const auto& gs = comp_settings::get();
 
 		const float inbetween_spacing = SEPARATOR_SPACING;
-
 		bool clear = false;
 
+		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" General Lights ");
 		ImGui::Spacing(0, 4);
-		ImGui::SeparatorText(" Sphere/Spot ");
-		ImGui::Spacing(0, 4);
 
-		compsettings_bool_widget("Translate Game Lights", gs->translate_game_lights);
-		compsettings_bool_widget("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights);
+		ImGui::Widget_CategoryWithVerticalLabel("Sphere/Spotlights", [&]()
+			{
+				ImGui::PushID("spherelight");
+				compsettings_bool_widget("Translate Game Lights", gs->translate_game_lights);
+				compsettings_bool_widget("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights);
+				compsettings_bool_widget("No Volumetrics on Filler Lights", gs->translate_game_lights_no_volumetrics_on_filler_lights);
 
-		compsettings_bool_widget("No Volumetrics on Filler Lights", gs->translate_game_lights_no_volumetrics_on_filler_lights);
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f));
 
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Offset", gs->translate_game_light_softness_offset, -1.0f, 1.0f, 0.005f, "%.3f"));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Scalar", gs->translate_game_light_softness_scalar, 0.0f, 1.0f, 0.005f, "%.3f"));
 
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Offset", gs->translate_game_light_softness_offset, -1.0f, 1.0f, 0.005f, "%.3f"));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Softness Scalar", gs->translate_game_light_softness_scalar, 0.0f, 1.0f, 0.005f, "%.3f"));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Angle Offset", gs->translate_game_light_angle_offset, -180.0f, 180.0f, 0.1f));
+				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Focus Expo", gs->translate_game_light_focus_expo, 0.0f, 10.0f, 0.01f));
 
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SphereLight Volumetric Scale", gs->translate_game_light_spherelight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Volumetric Scale", gs->translate_game_light_spotlight_volumetric_radiance_scale, 0.0f, 10.0f, 0.005f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Angle Offset", gs->translate_game_light_angle_offset, -180.0f, 180.0f, 0.1f));
-		CLEAR_CACHE_CHECK(clear, compsettings_float_widget("SpotLight Focus Expo", gs->translate_game_light_focus_expo, 0.0f, 10.0f, 0.01f));
+				ImGui::PopID();
+			});
 
 		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Distant ");
-		ImGui::Spacing(0, 4);
-
-		ImGui::BeginDisabled(gs->timecycle_use_remix_atmos_system._bool());
-		{
-			compsettings_float_widget("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar, 0.0f, 0.0f, 0.005f);
-			compsettings_float_widget("SunLight Bad Weather Influence", gs->translate_sunlight_intensity_bad_weather_influence, 0.0f, 1.0f, 0.005f);
-			compsettings_float_widget("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees, 0.0f, 45.0f, 0.005f);
-			compsettings_float_widget("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base, 0.0f, 10.0f, 0.005f);
-			compsettings_float_widget("MoonLight Intensity Scalar", gs->translate_moonlight_intensity_scalar, 0.0f, 1.0f, 0.005f, "%.3f");
-			ImGui::EndDisabled();
-		}
+		ImGui::Widget_CategoryWithVerticalLabel("Distant Lights", [&]()
+			{
+				ImGui::PushID("distantlight");
+				ImGui::BeginDisabled(gs->timecycle_use_remix_atmos_system._bool());
+				{
+					compsettings_float_widget("SunLight Intensity Scalar", gs->translate_sunlight_intensity_scalar, 0.0f, 0.0f, 0.005f);
+					compsettings_float_widget("SunLight Bad Weather Influence", gs->translate_sunlight_intensity_bad_weather_influence, 0.0f, 1.0f, 0.005f);
+					compsettings_float_widget("SunLight Angular Diameter Degrees", gs->translate_sunlight_angular_diameter_degrees, 0.0f, 45.0f, 0.005f);
+					compsettings_float_widget("SunLight Volumetric Base", gs->translate_sunlight_volumetric_radiance_base, 0.0f, 10.0f, 0.005f);
+					compsettings_float_widget("MoonLight Intensity Scalar", gs->translate_moonlight_intensity_scalar, 0.0f, 1.0f, 0.005f, "%.3f");
+					ImGui::EndDisabled();
+				}
+				ImGui::PopID();
+			});
 		
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Vehicle Headlights / Rearlights ");
@@ -1988,8 +2094,7 @@ namespace gta4
 			ImGui::PopID();
 		});
 
-		ImGui::Spacing(0, SEPARATOR_SPACING);
-
+		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::Widget_CategoryWithVerticalLabel("Rear", [&]()
 		{
 			ImGui::PushID("rearlight");
@@ -2109,18 +2214,23 @@ namespace gta4
 		if (compsettings_bool_widget("Use Remix Atmosphere System", cs->timecycle_use_remix_atmos_system))
 		{
 			const bool state = cs->timecycle_use_remix_atmos_system._bool();
-			if (const auto skyMode = remix_vars::get_option("rtx.skyMode"); skyMode)
+			if (const auto skyMode = remix_vars::get_option("rtx.skyMode", "1"); skyMode)
 			{
 				remix_vars::option_value val { .value = state ? 1.0f : 0.0f };
 				remix_vars::get()->add_queue_entry(skyMode, val, 0.1f);
 			}
 
-			if (const auto tempResampling = remix_vars::get_option("rtx.volumetrics.enableTemporalResampling"); tempResampling)
+			if (const auto tempResampling = remix_vars::get_option("rtx.volumetrics.enableTemporalResampling", "False"); tempResampling)
 			{
 				remix_vars::option_value val { .enabled = state };
 				remix_vars::get()->add_queue_entry(tempResampling, val, 0.1f);
 			}
 		}
+
+		ImGui::SameLine(275, 0.0f);
+		if (ImGui::Button(ICON_FA_REDO "   Reload Weather Presets", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			remix_vars::parse_and_apply_weather_presets();
+		} TT("Parse and apply all conf files stored in 'rtx_comp/weather_presets/'");
 	}
 
 	void tc_tab_fog()
@@ -2380,10 +2490,20 @@ namespace gta4
 					compsettings_float_widget("Bloom Threshold Scalar", cs->timecycle_bloomthreshold_scalar, 0.0f, 0.0f, 0.005f);
 
 					ImGui::Spacing(0, SEPARATOR_SPACING);
-					compsettings_bool_widget("Clamp Min Intensity at Night", cs->timecycle_bloom_night_min_clamp_enabled);
+					compsettings_bool_widget("Clamp Bloom Min at Night", cs->timecycle_bloom_night_min_clamp_enabled);
 					ImGui::BeginDisabled(!cs->timecycle_bloom_night_min_clamp_enabled.get_as<bool>());
 					{
-						compsettings_float_widget("Bloom Night Min Value", cs->timecycle_bloom_night_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						compsettings_float_widget("Intensity Night Min", cs->timecycle_bloom_night_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						compsettings_float_widget("Threshold Night Min", cs->timecycle_bloomthreshold_night_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						ImGui::EndDisabled();
+					}
+
+					ImGui::Spacing(0, SEPARATOR_SPACING);
+					compsettings_bool_widget("Clamp Bloom Min at Day", cs->timecycle_bloom_day_min_clamp_enabled);
+					ImGui::BeginDisabled(!cs->timecycle_bloom_day_min_clamp_enabled.get_as<bool>());
+					{
+						compsettings_float_widget("Intensity Day Min", cs->timecycle_bloom_day_min_clamp_value, 0.0f, 0.0f, 0.005f);
+						compsettings_float_widget("Threshold Day Min", cs->timecycle_bloomthreshold_day_min_clamp_value, 0.0f, 0.0f, 0.005f);
 						ImGui::EndDisabled();
 					}
 
@@ -2445,6 +2565,7 @@ namespace gta4
 					compsettings_float_widget("Vehicle Wetness Scalar", cs->timecycle_wetness_vehicle_scalar, 0.0f, 1.0f, 0.005f);
 					compsettings_float_widget("Min Surface Z-Normal", cs->timecycle_wetness_vehicle_z_normal, 0.0f, 1.0f, 0.005f);
 					compsettings_float_widget("Blending Strength", cs->timecycle_wetness_vehicle_blending, 0.0f, 1.0f, 0.005f);
+					compsettings_float_widget("Wet Duration (s)", cs->timecycle_wetness_vehicle_wet_seconds, 0.0f, 120.0f, 0.1f, "%.1f");
 
 					compsettings_bool_widget("Enable Vehicle Raindrops", cs->timecycle_wetness_vehicle_raindrop_enable);
 					compsettings_float_widget("Vehicle Raindrop Scale", cs->timecycle_wetness_vehicle_raindrop_scalar, 0.0f, 10.0f, 0.005f);
@@ -2460,8 +2581,37 @@ namespace gta4
 					ImGui::PopID();
 				});
 
+
+			ImGui::Spacing(0, SEPARATOR_SPACING);
+			ImGui::Widget_CategoryWithVerticalLabel("After Rain", [&]() 
+				{
+					ImGui::PushID("afterrain");
+					compsettings_float_widget("Hold Duration (s)", cs->timecycle_wetness_afterrain_hold_seconds, 0.0f, 3600.0f, 0.5f, "%.0f");
+					compsettings_float_widget("Fade Duration (s)", cs->timecycle_wetness_afterrain_fade_seconds, 0.0f, 3600.0f, 0.5f, "%.0f");
+					compsettings_float_widget("Wetness Level", cs->timecycle_wetness_afterrain_scalar, 0.0f, 1.0f, 0.005f);
+					ImGui::PopID();
+				});
+
+
+			ImGui::Spacing(0, SEPARATOR_SPACING);
+			ImGui::Widget_CategoryWithVerticalLabel("Ripples", [&]() 
+				{
+					ImGui::PushID("ripples");
+					compsettings_bool_widget("Scale Ripples with Wetness", cs->timecycle_wetness_ripple_enabled);
+
+					ImGui::BeginDisabled(!cs->timecycle_wetness_ripple_enabled.get_as<bool>());
+					compsettings_float_widget("Min Ripple Strength", cs->timecycle_wetness_ripple_min, 0.0f, 1.0f, 0.0005f, "%.3f");
+					compsettings_float_widget("Max Ripple Strength", cs->timecycle_wetness_ripple_max, 0.0f, 1.0f, 0.0005f, "%.3f");
+					compsettings_float_widget("Wetness Curve", cs->timecycle_wetness_ripple_curve, 0.1f, 8.0f, 0.01f);
+					ImGui::EndDisabled();
+					ImGui::PopID();
+				});
+
 			ImGui::EndDisabled();
 		}
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		compsettings_bool_widget("Enable Rain - Remix Particle System", cs->rain_particle_system_enabled);
 	}
 
 	void compsettings_timecycle_container()
@@ -2522,32 +2672,38 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 	}
 
-	void wip_cs_container()
+	void wip_general_container()
 	{
 		//const auto& im = imgui::get();
 		const auto& gs = comp_settings::get();
 		const float inbetween_spacing = SEPARATOR_SPACING;
 
 		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Version 1.5.X ");
-		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" Version 1.7.X ");
+		ImGui::Spacing(0, 6);
 
-		ImGui::Widget_CategoryWithVerticalLabel("Ems.", [&]()
-			{
-				ImGui::PushID("emissives15");
-				compsettings_bool_widget("Allow Vertex Colors on Emissive Alpha", gs->emissive_alpha_allow_vertex_colors);
-				ImGui::PopID();
-			});
+		compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
 
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Version 1.3.X ");
-		ImGui::Spacing(0, 4);
-
+		ImGui::Spacing(0, 6);
 		remix_atmospheric_toggle();
-		
-		compsettings_bool_widget("No Volumetrics on Filler Lights", gs->translate_game_lights_no_volumetrics_on_filler_lights);
+
+		ImGui::Spacing(0, 6);
+		compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
+		compsettings_bool_widget("Render Imposter Vehicles", gs->distant_cars_enabled);
+
+		ImGui::Spacing(0, 6);
+		compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
+		ImGui::SameLine(275, 0);
+		ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
+		{
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("Wounds Opacity").x - 8.0f);
+			compsettings_float_widget("Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
+			ImGui::EndDisabled();
+		}
 
 		ImGui::Spacing(0, inbetween_spacing);
+		ImGui::SeparatorText(" Version 1.5.X and lower ");
+		ImGui::Spacing(0, 4);
 
 		ImGui::Widget_CategoryWithVerticalLabel("Anti Culling", [&]()
 			{
@@ -2589,6 +2745,7 @@ namespace gta4
 			{
 				ImGui::PushID("emissives");
 				compsettings_bool_widget("Allow Vertex Colors on Emissives", gs->emissive_allow_vertex_colors);
+				compsettings_bool_widget("Allow Vertex Colors on Emissive Alpha", gs->emissive_alpha_allow_vertex_colors);
 				ImGui::PopID();
 			});
 
@@ -2642,6 +2799,212 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 	}
 
+	void wip_help_container()
+	{
+		//ImGui::PushFont(shared::imgui::font::FONTS::BOLD);
+
+		ImGui::PushFont(shared::imgui::font::FONTS::BOLD_LARGE);
+		ImGui::SeparatorText("Graphic Settings");
+		ImGui::PopFont();
+		ImGui::Spacing(0, 2);
+
+		ImGui::Indent(4);
+		ImGui::TextURL("Game Graphic Settings", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#game-graphic-settings", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("60 FPS Cap Suggestion", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#suggestion-60-fps-target", true);
+
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Performance / Quality Tipps", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#performance--quality-tipps", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Weather / Sky Tweaking", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#weather--sky-tweaking", true);
+		ImGui::Unindent(4);
+
+		// ---
+
+		ImGui::Spacing(0, 6);
+		ImGui::PushFont(shared::imgui::font::FONTS::BOLD_LARGE);
+		ImGui::SeparatorText("Post Processing");
+		ImGui::PopFont();
+		ImGui::Spacing(0, 2);
+
+		ImGui::Indent(4);
+		ImGui::TextURL("Timecyle Post Processing", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#timecyle-post-processing", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Remix Post Processing and HDR", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#remix-post-processing-and-hdr", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("DLSS5 / Neural Rendering", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#dlss5--neural-rendering", true);
+		ImGui::Unindent(4);
+
+		// ---
+
+		ImGui::Spacing(0, 6);
+		ImGui::PushFont(shared::imgui::font::FONTS::BOLD_LARGE);
+		ImGui::SeparatorText("Troubleshooting");
+		ImGui::PopFont();
+		ImGui::Spacing(0, 2);
+
+		ImGui::Indent(4);
+		ImGui::TextURL("Stuttering", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#stuttering", true);
+		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Input Lag", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#input-lag", true);
+
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("Instability", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#instability", true);
+		
+		ImGui::Unindent(4);
+	
+
+		//ImGui::PopFont();
+	}
+
+	void wip_api_container()
+	{
+		const auto& gs = comp_settings::get();
+
+		const auto half_width_x = ImGui::GetContentRegionAvail().x * 0.5f;
+
+		ImGui::Spacing(0, 4);
+		ImGui::TextUnformatted("Draw meshes via the RemixApi instead of D3D9.");
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+
+		compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
+		ImGui::SameLine(half_width_x);
+		compsettings_bool_widget("Water", gs->api_water_enabled);
+
+		compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
+		ImGui::SameLine(half_width_x);
+		compsettings_bool_widget("Peds", gs->api_peds_enabled);
+
+		// no need to have imposter vehicles / distant light sprites in here
+
+		ImGui::Spacing(0, 4);
+	}
+
+	void wip_water_container()
+	{
+		const auto& gs = comp_settings::get();
+
+		ImGui::Spacing(0, 4);
+		ImGui::TextUnformatted(	"Presets for the tessellated water area and the waves (needs water drawn through the Remix API).\n"
+								"More advanced settings can be found inside the CompSettings tab (Rendering > Water).");
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+
+		// every preset starts from the defaults of the tessellation and wave settings
+		const auto apply_preset = [&](const std::function<void()>& changes)
+			{
+				comp_settings::variable* vars[] =
+				{
+					&gs->water_lod, &gs->water_detail_radius, &gs->water_lod_radius_4, &gs->water_lod_radius_8, &gs->water_block_distance_scale,
+					&gs->water_sim_edge_fade, &gs->water_vertex_normal_scale, &gs->water_far_waves, &gs->water_far_wave_scale, &gs->water_far_wave_length,
+					&gs->water_far_wave_speed, &gs->water_far_wave_direction, &gs->water_far_wave_fade, &gs->api_water_cull_pieces,
+				};
+
+				for (const auto v : vars) {
+					v->reset_default();
+				}
+
+				changes();
+				comp_settings::write_comp_settings_toml();
+			};
+
+		const auto button_4way_width = (ImGui::GetContentRegionAvail().x * 0.25f) - (ImGui::GetStyle().ItemSpacing.x);
+
+		ImGui::BeginDisabled(!gs->api_water_enabled.get_as<bool>());
+		{
+			if (ImGui::Button("Performance", ImVec2(button_4way_width, 0)))
+			{
+				apply_preset([&]()
+					{
+						gs->water_detail_radius.set_var(150.0f, true);
+						gs->water_block_distance_scale.set_var(1.0f, true);
+						gs->water_sim_edge_fade.set_var(30.0f, true);
+						gs->water_far_waves.set_var(false, true);
+					});
+			} TT("Tessellated radius 150, block distance scale 1, simulation edge fade 30, no procedural far waves.");
+
+			ImGui::SameLine();
+			if (ImGui::Button("Standard", ImVec2(button_4way_width, 0))) {
+				apply_preset([]() {});
+			} TT("The default water settings.");
+
+			ImGui::SameLine();
+			if (ImGui::Button("Quality", ImVec2(button_4way_width, 0)))
+			{
+				apply_preset([&]()
+					{
+						gs->water_detail_radius.set_var(400.0f, true);
+						gs->water_far_wave_fade.set_var(250.0f, true);
+					});
+			} TT("Defaults with a tessellated radius of 400 and a far wave edge fade of 250.");
+
+			ImGui::SameLine();
+			if (ImGui::Button("Insane", ImVec2(button_4way_width, 0)))
+			{
+				apply_preset([&]()
+					{
+						gs->water_detail_radius.set_var(600.0f, true);
+						gs->water_far_wave_fade.set_var(350.0f, true);
+						gs->water_far_wave_scale.set_var(0.3f, true);
+						gs->water_lod_radius_4.set_var(64.0f, true);
+					});
+			} TT("Defaults with a tessellated radius of 600, a far wave edge fade of 350, far wave strength 0.3 and 4 unit cells from 64.");
+
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing(0, 4);
+		water::devgui_stats();
+		ImGui::Spacing(0, 4);
+	}
+
+	void wip_wetness_container()
+	{
+		const auto& im = imgui::get();
+
+		ImGui::Spacing(0, 4);
+		ImGui::TextUnformatted("More In-Depth Options can be found within the Advanced Remix Menu (Alt+X):\n> Game Setup - Step2: Parameter Tuning - Global Wetness.");
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+
+		const auto button_3way_width = (ImGui::GetContentRegionAvail().x * 0.33f) - (ImGui::GetStyle().ItemSpacing.x);
+		if (ImGui::Button("Performance", ImVec2(button_3way_width, 0)))
+		{
+			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_performance.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_performance.conf", 0.1f, true);
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("Standard", ImVec2(button_3way_width, 0)))
+		{
+			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_standard.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_standard.conf", 0.1f, true);
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("High (Puddles++)", ImVec2(button_3way_width, 0)))
+		{
+			shared::common::log("ImGui", "Preset: Parsing Addon CompSetting 'rtx_comp/addon_settings/presets/wetness_high_more_puddles.conf' ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			remix_vars::parse_and_apply_conf("rtx_comp\\addon_settings\\presets\\", "wetness_high_more_puddles.conf", 0.1f, true);
+		}
+
+		ImGui::Spacing(0, 4);
+
+		// 
+		ImGui::Checkbox("Override Global Wetness Scale", &im->m_dbg_global_wetness_override); TT("Not a saved setting.");
+		ImGui::SameLine(0, 20);
+		ImGui::BeginDisabled(!im->m_dbg_global_wetness_override);
+		{
+			ImGui::SliderFloat("Global Wetness", &im->m_dbg_global_wetness, 0, 1, "%.2f", ImGuiSliderFlags_AlwaysClamp); TT("Not a saved setting.");
+			ImGui::EndDisabled();
+		}
+
+		ImGui::Spacing(0, 4);
+	}
+
 	void imgui::tab_wip()
 	{
 		ImGui::Spacing(0, 4);
@@ -2654,10 +3017,38 @@ namespace gta4
 		ImGui::Unindent(4);
 		ImGui::Spacing(0, 16);
 
-		// cs
+		// help
+		{
+			static float cont_wip_help_height = 0.0f;
+			cont_wip_help_height = ImGui::Widget_ContainerWithCollapsingTitle("Help", cont_wip_help_height, wip_help_container,
+				false, ICON_FA_MUG_HOT, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// remix api
+		{
+			static float cont_wip_api_height = 0.0f;
+			cont_wip_api_height = ImGui::Widget_ContainerWithCollapsingTitle("Remix API Drawing", cont_wip_api_height, wip_api_container,
+				false, ICON_FA_MICROCHIP, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// water
+		{
+			static float cont_wip_water_height = 0.0f;
+			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Water", cont_wip_water_height, wip_water_container,
+				false, ICON_FA_WATER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// wetness
+		{
+			static float cont_wip_water_height = 0.0f;
+			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Global Wetness", cont_wip_water_height, wip_wetness_container,
+				true, ICON_FA_TOILET_PAPER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+		}
+
+		// general settingsd
 		{
 			static float cont_wip_comp_settings_height = 0.0f;
-			cont_wip_comp_settings_height = ImGui::Widget_ContainerWithCollapsingTitle("Comp Settings", cont_wip_comp_settings_height, wip_cs_container,
+			cont_wip_comp_settings_height = ImGui::Widget_ContainerWithCollapsingTitle("Settings", cont_wip_comp_settings_height, wip_general_container,
 				true, ICON_FA_CAMERA, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
@@ -2675,8 +3066,12 @@ namespace gta4
 
 		ImGui::BeginDisabled(!game::is_in_game);
 		{
+			constexpr auto screenshot_button_height = 48.0f;
+			const auto hide_player_width = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x + ImGui::CalcTextSize("Hide Player").x + 40.0f;
+			const auto screenshot_button_width = ImGui::GetContentRegionAvail().x - hide_player_width - ImGui::GetStyle().ItemSpacing.x;
+
 			ImGui::Style_ColorButtonPush(im->m_screenshot_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("Toggle Screenshot Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			if (ImGui::Button("Toggle Screenshot Mode", ImVec2(screenshot_button_width, screenshot_button_height)))
 			{
 				const auto n = natives::get();
 
@@ -2700,6 +3095,8 @@ namespace gta4
 			}
 			ImGui::Style_ColorButtonPop();
 
+			ImGui::SameLine();
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (screenshot_button_height - ImGui::GetFrameHeight()) * 0.5f);
 			ImGui::Checkbox("Hide Player", &im->m_screenshot_mode_hide_player);
 
 			// ---
@@ -2708,8 +3105,11 @@ namespace gta4
 			ImGui::SeparatorText("    FreeCam     ");
 			ImGui::Spacing(0, 2);
 
+			const auto freecam_button_width = ImGui::GetContentRegionAvail().x * 0.33f;
+			const auto freecam_button_height = ImGui::GetFrameHeight() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+
 			ImGui::Style_ColorButtonPush(im->m_freecam_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("FreeCam Mode", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			if (ImGui::Button("FreeCam Mode", ImVec2(freecam_button_width, freecam_button_height)))
 			{
 				const auto n = natives::get();
 
@@ -2729,10 +3129,12 @@ namespace gta4
 				"Shift/Space: Speedup & Slowdown");
 			ImGui::Style_ColorButtonPop();
 
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::SliderFloat("FreeCam Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
-			//SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::DragFloat("FreeCam Upward Offset", &im->m_freecam_up_offset, 0.0001f, 0, 0, "%.5f");
+			ImGui::SameLine();
+			ImGui::BeginGroup();
+			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
+			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
+			ImGui::EndGroup();
 			ImGui::EndDisabled();
 
 			ImGui::Spacing(0, 12);
@@ -6111,6 +6513,235 @@ namespace gta4
 		ImGui::End();
 	}
 
+	namespace
+	{
+		// Whether Windows has HDR on for the display showing `window`, asked the way Remix asks it when it
+		// creates the back buffers. Advanced color with wide color enforced is SDR auto color management.
+		bool windows_hdr_enabled(HWND window)
+		{
+			if (!window) {
+				return false;
+			}
+
+			MONITORINFOEXW monitor_info = {};
+			monitor_info.cbSize = sizeof(monitor_info);
+			if (!GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor_info)) {
+				return false;
+			}
+
+			UINT32 path_count = 0u;
+			UINT32 mode_count = 0u;
+			if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS) {
+				return false;
+			}
+
+			std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
+			std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
+			if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS) {
+				return false;
+			}
+
+			for (UINT32 i = 0u; i < path_count; i++)
+			{
+				DISPLAYCONFIG_SOURCE_DEVICE_NAME source_name = {};
+				source_name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+				source_name.header.size = sizeof(source_name);
+				source_name.header.adapterId = paths[i].sourceInfo.adapterId;
+				source_name.header.id = paths[i].sourceInfo.id;
+				if (DisplayConfigGetDeviceInfo(&source_name.header) != ERROR_SUCCESS
+					|| wcscmp(source_name.viewGdiDeviceName, monitor_info.szDevice) != 0) {
+					continue;
+				}
+
+				DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO color_info = {};
+				color_info.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
+				color_info.header.size = sizeof(color_info);
+				color_info.header.adapterId = paths[i].targetInfo.adapterId;
+				color_info.header.id = paths[i].targetInfo.id;
+				if (DisplayConfigGetDeviceInfo(&color_info.header) != ERROR_SUCCESS) {
+					return false;
+				}
+
+				return color_info.advancedColorEnabled && !color_info.wideColorEnforced;
+			}
+
+			return false;
+		}
+
+		// Remix creates a float back buffer while Windows HDR is on. D3DRS_SRGBWRITEENABLE has no effect on
+		// it, so the ImGui pass is rendered into an 8-bit target with its usual sRGB states and composited
+		// onto the back buffer as premultiplied color, which keeps the SDR look. The bridge reports the
+		// format the game asked for, so the decision repeats Remix's: Windows HDR at back buffer creation.
+		// On an SDR back buffer the detour only costs the extra target.
+		struct hdr_ui_target
+		{
+			IDirect3DTexture9* texture = nullptr;
+			IDirect3DSurface9* surface = nullptr;
+			IDirect3DSurface9* backup = nullptr;
+			D3DVIEWPORT9 game_viewport = {};
+			UINT width = 0u;
+			UINT height = 0u;
+			bool evaluated = false;
+			bool wanted = false;
+			bool active = false;
+
+			void release()
+			{
+				if (surface)
+				{
+					surface->Release();
+					surface = nullptr;
+				}
+
+				if (texture)
+				{
+					texture->Release();
+					texture = nullptr;
+				}
+
+				width = 0u;
+				height = 0u;
+				evaluated = false;
+			}
+
+			void begin(IDirect3DDevice9* dev)
+			{
+				active = false;
+
+				IDirect3DSurface9* back_buffer = nullptr;
+				if (FAILED(dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer)) || !back_buffer) {
+					return;
+				}
+
+				D3DSURFACE_DESC desc;
+				back_buffer->GetDesc(&desc);
+				back_buffer->Release();
+
+				if (texture && (width != desc.Width || height != desc.Height)) {
+					release();
+				}
+
+				if (!evaluated)
+				{
+					evaluated = true;
+					wanted = windows_hdr_enabled(shared::globals::main_window);
+				}
+
+				if (!wanted) {
+					return;
+				}
+
+				if (!texture)
+				{
+					if (FAILED(dev->CreateTexture(desc.Width, desc.Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, nullptr))
+						|| FAILED(texture->GetSurfaceLevel(0, &surface)))
+					{
+						release();
+						return;
+					}
+
+					width = desc.Width;
+					height = desc.Height;
+				}
+
+				if (FAILED(dev->GetRenderTarget(0, &backup))) {
+					return;
+				}
+
+				dev->GetViewport(&game_viewport);
+
+				// SetRenderTarget resets the viewport to the whole target. Clear still honours the scissor rect.
+				DWORD scissor = FALSE;
+				dev->GetRenderState(D3DRS_SCISSORTESTENABLE, &scissor);
+				dev->SetRenderTarget(0, surface);
+				dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+				dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0);
+				dev->SetRenderState(D3DRS_SCISSORTESTENABLE, scissor);
+				active = true;
+			}
+
+			void end(IDirect3DDevice9* dev)
+			{
+				if (!active) {
+					return;
+				}
+
+				active = false;
+				dev->SetRenderTarget(0, backup);
+				backup->Release();
+				backup = nullptr;
+
+				IDirect3DStateBlock9* state_block = nullptr;
+				if (FAILED(dev->CreateStateBlock(D3DSBT_ALL, &state_block)))
+				{
+					dev->SetViewport(&game_viewport);
+					return;
+				}
+				state_block->Capture();
+
+				struct vertex { float x, y, z, rhw, u, v; };
+				const float w = static_cast<float>(width);
+				const float h = static_cast<float>(height);
+				const vertex quad[4] =
+				{
+					{ -0.5f,    -0.5f,    0.0f, 1.0f, 0.0f, 0.0f },
+					{ w - 0.5f, -0.5f,    0.0f, 1.0f, 1.0f, 0.0f },
+					{ -0.5f,    h - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f },
+					{ w - 0.5f, h - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f },
+				};
+
+				const D3DVIEWPORT9 viewport = { 0, 0, width, height, 0.0f, 1.0f };
+				dev->SetViewport(&viewport);
+				dev->SetPixelShader(nullptr);
+				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+				dev->SetTexture(0, texture);
+				dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+				dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+				dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+				dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+				dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+				dev->SetRenderState(D3DRS_STENCILENABLE, FALSE);
+				dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+				dev->SetRenderState(D3DRS_LIGHTING, FALSE);
+				dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+				dev->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+				dev->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+				dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
+				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+				dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+				dev->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+				dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
+				dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+				dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+				dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+				dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+				dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+				dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(vertex));
+
+				state_block->Apply();
+				state_block->Release();
+				dev->SetViewport(&game_viewport);
+			}
+		};
+
+		hdr_ui_target g_hdr_ui_target;
+	}
+
+	// The back buffers are recreated on reset, and with them Remix's HDR decision.
+	void imgui::on_device_reset()
+	{
+		g_hdr_ui_target.release();
+	}
+
 	void imgui::on_present()
 	{
 		GTA4_PERF_SCOPE(performance_section::ImGui);
@@ -6200,7 +6831,9 @@ namespace gta4
 					shared::globals::imgui_is_rendering = true;
 					ImGui::EndFrame();
 					ImGui::Render();
+					g_hdr_ui_target.begin(dev);
 					ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+					g_hdr_ui_target.end(dev);
 					shared::globals::imgui_is_rendering = false;
 
 					// restore

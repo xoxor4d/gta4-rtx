@@ -108,6 +108,8 @@ namespace gta4::game
 	uint32_t hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub = 0u;
 	uint32_t retn_addr__on_instanced_render__pre_setup_vs_ps_pass_stub = 0u;
 	uint32_t retn_addr__on_instanced_render__post_setup_vs_ps_pass_stub = 0u;
+	uint32_t hk_addr__on_instanced_render__geometry_stub = 0u;
+	uint32_t retn_addr__on_instanced_render__geometry_stub = 0u;
 	uint32_t retn_addr__on_phone_phase_clear_stub = 0u;
 	uint32_t func_addr__on_sky_render_stub = 0u;
 	uint32_t retn_addr__on_sky_render_stub = 0u;
@@ -121,6 +123,40 @@ namespace gta4::game
 
 	uint32_t retn_addr__pre_entity_surfs_stub = 0u;
 	uint32_t hk_addr__post_entity_surfs_stub = 0u;
+	uint32_t hk_addr__post_entity_surfs_stub2 = 0u;
+
+	uint32_t func_addr__CEntity_AddToDrawListBuckets = 0u;
+	uint32_t func_addr__CRenderPhase_BuildDrawListWrapper = 0u;
+	uint32_t func_addr__CEntityDrawInfo_RenderBuckets = 0u;
+	uint32_t func_addr__CDrawSkinnedEntityDC_Execute = 0u;
+	uint32_t func_addr__CRenderer_RenderDrawableGeometriesWithLightsInArea = 0u;
+	uint32_t hk_addr__frag_type_dc_draw = 0u;
+	uint32_t func_addr__fragType_Draw = 0u;
+	void** pModelInfoPtrs = nullptr;
+	uint32_t func_addr__CBaseDC_operator_new = 0u;
+	uint32_t func_addr__CBaseDC_Init = 0u;
+	uint32_t func_addr__CDrawListMgr_AddModelInfoReference = 0u;
+	uint32_t func_addr__grmGeometryQB_Draw = 0u;
+	uint32_t func_addr__grmGeometryQB_dtor = 0u;
+	uint32_t func_addr__grcTexturePC_dtor = 0u;
+	uint32_t func_addr__grmShader_DrawGeometry = 0u;
+	uint32_t func_addr__grmShader_DrawSkinned = 0u;
+	int* pForcedTechnique = nullptr;
+	std::uint8_t* pBikeHelmetDrawFlag = nullptr;
+	int* pTechniqueDefault = nullptr;
+	int* pTechniqueAlt = nullptr;
+	int* pGrmRenderState1 = nullptr;
+	uint32_t func_addr__CDrawPedDC_Execute = 0u;
+	uint32_t func_addr__CDrawPlayerDC_Execute = 0u;
+	uint32_t func_addr__CDrawPedPropDC_Execute = 0u;
+	uint32_t func_addr__CDrawPedPropsDC_Execute = 0u;
+	uint32_t func_addr__CDrawSLODPedDC_Execute = 0u;
+	uint32_t func_addr__CCustomShaderEffectPedBoneDamageFX_SetShaderVariables = 0u;
+	DWORD func_addr__CGtaDrawable_BeforeAddToDrawList = 0u;
+	DWORD func_addr__CGtaDrawable_AfterDraw = 0u;
+	void* pgDrawListMgr = nullptr;
+	uint32_t* pDrawCommandIndexCounter = nullptr;
+	void** pCRenderPhase_sm_pCurrent = nullptr;
 
 	uint32_t retn_addr__pre_vehicle_surfs_stub = 0u;
 	uint32_t hk_addr__post_vehicle_surfs_stub = 0u;
@@ -141,6 +177,27 @@ namespace gta4::game
 
 	uint32_t retn_addr__pre_draw_water = 0u;
 	uint32_t hk_addr__post_draw_water = 0u;
+
+	uint32_t func_addr__CWater_ScanThroughBlocks = 0u;
+	uint32_t func_addr__CWater_BlockHit = 0u;
+	uint32_t func_addr__CWater_CalculateWavesForCoordinate = 0u;
+	uint32_t func_addr__CWater_RenderHighDetailWaterRectangle = 0u;
+	uint32_t func_addr__CWater_DrawHighDetailPrimitive = 0u;
+	uint32_t func_addr__CWater_RenderWaterRectangle = 0u;
+	uint32_t func_addr__grcViewport_IsSphereVisible = 0u;
+	int* pWaterDetailDist = nullptr;
+	int* pWaterRenderBufferIndex = nullptr;
+	float* pWaterCameraCoordsRT = nullptr;
+	int* pWaterDetailRangeRender = nullptr;
+	float* pWaterDynamicHeightRT = nullptr;
+	std::uint8_t* pWaterRectFrustumCull = nullptr;
+
+	uint32_t func_addr__CDistantLights_Render = 0u;
+	uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer = 0u;
+	uint32_t func_addr__VehicleImposters_RenderNight = 0u;
+	uint32_t func_addr__VehicleImposters_RenderDay = 0u;
+	uint32_t func_addr__VehicleImposters_FlushInstances = 0u;
+	void** pCurrentImTexture = nullptr;
 
 	uint32_t retn_addr__pre_draw_statics = 0u;
 	uint32_t hk_addr__post_draw_statics = 0u;
@@ -522,6 +579,12 @@ namespace gta4::game
 			retn_addr__on_instanced_render__post_setup_vs_ps_pass_stub = offset; found_pattern_count++;
 		} total_pattern_count++;
 
+		// RenderInstanced: mov eax, [edi+4]; push 1; mov esi, [eax+ebp*4] (the geometry); its draws bypass grmGeometryQB::Draw
+		if (const auto offset = shared::utils::mem::find_pattern("8B 47 04 6A 01 8B 34 A8 8B CE 8B 06 FF 50 28", 0, "hk_addr__on_instanced_render__geometry_stub", use_pattern, 0x69ED83); offset) {
+			hk_addr__on_instanced_render__geometry_stub = offset; found_pattern_count++;
+			retn_addr__on_instanced_render__geometry_stub = offset + 5u;
+		} total_pattern_count++;
+
 
 		if (const auto offset = shared::utils::mem::find_pattern("6A ? 6A ? 51 8B C8 ? ? ? ? ? 6A ? 6A ? 6A ? E8 ? ? ? ? 50", 0, "retn_addr__on_phone_phase_clear_stub", use_pattern, 0x5E164B); offset) {
 			retn_addr__on_phone_phase_clear_stub = offset; found_pattern_count++;
@@ -552,6 +615,43 @@ namespace gta4::game
 		if (const auto offset = shared::utils::mem::find_pattern("5B 8B E5 5D C3 8A 46", 0, "hk_addr__post_entity_surfs_stub", use_pattern, 0x8DCD66); offset) {
 			hk_addr__post_entity_surfs_stub = offset; found_pattern_count++;
 		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("FF 52 2C 6A 00 E8 ? ? ? ? 83 C4 04 5F 5E 5B 8B E5 5D C3", 15, "hk_addr__post_entity_surfs_stub2", use_pattern, 0x8DCD88); offset) {
+			hk_addr__post_entity_surfs_stub2 = offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		// remix api static geometry path
+		PATTERN_OFFSET_SIMPLE(func_addr__CEntity_AddToDrawListBuckets, "55 8B EC 83 E4 ? 83 EC ? 56 57 8B F9 8B 4F 34 85 C9 0F 84", 0, 0xA2FE70);
+		PATTERN_OFFSET_SIMPLE(func_addr__CRenderPhase_BuildDrawListWrapper, "89 0D ? ? ? ? 8B 01 FF 50 0C C7 05 ? ? ? ? 00 00 00 00 C3", 0, 0xA87A20);
+		PATTERN_OFFSET_SIMPLE(func_addr__CEntityDrawInfo_RenderBuckets, "55 8B EC 83 E4 F0 83 EC 58 56 57 8B F1 E8 ? ? ? ? 0F B6 46 25 83 F8", 0, 0xAE02A0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDrawSkinnedEntityDC_Execute, "51 56 57 8B F9 0F B7 47 08 8B 34 85 ? ? ? ? 8B 46 08 85", 0, 0x8DD920);
+		PATTERN_OFFSET_SIMPLE(func_addr__CRenderer_RenderDrawableGeometriesWithLightsInArea, "55 8B EC 83 E4 F0 83 EC 78 8B 45 08 8B 55 1C 33 C9 8B 54 90 40", 0, 0xAC1900);
+		PATTERN_OFFSET_SIMPLE(hk_addr__frag_type_dc_draw, "8B CF E8 ? ? ? ? C7 05 ? ? ? ? FF 00 00 00", 2, 0x8DD146);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pModelInfoPtrs, void**, "0F B7 46 46 8B 3C 85 ? ? ? ? 85 FF", 7, 0x8DCDAE);
+		PATTERN_OFFSET_SIMPLE(func_addr__CBaseDC_operator_new, "53 56 57 8B 7C 24 10 FF 74 24 14 8B F7 F7 DE 83 E6", 0, 0x8DC3A0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CBaseDC_Init, "56 57 8B 7C 24 0C 8B CF 8B 07 FF 50 08 25", 0, 0x499E30);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDrawListMgr_AddModelInfoReference, "56 57 8B 7C 24 0C 8B F1 8B 0C BD ? ? ? ? E8 ? ? ? ? 8B 86 40 20", 0, 0x942000);
+		PATTERN_OFFSET_SIMPLE(func_addr__grmGeometryQB_Draw, "57 8B F9 8B 57 04 85 D2 0F 84 ? ? ? ? 53 33 DB 39 5F 48", 0, 0x463490);
+		PATTERN_OFFSET_SIMPLE(func_addr__grmGeometryQB_dtor, "53 56 8B D9 57 FF 73 40 C7 03 ? ? ? ? E8 ? ? ? ? 83 C4 ? 8D 73", 0, 0x45F540);
+		PATTERN_OFFSET_SIMPLE(func_addr__grcTexturePC_dtor, "56 57 8B F9 C7 07 ? ? ? ? E8 ? ? ? ? 29 05 ? ? ? ? 8A 47 4D 0F B6 C8", 0, 0x43AE40);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDrawPedDC_Execute, "55 8B EC 83 E4 F0 81 EC 88 03 00 00 A1 ? ? ? ? 33 C4 89 84 24 84 03 00 00 56 57 8B F9 0F B7", 0, 0x8DD1B0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDrawPlayerDC_Execute, "51 56 8B F1 57 0F B7 46 08 8B 3C 85 ? ? ? ? 8B 47 08 85 C0 74 08 8B 80 B4 00 00 00", 0, 0x8DD4A0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDrawPedPropDC_Execute, "51 56 8B F1 51 0F B6 86 EF 00 00 00 66 0F 6E C0 0F B6 86 EE 00 00 00", 0, 0x8DD310);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDrawPedPropsDC_Execute, "51 56 8B F1 80 BE AD 00 00 00 00 0F 84", 0, 0x8DD3B0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDrawSLODPedDC_Execute, "51 56 8B F1 51 0F B6 46 15 66 0F 6E C0 0F B6 46 14", 0, 0x8DD8B0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CCustomShaderEffectPedBoneDamageFX_SetShaderVariables, "55 8B EC 83 E4 F0 81 EC ? ? 00 00 A1 ? ? ? ? 33 C4 89 84 24 ? ? 00 00 8B 45 0C 56 8B 75 08 57 8B F9 89 7C 24 10 89 74 24 14 89 44 24 0C", 0, 0xAC6180);
+		PATTERN_OFFSET_SIMPLE(func_addr__grmShader_DrawGeometry, "A1 ? ? ? ? 53 56 8B D9 83 F8 FF 75 ? 83 3D ? ? ? ? 00 A1 ? ? ? ? 0F 45 05 ? ? ? ? 8D 0C 40 8B 43 40 0F B6 0C 01", 0, 0x42EBE0);
+		PATTERN_OFFSET_SIMPLE(func_addr__grmShader_DrawSkinned, "80 3D ? ? ? ? 00 53 55 8B 6C 24 0C 56 57 8B 7C 24 18 8B D9 74", 0, 0x42ECC0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pBikeHelmetDrawFlag, std::uint8_t*, "80 3D ? ? ? ? 00 53 55 8B 6C 24 0C 56 57 8B 7C 24 18 8B D9 74", 2, 0x42ECC0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pForcedTechnique, int*, "A1 ? ? ? ? 53 56 8B D9 83 F8 FF 75 ? 83 3D ? ? ? ? 00 A1 ? ? ? ? 0F 45 05 ? ? ? ? 8D 0C 40 8B 43 40 0F B6 0C 01", 1, 0x42EBE0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pGrmRenderState1, int*, "A1 ? ? ? ? 53 56 8B D9 83 F8 FF 75 ? 83 3D ? ? ? ? 00 A1 ? ? ? ? 0F 45 05 ? ? ? ? 8D 0C 40 8B 43 40 0F B6 0C 01", 16, 0x42EBE0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pTechniqueDefault, int*, "A1 ? ? ? ? 53 56 8B D9 83 F8 FF 75 ? 83 3D ? ? ? ? 00 A1 ? ? ? ? 0F 45 05 ? ? ? ? 8D 0C 40 8B 43 40 0F B6 0C 01", 22, 0x42EBE0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pTechniqueAlt, int*, "A1 ? ? ? ? 53 56 8B D9 83 F8 FF 75 ? 83 3D ? ? ? ? 00 A1 ? ? ? ? 0F 45 05 ? ? ? ? 8D 0C 40 8B 43 40 0F B6 0C 01", 29, 0x42EBE0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CGtaDrawable_BeforeAddToDrawList, "8B 49 04 85 C9 74 0C 83 7C 24 04 00 75 05 8B 01 FF 50 1C C2 04 00", 0, 0xAF4790);
+		PATTERN_OFFSET_SIMPLE(func_addr__CGtaDrawable_AfterDraw, "FF 71 08 B9 ? ? ? ? E8 ? ? ? ? C2 04 00", 0, 0xAF4700);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pgDrawListMgr, void*, "B9 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? B8", 1, 0x8D8C2C);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pDrawCommandIndexCounter, uint32_t*, "89 15 ? ? ? ? C7 07 ? ? ? ? E8", 2, 0x5D4657);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pCRenderPhase_sm_pCurrent, void**, "A1 ? ? ? ? 85 C0 74 ? F3 0F 7E 80 E8 08 00", 1, 0x9423A9);
 
 
 		if (const auto offset = shared::utils::mem::find_pattern("83 EC ? 53 56 8B F1 57 0F B7 46 ? 8B 3C 85", 0, "retn_addr__pre_vehicle_surfs_stub", use_pattern, 0x8DCDA6); offset) {
@@ -612,6 +712,34 @@ namespace gta4::game
 		// can't create signature at the end of the function so we get the offset from a relative jump instruction
 		if (const auto offset = shared::utils::mem::find_pattern("0F 84 ? ? ? ? A1 ? ? ? ? 83 F8 ? 74 ? 83 F8 ? 75", 0, "hk_addr__post_draw_water", use_pattern, 0xAD7F06); offset) {
 			hk_addr__post_draw_water = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
+		} total_pattern_count++;
+
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_ScanThroughBlocks, "55 8B EC 83 E4 F0 81 EC B0 00 00 00 A1 ? ? ? ? 33 C4 89 84 24 AC 00 00 00 8B 15 ? ? ? ?", 0, 0xAD99D0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_BlockHit, "56 8B 74 24 0C 57 8B 7C 24 0C 85 FF 78 ? 85 F6", 0, 0xAD4A70);
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_CalculateWavesForCoordinate, "8B 0D ? ? ? ? 64 A1 ? ? ? ? 56 8B 74 24 1C 8B 04 88", 0, 0xAD4D30);
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_RenderHighDetailWaterRectangle, "51 8B 54 24 08 8B 4C 24 14 F3 0F 10 15 ? ? ? ? 56 8B 74 24 10", 0, 0xAD8FA0);
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_DrawHighDetailPrimitive, "83 EC 08 8B 4C 24 34 53 55 56 8B 74 24 1C 57 8B 7C 24 1C 8B C6", 0, 0xAD9130);
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_RenderWaterRectangle, "8B 44 24 0C 8B 4C 24 10 53 55 56 57 3B C1 7D ? 8B D8 8B F9 EB ? 8B D9 8B F8 8B 54 24 14 8B 2D", 0, 0xAD97C0);
+		PATTERN_OFFSET_SIMPLE(func_addr__grcViewport_IsSphereVisible, "55 8B EC 83 E4 F8 51 8B 45 18 56 8B F1 0F 57 F6 85 C0 0F 84", 0, 0x431E40);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDetailDist, int*, "66 0F 6E 05 ? ? ? ? F3 0F 10 27 0F 5B C0 F3 0F 5C E0", 4, 0xAD9E58);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterRectFrustumCull, std::uint8_t*, "80 3D ? ? ? ? 00 0F BF 8F ? ? ? ? 0F BF 04 CD", 2, 0xAD7204);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDynamicHeightRT, float*, "F3 0F 10 A7 ? ? ? ? F3 0F 59 E2 89 44 24 18", 4, 0xAD5683);
+
+		// vehicle imposters (distant lights)
+		PATTERN_OFFSET_SIMPLE(func_addr__CDistantLights_Render, "55 8B EC 83 E4 F0 81 EC ? ? 00 00 F3 0F 10 45 08 F3 0F 59 05 ? ? ? ? 56 57 F3 0F 2C C0 C7 44 24 3C 00 00 00 00", 0, 0xD65650);
+		PATTERN_OFFSET_SIMPLE(func_addr__CDistantLights_RenderOutSpriteBuffer, "55 8B EC 83 E4 F0 81 EC ? ? 00 00 8B 4D 14 8B 45 18 ? ? ? ? F3 0F 10 18 F3 0F 10 60 04 F3 0F 10 68 08", 0, 0xD670B0);
+		PATTERN_OFFSET_SIMPLE(func_addr__VehicleImposters_RenderNight, "55 8B EC 83 E4 F0 81 EC B8 0A 00 00 A1 ? ? ? ? 33 C4 89 84 24 B4 0A 00 00 56 57", 0, 0xD66070);
+		PATTERN_OFFSET_SIMPLE(func_addr__VehicleImposters_RenderDay, "55 8B EC 83 E4 F0 81 EC A8 0A 00 00 A1 ? ? ? ? 33 C4 89 84 24 A4 0A 00 00 56 57", 0, 0xD64970);
+		PATTERN_OFFSET_SIMPLE(func_addr__VehicleImposters_FlushInstances, "55 8B EC 83 E4 F0 83 EC 58 56 57 8B 7D 0C 83 3F 00 0F 8E A6 03 00 00 A1 ? ? ? ? C7 44 24 20 00 00 80 3F", 0, 0xD66CE0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pCurrentImTexture, void**, "8B 44 24 04 85 C0 0F 44 05 ? ? ? ? 50 FF 35 ? ? ? ? B9 ? ? ? ? 68 ? ? ? ? A3", 31, 0x432B8F); // rage::grcBindTexture
+
+		// CWater::GetCameraRangeForRender
+		if (const auto offset = shared::utils::mem::find_pattern("8B 0D ? ? ? ? C1 E1 04 F3 0F 2C 81 ? ? ? ? A3 ? ? ? ?", 0, "CWater::GetCameraRangeForRender", use_pattern, 0xAD5AB0); offset)
+		{
+			pWaterRenderBufferIndex = (int*)*(DWORD*)(offset + 2);
+			pWaterCameraCoordsRT = (float*)*(DWORD*)(offset + 13);
+			pWaterDetailRangeRender = (int*)*(DWORD*)(offset + 48);
+			found_pattern_count++;
 		} total_pattern_count++;
 
 

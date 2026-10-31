@@ -3,6 +3,7 @@
 #include "modules/dinput_hook.hpp"
 #include "modules/game_lights.hpp"
 #include "modules/comp_settings.hpp"
+#include "modules/renderer_api.hpp"
 #include "modules/discord.hpp"
 #include "modules/imgui.hpp"
 #include "modules/map_settings.hpp"
@@ -13,6 +14,8 @@
 #include "modules/renderer.hpp"
 #include "modules/renderer_ff.hpp"
 #include "modules/timecycle.hpp"
+#include "modules/water.hpp"
+#include "modules/distant_lights.hpp"
 #include "shared/common/remix_api.hpp"
 
 namespace gta4
@@ -35,6 +38,7 @@ namespace gta4
 		const auto im = imgui::get();
 		const auto& gs = comp_settings::get();
 
+		renderer_api::on_begin_scene();
 		renderer::get()->m_triggered_remix_injection = false; 
 		g_applied_hud_hack = false;
 		g_applied_phone_hack = false;
@@ -63,16 +67,16 @@ namespace gta4
 
 		if (gs->limit_option_sliders._bool())
 		{
-			if (game::loaded_settings_cfg->view_distance > 29u) {
-				game::loaded_settings_cfg->view_distance = 29u;
+			if (game::loaded_settings_cfg->view_distance > 59u) {
+				game::loaded_settings_cfg->view_distance = 59u;
 			}
 
-			if (game::loaded_settings_cfg->detail_distance > 34u) {
-				game::loaded_settings_cfg->detail_distance = 34u;
+			if (game::loaded_settings_cfg->detail_distance > 64u) {
+				game::loaded_settings_cfg->detail_distance = 64u;
 			}
 
-			if (game::loaded_settings_cfg->vehicle_density > 29u) {
-				game::loaded_settings_cfg->vehicle_density = 29u;
+			if (game::loaded_settings_cfg->vehicle_density > 59u) {
+				game::loaded_settings_cfg->vehicle_density = 59u;
 			}
 		}
 
@@ -116,6 +120,8 @@ namespace gta4
 	DETOUR_TYPEDEF(static_world_culling_check, BOOL, __thiscall, void* this_ptr, unkown_struct_culling* unk);
 	BOOL __fastcall static_world_culling_check_hk(game::CEntity* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
 	{
+		PROFILE_ZONE_N("static world culling check");
+		PROFILE_ZONE_VALUE(this_ptr->m_wModelIndex);
 		// this = AVCBuilding : AVCEntity : AUCVirtualBase
 		auto im = imgui::get();
 		auto gs = comp_settings::get();
@@ -285,6 +291,7 @@ namespace gta4
 	// extended anti culling for objects defined via map_settings
 	int extended_anticull_hk(game::CEntity* ent)
 	{
+		PROFILE_ZONE_N("extended anti culling check");
 		const auto im = imgui::get();
 		const auto cs = comp_settings::get();
 
@@ -497,6 +504,7 @@ namespace gta4
 
 	void add_far_grid_map_sections(const int render_context)
 	{
+		PROFILE_ZONE();
 		const auto cs = comp_settings::get();
 		const auto sector_count = cs->nocull_map_areas_count._int();
 
@@ -617,6 +625,7 @@ namespace gta4
 
 	void add_near_grid_map_sections(const int render_context)
 	{
+		PROFILE_ZONE();
 		const auto cs = comp_settings::get();
 		const auto sector_count = 1;
 
@@ -724,12 +733,46 @@ namespace gta4
 		}
 	}
 
+	// the record can be the uninitialized fill pattern or any garbage value (seen as a float bit pattern in TLAD "Shifting Weight")
+	bool is_invalid_model_record(const void* record)
+	{
+		return record == reinterpret_cast<const void*>(0xCDCDCDCD) || shared::utils::memory::is_bad_read_ptr(record);
+	}
+
 	__declspec(naked) void veh_nullptr_invalid_model_fix_stub()
 	{
 		__asm
 		{
-			cmp		ecx, 0xCDCDCDCD;
-			jz		INVALID_MODEL;
+			pushad;
+			sub		esp, 0x80;
+			movups	[esp + 0x00], xmm0;
+			movups	[esp + 0x10], xmm1;
+			movups	[esp + 0x20], xmm2;
+			movups	[esp + 0x30], xmm3;
+			movups	[esp + 0x40], xmm4;
+			movups	[esp + 0x50], xmm5;
+			movups	[esp + 0x60], xmm6;
+			movups	[esp + 0x70], xmm7;
+
+			push	ecx;
+			call	is_invalid_model_record;
+			add		esp, 4;
+			movzx	eax, al;
+			mov		[esp + 0x80 + 0x1C], eax; // pushad eax slot
+
+			movups	xmm0, [esp + 0x00];
+			movups	xmm1, [esp + 0x10];
+			movups	xmm2, [esp + 0x20];
+			movups	xmm3, [esp + 0x30];
+			movups	xmm4, [esp + 0x40];
+			movups	xmm5, [esp + 0x50];
+			movups	xmm6, [esp + 0x60];
+			movups	xmm7, [esp + 0x70];
+			add		esp, 0x80;
+			popad;
+
+			test	eax, eax;
+			jnz		INVALID_MODEL;
 
 			// model valid:
 			mov     eax, [ecx + 5]; // og
@@ -809,12 +852,15 @@ namespace gta4
 	void main()
 	{
 		// init remix api
-		shared::common::remix_api::initialize(nullptr, nullptr, nullptr, false);
+		shared::common::remix_api::initialize(nullptr, nullptr, nullptr);
 
 		shared::common::loader::module_loader::register_module(std::make_unique<imgui>());
 		shared::common::loader::module_loader::register_module(std::make_unique<performance_logger>());
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer>());
 		shared::common::loader::module_loader::register_module(std::make_unique<renderer_ff>());
+		shared::common::loader::module_loader::register_module(std::make_unique<renderer_api>());
+		shared::common::loader::module_loader::register_module(std::make_unique<water>());
+		shared::common::loader::module_loader::register_module(std::make_unique<distant_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<dinput>());
 		shared::common::loader::module_loader::register_module(std::make_unique<remix_lights>());
 		shared::common::loader::module_loader::register_module(std::make_unique<game_lights>());

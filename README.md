@@ -16,6 +16,7 @@ Feel free to join the discord server: https://discord.gg/FMnfhpfZy9
 <br>
 
 ![img](.github/img/overview.jpg)
+![img](.github/img/06.jpg)
 
 </div>
 
@@ -46,50 +47,53 @@ It comes with a [Baseline Remix Mod](https://github.com/xoxor4d/gta4-rtx-base-mo
 RTX Remix has a certain overhead because of how it works and intercepts the game's draw calls and   
 there are obvious drawbacks and things that will not work with such a new title. Don't expect this to be perfect.  
 
-You'll likely experience a CPU bottleneck because of the amount of detailed meshes the game is rendering.  
+You can run into CPU bottlenecks because of the amount of detailed meshes the game is rendering.  
 This means that the performance you'll see in certain places is not entirely due to pathtracing.  
 
 <br>
 
-The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4_atmos10_nr2) required for a few game specific features,   
+The mod comes with a custom [Remix Runtime](https://github.com/xoxor4d/dxvk-remix/tree/game/gta4) required for game specific features and optimizations,   
 with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/tag/v9.0.0) to load the Compatibility Mod itself and a custom fork of [FusionFix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix) tailored for RTX-Remix.
 
 </div>
 
 <br>
 
-![img](.github/img/03.jpg)
+![img](.github/img/01.jpg)
 
 <br>
 
 ###### The good:  
 - **DLSS 4.5 (Ray Reconstruction 2) support**
-- **DLSS 5.0 (Neural Rendering) support** (if you provide the necessary dll) - Integration made by [Sparkles](https://github.com/Kim2091/dxvk-remix/tree/gta4-atmos-dlss5)
-- Includes an **Atmospheric sky system with Volumetric Clouds** made by the Community [Remix Plus / Numos](https://github.com/RemixProjGroup/dxvk-remix)
-- Most objects rendered via fixed function to increase performance (compared to grabbing data from Vertexshaders)
-- Cascaded anti culling of meshes
+- **DLSS 5.0 (V2) (Neural Rendering) support** - Official NV version with additional changes by [Sparkles (RemixPlus)](https://github.com/RemixProjGroup/dxvk-remix/commits/rebased-9-19/)
+- Includes __Numos__, an atmospheric sky system with volumetric clouds by [Sparkles (Remix Plus)](https://github.com/RemixProjGroup/dxvk-remix)
+- **99% of Meshes are Rendered via the RemixApi** - this drastically improves performance and reduces the CPU-Bottleneck  
+- HDR support by [TheGreatHMMMM](https://github.com/TheGreatHMMMM/halo-dxvk-remix/commit/af8905c67acde9f3f5e9128fc6c793daa259ed80) (Alt HDR10 tonemapper) and added HDR support for the default Psycho17 tonemapper
+- Full fixed-function fallback in case the API isn't used. Still increases performance compared to grabbing data from Vertexshaders
+- Cascaded Anti Culling of meshes
 - All game lights (including the sun) are translated to remix lights
 - Ability to create overrides for translated game lights (change position, color, intensity etc.)
 - Vehicles now feature two headlights and two rear lights instead of single, centered ones
 - Dynamic emissive surfaces work (vehicle lights, building-windows, shops etc.)
-- Dynamic wetness that works similar to the original game  
-  (only outdoors and with falloff on angled surfaces + raindroplets/impacts)
-- Raindroplets on vehicles and character clothing
+- Dynamic wetness with forming puddles + wetness stays longer after it rained
+- Improved water / ocean rendering
+- Raindroplets on vehicles and characters
 - Working vehicle dirt and livery
+- Working distant light sprites and vehicle imposters
 - Modification of remix runtime variables based on current timecycle settings
 - Mobilephone works (but it is 3D and currently scales with the camera fov)
 - Modified vertex shaders (based on FusionFix) so that remix is able to capture surface normals
 - Ability to spawn unique _marker_ meshes that can be hidden based on distance, weather or time of day (these can be used to attach remix replacements or scene lights)
 - Screenshot Mode, FreeCam Mode and other Utilities
 - FusionFix compatible (custom fork: [GTAIV.EFLC.FusionFix.RTXRemix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix))
-- Many many tweakable settings via the in-game __F4__ menu
+- Many tweakable settings via the in-game __F4__ menu
 - A few PBR materials, hq-meshes (vegetation, modeled fences ..) and texture fixes
 - Mod Installer / Updater
 
 ###### The bad:
-- CPU Bottlenecked - Nvidia is constantly updating RTX-Remix and already made changes to improve this
-- Can be stuttery when traversing the world
-- No blood on peds
+- ~~CPU Bottlenecked~~ - Rendering via RemixApi + Improvements to the Bridge by [Sparkles (RemixPlus)](https://github.com/RemixProjGroup/dxvk-remix/commits/rebased-9-19/) and me mostly fixes this
+- ~~Can still be stuttery when traversing the world as new meshes load in~~ - Mostly fixed as of 1.7.0
+- ~~No blood on peds~~ - Fixed as of 1.7.0
 
 <br>
 <br>
@@ -117,13 +121,15 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 ## Usage
 - Run the game like normal
 - Press `F4` to open the in-game gui for some compatibility tweaks or debug settings
-- If you notice heavy stuttering, launch the game with the included `_LaunchWithProcessorAffinity_2Cores_GTA4.bat`.  
-  Doing this will assign 2 cores to GTA4 and the rest to Remix. If you want a 50/50 split, use `_LaunchWithProcessorAffinity_Half_GTA4__Half_Remix.bat`
+- If you notice heavy stuttering, launch the game with one of the included affinity batch files.  
+  They give GTA IV its own physical cores and the rest to Remix, so the two never compete for the same core:
+  - `_LaunchWithProcessorAffinity_4Cores_GTA4.bat`: 4 physical cores for GTA IV (CPUs with 8 or more cores)
+  - `_LaunchWithProcessorAffinity_2Cores_GTA4.bat`: 2 physical cores for GTA IV (CPUs with fewer cores)
 
 <br>
 
 > [!TIP]  
-> **Troubleshooting / in-depth guides, usage information and remix runtime changes can be found in the [[Wiki]](https://github.com/xoxor4d/gta4-rtx/wiki)**
+> **Performance Tips / Troubleshooting and Usage information can be found in the [[Wiki]](https://github.com/xoxor4d/gta4-rtx/wiki)**
 
 <br>
 
@@ -136,6 +142,13 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
   rename `gta4-rtx.dll` to `a_gta4-rtx.asi` and copy it into your game directory (next to `GTAIV.exe`) 
 - If you have not installed a release build before, make sure to copy everything within the `assets` folder into the game directory
 - Make sure to also install: [gta4-rtx-base-mod](https://github.com/xoxor4d/gta4-rtx-base-mod)
+
+#### Profiling with Tracy
+- Build the `ReleaseTracy` configuration - includes [Tracy](https://github.com/wolfpld/tracy) client (v0.13.4, `deps/tracy`)  
+  All other configurations contain no profiling code.
+- Start the game, open the Tracy 0.13.x profiler and connect
+- The trace contains frame marks for the render thread (`Render`) and the game thread tick (`Game`), zones for the D3D9 and Remix API render paths, every Remix API bridge call, the culling and draw list hooks, plots (frame time, draw calls, api instances) and the locks of the api renderer
+- Run `GTAIV.exe` as administrator to also get CPU sampling and context switches of all threads
 
 <br>
 <br>
@@ -151,6 +164,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [miniz](https://github.com/richgel999/miniz)
 - [Rapidjson](https://github.com/Tencent/rapidjson)
 - [DiscordRPC](https://github.com/discord/discord-rpc)
+- [Tracy](https://github.com/wolfpld/tracy)
 - [FusionFix](https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix)
 - [FusionShaders](https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders)
 - [Rage-Shader-Editor](https://github.com/ImpossibleEchoes/rage-shader-editor-cpp)
@@ -163,11 +177,11 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [Hemry](https://www.youtube.com/@Hemry81)
 - [Danlopand / Thundery_Dan](https://github.com/DANLOPAND)
 - [KapibosRU](https://www.youtube.com/channel/UCqZ2NI_fQKRN-Onypt9aIGQ)
-- [Budgie](https://www.patreon.com/c/BudgieGames)
+- [Budgie (Vegetation)](https://www.patreon.com/c/BudgieGames)
 - [Alex from Digital Foundry](https://www.youtube.com/watch?v=vGxPdcMQfwg)
-- [Sparkles (Remix Plus - Numos - DLSS5 Integration)](https://github.com/Kim2091)
+- [Sparkles (Remix Plus - Numos - Remix Optimization)](https://github.com/Kim2091)
 - [CR (Remix Plus)](https://github.com/sambow23)
-- [TheGreatHMMMM (Remix Plus)](https://github.com/TheGreatHMMMM)
+- [TheGreatHMMMM (Remix Plus - HDR implementation)](https://github.com/TheGreatHMMMM)
 - [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)
 - All 🍓 Testers
 
@@ -179,6 +193,6 @@ and all the people that helped along the way!
 <br>
 
 ![img](.github/img/02.jpg)
-![img](.github/img/06.jpg)
+![img](.github/img/03.jpg)
 
 </div>

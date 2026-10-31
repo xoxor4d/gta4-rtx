@@ -44,6 +44,13 @@ namespace gta4
 
 	DWORD WINAPI find_game_window_by_sha1([[maybe_unused]] LPVOID lpParam)
 	{
+		if constexpr (shared::common::profiler::enabled)
+		{
+			shared::common::profiler::name_current_thread("Mod Init");
+			shared::common::profiler::set_program_info("GTAIV",
+				std::format("GTAIV RTX Remix Compatibility Mod {}.{}.{}", COMP_MOD_VERSION_MAJOR, COMP_MOD_VERSION_MINOR, COMP_MOD_VERSION_PATCH));
+		}
+
 		shared::common::console();
 		std::uint32_t T = 0;
 
@@ -360,16 +367,16 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		shared::globals::setup_homepath();
 
 		shared::common::set_console_color_blue(true);
-		std::cout << "Launching GTAIV RTX Remix Compatiblity Mod Version [" << COMP_MOD_VERSION_MAJOR << "." << COMP_MOD_VERSION_MINOR << "." << COMP_MOD_VERSION_PATCH << "]";
+		std::cout << "\n  Launching GTAIV RTX Remix Compatiblity Mod Version [" << COMP_MOD_VERSION_MAJOR << "." << COMP_MOD_VERSION_MINOR << "." << COMP_MOD_VERSION_PATCH << "]";
 		
 		if constexpr (COMP_MOD_PRE_RELEASE_NUM != 0) {
-			std::cout << " - Pre-Release " << std::to_string(COMP_MOD_PRE_RELEASE_NUM) << "\n";
+			std::cout << "   - Pre-Release " << std::to_string(COMP_MOD_PRE_RELEASE_NUM) << "\n";
 		} else {
 			std::cout << "\n";
 		}
 		
-		std::cout << "> Compiled On : " + std::string(__DATE__) + " " + std::string(__TIME__) + "\n";
-		std::cout << "> https://github.com/xoxor4d/gta4-rtx\n\n";
+		std::cout << "  > Compiled On : " + std::string(__DATE__) + " " + std::string(__TIME__) + "\n";
+		std::cout << "  > https://github.com/xoxor4d/gta4-rtx\n\n";
 		shared::common::set_console_color_default();
 
 		if (const auto MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)

@@ -21,6 +21,13 @@ namespace gta4
 			ctx.save_rs(dev, RS_215_MULTIUSE05);
 			ctx.save_rs(dev, RS_216_MULTIUSE06);
 
+			ctx.info.remix_multi_use[0] = ctx.info.global_anim_uv0.x;
+			ctx.info.remix_multi_use[1] = ctx.info.global_anim_uv0.y;
+			ctx.info.remix_multi_use[2] = ctx.info.global_anim_uv0.z;
+			ctx.info.remix_multi_use[3] = ctx.info.global_anim_uv1.x;
+			ctx.info.remix_multi_use[4] = ctx.info.global_anim_uv1.y;
+			ctx.info.remix_multi_use[5] = ctx.info.global_anim_uv1.z;
+
 			dev->SetRenderState((D3DRENDERSTATETYPE)RS_211_MULTIUSE01, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv0.x));
 			dev->SetRenderState((D3DRENDERSTATETYPE)RS_212_MULTIUSE02, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv0.y));
 			dev->SetRenderState((D3DRENDERSTATETYPE)RS_213_MULTIUSE03, *reinterpret_cast<DWORD*>(&ctx.info.global_anim_uv0.z));
@@ -40,6 +47,7 @@ namespace gta4
 
 	void renderer_ff::on_ff_emissives(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
+		PROFILE_ZONE();
 		const auto im = imgui::get();
 		const auto cs = comp_settings::get();
 
@@ -229,6 +237,7 @@ namespace gta4
 
 	void renderer_ff::on_ff_emissives_alpha(IDirect3DDevice9* dev, drawcall_mod_context& ctx)
 	{
+		PROFILE_ZONE();
 		const auto im = imgui::get();
 		const auto cs = comp_settings::get();
 

@@ -17,8 +17,11 @@ namespace gta4
 		RemixLights,
 		RemixMarkers,
 		GameLights,
-		AntiCull,
+		Submit,
 		DrawIndexedPrim,
+		RendererApi,
+		ApiPassSkip,
+		ShaderPassSetup,
 		Count
 	};
 
@@ -74,7 +77,7 @@ namespace gta4
 			bool m_valid = false;
 		};
 
-		static const char* section_name(const performance_section section)
+		static constexpr const char* section_name(const performance_section section)
 		{
 			switch (section)
 			{
@@ -85,8 +88,11 @@ namespace gta4
 			case performance_section::RemixLights: return "RemixLights";
 			case performance_section::RemixMarkers: return "RemixMarkers";
 			case performance_section::GameLights: return "GameLights";
-			case performance_section::AntiCull: return "AntiCull";
+			case performance_section::Submit: return "Submit";
 			case performance_section::DrawIndexedPrim: return "DrawIndexedPrim";
+			case performance_section::RendererApi: return "RendererApi";
+			case performance_section::ApiPassSkip: return "ApiPassSkip";
+			case performance_section::ShaderPassSetup: return "ShaderPassSetup";
 			}
 		}
 
@@ -102,11 +108,13 @@ namespace gta4
 		bool m_enabled = false;
 		bool m_popout_enabled = false;
 
-		float m_spike_hard_ms = 35.0f;
+		float m_spike_hard_ms = 21.0f;
 		float m_spike_ratio = 1.5f;
 		float m_window_bg_alpha = 0.35f;
+		float m_window_x = 0.0f;
+		float m_window_y = 0.0f;
 		float m_window_width = 600.0f;
-		float m_graph_height = 40.0f;
+		float m_graph_height = 60.0f;
 		float m_graph_bg_alpha = 0.50f;
 		bool m_display_section_table = false;
 
@@ -138,6 +146,7 @@ namespace gta4
 	};
 }
 
-#define GTA4_PERF_SCOPE(SECTION) ::gta4::performance_logger::scoped_section perf_scope_##__LINE__(SECTION)
+/// measures the scope for the performance overlay, also a tracy zone in profiling builds
+#define GTA4_PERF_SCOPE(SECTION) PROFILE_ZONE_N(::gta4::performance_logger::section_name(SECTION)); ::gta4::performance_logger::scoped_section perf_scope_##__LINE__(SECTION)
 #define GTA4_PERF_BEGIN(SECTION) ::gta4::performance_logger::perf_begin(SECTION)
 #define GTA4_PERF_END(SECTION) ::gta4::performance_logger::perf_end(SECTION)

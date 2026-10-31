@@ -14,6 +14,7 @@ namespace gta4
 		~natives() = default;
 	
 		static inline natives* p_this = nullptr;
+		static inline void (*on_game_frame_callback)() = nullptr; // once per game frame (game thread)
 		static natives* get() { return p_this; }
 
 		static bool is_initialized()

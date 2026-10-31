@@ -71,20 +71,6 @@ namespace shared::imgui
 					IDirect3DSurface9* backBuffer;
 					device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 
-					D3DSURFACE_DESC desc;
-					backBuffer->GetDesc(&desc);
-
-					if (backbuffer_width != desc.Width || backbuffer_height != desc.Height)
-					{
-						if (texture) {
-							texture->Release();
-						}
-
-						backbuffer_width = desc.Width;
-						backbuffer_height = desc.Height;
-						device->CreateTexture(desc.Width, desc.Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, nullptr);
-					}
-
 					device->GetRenderTarget(0, &rt_backup);
 
 					{
@@ -140,6 +126,44 @@ namespace shared::imgui
 					device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
 				}
 			}
+
+			// must happen before the texture is recorded into a draw list
+			bool update_texture(IDirect3DDevice9* device)
+			{
+				IDirect3DSurface9* backBuffer = nullptr;
+				if (FAILED(device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer)) || !backBuffer) {
+					return false;
+				}
+
+				D3DSURFACE_DESC desc;
+				backBuffer->GetDesc(&desc);
+				backBuffer->Release();
+
+				if (!texture || backbuffer_width != desc.Width || backbuffer_height != desc.Height)
+				{
+					release_resources();
+					if (FAILED(device->CreateTexture(desc.Width, desc.Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, nullptr))) {
+						return false;
+					}
+
+					backbuffer_width = desc.Width;
+					backbuffer_height = desc.Height;
+				}
+
+				return texture != nullptr;
+			}
+		}
+
+		void release_resources()
+		{
+			if (texture)
+			{
+				texture->Release();
+				texture = nullptr;
+			}
+
+			backbuffer_width = 0u;
+			backbuffer_height = 0u;
 		}
 	}
 
@@ -148,7 +172,7 @@ namespace shared::imgui
 		assert(globals::d3d_device != nullptr && "Trying to draw ImGui background blur when the d3d device was null!");
 		IDirect3DDevice9* dev = globals::d3d_device;
 
-		if (dev)
+		if (dev && blur::update_texture(dev))
 		{
 			const ImVec2 img_size = { (float)blur::backbuffer_width, (float)blur::backbuffer_height };
 

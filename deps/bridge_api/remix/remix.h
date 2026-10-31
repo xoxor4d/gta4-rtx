@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2023-2026, NVIDIA CORPORATION. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -249,7 +249,7 @@ namespace remix {
         return status;
       }
 
-      static_assert(sizeof(remixapi_Interface) == 328,
+      static_assert(sizeof(remixapi_Interface) == 368,
                     "Change version, update C++ wrapper when adding new functions");
 
       remix::Interface interfaceInCpp = {};
@@ -372,7 +372,11 @@ namespace remix {
       alphaTestType = 7;
       alphaReferenceValue = 0;
       displaceOut = 0.0f;
-      STATIC_ASSERT_SIZEOF(remixapi_MaterialInfoOpaqueEXT, 112);
+      enableDlssControlMask = true;
+      dlssControlMaskIntensity = 1.0f;
+      dlssControlMaskToneStrength = 0.3f;
+      dlssControlMaskStructuralStrength = 0.7f;
+      STATIC_ASSERT_SIZEOF(remixapi_MaterialInfoOpaqueEXT, 128);
     }
 
     MaterialInfoOpaqueEXT(const MaterialInfoOpaqueEXT& other)
@@ -436,7 +440,7 @@ namespace remix {
       roughnessTexture = cpp_roughnessTexture.c_str();
       metallicTexture = cpp_metallicTexture.c_str();
       heightTexture = cpp_heightTexture.c_str();
-      STATIC_ASSERT_SIZEOF(remixapi_MaterialInfoOpaqueEXT, 112);
+      STATIC_ASSERT_SIZEOF(remixapi_MaterialInfoOpaqueEXT, 128);
     }
 
     std::filesystem::path cpp_roughnessTexture {};
@@ -834,6 +838,30 @@ namespace remix {
       isTextureFactorBlend = false;
       isVertexColorBakedLighting = true;
       STATIC_ASSERT_SIZEOF(remixapi_InstanceInfoBlendEXT, 96);
+    }
+  };
+
+  struct MeshInfoReplacementHashEXT : remixapi_MeshInfoReplacementHashEXT {
+    MeshInfoReplacementHashEXT() {
+      sType = REMIXAPI_STRUCT_TYPE_MESH_INFO_REPLACEMENT_HASH_EXT;
+      pNext = nullptr;
+      replacementHash = 0;
+    }
+  };
+
+  struct InstanceInfoD3DOverridesEXT : remixapi_InstanceInfoD3DOverridesEXT {
+    InstanceInfoD3DOverridesEXT() {
+      sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO_D3D_OVERRIDES_EXT;
+      pNext = nullptr;
+      categoryFlags = 0;
+      modifierFlags = 0;
+      hashOverride = 0;
+      hashSeed = 0;
+      emissiveScale = 0.0f;
+      packedWetness = 0;
+      for (float& v : multiUse) {
+        v = 0.0f;
+      }
     }
   };
 

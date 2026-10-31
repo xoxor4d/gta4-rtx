@@ -16,6 +16,11 @@
 
 #pragma comment(lib, "winhttp.lib")
 
+// Packaged AutoPBR mod (single usd + pkg files) - downloaded and extracted by the user
+static const char* autopbr_packaged_mega_url = "https://mega.nz/file/PkZjGJjI#d9oHWdUOV7XQG6oRRfEqBGSA5_8MtbbArMwo7oU-RG4";
+static const char* autopbr_packaged_drive_url = "https://drive.google.com/file/d/1eaLnOcZI6n5CYMLwG_d0DWCzdxlinCsx";
+static const char* autopbr_packaged_zip_name = "GTAIV-AutoPBR-X.X.X.zip";
+
 static const char* line_pad = "  ";
 #define PAD line_pad
 #define PAD_INL "  "
@@ -70,6 +75,59 @@ void log_error(const std::string& msg)
 	log_red(true);
 	std::cout << "\n" << PAD << "[!] " << msg << "\n";
 	log_default();
+}
+
+void log_warn(const std::string& msg)
+{
+	log_yellow(true);
+	std::cout << PAD << "[WARN] " << msg << "\n\n";
+	log_default();
+}
+
+int wait_for_key_and_exit(int exit_code)
+{
+	log_default(true);
+	std::cout << "\n" << PAD << "Press any key to close the installer ...\n";
+	log_default();
+	_getch();
+	return exit_code;
+}
+
+std::wstring to_wide(const std::string& text)
+{
+	if (text.empty()) {
+		return L"";
+	}
+
+	const int length = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
+	std::wstring result(static_cast<size_t>(length), L'\0');
+	MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), result.data(), length);
+	return result;
+}
+
+// Renames `path` to `path + suffix` and logs it when the file existed
+bool rename_with_suffix(const std::string& path, const std::string& suffix, const std::string& display_name)
+{
+	const bool renamed = MoveFileExA(path.c_str(), (path + suffix).c_str(), MOVEFILE_REPLACE_EXISTING) != FALSE;
+	if (renamed) {
+		std::cout << PAD << "Renamed '" << display_name << "' to '" << display_name << suffix << "'\n";
+	}
+
+	Sleep(25);
+	return renamed;
+}
+
+// Whether a file can be created in `dir`; the installer runs as the invoking user and tells them
+// to elevate instead of requiring it up front
+bool is_directory_writable(const std::filesystem::path& dir)
+{
+	wchar_t probe[MAX_PATH] = { 0 };
+	if (GetTempFileNameW(dir.wstring().c_str(), L"rmx", 0, probe) == 0) {
+		return false;
+	}
+
+	DeleteFileW(probe);
+	return true;
 }
 
 std::string open_file_dialog()
@@ -213,90 +271,101 @@ std::string get_short_sha(const std::string& full_sha)
 	return full_sha;
 }
 
+struct WinHttpHandle
+{
+	HINTERNET handle = nullptr;
+
+	explicit WinHttpHandle(HINTERNET h) : handle(h) {}
+	WinHttpHandle(const WinHttpHandle&) = delete;
+	WinHttpHandle& operator=(const WinHttpHandle&) = delete;
+
+	~WinHttpHandle()
+	{
+		if (handle) {
+			WinHttpCloseHandle(handle);
+		}
+	}
+
+	explicit operator bool() const {
+		return handle != nullptr;
+	}
+};
+
+// HTTPS GET of `path` on `host`; every received chunk goes to `sink`, which returns false to abort
+template <typename Sink>
+bool http_get(const std::wstring& host, const std::wstring& path, Sink&& sink)
+{
+	WinHttpHandle session(WinHttpOpen(L"GTAIV-Remix-Installer/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0));
+	if (!session) {
+		return false;
+	}
+
+	WinHttpHandle connect(WinHttpConnect(session.handle, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0));
+	if (!connect) {
+		return false;
+	}
+
+	WinHttpHandle request(WinHttpOpenRequest(connect.handle, L"GET", path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE));
+	if (!request) {
+		return false;
+	}
+
+	DWORD redirect_policy = WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS;
+	WinHttpSetOption(request.handle, WINHTTP_OPTION_REDIRECT_POLICY, &redirect_policy, sizeof(redirect_policy));
+
+	// GitHub requires a User-Agent header
+	WinHttpAddRequestHeaders(request.handle, L"User-Agent: GTAIV-Remix-Installer", -1, WINHTTP_ADDREQ_FLAG_ADD);
+
+	if (!WinHttpSendRequest(request.handle, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) ||
+		!WinHttpReceiveResponse(request.handle, nullptr))
+	{
+		return false;
+	}
+
+	char buffer[8192];
+	while (true)
+	{
+		DWORD bytes_available = 0;
+		if (!WinHttpQueryDataAvailable(request.handle, &bytes_available)) {
+			return false;
+		}
+
+		if (bytes_available == 0) {
+			return true;
+		}
+
+		DWORD bytes_read = 0;
+		if (!WinHttpReadData(request.handle, buffer, sizeof(buffer), &bytes_read)) {
+			return false;
+		}
+
+		if (bytes_read == 0) {
+			return true;
+		}
+
+		if (!sink(buffer, bytes_read)) {
+			return false;
+		}
+	}
+}
+
 // Get the latest commit SHA from a GitHub repository
 // Returns empty string on failure, or the commit SHA on success
 std::string get_latest_github_commit_sha(const std::string& owner, const std::string& repo, const std::string& branch = "main")
 {
 	// GitHub API endpoint: https://api.github.com/repos/{owner}/{repo}/commits/{branch}
-	std::string url = "https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + branch;
-	
-	HINTERNET session = WinHttpOpen(L"GTAIV-Remix-Installer/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	if (!session) {
-		return "";
-	}
+	const std::wstring path = L"/repos/" + to_wide(owner) + L"/" + to_wide(repo) + L"/commits/" + to_wide(branch);
 
-	// Convert URL to wide string
-	std::wstring wurl(url.begin(), url.end());
-	HINTERNET connect = WinHttpConnect(session, L"api.github.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
-	
-	if (!connect) {
-
-		WinHttpCloseHandle(session);
-		return "";
-	}
-
-	// Convert path to wide string
-	std::wstring wpath = L"/repos/" + std::wstring(owner.begin(), owner.end()) + L"/" + std::wstring(repo.begin(), repo.end()) + L"/commits/" + std::wstring(branch.begin(), branch.end());
-	HINTERNET request = WinHttpOpenRequest(connect, L"GET", wpath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-	
-	if (!request) 
-	{
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
-		return "";
-	}
-
-	// Add User-Agent header (GitHub API requires this)
-	WinHttpAddRequestHeaders(request, L"User-Agent: GTAIV-Remix-Installer", -1, WINHTTP_ADDREQ_FLAG_ADD);
-
-	// Send request
-	if (!WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)) 
-	{
-		WinHttpCloseHandle(request);
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
-		return "";
-	}
-
-	// Receive response
-	if (!WinHttpReceiveResponse(request, nullptr))
-	{
-		WinHttpCloseHandle(request);
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
-		return "";
-	}
-
-	// Read response data
 	std::string response;
-	DWORD bytes_available = 0;
-	DWORD bytes_read = 0;
-	char buffer[4096] = { 0 };
-
-	do 
+	const bool ok = http_get(L"api.github.com", path, [&](const char* data, DWORD size)
 	{
-		if (!WinHttpQueryDataAvailable(request, &bytes_available)) {
-			break;
-		}
+		response.append(data, size);
+		return true;
+	});
 
-		if (bytes_available == 0) {
-			break;
-		}
-
-		if (!WinHttpReadData(request, buffer, sizeof(buffer) - 1, &bytes_read)) {
-			break;
-		}
-
-		if (bytes_read > 0) 
-		{
-			buffer[bytes_read] = '\0';
-			response += buffer;
-		}
-	} while (bytes_read > 0);
-
-	WinHttpCloseHandle(request);
-	WinHttpCloseHandle(connect);
-	WinHttpCloseHandle(session);
+	if (!ok) {
+		return "";
+	}
 
 	// Parse JSON response to extract SHA
 	// GitHub API returns: {"sha":"abc123...","commit":{...},...}
@@ -374,179 +443,78 @@ bool download_file_to_path(const std::wstring& url, const std::filesystem::path&
 	if (protocol_end == std::wstring::npos) {
 		return false;
 	}
-	
+
 	size_t host_start = protocol_end + 3;
 	size_t path_start = url.find(L"/", host_start);
 
-	if (path_start == std::wstring::npos) 
+	if (path_start == std::wstring::npos)
 	{
 		host = url.substr(host_start);
 		path = L"/";
-	} 
-	else 
+	}
+	else
 	{
 		host = url.substr(host_start, path_start - host_start);
 		path = url.substr(path_start);
 	}
 
-	HINTERNET session = WinHttpOpen(L"GTAIV-Remix-Installer/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	if (!session) {
-		return false;
-	}
-
-	HINTERNET connect = WinHttpConnect(session, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
-	if (!connect) 
-	{
-		WinHttpCloseHandle(session);
-		return false;
-	}
-
-	// Make the GET request to download the file
-	HINTERNET request = WinHttpOpenRequest(connect, L"GET", path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-	if (!request)
-	{
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
-		return false;
-	}
-
-	// Enable redirect following
-	DWORD redirect_policy = WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS;
-	WinHttpSetOption(request, WINHTTP_OPTION_REDIRECT_POLICY, &redirect_policy, sizeof(redirect_policy));
-
-	// Add User-Agent header
-	WinHttpAddRequestHeaders(request, L"User-Agent: GTAIV-Remix-Installer", -1, WINHTTP_ADDREQ_FLAG_ADD);
-
-	if (!WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)) 
-	{
-		WinHttpCloseHandle(request);
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
-		return false;
-	}
-
-	if (!WinHttpReceiveResponse(request, nullptr)) 
-	{
-		WinHttpCloseHandle(request);
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
-		return false;
-	}
-
 	// Create target directory if needed
 	try {
 		std::filesystem::create_directories(target_path.parent_path());
-	} 
-	catch (...) 
-	{
-		WinHttpCloseHandle(request);
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
+	}
+	catch (...) {
 		return false;
 	}
 
-	// Open output file
 	std::ofstream out_file(target_path, std::ios::binary);
-	if (!out_file.is_open()) 
-	{
-		WinHttpCloseHandle(request);
-		WinHttpCloseHandle(connect);
-		WinHttpCloseHandle(session);
+	if (!out_file.is_open()) {
 		return false;
 	}
 
-	// Read and write data with progress tracking
-	DWORD bytes_available = 0;
-	DWORD bytes_read = 0;
-	char buffer[8192] = { 0 };
-	bool success = true;
-	
 	ULONGLONG total_bytes_downloaded = 0;
-	DWORD start_time = GetTickCount();
+	const DWORD start_time = GetTickCount();
 	DWORD last_update_time = start_time;
 
-	log_yellow(true);
-	do 
+	auto print_progress = [&](const char* label)
 	{
-		if (!WinHttpQueryDataAvailable(request, &bytes_available)) 
-		{
-			success = false;
-			break;
-		}
-
-		if (bytes_available == 0) {
-			break;
-		}
-
-		if (!WinHttpReadData(request, buffer, sizeof(buffer), &bytes_read)) 
-		{
-			success = false;
-			break;
-		}
-
-		if (bytes_read > 0) 
-		{
-			out_file.write(buffer, bytes_read);
-			if (!out_file.good()) 
-			{
-				success = false;
-				break;
-			}
-			
-			total_bytes_downloaded += bytes_read;
-			DWORD current_time = GetTickCount();
-			
-			// Update progress every 500ms
-			if (current_time - last_update_time >= 500) 
-			{
-				// Calculate speed (bytes per second)
-				DWORD elapsed = current_time - start_time;
-				float speed = 0.0f;
-
-				if (elapsed > 0) {
-					speed = (float)total_bytes_downloaded / (float)elapsed * 1000.0f; // bytes per second
-				}
-
-				float speed_MBps = speed / (1024.0f * 1024.0f);
-				float downloaded_MB = (float)total_bytes_downloaded / (1024.0f * 1024.0f);
-				
-				// Display downloaded size and speed
-				std::cout << "\r"
-					<< PAD << "Downloading: " << std::fixed << std::setprecision(1) << downloaded_MB << " MB - " << speed_MBps << " MB/s    ";
-
-				std::cout.flush();
-				
-				last_update_time = current_time;
-			}
-		}
-	} while (bytes_read > 0);
-
-	log_default();
-
-	// Final progress update
-	if (success && total_bytes_downloaded > 0)
-	{
-		float downloadedMB = (float)total_bytes_downloaded / (1024.0f * 1024.0f);
-		DWORD elapsed = GetTickCount() - start_time;
-		float speed = 0.0f;
-
-		if (elapsed > 0) {
-			speed = (float)total_bytes_downloaded / (float)elapsed * 1000.0f;
-		}
-
-		float speed_MBps = speed / (1024.0f * 1024.0f);
+		const DWORD elapsed = GetTickCount() - start_time;
+		const float downloaded_MB = (float)total_bytes_downloaded / (1024.0f * 1024.0f);
+		const float speed_MBps = elapsed > 0 ? downloaded_MB / ((float)elapsed / 1000.0f) : 0.0f;
 
 		std::cout << "\r"
-			<< PAD << "Downloaded: " << std::fixed << std::setprecision(1) << downloadedMB << " MB - " << speed_MBps << " MB/s    \n";
-
+			<< PAD << label << std::fixed << std::setprecision(1) << downloaded_MB << " MB - " << speed_MBps << " MB/s    ";
 		std::cout.flush();
+	};
+
+	log_yellow(true);
+	const bool success = http_get(host, path, [&](const char* data, DWORD size)
+	{
+		out_file.write(data, size);
+		if (!out_file.good()) {
+			return false;
+		}
+
+		total_bytes_downloaded += size;
+
+		// Update progress every 500ms
+		const DWORD current_time = GetTickCount();
+		if (current_time - last_update_time >= 500)
+		{
+			print_progress("Downloading: ");
+			last_update_time = current_time;
+		}
+
+		return true;
+	});
+	log_default();
+
+	if (success && total_bytes_downloaded > 0)
+	{
+		print_progress("Downloaded: ");
+		std::cout << "\n";
 	}
 
 	out_file.close();
-	WinHttpCloseHandle(request);
-	WinHttpCloseHandle(connect);
-	WinHttpCloseHandle(session);
-
 	return success;
 }
 
@@ -692,7 +660,7 @@ std::string quote_arg(const std::string& arg)
 	return quoted;
 }
 
-bool run_process(const std::string& command, const std::filesystem::path& working_dir, DWORD* exit_code = nullptr, bool capture_output = false, bool quiet = false)
+bool run_process(const std::string& command, const std::filesystem::path& working_dir, DWORD* exit_code = nullptr, bool capture_output = false, bool quiet = false, std::string* output = nullptr)
 {
 	STARTUPINFOA si = {};
 	PROCESS_INFORMATION pi = {};
@@ -752,6 +720,10 @@ bool run_process(const std::string& command, const std::filesystem::path& workin
 
 		while (ReadFile(read_pipe, buffer, sizeof(buffer), &bytes_read, nullptr) && bytes_read > 0)
 		{
+			if (output) {
+				output->append(buffer, bytes_read);
+			}
+
 			if (quiet) {
 				continue;
 			}
@@ -867,7 +839,8 @@ int select_console_option(const std::string& prompt, const std::vector<std::stri
 enum class DeliveryMode
 {
 	Zip,
-	Git
+	Git,
+	Packaged
 };
 
 struct RemoteModConfig
@@ -887,6 +860,11 @@ struct RemoteModConfig
 	std::string missing_prompt;
 	std::string missing_description;
 	std::string update_prompt;
+
+	// Empty when the mod has no packaged (manual install) variant
+	std::string packaged_mega_url;
+	std::string packaged_drive_url;
+	std::string packaged_zip_name;
 };
 
 std::filesystem::path remote_mods_dir(const std::string& game_dir) {
@@ -922,8 +900,14 @@ bool sparse_git_metadata_exists(const std::string& game_dir, const RemoteModConf
 	return std::filesystem::exists(remote_mod_git_dir(game_dir, config) / "config");
 }
 
-std::string delivery_mode_to_string(DeliveryMode mode) {
-	return mode == DeliveryMode::Git ? "git" : "zip";
+std::string delivery_mode_to_string(DeliveryMode mode)
+{
+	switch (mode)
+	{
+	case DeliveryMode::Git: return "git";
+	case DeliveryMode::Packaged: return "packaged";
+	default: return "zip";
+	}
 }
 
 bool read_delivery_mode(const std::string& game_dir, const RemoteModConfig& config, DeliveryMode& mode)
@@ -942,6 +926,12 @@ bool read_delivery_mode(const std::string& game_dir, const RemoteModConfig& conf
 		return true;
 	}
 
+	if (content == "delivery=packaged" || content == "packaged")
+	{
+		mode = DeliveryMode::Packaged;
+		return true;
+	}
+
 	return false;
 }
 
@@ -953,7 +943,7 @@ bool write_delivery_mode(const std::string& game_dir, const RemoteModConfig& con
 DeliveryMode select_delivery_mode()
 {
 	const int choice = select_console_option(
-		"\n  Select how the base and optional AutoPBR mods should be installed/updated:",
+		"\n  Select how the base mod (and the AutoPBR mod, if installed via GitHub) should be installed/updated:",
 		{
 			"Use Git checkout (RECOMMENDED, only download new/modified files without redownloading everything.",
 			"Use GitHub zip downloads (Downloads the complete mod even if only a single file has changed since the installer was last run.)"
@@ -962,12 +952,85 @@ DeliveryMode select_delivery_mode()
 	return choice == 0 ? DeliveryMode::Git : DeliveryMode::Zip;
 }
 
-bool ensure_mingit_available(std::filesystem::path& git_exe)
+// True when `git_exe` runs and reports at least major.minor; version_text receives its "git version ..." line
+bool git_version_at_least(const std::filesystem::path& git_exe, int major, int minor, std::string& version_text)
 {
+	DWORD code = 1;
+	std::string output;
+	run_process(quote_arg(git_exe.string()) + " --version", {}, &code, true, true, &output);
+	version_text = trim_whitespace(output);
+
+	if (code != 0) {
+		return false;
+	}
+
+	static const std::string version_prefix = "git version ";
+	const size_t pos = version_text.find(version_prefix);
+	if (pos == std::string::npos) {
+		return false;
+	}
+
+	const std::vector<int> version = parse_version(version_text.substr(pos + version_prefix.size()));
+	return !version_greater_than({ major, minor }, version);
+}
+
+// A Git already installed on this machine: PATH first, then the usual install folders. The installer
+// uses `init --initial-branch` and the sparse checkout options, which need 2.28 or newer.
+bool find_local_git(std::filesystem::path& git_exe, std::string& version_text)
+{
+	std::vector<std::filesystem::path> candidates;
+
+	wchar_t on_path[MAX_PATH] = { 0 };
+	if (SearchPathW(nullptr, L"git.exe", nullptr, MAX_PATH, on_path, nullptr) > 0) {
+		candidates.emplace_back(on_path);
+	}
+
+	static const wchar_t* install_roots[] = { L"ProgramFiles", L"ProgramFiles(x86)", L"LocalAppData" };
+	for (const wchar_t* variable : install_roots)
+	{
+		wchar_t root[MAX_PATH] = { 0 };
+		if (GetEnvironmentVariableW(variable, root, MAX_PATH) == 0) {
+			continue;
+		}
+
+		const std::filesystem::path base(root);
+		candidates.push_back(base / L"Git" / L"cmd" / L"git.exe");
+		candidates.push_back(base / L"Programs" / L"Git" / L"cmd" / L"git.exe");
+	}
+
+	for (const auto& candidate : candidates)
+	{
+		if (!std::filesystem::exists(candidate)) {
+			continue;
+		}
+
+		if (git_version_at_least(candidate, 2, 28, version_text))
+		{
+			git_exe = candidate;
+			return true;
+		}
+
+		log_warn("Ignoring " + candidate.string() + " (" + version_text + "): the installer needs Git 2.28 or newer.");
+	}
+
+	return false;
+}
+
+bool ensure_git_available(std::filesystem::path& git_exe)
+{
+	std::string version_text;
+	if (find_local_git(git_exe, version_text))
+	{
+		std::cout << PAD << "Using the installed Git: " << git_exe.string() << " (" << version_text << ")\n";
+		return true;
+	}
+
 	const std::filesystem::path mingit_dir = get_installer_dir() / "mingit";
 	git_exe = mingit_dir / "cmd" / "git.exe";
 
-	if (std::filesystem::exists(git_exe)) {
+	if (std::filesystem::exists(git_exe))
+	{
+		std::cout << PAD << "Using MinGit next to the installer.\n";
 		return true;
 	}
 
@@ -975,7 +1038,7 @@ bool ensure_mingit_available(std::filesystem::path& git_exe)
 	const std::filesystem::path mingit_zip = get_installer_dir() / "MinGit-2.54.0-64-bit.zip";
 
 	log_yellow(true);
-	std::cout << "\n" << PAD << "MinGit was not found next to the installer. Downloading standalone Git ...\n";
+	std::cout << "\n" << PAD << "No installed Git found. Downloading standalone MinGit ...\n";
 	log_default();
 
 	if (!download_file_to_path(mingit_url, mingit_zip))
@@ -1094,7 +1157,7 @@ bool ensure_sparse_git_repo(const std::filesystem::path& git_exe, const std::str
 bool install_or_update_git_mod(const std::string& game_dir, const RemoteModConfig& config, const std::string& latest_sha, bool replace_existing_confirmed = false)
 {
 	std::filesystem::path git_exe;
-	if (!ensure_mingit_available(git_exe)) {
+	if (!ensure_git_available(git_exe)) {
 		return false;
 	}
 
@@ -1176,18 +1239,12 @@ bool install_or_update_git_mod(const std::string& game_dir, const RemoteModConfi
 		}
 	}
 
-	if (!write_file_to_disk(remote_mod_commit_file(game_dir, config).string(), latest_sha)) 
-	{
-		log_yellow(true);
-		std::cout << PAD << "[WARN] Failed to update commit file.\n\n";
-		log_default();
+	if (!write_file_to_disk(remote_mod_commit_file(game_dir, config).string(), latest_sha)) {
+		log_warn("Failed to update commit file.");
 	}
 
-	if (!write_delivery_mode(game_dir, config, DeliveryMode::Git)) 
-	{
-		log_yellow(true);
-		std::cout << PAD << "[WARN] Failed to write delivery marker.\n\n";
-		log_default();
+	if (!write_delivery_mode(game_dir, config, DeliveryMode::Git)) {
+		log_warn("Failed to write delivery marker.");
 	}
 
 	log_default(true);
@@ -1204,8 +1261,7 @@ bool download_and_extract_zip_mod(const std::string& game_dir, const RemoteModCo
 
 	std::cout << "\n" << PAD << "Downloading " << config.display_name << " zip to:\n" << PAD << "> " << zip_path.string() << "\n\n";
 
-	std::wstring zip_url_w(config.zip_url.begin(), config.zip_url.end());
-	if (!download_file_to_path(zip_url_w, zip_path))
+	if (!download_file_to_path(to_wide(config.zip_url), zip_path))
 	{
 		log_error(
 			"Download failed.\n"
@@ -1245,21 +1301,202 @@ bool download_and_extract_zip_mod(const std::string& game_dir, const RemoteModCo
 		return false;
 	}
 
-	if (!write_file_to_disk(remote_mod_commit_file(game_dir, config).string(), sha)) 
-	{
-		log_yellow(true);
-		std::cout << PAD << "[WARN] Failed to update commit file.\n\n";
-		log_default();
+	if (!write_file_to_disk(remote_mod_commit_file(game_dir, config).string(), sha)) {
+		log_warn("Failed to update commit file.");
 	}
 
-	if (!write_delivery_mode(game_dir, config, DeliveryMode::Zip)) 
-	{
-		log_yellow(true);
-		std::cout << PAD << "[WARN] Failed to write delivery marker.\n\n";
-		log_default();
+	if (!write_delivery_mode(game_dir, config, DeliveryMode::Zip)) {
+		log_warn("Failed to write delivery marker.");
 	}
 
 	std::cout << PAD << "> Done!\n\n";
+	return true;
+}
+
+// --------------
+// Packaged mod (downloaded and extracted by the user)
+
+// The packaged zip ships a version.txt inside the mod folder
+std::string installed_packaged_version(const std::string& game_dir, const RemoteModConfig& config) {
+	return trim_whitespace(read_file_from_disk((remote_mod_target_dir(game_dir, config) / "version.txt").string()));
+}
+
+bool delivery_mode_is_packaged(const std::string& game_dir, const RemoteModConfig& config)
+{
+	DeliveryMode mode = DeliveryMode::Zip;
+	return read_delivery_mode(game_dir, config, mode) && mode == DeliveryMode::Packaged;
+}
+
+// Either marked by the installer or extracted by hand (version.txt present)
+bool has_packaged_install(const std::string& game_dir, const RemoteModConfig& config) {
+	return delivery_mode_is_packaged(game_dir, config) || !installed_packaged_version(game_dir, config).empty();
+}
+
+// Packaged version selected but the zip was not extracted yet
+bool packaged_install_pending(const std::string& game_dir, const RemoteModConfig& config) {
+	return delivery_mode_is_packaged(game_dir, config) && installed_packaged_version(game_dir, config).empty();
+}
+
+std::string packaged_version_text(const std::string& installed_version) {
+	return installed_version.empty() ? "none found (zip not extracted yet?)" : installed_version;
+}
+
+// Drops the git metadata and commit marker; `remove_mod_folder` also wipes the loose-file install itself
+bool remove_installer_managed_mod(const std::string& game_dir, const RemoteModConfig& config, bool remove_mod_folder)
+{
+	const std::filesystem::path target_dir = remote_mod_target_dir(game_dir, config);
+	std::error_code ec;
+
+	if (remove_mod_folder && std::filesystem::exists(target_dir))
+	{
+		std::cout << PAD << "Removing " << target_dir.string() << " ...\n";
+		std::filesystem::remove_all(target_dir, ec);
+
+		if (ec)
+		{
+			log_error("Failed to remove " + target_dir.string() + " (" + ec.message() + ")");
+			return false;
+		}
+
+		log_yellow(true);
+		std::cout << PAD << "> Removed the existing loose-file install of the " << config.display_name << " because it would conflict with the packaged version.\n\n";
+		log_default();
+	}
+
+	std::filesystem::remove_all(remote_mod_git_dir(game_dir, config), ec);
+	std::filesystem::remove(remote_mod_commit_file(game_dir, config), ec);
+	return true;
+}
+
+// Opens a mirror in the browser, removes conflicting installer-managed files and prints the manual install steps
+bool install_packaged_mod_manually(const std::string& game_dir, const RemoteModConfig& config)
+{
+	const std::filesystem::path target_dir = remote_mod_target_dir(game_dir, config);
+	const bool keep_existing = has_packaged_install(game_dir, config);
+	const std::string installed_version = installed_packaged_version(game_dir, config);
+
+	const int mirror = select_console_option(
+		"Which download mirror should be opened in your browser?",
+		{
+			"Mega (recommended)",
+			"Google Drive"
+		});
+
+	const std::string& mirror_url = mirror == 1 ? config.packaged_drive_url : config.packaged_mega_url;
+	ShellExecuteA(nullptr, "open", mirror_url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+
+	if (!remove_installer_managed_mod(game_dir, config, !keep_existing)) {
+		return false;
+	}
+
+	if (keep_existing) {
+		std::cout << PAD << "> Installed packaged version: " << packaged_version_text(installed_version) << "\n\n";
+	}
+
+	if (!write_delivery_mode(game_dir, config, DeliveryMode::Packaged)) {
+		log_warn("Failed to write delivery marker.");
+	}
+
+	std::vector<std::string> steps;
+	steps.push_back(
+		"Download the newest '" + config.packaged_zip_name + "' from the page that just opened.\n"
+		PAD_INL "   Mega:         " + config.packaged_mega_url + "\n"
+		PAD_INL "   Google Drive: " + config.packaged_drive_url);
+
+	if (keep_existing)
+	{
+		steps.push_back(
+			"Compare its version with the installed one (" + packaged_version_text(installed_version) + ").\n"
+			PAD_INL "   If it is not newer, you are done. Otherwise delete everything inside:\n"
+			PAD_INL "   " + target_dir.string());
+	}
+
+	steps.push_back(
+		"Extract the zip into your GTA IV folder (the one containing GTAIV.exe):\n"
+		PAD_INL "   " + game_dir + "\n"
+		PAD_INL "   The zip already contains 'rtx-remix\\mods\\" + config.mod_folder_name + "', so everything lands in the right place.");
+
+	steps.push_back("Done. Re-run the installer and pick the packaged version again whenever you want to check for updates.");
+
+	log_blue(true);
+	std::cout << PAD << config.display_name << " - manual install of the packaged version:\n\n";
+	log_default();
+
+	for (size_t i = 0; i < steps.size(); i++) {
+		std::cout << PAD << i + 1 << ". " << steps[i] << "\n\n";
+	}
+
+	MessageBoxA(nullptr,
+		("The packaged " + config.display_name + " has to be installed manually (takes a minute).\n\n"
+		 "Download the zip from the page that just opened and extract it into your GTA IV folder.\n\n"
+		 "The console shows the exact steps and paths.").c_str(),
+		(config.display_name + " - Manual Install").c_str(), MB_OK | MB_ICONINFORMATION);
+	return true;
+}
+
+// Asks which variant to use; returns true when the packaged variant handled everything (or nothing is to do)
+bool handle_packaged_mod_choice(const std::string& game_dir, const RemoteModConfig& config, bool& handled)
+{
+	handled = true;
+	const std::filesystem::path target_dir = remote_mod_target_dir(game_dir, config);
+
+	if (!has_packaged_install(game_dir, config))
+	{
+		const int choice = select_console_option(
+			"Which version of the optional " + config.display_name + " do you want to use?",
+			{
+				"Packaged version - manual install (HIGHLY RECOMMENDED: loads much faster. Opens the download page and shows 2 easy steps.)",
+				"GitHub version - installed by this installer (loose files, slow to load. Uses the Git/zip method selected for the base mod.)"
+			});
+
+		if (choice == 0) {
+			return install_packaged_mod_manually(game_dir, config);
+		}
+
+		handled = false;
+		return true;
+	}
+
+	std::cout << PAD << "Installed packaged version: " << packaged_version_text(installed_packaged_version(game_dir, config)) << "\n\n";
+
+	const int choice = select_console_option(
+		"The packaged (manually installed) version of the " + config.display_name + " is selected. What do you want to do?",
+		{
+			"Check the mirrors for a newer packaged version (opens the download page and shows the install steps)",
+			"Nothing, keep it as is",
+			"Switch to the GitHub version (loose files, slower to load, managed by this installer)"
+		});
+
+	if (choice == 0) {
+		return install_packaged_mod_manually(game_dir, config);
+	}
+
+	if (choice == 1) {
+		return true;
+	}
+
+	// Both variants in one folder would load twice, so the packaged files have to go
+	const int res = MessageBoxA(nullptr,
+		("This removes all packaged files in " + config.mod_folder_name + ".\n\nContinue?").c_str(),
+		(config.display_name + " - Switch to GitHub").c_str(),
+		MB_YESNO | MB_ICONQUESTION);
+
+	if (res != IDYES) {
+		return true;
+	}
+
+	std::error_code ec;
+	std::filesystem::remove_all(target_dir, ec);
+	if (ec)
+	{
+		log_error("Failed to remove " + target_dir.string() + " (" + ec.message() + ")");
+		return false;
+	}
+
+	std::filesystem::remove(remote_mod_delivery_file(game_dir, config), ec);
+	std::cout << PAD << "> Removed the packaged version. Continuing with the GitHub version ...\n";
+
+	handled = false;
 	return true;
 }
 
@@ -1281,8 +1518,17 @@ bool install_or_update_remote_mod(const std::string& game_dir, const RemoteModCo
 	std::cout << "\n" << PAD << "----------- " << config.display_name << " ----------------------------------------------- \n";
 	log_default(false);
 
+	if (!config.packaged_mega_url.empty())
+	{
+		bool handled = false;
+		const bool ok = handle_packaged_mod_choice(game_dir, config, handled);
+		if (handled) {
+			return ok;
+		}
+	}
+
 	DeliveryMode mode = selected_mode;
-	if (!selected_mode_valid && !read_delivery_mode(game_dir, config, mode)) {
+	if (!selected_mode_valid && (!read_delivery_mode(game_dir, config, mode) || mode == DeliveryMode::Packaged)) {
 		mode = select_delivery_mode();
 	}
 
@@ -1371,9 +1617,7 @@ bool install_or_update_remote_mod(const std::string& game_dir, const RemoteModCo
 
 	if (comparison == -2)
 	{
-		log_yellow(true);
-		std::cout << PAD << "[WARN] Could not check " << config.display_name << " commit SHA (network error or file issue).\n\n";
-		log_default();
+		log_warn("Could not check " + config.display_name + " commit SHA (network error or file issue).");
 		return false;
 	}
 
@@ -1382,9 +1626,7 @@ bool install_or_update_remote_mod(const std::string& game_dir, const RemoteModCo
 
 	if (latest_sha.empty())
 	{
-		log_yellow(true);
-		std::cout << PAD << "[WARN] Could not fetch latest commit SHA for comparison.\n\n";
-		log_default();
+		log_warn("Could not fetch latest commit SHA for comparison.");
 		return false;
 	}
 
@@ -1408,6 +1650,61 @@ bool install_or_update_remote_mod(const std::string& game_dir, const RemoteModCo
 	return download_and_extract_zip_mod(game_dir, config, latest_sha);
 }
 
+struct VersionedZip
+{
+	std::filesystem::path path;
+	std::vector<int> version;
+	std::string version_text;
+};
+
+// Newest "<prefix>-X.Y.Z.zip" next to the installer
+bool find_newest_versioned_zip(const std::string& prefix, VersionedZip& best)
+{
+	bool found = false;
+
+	for (const auto& entry : std::filesystem::directory_iterator(get_installer_dir()))
+	{
+		if (!entry.is_regular_file()) {
+			continue;
+		}
+
+		const auto& p = entry.path();
+		if (p.extension() != L".zip") {
+			continue;
+		}
+
+		const std::string stem = p.stem().string();
+		if (!stem.starts_with(prefix)) {
+			continue;
+		}
+
+		// GTAIV-Remix-<Name>-X.Y.Z
+		std::string version_text = stem.substr(prefix.size());
+		if (!version_text.empty() && version_text[0] == '-') {
+			version_text.erase(0, 1);
+		}
+
+		VersionedZip candidate { p, parse_version(version_text), version_text };
+		if (!found || version_greater_than(candidate.version, best.version))
+		{
+			best = candidate;
+			found = true;
+		}
+	}
+
+	return found;
+}
+
+bool versions_equal(const std::vector<int>& a, const std::vector<int>& b) {
+	return !version_greater_than(a, b) && !version_greater_than(b, a);
+}
+
+void report_extract_failure(bool& zip_failed)
+{
+	zip_failed = true;
+	MessageBoxA(nullptr, "Something went wrong when extracting the zip.\nCheck console.", "Error", MB_ICONERROR);
+}
+
 void setup_console_window()
 {
 	HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -1417,7 +1714,7 @@ void setup_console_window()
 		return;
 	}
 
-	const SHORT width = 146;
+	const SHORT width = 156;
 	const SHORT height = 40;
 	const SHORT buffer_height = std::max<SHORT>(height, info.dwSize.Y);
 
@@ -1441,7 +1738,7 @@ int main()
 	log_default(true);
 	std::cout << PAD << "Grand Theft Auto IV - RTX Remix Compatibility Mod Installer (github.com/xoxor4d/gta4-rtx)\n";
 	log_default();
-	std::cout << PAD << "- Make sure you've placed both the installer and the 'GTAIV-Remix-CompatibilityMod-X.X.X.zip' into the same folder.\n";
+	std::cout << PAD << "- Make sure you've placed the installer, 'GTAIV-Remix-CompatibilityMod-X.X.X.zip' and 'GTAIV-Remix-RemixRuntime-X.X.X.zip' into the same folder.\n";
 	std::cout << PAD << "- If installation fails, refer to the release page on GitHub for manual install instructions.\n\n\n";
 
 	std::cout << PAD << "Select your GTAIV.exe inside the GTAIV directory to continue ...\n";
@@ -1467,9 +1764,17 @@ int main()
 	
 	std::cout << PAD << "> Using Path: '" << game_dir << "'\n\n\n";
 
+	if (!is_directory_writable(game_dir) || !is_directory_writable(get_installer_dir()))
+	{
+		log_error("The installer needs write access to the game folder and to its own folder.");
+		std::cout << PAD << "Close the installer and run it again as administrator (right click > Run as administrator).\n";
+		MessageBoxA(nullptr, "No write access to the game folder or to the installer folder.\n\nRun the installer as administrator.", "Error", MB_ICONERROR);
+		return wait_for_key_and_exit(1);
+	}
+
 	log_blue(true);
 	std::cout << PAD << "Note: The installer can only auto-update remix assets (textures/meshes).\n";
-	std::cout << PAD << "To update logic, you'll need to provide a newer 'GTAIV-Remix-CompatibilityMod-X.X.X.zip' file.\n\n";
+	std::cout << PAD << "To update logic, you'll need to provide newer 'GTAIV-Remix-CompatibilityMod' and 'GTAIV-Remix-RemixRuntime' zip files.\n\n";
 	log_default();
 
 	bool has_remix_comp_mod = file_exists(game_dir + "\\d3d9.dll") && file_exists(game_dir + "\\a_gta4-rtx.asi");
@@ -1490,76 +1795,51 @@ int main()
 	bool skip_rtx_comp_install = update_remote_mods_only;
 	if (!skip_rtx_comp_install)
 	{
-		// Find zip file first (needed for version comparison)
-		static const wchar_t* zip_prefix = L"GTAIV-Remix-CompatibilityMod";
-		static const std::string zip_prefix_str = "GTAIV-Remix-CompatibilityMod";
-		std::filesystem::path found_zip;
+		// Both zips are required before anything is asked or extracted
+		VersionedZip comp_zip;
+		VersionedZip runtime_zip;
+		const bool has_comp_zip = find_newest_versioned_zip("GTAIV-Remix-CompatibilityMod", comp_zip);
+		const bool has_runtime_zip = find_newest_versioned_zip("GTAIV-Remix-RemixRuntime", runtime_zip);
 
-		// Collect all matching zip files with their versions
-		std::vector<std::pair<std::filesystem::path, std::vector<int>>> zip_candidates;
-
-		for (const auto& entry : std::filesystem::directory_iterator(get_installer_dir()))
+		if (!has_comp_zip || !has_runtime_zip)
 		{
-			if (!entry.is_regular_file()) {
-				continue;
+			if (!has_comp_zip) {
+				log_error("Could not find any zip starting with 'GTAIV-Remix-CompatibilityMod' next to the installer.");
+			}
+			if (!has_runtime_zip) {
+				log_error("Could not find any zip starting with 'GTAIV-Remix-RemixRuntime' next to the installer.");
 			}
 
-			const auto& p = entry.path();
-			if (p.extension() == L".zip" && p.stem().wstring().starts_with(zip_prefix))
-			{
-				// Extract version from filename: GTAIV-Remix-CompatibilityMod-X.Y.Z.zip
-				std::string stem = p.stem().string();
-				std::string version_str;
+			std::cout << PAD << "Both 'GTAIV-Remix-CompatibilityMod-X.X.X.zip' and 'GTAIV-Remix-RemixRuntime-X.X.X.zip' are required.\n";
+			std::cout << PAD << "Download them from the release page, place them next to the installer and run it again.\n";
 
-				if (stem.length() > zip_prefix_str.length())
-				{
-					// Skip the prefix and any leading dash
-					version_str = stem.substr(zip_prefix_str.length());
-					if (!version_str.empty() && version_str[0] == '-') {
-						version_str = version_str.substr(1);
-					}
-				}
-
-				std::vector<int> version = parse_version(version_str);
-				zip_candidates.push_back({ p, version });
-			}
+			MessageBoxA(nullptr, "The compatibility mod zip and the remix runtime zip are both required.\n\nCheck the console for details.", "Error", MB_ICONERROR);
+			return wait_for_key_and_exit(1);
 		}
 
-		// Find the zip with the highest version
-		if (!zip_candidates.empty())
-		{
-			found_zip = zip_candidates[0].first;
-			std::vector<int> best_version = zip_candidates[0].second;
+		std::cout << PAD << "Using compatibility mod zip: " << comp_zip.path.filename().string() << "\n";
+		std::cout << PAD << "Using remix runtime zip:     " << runtime_zip.path.filename().string() << "\n";
 
-			for (size_t i = 1; i < zip_candidates.size(); i++)
-			{
-				if (version_greater_than(zip_candidates[i].second, best_version))
-				{
-					found_zip = zip_candidates[i].first;
-					best_version = zip_candidates[i].second;
-				}
+		if (!versions_equal(comp_zip.version, runtime_zip.version))
+		{
+			log_error("Version mismatch: compatibility mod " + comp_zip.version_text + " vs. remix runtime " + runtime_zip.version_text + ".");
+			std::cout << PAD << "Both zips are built together; mixing versions will most likely not work.\n";
+
+			const int proceed = MessageBoxA(nullptr,
+				("The zip versions do not match.\n\nCompatibility mod: " + comp_zip.version_text + "\nRemix runtime: " + runtime_zip.version_text +
+				 "\n\nMixing versions will most likely not work. Proceed anyway?").c_str(),
+				"Version Mismatch", MB_YESNO | MB_ICONWARNING);
+
+			if (proceed != IDYES) {
+				return wait_for_key_and_exit(1);
 			}
 
-			std::cout << PAD << "Using compatibility mod zip: " << found_zip.filename().string() << "\n";
+			std::cout << PAD << "Proceeding with mismatched versions.\n";
 		}
 
-		if (found_zip.empty())
-		{
-			log_error("Could not find any zip starting with 'GTAIV-Remix-CompatibilityMod'.");
-			std::cout << PAD << "Installation might be incomplete. Download and place the .zip next to the installer or install manually.\n";
-			std::cout << PAD << "Checking for Remix Base Mod updates ...\n\n";
-			skip_rtx_comp_install = true;
-		}
+		const std::filesystem::path found_zip = comp_zip.path;
 
-		// Validate zip file exists and is readable
-		if (!std::filesystem::exists(found_zip) || !std::filesystem::is_regular_file(found_zip))
-		{
-			log_error("Found zip file but it is not accessible: " + found_zip.string());
-			MessageBoxA(nullptr, "The zip file found is not accessible.", "Error", MB_ICONERROR);
-			return 1;
-		}
-
-		std::cout << PAD << "Checking for FusionFix presence ...\n";
+		std::cout << PAD << "\nChecking for FusionFix presence ...\n";
 		Sleep(500);
 
 
@@ -1568,9 +1848,6 @@ int main()
 
 		// check if original FusionFix version exists
 		const bool has_original_fusion_fix = has_fusion_fix && file_exists(game_dir + "\\vulkan.dll");
-
-		// check if comp mod and remix are installed -> update
-		has_remix_comp_mod = file_exists(game_dir + "\\d3d9.dll") && file_exists(game_dir + "\\a_gta4-rtx.asi");
 
 		// check if RTXRemix FusionFix fork marker exists
 		const bool has_rtxremix_fusionfix_marker = file_exists(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.RTXRemix.txt");
@@ -1590,15 +1867,8 @@ int main()
 			// Read version from zip file
 			std::string zip_version = read_file_from_zip(found_zip, "_installer_options/FusionFix_RTXRemixFork/plugins/GTAIV.EFLC.FusionFix.RTXRemix.txt");
 
-			// Trim whitespace from both versions
-			auto trim = [](std::string& s)
-				{
-					s.erase(0, s.find_first_not_of(" \t\n\r"));
-					s.erase(s.find_last_not_of(" \t\n\r") + 1);
-				};
-
-			trim(existing_version);
-			trim(zip_version);
+			existing_version = trim_whitespace(existing_version);
+			zip_version = trim_whitespace(zip_version);
 
 			if (existing_version == zip_version)
 			{
@@ -1641,11 +1911,8 @@ int main()
 					std::cout << PAD << "Extracted RTXRemix FusionFix marker file.\n\n";
 					log_default();
 				}
-				else
-				{
-					log_yellow(true);
-					std::cout << PAD << "[WARN] Failed to extract RTXRemix FusionFix marker file.\n\n";
-					log_default();
+				else {
+					log_warn("Failed to extract RTXRemix FusionFix marker file.");
 				}
 
 				opt_install_fusion_fix_fork = true;
@@ -1685,27 +1952,9 @@ int main()
 
 		// backup some files
 
-		if (MoveFileExA(
-			(game_dir + "\\rtx_comp\\comp_settings.toml").c_str(),
-			(game_dir + "\\rtx_comp\\comp_settings.toml.bak").c_str(),
-			MOVEFILE_REPLACE_EXISTING))
-		{
-			std::cout << PAD << "Renamed 'comp_settings.toml' to 'comp_settings.toml.bak'\n";
-		} Sleep(25);
-
-		if (MoveFileExA(
-			(game_dir + "\\rtx.conf").c_str(),
-			(game_dir + "\\rtx.conf.bak").c_str(), MOVEFILE_REPLACE_EXISTING))
-		{
-			std::cout << PAD << "Renamed 'rtx.conf' to 'rtx.conf.bak'\n";
-		} Sleep(25);
-
-		if (MoveFileExA(
-			(game_dir + "\\user.conf").c_str(),
-			(game_dir + "\\user.conf.bak").c_str(), MOVEFILE_REPLACE_EXISTING))
-		{
-			std::cout << PAD << "Renamed 'user.conf' to 'user.conf.bak'\n";
-		} Sleep(25);
+		rename_with_suffix(game_dir + "\\rtx_comp\\comp_settings.toml", ".bak", "comp_settings.toml");
+		rename_with_suffix(game_dir + "\\rtx.conf", ".bak", "rtx.conf");
+		rename_with_suffix(game_dir + "\\user.conf", ".bak", "user.conf");
 
 		// --------------
 
@@ -1717,16 +1966,8 @@ int main()
 			"\\rtx_comp\\addon_settings\\x_local_tonemapper.toml",
 		};
 
-		for (const auto& f : disable_deprecated_files)
-		{
-			auto str = game_dir + f;
-			if (MoveFileExA(
-				(game_dir + f).c_str(),
-				(game_dir + f + ".deprecated").c_str(), MOVEFILE_REPLACE_EXISTING))
-			{
-				std::cout << PAD << "Renamed '" << f << "' to '" << f << ".deprecated'\n";
-			}
-			Sleep(25);
+		for (const auto& f : disable_deprecated_files) {
+			rename_with_suffix(game_dir + f, ".deprecated", f);
 		}
 
 		// --------------
@@ -1740,24 +1981,31 @@ int main()
 		Sleep(100); // Small delay before extraction
 		bool zip_failed = false;
 
-		if (!extract_zip(found_zip, game_dir, "GTAIV-Remix-CompatibilityMod"))
-		{
-			zip_failed = true;
-			MessageBoxA(nullptr, "Something went wrong when extracting the zip.\nCheck console.", "Error", MB_ICONERROR);
+		if (!extract_zip(found_zip, game_dir, "GTAIV-Remix-CompatibilityMod")) {
+			report_extract_failure(zip_failed);
 		}
 
 		std::cout << PAD << "> Done!\n";
+		Sleep(100);
 
+		// the runtime zip holds .trex and the bridge files at its root
+		log_yellow(true);
+		std::cout << "\n" << PAD << "Extracting remix runtime zip ...\n";
+		log_default();
+
+		if (!extract_zip(runtime_zip.path, game_dir)) {
+			report_extract_failure(zip_failed);
+		}
+
+		std::cout << PAD << "> Done!\n";
 		Sleep(100); // Small delay between extractions
 
 		if (!has_remix_comp_mod && !zip_failed)
 		{
 			// extract fullscreen or windowed files
 			std::string windowed_or_fullscreen_path = fullscreen ? "_installer_options/mode_fullscreen/" : "_installer_options/mode_windowed/";
-			if (!extract_zip(found_zip, game_dir, windowed_or_fullscreen_path)) 
-			{
-				zip_failed = true;
-				MessageBoxA(nullptr, "Something went wrong when extracting the zip.\nCheck console.", "Error", MB_ICONERROR);
+			if (!extract_zip(found_zip, game_dir, windowed_or_fullscreen_path)) {
+				report_extract_failure(zip_failed);
 			}
 
 			Sleep(100); // Small delay before next operation
@@ -1769,56 +2017,15 @@ int main()
 			Sleep(100); // Small delay before FusionFix installation
 			if (has_original_fusion_fix)
 			{
-				if (MoveFileExA(
-					(game_dir + "\\update").c_str(),
-					(game_dir + "\\update_originalFF").c_str(),
-					MOVEFILE_REPLACE_EXISTING))
-				{
-					std::cout << PAD << "Renamed 'update' folder to 'update_originalFF'\n";
-				}
-				Sleep(25);
-
-				if (MoveFileExA(
-					(game_dir + "\\vulkan.dll").c_str(),
-					(game_dir + "\\vulkan.dll.originalFF").c_str(),
-					MOVEFILE_REPLACE_EXISTING))
-				{
-					std::cout << PAD << "Renamed 'vulkan.dll' to 'vulkan.dll.originalFF'\n";
-				}
-				Sleep(25);
-
-				if (MoveFileExA(
-					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.asi").c_str(),
-					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.asi.originalFF").c_str(),
-					MOVEFILE_REPLACE_EXISTING))
-				{
-					std::cout << PAD << "Renamed 'GTAIV.EFLC.FusionFix.asi' to 'GTAIV.EFLC.FusionFix.asi.originalFF'\n";
-				}
-				Sleep(25);
-
-				if (MoveFileExA(
-					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.cfg").c_str(),
-					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.cfg.originalFF").c_str(),
-					MOVEFILE_REPLACE_EXISTING))
-				{
-					std::cout << PAD << "Renamed 'GTAIV.EFLC.FusionFix.cfg' to 'GTAIV.EFLC.FusionFix.cfg.originalFF'\n";
-				}
-				Sleep(25);
-
-				if (MoveFileExA(
-					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.ini").c_str(),
-					(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.ini.originalFF").c_str(),
-					MOVEFILE_REPLACE_EXISTING))
-				{
-					std::cout << PAD << "Renamed 'GTAIV.EFLC.FusionFix.ini' to 'GTAIV.EFLC.FusionFix.ini.originalFF'\n";
-				}
-				Sleep(25);
+				rename_with_suffix(game_dir + "\\update", "_originalFF", "update");
+				rename_with_suffix(game_dir + "\\vulkan.dll", ".originalFF", "vulkan.dll");
+				rename_with_suffix(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.asi", ".originalFF", "GTAIV.EFLC.FusionFix.asi");
+				rename_with_suffix(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.cfg", ".originalFF", "GTAIV.EFLC.FusionFix.cfg");
+				rename_with_suffix(game_dir + "\\plugins\\GTAIV.EFLC.FusionFix.ini", ".originalFF", "GTAIV.EFLC.FusionFix.ini");
 			}
 
-			if (!zip_failed && !extract_zip(found_zip, game_dir, "_installer_options/FusionFix_RTXRemixFork/"))
-			{
-				zip_failed = true;
-				MessageBoxA(nullptr, "Something went wrong when extracting the zip.\nCheck console.", "Error", MB_ICONERROR);
+			if (!zip_failed && !extract_zip(found_zip, game_dir, "_installer_options/FusionFix_RTXRemixFork/")) {
+				report_extract_failure(zip_failed);
 			}
 
 			std::cout << PAD << "> Extracted FusionFix RTX Remix Fork\n\n";
@@ -1828,6 +2035,7 @@ int main()
 		{
 			log_error("ZIP Extraction Errors -------- ");
 			log_default(true);
+			std::cout << PAD << "Please make sure to manually extract the contents of '" << runtime_zip.path.filename().string() << "' into your GTAIV folder.\n";
 			std::cout << PAD << "Please make sure to manually extract the Contents of '_installer_options/FusionFix_RTXRemixFork/' into your GTAIV folder.\n";
 			std::cout << PAD << "> Overwrite all when prompted\n\n";
 
@@ -1876,7 +2084,10 @@ int main()
 		false,
 		"Optional: Download and extract the AutoPBR remix-mod?\n" PAD_INL "You can skip this if you're not interested or if you've installed it manually.",
 		"It contains ~18k automatically converted PBR materials.\n" PAD_INL "Download size: ~1GB",
-		"A newer version of the AutoPBR mod is available on GitHub.\n\n" PAD_INL "Would you like to update?"
+		"A newer version of the AutoPBR mod is available on GitHub.\n\n" PAD_INL "Would you like to update?",
+		autopbr_packaged_mega_url,
+		autopbr_packaged_drive_url,
+		autopbr_packaged_zip_name
 	};
 
 	bool has_selected_delivery_mode = false;
@@ -1900,6 +2111,14 @@ int main()
 		}
 	}
 
+	const bool autopbr_zip_pending = packaged_install_pending(game_dir, autopbr_mod);
+	if (autopbr_zip_pending)
+	{
+		log_yellow(true);
+		std::cout << "\n" << PAD << "Reminder: download and extract the packaged AutoPBR zip (see the steps above).\n";
+		log_default();
+	}
+
 	log_green(true);
 	std::cout << "\n"
 		<< PAD << "Done! - If you run into issues, visit:\n"
@@ -1910,6 +2129,10 @@ int main()
 		<< PAD << "> A short description and anything else that might help to identify the issue.\n";
 	log_default();
 
-	MessageBoxA(nullptr, "Installation complete!\nYou can now launch GTA IV.", "Success", MB_ICONINFORMATION);
+	MessageBoxA(nullptr,
+		autopbr_zip_pending
+			? "Installation complete!\n\nRemember to download and extract the packaged AutoPBR zip (see the installer console).\nYou can then launch GTA IV."
+			: "Installation complete!\nYou can now launch GTA IV.",
+		"Success", MB_ICONINFORMATION);
     return 0;
 }

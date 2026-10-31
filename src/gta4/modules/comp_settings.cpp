@@ -129,7 +129,6 @@ namespace gta4
 
 				const auto current_comp_version = shared::utils::version_t::from_string(get_current_comp_version_string());
 				
-				//vars.decal_dirt_shader_contrast.set_config_name()
 				// ---------------------------------------
 				// Used to assign toml settings
 				// - check setting version, only read val if setting on disk is older than version the setting was last changed on - use the default val otherwise
@@ -170,6 +169,22 @@ namespace gta4
 				ASSIGN(manual_game_resolution_enabled);
 				ASSIGN(manual_game_resolution);
 				ASSIGN(load_colormaps_only);
+				ASSIGN(api_static_enabled);
+				ASSIGN(api_static_entity_skip);
+				ASSIGN(api_static_require_plain_draw);
+				ASSIGN(api_static_creates_per_frame);
+				ASSIGN(api_static_cache_mb);
+				ASSIGN(api_static_entity_refresh_frames);
+				ASSIGN(api_static_skip_pass_setup);
+				ASSIGN(api_static_pass_refresh_frames);
+				ASSIGN(api_static_retained);
+				ASSIGN(api_static_retained_hide_frames);
+				ASSIGN(api_peds_enabled);
+				ASSIGN(api_peds_blendshapes);
+				ASSIGN(api_peds_wounds_enabled);
+				ASSIGN(api_peds_wounds_opacity);
+				ASSIGN(api_peds_skip_pass_setup);
+				ASSIGN(api_vehicles_enabled);
 				ASSIGN(remix_override_rtxdi_samplecount);
 				ASSIGN(remix_var_queue_frame_timeout);
 				
@@ -267,9 +282,6 @@ namespace gta4
 				ASSIGN(vehicle_livery_enabled);
 				ASSIGN(vehicle_force_vertex_colors);
 
-				ASSIGN(decal_dirt_shader_usage);
-				ASSIGN(decal_dirt_shader_scalar);
-				ASSIGN(decal_dirt_shader_contrast);
 				ASSIGN(fixed_function_trees);
 				ASSIGN(tree_foliage_alpha_cutout_value);
 				ASSIGN(grass_foliage_alpha_cutout_value);
@@ -280,8 +292,34 @@ namespace gta4
 				ASSIGN(water_apply_animated_water_category);
 				ASSIGN(water_texture_uv_scale);
 				ASSIGN(water_texture_normal_fadeout_distance);
+				ASSIGN(water_apply_shoreline_modifier);
+				ASSIGN(water_detail_radius);
+				ASSIGN(water_sim_edge_fade);
+				ASSIGN(water_far_waves);
+				ASSIGN(water_far_wave_scale);
+				ASSIGN(water_far_wave_length);
+				ASSIGN(water_far_wave_speed);
+				ASSIGN(water_far_wave_direction);
+				ASSIGN(water_far_wave_fade);
+				ASSIGN(water_vertex_normal_scale);
+				ASSIGN(water_lod);
+				ASSIGN(water_lod_radius_4);
+				ASSIGN(water_lod_radius_8);
+				ASSIGN(water_block_distance_scale);
+				ASSIGN(water_disable_seabed_plane);
+				ASSIGN(api_water_enabled);
+				ASSIGN(api_water_cull_pieces);
+				ASSIGN(distant_lights_enabled);
+				ASSIGN(distant_cars_enabled);
+				ASSIGN(api_distant_lights_enabled);
+				ASSIGN(api_distant_cars_enabled);
+				ASSIGN(api_distant_lights_emissive_scale);
+				ASSIGN(api_distant_cars_emissive_scale);
+				ASSIGN(api_distant_lights_size_scale);
+				ASSIGN(api_distant_lights_size_scale_foggy);
 
 				ASSIGN(gta_rmptfx_litsprite_alpha_scalar);
+				ASSIGN(gta_rmptfx_litsprite_unlit);
 				ASSIGN(rain_particle_system_enabled);
 
 				// timecycle related settings
@@ -305,6 +343,7 @@ namespace gta4
 				ASSIGN(timecycle_wetness_vehicle_scalar);
 				ASSIGN(timecycle_wetness_vehicle_z_normal);
 				ASSIGN(timecycle_wetness_vehicle_blending);
+				ASSIGN(timecycle_wetness_vehicle_wet_seconds);
 
 				ASSIGN(timecycle_wetness_vehicle_raindrop_enable);
 				ASSIGN(timecycle_wetness_vehicle_raindrop_scalar);
@@ -313,6 +352,15 @@ namespace gta4
 				ASSIGN(timecycle_wetness_vehicle_dirt_roughness_scalar);
 				ASSIGN(timecycle_wetness_vehicle_dirt_z_normal);
 				ASSIGN(timecycle_wetness_vehicle_dirt_blending);
+
+				ASSIGN(timecycle_wetness_afterrain_hold_seconds);
+				ASSIGN(timecycle_wetness_afterrain_fade_seconds);
+				ASSIGN(timecycle_wetness_afterrain_scalar);
+
+				ASSIGN(timecycle_wetness_ripple_enabled);
+				ASSIGN(timecycle_wetness_ripple_min);
+				ASSIGN(timecycle_wetness_ripple_max);
+				ASSIGN(timecycle_wetness_ripple_curve);
 
 				ASSIGN(timecycle_fogcolor_enabled);
 				ASSIGN(timecycle_fogcolor_base_strength);
@@ -344,7 +392,11 @@ namespace gta4
 				ASSIGN(timecycle_bloomthreshold_scalar);
 				ASSIGN(timecycle_bloom_night_min_clamp_enabled);
 				ASSIGN(timecycle_bloom_night_min_clamp_value);
-
+				ASSIGN(timecycle_bloomthreshold_night_min_clamp_value);
+				ASSIGN(timecycle_bloom_day_min_clamp_enabled);
+				ASSIGN(timecycle_bloom_day_min_clamp_value);
+				ASSIGN(timecycle_bloomthreshold_day_min_clamp_value);
+			
 				// misc settings
 				ASSIGN(discord_rpc);
 				ASSIGN(limit_option_sliders);

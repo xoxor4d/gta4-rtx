@@ -96,15 +96,33 @@ namespace gta4
 	/**
 	 * Gets a handle of a variable from the options map
 	 * @param o		remix variable name
+	 * @param val	option value used to init a new option if option does not exist yet
 	 * @return		handle (pointer to std::pair)
 	 */
-	remix_vars::option_handle remix_vars::get_option(const char* o)
+	remix_vars::option_handle remix_vars::get_option(const char* o, const std::string& val)
 	{
-		std::shared_lock lock(get()->mutex_);
-		auto& options = get()->options;
+		// search via shared_lock
+		{
+			std::shared_lock lock(get()->mutex_);
+			auto& opt = get()->options;
 
-		if (const auto it = options.find(o); it != options.end()) {
-			return &*it;
+			if (const auto it = opt.find(o); it != opt.end()) {
+				return &*it;
+			}
+		}
+
+		// create a new option if it does not exist yet
+		if (!val.empty() && !val.starts_with("0x"))
+		{
+			if (const auto new_opt = string_to_option(val); new_opt.type != OPTION_TYPE_NONE)
+			{
+				// unique lock for insert
+				std::unique_lock lock(get()->mutex_);
+				auto& opt = get()->options;
+
+				auto [it, inserted] = opt.emplace(o, new_opt);
+				return &*it;
+			}
 		}
 
 		return nullptr;
@@ -113,15 +131,33 @@ namespace gta4
 	/**
 	 * Gets a handle of a variable from the options map
 	 * @param o		remix variable name
+	 * @param val	option value used to init a new option if option does not exist yet
 	 * @return		handle (pointer to std::pair)
 	 */
-	remix_vars::option_handle remix_vars::get_option(const std::string& o)
+	remix_vars::option_handle remix_vars::get_option(const std::string& o, const std::string& val)
 	{
-		std::shared_lock lock(get()->mutex_);
-		auto& options = get()->options;
+		// search via shared_lock
+		{
+			std::shared_lock lock(get()->mutex_);
+			auto& opt = get()->options;
 
-		if (const auto it = options.find(o); it != options.end()) {
-			return &*it;
+			if (const auto it = opt.find(o); it != opt.end()) {
+				return &*it;
+			}
+		}
+
+		// create a new option if it does not exist yet
+		if (!val.empty() && !val.starts_with("0x"))
+		{
+			if (const auto new_opt = string_to_option(val); new_opt.type != OPTION_TYPE_NONE)
+			{
+				// unique lock for insert
+				std::unique_lock lock(get()->mutex_);
+				auto& opt = get()->options;
+
+				auto [it, inserted] = opt.emplace(o, new_opt);
+				return &*it;
+			}
 		}
 
 		return nullptr;
@@ -374,9 +410,14 @@ namespace gta4
 	 * @param sub_dir				config name without extension
 	 * @param file_name				name of config without extension
 	 * @param delay					delay before the option is set (in seconds)
+	 * @param as_user				apply option on the user level - derived otherwise
 	 */
-	void remix_vars::parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name, const float delay)
+	void remix_vars::parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name, const float delay, bool as_user)
 	{
+		if (!std::filesystem::exists(sub_dir + "\\" + file_name)) {
+			return;
+		}
+
 		std::ifstream file;
 		if (shared::utils::open_file_homepath(sub_dir, file_name, file))
 		{
@@ -397,10 +438,11 @@ namespace gta4
 						continue;
 					}
 
-					if (const auto o = get_option(pair[0].c_str()); o)
+					// get_option creates an option on the fly if it does not exist within rtx.conf
+					if (const auto o = remix_vars::get_option(pair[0].c_str(), pair[1]); o)
 					{
 						const auto& v = string_to_option_value(o->second.type, pair[1]);
-						remix_vars::get()->add_queue_entry(o, v, delay);
+						remix_vars::get()->add_queue_entry(o, v, delay, true, 0.01f, as_user);
 						//DEBUG_PRINT("[VAR-SET] Queue var: %s to: %s\n", o->first.c_str(), pair[1].c_str());
 					}
 				}
@@ -426,25 +468,13 @@ namespace gta4
 	  * @param delay					delay before the option is set (seconds); 0 applies immediately
 	  * @param always					set even if the cached value already matches the goal (Remix may have changed it)
 	  * @param epsilon					skip the API write when !always and the cached value is within this epsilon of the goal
-	  * @param remix_var_name			can be used if handle = nullptr
+	  * @param as_user					apply option on the user level - derived otherwise
 	  * @return							true if the entry was accepted (queued or applied)
 	  */
-	bool remix_vars::add_queue_entry(option_handle handle, const option_value& goal, const float delay, const bool always, const float epsilon, const std::string& remix_var_name)
+	bool remix_vars::add_queue_entry(option_handle handle, const option_value& goal, const float delay, const bool always, const float epsilon, bool as_user)
 	{
 		std::unique_lock lock(get()->mutex_);
-
 		option_handle h = handle;
-		if (!h)
-		{
-			if (remix_var_name.empty()) {
-				return false;
-			}
-
-			// look up under the lock we already hold (get_option would deadlock on mutex_)
-			if (const auto it = get()->options.find(remix_var_name); it != get()->options.end()) {
-				h = &*it;
-			}
-		}
 
 		if (!h) {
 			return false;
@@ -475,19 +505,30 @@ namespace gta4
 			}
 
 			lock.unlock();
-			return set_option(h, goal);
+			return set_option(h, goal, false, as_user);
 		}
 
-		var_queue.emplace_back(queue_entry_s {
+		var_queue.emplace_back(queue_entry_s{
 			.option = h,
 			.goal = goal,
 			.type = h->second.type,
 			._time_elapsed = -delay,
 			.always = always,
 			.epsilon = epsilon,
+			.as_user = as_user,
 		});
 
 		return true;
+	}
+
+	void remix_vars::parse_and_apply_weather_presets(const float delay)
+	{
+		const auto weather_preset_files = shared::utils::get_sorted_files("rtx_comp\\weather_presets", ".conf", false, false);
+		for (const auto& file_name : weather_preset_files)
+		{
+			shared::common::log("RemixVars", std::format("> Parsing Weather Preset 'rtx_comp/weather_presets/{}' ...", file_name), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			parse_and_apply_conf("rtx_comp\\weather_presets", file_name, delay);
+		}
 	}
 
 	void remix_vars::init_once_on_init()
@@ -509,6 +550,8 @@ namespace gta4
 				}
 #endif
 			}
+
+			parse_and_apply_weather_presets(1.0f);
 		}
 	}
 
@@ -564,9 +607,9 @@ namespace gta4
 					const auto rtxdi_override_val = gs->remix_override_rtxdi_samplecount.get_as<int>();
 					if (rtxdi_override_val) // override if > 0
 					{
-						static auto rtxdi_samplecount = get_option("rtx.di.initialSampleCount");
+						static auto rtxdi_samplecount = get_option("rtx.di.initialSampleCount", "64");
 						option_value val { .value = (float)rtxdi_override_val };
-						set_option(rtxdi_samplecount, val);
+						set_option(rtxdi_samplecount, val, false, true);
 					}
 				}
 
@@ -592,7 +635,7 @@ namespace gta4
 								continue;
 							}
 
-							set_option(ip.option, ip.goal);
+							set_option(ip.option, ip.goal, false, ip.as_user);
 							ip._complete = true;
 						}
 

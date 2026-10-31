@@ -4,6 +4,60 @@
 
 namespace shared::common
 {
+#if defined(GTA4_PROFILING)
+	namespace
+	{
+		/// the runtime's functions, called by the profiled wrappers installed into remix_api::m_bridge
+		remixapi_Interface g_bridge_runtime = {};
+
+		template <typename Fn>
+		struct profiled_bridge_function;
+
+		/// call() opens a zone named Name and forwards to the runtime function stored at Member
+		template <typename R, typename... Args>
+		struct profiled_bridge_function<R(REMIXAPI_PTR*)(Args...)>
+		{
+			using fn_t = R(REMIXAPI_PTR*)(Args...);
+
+			template <fn_t remixapi_Interface::* Member, const char* Name>
+			static R REMIXAPI_CALL call(Args... args)
+			{
+				PROFILE_ZONE_N(Name);
+				return (g_bridge_runtime.*Member)(args...);
+			}
+		};
+
+		/// every bridge call crosses into the 64 bit runtime process, each one the mod uses gets its own zone
+		void install_profiled_bridge(remixapi_Interface& bridge)
+		{
+			g_bridge_runtime = bridge;
+
+#define PROFILED_BRIDGE_FUNCTION(NAME) \
+			static constexpr char NAME##_zone[] = "remixapi::" #NAME; \
+			if (bridge.NAME) { bridge.NAME = &profiled_bridge_function<decltype(bridge.NAME)>::call<&remixapi_Interface::NAME, NAME##_zone>; }
+
+			PROFILED_BRIDGE_FUNCTION(CreateMaterial);
+			PROFILED_BRIDGE_FUNCTION(DestroyMaterial);
+			PROFILED_BRIDGE_FUNCTION(CreateMesh);
+			PROFILED_BRIDGE_FUNCTION(DestroyMesh);
+			PROFILED_BRIDGE_FUNCTION(SetupCamera);
+			PROFILED_BRIDGE_FUNCTION(DrawInstance);
+			PROFILED_BRIDGE_FUNCTION(CreateLight);
+			PROFILED_BRIDGE_FUNCTION(DestroyLight);
+			PROFILED_BRIDGE_FUNCTION(DrawLightInstance);
+			PROFILED_BRIDGE_FUNCTION(SetConfigVariable);
+			PROFILED_BRIDGE_FUNCTION(SetGameValue);
+			PROFILED_BRIDGE_FUNCTION(GetGameValue);
+			PROFILED_BRIDGE_FUNCTION(CreateRetainedInstances);
+			PROFILED_BRIDGE_FUNCTION(UpdateRetainedInstance);
+			PROFILED_BRIDGE_FUNCTION(UpdateRetainedInstances);
+			PROFILED_BRIDGE_FUNCTION(DestroyRetainedInstances);
+			PROFILED_BRIDGE_FUNCTION(DrawRetainedInstances);
+#undef PROFILED_BRIDGE_FUNCTION
+		}
+	}
+#endif
+
 	// gets the singleton instance
 	remix_api& remix_api::get()
 	{
@@ -12,8 +66,9 @@ namespace shared::common
 	}
 
 	// called on device->BeginScene
-	void remix_api::begin_scene_callback_internal()
+	void __stdcall remix_api::begin_scene_callback_internal()
 	{
+		PROFILE_ZONE_N("remix_api::begin_scene_callback");
 		auto& api = get();
 		if (api.is_initialized())
 		{
@@ -131,19 +186,23 @@ namespace shared::common
 		}
 	}
 
-	void remix_api::end_scene_callback_internal()
+	void __stdcall remix_api::end_scene_callback_internal()
 	{
+		PROFILE_ZONE_N("remix_api::end_scene_callback");
+
 		// external callback (if registered)
-		if (get().is_initialized() && get().end_scene_callback_external) {
-			get().end_scene_callback_external();
+		if (remix_api::get().is_initialized() && remix_api::get().end_scene_callback_external) {
+			remix_api::get().end_scene_callback_external();
 		}
 	}
 
-	void remix_api::present_callback_internal()
+	void __stdcall remix_api::present_callback_internal()
 	{
+		PROFILE_ZONE_N("remix_api::present_callback");
+
 		// external callback (if registered)
-		if (get().is_initialized() && get().present_callback_external) {
-			get().present_callback_external();
+		if (remix_api::get().is_initialized() && remix_api::get().present_callback_external) {
+			remix_api::get().present_callback_external();
 		}
 	}
 
@@ -656,15 +715,17 @@ namespace shared::common
 	void remix_api::initialize(
 		PFN_remixapi_BridgeCallback begin_scene_callback,
 		PFN_remixapi_BridgeCallback end_scene_callback,
-		PFN_remixapi_BridgeCallback present_callback, 
-		bool is_asi)
+		PFN_remixapi_BridgeCallback present_callback)
 	{
 		auto& instance = get();
 		if (!instance.m_initialized)
 		{
-			if (const auto status = remixapi::bridge_initRemixApi(&instance.m_bridge, is_asi);
+			if (const auto status = remixapi::bridge_initRemixApi(&instance.m_bridge);
 				status == REMIXAPI_ERROR_CODE_SUCCESS)
 			{
+#if defined(GTA4_PROFILING)
+				install_profiled_bridge(instance.m_bridge);
+#endif
 				instance.begin_scene_callback_external = begin_scene_callback;
 				instance.end_scene_callback_external = end_scene_callback;
 				instance.present_callback_external = present_callback;

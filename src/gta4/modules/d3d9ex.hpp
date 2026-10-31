@@ -7,7 +7,33 @@ namespace gta4
 	public:
 		d3d9ex();
 
+		enum class call_type : std::uint8_t
+		{
+			RenderState,
+			TextureStageState,
+			SamplerState,
+			Texture,
+			Transform,
+			ShaderConstant,
+			Shader,
+			VertexDeclaration,
+			StreamSource,
+			Indices,
+			Draw,
+			Count
+		};
+		using call_counts = std::array<std::uint32_t, static_cast<std::size_t>(call_type::Count)>;
+
+		/// D3D9 calls that went through the device proxy last frame (the game's calls and the mod's calls on the proxy)
+		static const call_counts& get_calls_last_frame() { return s_calls_last_frame; }
+		static const char* call_type_name(call_type t);
+		static void on_end_scene();
+
 	private:
+		static inline call_counts s_calls_this_frame = {};
+		static inline call_counts s_calls_last_frame = {};
+		static void count_call(const call_type t) { s_calls_this_frame[static_cast<std::size_t>(t)]++; }
+
 		class D3D9Device : public IDirect3DDevice9
 		{
 		public:

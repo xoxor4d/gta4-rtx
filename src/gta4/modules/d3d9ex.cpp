@@ -1,5 +1,6 @@
 ﻿#include "std_include.hpp"
 #include "d3d9ex.hpp"
+#include "renderer_api.hpp"
 
 #include "imgui.hpp"
 #include "renderer.hpp"
@@ -101,13 +102,68 @@ namespace gta4
 		return m_pIDirect3DDevice9->GetNumberOfSwapChains();
 	}
 
+	const char* d3d9ex::call_type_name(const call_type t)
+	{
+		switch (t)
+		{
+		case call_type::RenderState: return "render state";
+		case call_type::TextureStageState: return "texture stage state";
+		case call_type::SamplerState: return "sampler state";
+		case call_type::Texture: return "texture";
+		case call_type::Transform: return "transform";
+		case call_type::ShaderConstant: return "shader constant";
+		case call_type::Shader: return "shader";
+		case call_type::VertexDeclaration: return "vertex declaration";
+		case call_type::StreamSource: return "stream source";
+		case call_type::Indices: return "indices";
+		case call_type::Draw: return "draw";
+		default: return "?";
+		}
+	}
+
+	void d3d9ex::on_end_scene()
+	{
+		s_calls_last_frame = s_calls_this_frame;
+		s_calls_this_frame = {};
+		PROFILE_PLOT("d3d9 draw calls", s_calls_last_frame[static_cast<std::size_t>(call_type::Draw)]);
+	}
+
+	// D3D9 resets viewport and scissor to the full target on SetRenderTarget(0) and Reset but the bridge's cached state does not.
+	// The game reads the viewport back after switching targets, so it would keep re-applying the pre-resolution-change viewport.
+	static void reset_viewport_to_target(IDirect3DDevice9* dev, IDirect3DSurface9* target)
+	{
+		D3DSURFACE_DESC desc = {};
+		if (!target || FAILED(target->GetDesc(&desc))) {
+			return;
+		}
+
+		const D3DVIEWPORT9 vp = { 0u, 0u, desc.Width, desc.Height, 0.0f, 1.0f };
+		dev->SetViewport(&vp);
+
+		const RECT rect = { 0, 0, static_cast<LONG>(desc.Width), static_cast<LONG>(desc.Height) };
+		dev->SetScissorRect(&rect);
+	}
+
 	HRESULT d3d9ex::D3D9Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters)
 	{
+		PROFILE_ZONE();
+		PROFILE_MESSAGE("D3D9 device reset");
 		shared::common::g_shader_cache.clear_cache();
-		tex_addons::init_texture_addons(true);
+		shared::imgui::blur::release_resources();
+		imgui::on_device_reset();
 		ImGui_ImplDX9_InvalidateDeviceObjects();
 		const auto hr = m_pIDirect3DDevice9->Reset(pPresentationParameters);
-		tex_addons::init_texture_addons();
+
+		if (SUCCEEDED(hr))
+		{
+			IDirect3DSurface9* backbuffer = nullptr;
+			if (SUCCEEDED(m_pIDirect3DDevice9->GetRenderTarget(0, &backbuffer)) && backbuffer)
+			{
+				reset_viewport_to_target(m_pIDirect3DDevice9, backbuffer);
+				backbuffer->Release();
+			}
+		}
+
 		ImGui_ImplDX9_CreateDeviceObjects();
 		return hr;
 	}
@@ -145,13 +201,19 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
-		return m_pIDirect3DDevice9->CreateTexture(Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
+		const auto hr = m_pIDirect3DDevice9->CreateTexture(Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
+		if (SUCCEEDED(hr) && ppTexture && *ppTexture) {
+			renderer_api::on_texture_created(*ppTexture);
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::CreateVolumeTexture(UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateVolumeTexture(Width, Height, Depth, Levels, Usage, Format, Pool, ppVolumeTexture, pSharedHandle);
@@ -159,6 +221,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateCubeTexture(EdgeLength, Levels, Usage, Format, Pool, ppCubeTexture, pSharedHandle);
@@ -166,6 +229,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateVertexBuffer(Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle);
@@ -173,6 +237,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; Usage |= D3DUSAGE_DYNAMIC; }
 
 		return m_pIDirect3DDevice9->CreateIndexBuffer(Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle);
@@ -180,26 +245,45 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateRenderTarget(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle);
 	}
 
 	HRESULT d3d9ex::D3D9Device::CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateDepthStencilSurface(Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle);
 	}
 
 	HRESULT d3d9ex::D3D9Device::UpdateSurface(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint)
 	{
-		return m_pIDirect3DDevice9->UpdateSurface(pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
+		PROFILE_ZONE();
+		const auto hr = m_pIDirect3DDevice9->UpdateSurface(pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
+		if (SUCCEEDED(hr) && pDestinationSurface)
+		{
+			IDirect3DBaseTexture9* texture = nullptr;
+			if (SUCCEEDED(pDestinationSurface->GetContainer(__uuidof(IDirect3DBaseTexture9), reinterpret_cast<void**>(&texture))) && texture)
+			{
+				renderer_api::on_texture_written(texture);
+				texture->Release();
+			}
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::UpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture)
 	{
-		return m_pIDirect3DDevice9->UpdateTexture(pSourceTexture, pDestinationTexture);
+		PROFILE_ZONE();
+		const auto hr = m_pIDirect3DDevice9->UpdateTexture(pSourceTexture, pDestinationTexture);
+		if (SUCCEEDED(hr)) {
+			renderer_api::on_texture_written(pDestinationTexture);
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->GetRenderTargetData(pRenderTarget, pDestSurface);
 	}
 
@@ -210,6 +294,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::StretchRect(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->StretchRect(pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter);
 	}
 
@@ -220,6 +305,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateOffscreenPlainSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle)
 	{
+		PROFILE_ZONE();
 		//if (Pool == D3DPOOL_MANAGED) { Pool = D3DPOOL_DEFAULT; }
 
 		return m_pIDirect3DDevice9->CreateOffscreenPlainSurface(Width, Height, Format, Pool, ppSurface, pSharedHandle);
@@ -227,7 +313,11 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget)
 	{
-		return m_pIDirect3DDevice9->SetRenderTarget(RenderTargetIndex, pRenderTarget);
+		const auto hr = m_pIDirect3DDevice9->SetRenderTarget(RenderTargetIndex, pRenderTarget);
+		if (SUCCEEDED(hr) && RenderTargetIndex == 0u) {
+			reset_viewport_to_target(m_pIDirect3DDevice9, pRenderTarget);
+		}
+		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget)
@@ -247,6 +337,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::BeginScene()
 	{
+		PROFILE_ZONE();
 		if (const auto p = performance_logger::get(); p) {
 			p->begin_frame();
 		}
@@ -260,6 +351,8 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::EndScene()
 	{
+		shared::common::profiler::name_current_thread("Render");
+
 		if (imgui::is_initialized()) {
 			imgui::get()->on_present();
 		}
@@ -273,6 +366,8 @@ namespace gta4
 
 		shared::globals::last_frame_time = current_time;
 		remix_vars::on_client_frame();
+		renderer_api::on_end_scene();
+		on_end_scene();
 
 		//renderer::get()->m_modified_draw_prim = false;
 
@@ -288,7 +383,7 @@ namespace gta4
 
 		HRESULT hr = D3D_OK;
 		{
-			GTA4_PERF_SCOPE(performance_section::AntiCull);
+			GTA4_PERF_SCOPE(performance_section::Submit);
 			hr = m_pIDirect3DDevice9->EndScene();
 		}
 
@@ -296,11 +391,14 @@ namespace gta4
 			p->end_frame(shared::globals::frame_time_ms);
 		}
 
+		PROFILE_PLOT("frame time (ms)", shared::globals::frame_time_ms);
+		PROFILE_FRAME_MARK();
 		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::Clear(DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
 	{
+		PROFILE_ZONE();
 		g_is_rendering_phone = shared::utils::float_equal(Z, 0.1337f);
 
 		if (g_is_rendering_phone) 
@@ -330,6 +428,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetTransform(D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix)
 	{
+		count_call(call_type::Transform);
 		return m_pIDirect3DDevice9->SetTransform(State, pMatrix);
 	}
 
@@ -395,6 +494,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
 	{
+		count_call(call_type::RenderState);
 		return m_pIDirect3DDevice9->SetRenderState(State, Value);
 	}
 
@@ -435,6 +535,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture)
 	{
+		count_call(call_type::Texture);
 		return m_pIDirect3DDevice9->SetTexture(Stage, pTexture);  
 	}
 
@@ -445,6 +546,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value)
 	{
+		count_call(call_type::TextureStageState);
 		return m_pIDirect3DDevice9->SetTextureStageState(Stage, Type, Value);
 	}
 
@@ -455,6 +557,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value)
 	{
+		count_call(call_type::SamplerState);
 		return m_pIDirect3DDevice9->SetSamplerState(Sampler, Type, Value);
 	}
 
@@ -515,6 +618,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::DrawPrimitive([[maybe_unused]] D3DPRIMITIVETYPE PrimitiveType, [[maybe_unused]] UINT StartVertex, [[maybe_unused]] UINT PrimitiveCount)
 	{
+		count_call(call_type::Draw);
 		//return D3D_OK;
 		//auto hr = m_pIDirect3DDevice9->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 
@@ -524,12 +628,15 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
 	{
+		count_call(call_type::Draw);
 		const auto hr = renderer::get()->on_draw_indexed_prim(m_pIDirect3DDevice9, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 		return hr;
 	}
 
 	HRESULT d3d9ex::D3D9Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 	{
+		PROFILE_ZONE();
+		count_call(call_type::Draw);
 		//return D3D_OK;
 		//pre_drawindexedprim();
 		const auto hr = m_pIDirect3DDevice9->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -547,6 +654,8 @@ namespace gta4
 		[[maybe_unused]] CONST void* pVertexStreamZeroData,
 		[[maybe_unused]] UINT VertexStreamZeroStride)
 	{
+		PROFILE_ZONE();
+		count_call(call_type::Draw);
 		//return D3D_OK;
 		return m_pIDirect3DDevice9->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
 	}
@@ -558,11 +667,13 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateVertexDeclaration(CONST D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateVertexDeclaration(pVertexElements, ppDecl);
 	}
 
 	HRESULT d3d9ex::D3D9Device::SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl)
 	{
+		count_call(call_type::VertexDeclaration);
 		return m_pIDirect3DDevice9->SetVertexDeclaration(pDecl);
 	}
 
@@ -573,6 +684,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetFVF(DWORD FVF)
 	{
+		count_call(call_type::VertexDeclaration);
 		return m_pIDirect3DDevice9->SetFVF(FVF);
 	}
 
@@ -583,11 +695,13 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateVertexShader(CONST DWORD* pFunction, IDirect3DVertexShader9** ppShader)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreateVertexShader(pFunction, ppShader);
 	}
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShader(IDirect3DVertexShader9* pShader)
 	{
+		count_call(call_type::Shader);
 		return m_pIDirect3DDevice9->SetVertexShader(pShader);
 	}
 
@@ -598,6 +712,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount);
 	}
 
@@ -608,6 +723,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetVertexShaderConstantI(StartRegister, pConstantData, Vector4iCount);
 	}
 
@@ -618,6 +734,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetVertexShaderConstantB(StartRegister, pConstantData, BoolCount);
 	}
 
@@ -628,6 +745,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride)
 	{
+		count_call(call_type::StreamSource);
 		return m_pIDirect3DDevice9->SetStreamSource(StreamNumber, pStreamData, OffsetInBytes, Stride);
 	}
 
@@ -648,6 +766,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetIndices(IDirect3DIndexBuffer9* pIndexData)
 	{
+		count_call(call_type::Indices);
 		return m_pIDirect3DDevice9->SetIndices(pIndexData);
 	}
 
@@ -658,11 +777,13 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreatePixelShader(CONST DWORD* pFunction, IDirect3DPixelShader9** ppShader)
 	{
+		PROFILE_ZONE();
 		return m_pIDirect3DDevice9->CreatePixelShader(pFunction, ppShader);
 	}
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShader(IDirect3DPixelShader9* pShader)
 	{
+		count_call(call_type::Shader);
 		return m_pIDirect3DDevice9->SetPixelShader(pShader);
 	}
 
@@ -673,6 +794,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
 	}
 
@@ -683,6 +805,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetPixelShaderConstantI(StartRegister, pConstantData, Vector4iCount);
 	}
 
@@ -693,6 +816,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::SetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount)
 	{
+		count_call(call_type::ShaderConstant);
 		return m_pIDirect3DDevice9->SetPixelShaderConstantB(StartRegister, pConstantData, BoolCount);
 	}
 
@@ -718,6 +842,7 @@ namespace gta4
 
 	HRESULT d3d9ex::D3D9Device::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery)
 	{
+		PROFILE_ZONE();
 		//shared::common::log("d3d9", "m_pIDirect3DDevice9->CreateQuery", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 		return m_pIDirect3DDevice9->CreateQuery(Type, ppQuery);
 	}

@@ -187,6 +187,10 @@ namespace gta4
 		}
 		ImGui::Style_ColorButtonPop();
 
+		if constexpr (shared::common::profiler::enabled) {
+			ImGui::TextUnformatted(shared::common::profiler::is_connected() ? "Tracy: profiler connected" : "Tracy: waiting for a profiler connection");
+		}
+
 		if (ImGui::TreeNode("Performance Overlay Settings ..."))
 		{
 			ImGui::Spacing(0, 4);
@@ -198,6 +202,8 @@ namespace gta4
 			ImGui::SliderFloat("Graph Alpha", &m_graph_bg_alpha, 0.0f, 1.0f, "%.2f");
 			ImGui::Spacing(0, 4);
 
+			ImGui::SliderFloat("Window X", &m_window_x, 0.0f, 5000.0f, "%.2f");
+			ImGui::SliderFloat("Window Y", &m_window_y, 0.0f, 5000.0f, "%.2f");
 			ImGui::SliderFloat("Window Width", &m_window_width, 360.0f, 5120.0f, "%.2f");
 			ImGui::SliderFloat("Graph Height", &m_graph_height, 16.0f, 90.0f, "%.2f");
 			ImGui::Checkbox("Display Section Table", &m_display_section_table);
@@ -239,7 +245,7 @@ namespace gta4
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
 
 		ImGui::SetNextWindowBgAlpha(m_window_bg_alpha);
-		ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(m_window_x, m_window_y), ImGuiCond_Always);
 		if (ImGui::Begin("Performance Overlay", &m_popout_enabled, flags))
 		{
 			ImGui::PushID("overlay");
@@ -263,7 +269,7 @@ namespace gta4
 				snprintf(scale_top, sizeof(scale_top), "%.1f ms", graph_scale_max);
 				snprintf(scale_bottom, sizeof(scale_bottom), "0.0 ms");
 
-				const auto scale_color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+				const auto scale_color = ImGui::GetColorU32(ImGuiCol_Text);
 				const auto bottom_size = ImGui::CalcTextSize(scale_bottom);
 				draw_list->AddText(ImVec2(rect_max.x - ImGui::CalcTextSize(scale_top).x - 4.0f, rect_min.y + 2.0f), scale_color, scale_top);
 				draw_list->AddText(ImVec2(rect_max.x - bottom_size.x - 4.0f, rect_max.y - bottom_size.y - 2.0f), scale_color, scale_bottom);

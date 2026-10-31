@@ -1,7 +1,5 @@
 -d3dst
 -availablevidmem 4096
 -nomemrestrict
--disableimposters
--noprecache
 -forcer2vb
 -noswapdelay

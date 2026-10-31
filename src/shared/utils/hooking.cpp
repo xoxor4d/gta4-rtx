@@ -142,10 +142,22 @@ namespace shared::utils
 			return 0;
 		}
 
+		// image base the hardcoded fallback addresses are written for (the game's preferred base)
+		constexpr DWORD FALLBACK_IMAGE_BASE = 0x400000u;
+
 		DWORD find_pattern(const std::string_view& signature, const DWORD& offset, const char* description, const bool is_active, const DWORD& inactive_offset)
 		{
-			if (!is_active) {
-				return inactive_offset + offset;
+			if (!is_active)
+			{
+				if (!inactive_offset) {
+					return 0u;
+				}
+
+				if (!globals::exe_module_addr) {
+					globals::setup_exe_module();
+				}
+
+				return inactive_offset - FALLBACK_IMAGE_BASE + globals::exe_module_addr + offset;
 			}
 		
 			uint8_t* base = (uint8_t*)GetModuleHandle(nullptr);

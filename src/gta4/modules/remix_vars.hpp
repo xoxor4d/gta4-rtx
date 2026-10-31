@@ -107,15 +107,16 @@ namespace gta4
 		static option_handle	get_custom_option(const char* o);
 		static option_handle	get_custom_option(const std::string& o);
 
-		static option_handle	get_option(const char*);
-		static option_handle	get_option(const std::string& o);
+		static option_handle	get_option(const char* o, const std::string& val = "");
+		static option_handle	get_option(const std::string& o, const std::string& val = "");
 		static bool				set_option(option_handle o, const option_value& v, bool is_level_setting = false, bool for_user_layer = false);
 		static bool				reset_option(option_handle o, bool reset_to_level_state = false);
 		static void				reset_all_modified(bool reset_to_level_state = false);
 		static option_value		string_to_option_value(OPTION_TYPE type, const std::string& str);
 		static option_s			string_to_option(const std::string& str);
 		static void				parse_rtx_options();
-		static void				parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name,float delay = 0.0f);
+		static void				parse_and_apply_conf(const std::string& sub_dir, const std::string& file_name,float delay = 0.0f, bool as_user = false);
+		static void				parse_and_apply_weather_presets(float delay = 0.0f);
 
 		//static void			reset(std::string map_name);
 		static void				init_once_on_init();
@@ -131,11 +132,12 @@ namespace gta4
 			float _time_elapsed = 0.0f;
 			bool always = false;
 			float epsilon = 0.01f;
+			bool as_user = false;
 			bool _complete = false;
 		};
 
 		static inline std::vector<queue_entry_s> var_queue;
-		bool add_queue_entry(option_handle handle, const option_value& goal, float delay = 0.0f, bool always = false, float epsilon = 0.01f, const std::string& remix_var_name = "");
+		bool add_queue_entry(option_handle handle, const option_value& goal, float delay = 0.0f, bool always = false, float epsilon = 0.01f, bool as_user = false);
 
 		static bool is_paused()
 		{

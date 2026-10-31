@@ -93,6 +93,20 @@ namespace gta4
 				m_var_default.value[0] = x; m_var_default.value[1] = y; m_var_default.value[2] = z; m_var_default.value[3] = w;
 			}
 	
+			// at least two decimals, more only when needed to read back the same value
+			static std::string float_to_str(const float v)
+			{
+				for (int precision = 2; precision < 6; precision++)
+				{
+					const auto str = std::format("{:.{}f}", v, precision);
+					if (std::strtof(str.c_str(), nullptr) == v) {
+						return str;
+					}
+				}
+
+				return std::format("{:.6f}", v);
+			}
+
 			const char* get_str_value(bool get_default = false) const
 			{
 				const bool is_dirty = get_dirty_state();
@@ -107,16 +121,16 @@ namespace gta4
 					return shared::utils::va("%d", !get_default ? (is_dirty ? m_var_base_user.integer : m_var.integer) : m_var_default.integer);
 	
 				case var_type_value:
-					return shared::utils::va("%.2f", pvec[0]);
+					return shared::utils::va("%s", float_to_str(pvec[0]).c_str());
 	
 				case var_type_vec2:
-					return shared::utils::va("[ %.2f, %.2f ]", pvec[0], pvec[1]);
+					return shared::utils::va("[ %s, %s ]", float_to_str(pvec[0]).c_str(), float_to_str(pvec[1]).c_str());
 	
 				case var_type_vec3:
-					return shared::utils::va("[ %.2f, %.2f, %.2f ]", pvec[0], pvec[1], pvec[2]);
+					return shared::utils::va("[ %s, %s, %s ]", float_to_str(pvec[0]).c_str(), float_to_str(pvec[1]).c_str(), float_to_str(pvec[2]).c_str());
 	
 				case var_type_vec4:
-					return shared::utils::va("[ %.2f, %.2f, %.2f, %.2f ]", pvec[0], pvec[1], pvec[2], pvec[3]);
+					return shared::utils::va("[ %s, %s, %s, %s ]", float_to_str(pvec[0]).c_str(), float_to_str(pvec[1]).c_str(), float_to_str(pvec[2]).c_str(), float_to_str(pvec[3]).c_str());
 				}
 	
 				return nullptr;
@@ -473,6 +487,141 @@ namespace gta4
 				("This setting will prevent loading and usage of all non-colormap textures.\n"
 				 "Useful to declutter the remix UI and reducing used VRAM."),
 				"1.3.0",
+				true
+			};
+
+			variable api_static_enabled = {
+				"api_static_enabled",
+				("Render static map geometry through the Remix API instead of re-submitting fixed function draws every frame.\n"
+				 "Meshes are built once per geometry and only instances are submitted per frame.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.7.0",
+				true
+			};
+
+			variable api_static_entity_skip = {
+				"api_static_entity_skip",
+				("Skip the engine's draw command of map entities whose geometry is fully owned by the Remix API path.\n"
+				 "The entity is then submitted directly without any D3D9 calls (needs 'api_static_enabled')."),
+				"1.7.0",
+				true
+			};
+
+			variable api_static_require_plain_draw = {
+				"api_static_require_plain_draw",
+				("Only move draws without per draw render state modifiers or categories (wetness, emissive scale, uv animation ...) to the Remix API path.\n"
+				 "Most static draws carry wetness or a category, so this keeps almost everything on the fixed function path."),
+				"1.7.0",
+				false
+			};
+
+			variable api_static_creates_per_frame = {
+				"api_static_creates_per_frame",
+				("Maximum number of Remix API meshes created per frame.\n"
+				 "Geometry that could not be built yet stays on the fixed function path for that frame, which spreads streaming spikes."),
+				"1.7.0",
+				18
+			};
+
+			variable api_static_cache_mb = {
+				"api_static_cache_mb",
+				("Memory budget (MB) for cached Remix API meshes. Geometry that streams back in reuses its cached mesh.\n"
+				 "Least recently drawn meshes are destroyed when the budget is exceeded."),
+				"1.7.0",
+				1024
+			};
+
+			variable api_static_entity_refresh_frames = {
+				"api_static_entity_refresh_frames",
+				("Every n frames an entity owned by the Remix API path is drawn by the engine once more so its per draw values\n"
+				 "(emissive scale, hash seed at the 6:45 / 19:15 switches, wetness when rain starts) are refreshed.\n"
+				 "0 never refreshes; only needed when noticing stale meshes (emissive windows or wetness after a time or weather change)"),
+				"1.7.0",
+				0
+			};
+
+			variable api_static_skip_pass_setup = {
+				"api_static_skip_pass_setup",
+				("Skip the engine's shader pass setup (render states, shader constants, textures) of geometry whose passes are all\n"
+				 "owned by the Remix API path and submit its api instances directly. Removes most D3D9 calls of api drawn geometry\n"
+				 "(needs 'api_static_enabled')."),
+				"1.7.0",
+				true
+			};
+
+			variable api_static_pass_refresh_frames = {
+				"api_static_pass_refresh_frames",
+				("Geometry whose pass setup is skipped is drawn by the engine once every n frames so its per draw values\n"
+				 "(wetness, emissive scale, texture factor, categories) follow time and weather changes. 0 never refreshes."),
+				"1.7.0",
+				0
+			};
+
+			variable api_static_retained = {
+				"api_static_retained",
+				("Static map geometry drawn through the Remix API is registered with the runtime once (retained instance) and\n"
+				 "replayed by it every frame with one DrawRetainedInstances call, instead of one DrawInstance per placement per frame.\n"
+				 "Needs a runtime with retained instances, falls back to DrawInstance otherwise."),
+				"1.7.0",
+				true
+			};
+
+			variable api_static_retained_hide_frames = {
+				"api_static_retained_hide_frames",
+				("A retained placement the game did not draw for this many frames is hidden. 1 keeps the scene at what the game draws,\n"
+				 "like the per frame draws did; higher values keep objects the game culled resident, which costs scene build time every frame."),
+				"1.7.0",
+				1
+			};
+
+			variable api_peds_enabled = {
+				"api_peds_enabled",
+				("Render peds through the Remix API (needs 'api_static_enabled'). Skinned geometry becomes a skinned api mesh that gets\n"
+				 "the bone palette of every draw, so the runtime skins it in compute instead of capturing the vertex shader output.\n"
+				 "Blendshape heads (morphed on the CPU) rebuild their mesh whenever the morph changes.\n"
+				 "Geometry with a second vertex stream keeps the vertex shader path."),
+				"1.7.0",
+				true
+			};
+
+			variable api_peds_blendshapes = {
+				"api_peds_blendshapes",
+				("Draw blendshape heads (morphed on the CPU into double buffered geometry) through the Remix API as well.\n"
+				 "Their api mesh is rebuilt whenever the morph changes; off keeps them on the vertex shader path."),
+				"1.7.0",
+				true
+			};
+
+			variable api_peds_wounds_enabled = {
+				"api_peds_wounds_enabled",
+				("Blood on peds (needs 'api_peds_enabled'). The ped shaders blend a wound texture by the damage of every bone; the Remix API\n"
+				 "path draws that as an alpha blended decal instance over the ped mesh, rebuilt when the ped's damage changes."),
+				"1.7.0",
+				true
+			};
+
+			variable api_peds_wounds_opacity = {
+				"api_peds_wounds_opacity",
+				("Strength of the blood on peds drawn through the Remix API: multiplies the wound weight of the ped shaders (1.0 = the game's).\n"
+				 "Values above 1 use the x2 / x4 alpha stage ops of the overlay material."),
+				"1.7.0",
+				1.2f
+			};
+
+			variable api_peds_skip_pass_setup = {
+				"api_peds_skip_pass_setup",
+				("Skip the engine's pass setup (render states, shader constants, textures) and draw of ped geometry the Remix API\n"
+				 "path owns (needs 'api_peds_enabled'). Skinned peds get their bones from the matrix set, the same palette\n"
+				 "grmGeometryQB::DrawSkinned uploads."),
+				"1.7.0",
+				true
+			};
+
+			variable api_vehicles_enabled = {
+				"api_vehicles_enabled",
+				("Render vehicles through the Remix API (needs 'api_static_enabled'). Their bones come from every draw, damage is\n"
+				 "applied on the CPU like the vertex shader does (a mesh per damage state). Tyres and light proxies keep the vertex shader path."),
+				"1.7.0",
 				true
 			};
 
@@ -906,16 +1055,16 @@ namespace gta4
 			{
 				"translate_vehicle_vsirens_intensity_offset",
 				("Intensity offset (in game units) applied to the v-siren lights inside the actual sirens"),
-				"1.3.2",
-				0.0f
+				"1.7.0",
+				-40.0f
 			};
 
 			variable translate_vehicle_vsirens_radius_offset =
 			{
 				"translate_vehicle_vsirens_radius_offset",
 				("Radius offset (in game units) applied to the v-siren lights inside the actual sirens"),
-				"1.3.2",
-				20.0f
+				"1.7.0",
+				10.0f
 			};
 
 
@@ -1056,7 +1205,7 @@ namespace gta4
 				("Allow vertex colors on meshes rendered by emissive alpha shaders\n"
 				 "Might regress some stuff so its off by default for now"),
 				"1.5.2",
-				false
+				true
 			};
 
 			variable phone_emissive_override = {
@@ -1150,32 +1299,6 @@ namespace gta4
 			
 
 			// -----
-			variable decal_dirt_shader_usage =
-			{
-				"handle_decal_dirt_shader",
-				("Enable decal_dirt shader logic. Runtime will use 'rtx_comp/textures/decal_dirt.png' in texture slot 0 and the games intensity/alpha mask in slot 1.\n"
-				"This allows remixing the dirt texture while the game is handling the blending."),
-				"1.3.0",
-				false
-			};
-
-			variable decal_dirt_shader_scalar =
-			{
-				"decal_dirt_shader_scalar",
-				("Scale decal_dirt shader strength"),
-				"1.3.0",
-				0.25f
-			};
-
-			variable decal_dirt_shader_contrast =
-			{
-				"decal_dirt_shader_contrast",
-				("Mask contrast of decal_dirt shader"),
-				"1.3.0",
-				1.0f
-			};
-
-			// -----
 			variable fixed_function_trees =
 			{
 				"fixed_function_trees",
@@ -1204,8 +1327,7 @@ namespace gta4
 			variable npc_expensive_hair_alpha_testing =
 			{
 				"npc_expensive_hair_alpha_testing",
-				("Alpha-test hair rendered with 'gta_hair_sorted_alpha_expensive' shader to make it look a little more like hair.\n"
-				 "Not perfect and still WIP."),
+				("Alpha-test hair rendered with 'gta_hair_sorted_alpha_expensive' shader to make it look a little more like hair."),
 				"1.3.0",
 				true
 			};
@@ -1222,7 +1344,8 @@ namespace gta4
 			variable override_water_texture_hash =
 			{
 				"override_water_texture_hash",
-				("This assigns the same texture hash to all water surfaces. Aids with water replacements."),
+				("This assigns the same texture hash to all water surfaces so a USD water material replaces them.\n"
+				 "Forced on while water is drawn through the fixed function path. Off on the Remix API path: the API water material (dev tab) is used."),
 				"1.3.0",
 				true
 			};
@@ -1239,8 +1362,8 @@ namespace gta4
 			{
 				"water_texture_uv_scale",
 				("Water surfaces use world positions instead of surface UVs. This can be used to scale the applied texture."),
-				"1.3.0",
-				3.0f
+				"1.7.0",
+				5.0f
 			};
 
 			variable water_texture_normal_fadeout_distance =
@@ -1251,6 +1374,216 @@ namespace gta4
 				600.0f
 			};
 
+			variable water_apply_shoreline_modifier =
+			{
+				"water_apply_shoreline_modifier",
+				("Adds the shoreline modifier to water surfaces: the water fades out where it is shallow or meets objects. "
+				 "Textures tagged as animated water get the shoreline fade either way."),
+				"1.7.0",
+				true
+			};
+
+			variable water_detail_radius =
+			{
+				"water_detail_radius",
+				("Half size of the tessellated water area around the camera. Needs 'water_lod' (coarser tessellation further away), the game's 100 is used without it.\n"
+				 "Beyond the game's wave simulation (100 units) it shows the procedural waves."),
+				"1.7.0",
+				300.0f
+			};
+
+			variable water_sim_edge_fade =
+			{
+				"water_sim_edge_fade",
+				("Width of the fade at the edge of the game's wave simulation (the game uses 10). Heights and normals fade over this distance, the procedural waves take over."),
+				"1.7.0",
+				50.0f
+			};
+
+			variable water_far_waves =
+			{
+				"water_far_waves",
+				("Continue the game's waves with procedural waves where its simulation ends."),
+				"1.7.0",
+				true
+			};
+
+			variable water_far_wave_scale =
+			{
+				"water_far_wave_scale",
+				("Strength of the procedural waves relative to the measured strength of the game's waves."),
+				"1.7.0",
+				0.4f
+			};
+
+			variable water_far_wave_length =
+			{
+				"water_far_wave_length",
+				("Wavelength of the longest procedural wave."),
+				"1.7.0",
+				80.0f
+			};
+
+			variable water_far_wave_speed =
+			{
+				"water_far_wave_speed",
+				("Speed multiplier of the procedural waves."),
+				"1.7.0",
+				0.8f
+			};
+
+			variable water_far_wave_direction =
+			{
+				"water_far_wave_direction",
+				("Main direction of the procedural waves in degrees."),
+				"1.7.0",
+				-70.0f
+			};
+
+			variable water_far_wave_fade =
+			{
+				"water_far_wave_fade",
+				("Distance over which the procedural waves fade out towards the edge of the tessellated area."),
+				"1.7.0",
+				100.0f
+			};
+
+			variable water_vertex_normal_scale =
+			{
+				"water_vertex_normal_scale",
+				("Strength of the wave slopes in the water's vertex normals."),
+				"1.7.0",
+				0.75f
+			};
+
+			variable water_lod =
+			{
+				"water_lod",
+				("Coarser tessellation further away from the camera (2 units close by, then 4 and 8 units)."),
+				"1.7.0",
+				true
+			};
+
+			variable water_lod_radius_4 =
+			{
+				"water_lod_radius_4",
+				("Distance from the camera where the tessellation changes from 2 to 4 units."),
+				"1.7.0",
+				16.0f
+			};
+
+			variable water_lod_radius_8 =
+			{
+				"water_lod_radius_8",
+				("Distance from the camera where the tessellation changes from 4 to 8 units."),
+				"1.7.0",
+				64.0f
+			};
+
+			variable water_block_distance_scale =
+			{
+				"water_block_distance_scale",
+				("Scales how far the game looks for water blocks (500 x 500 units) in front of the camera. Blocks outside of the view are still culled."),
+				"1.7.0",
+				3.0f
+			};
+
+			variable water_disable_seabed_plane =
+			{
+				"water_disable_seabed_plane",
+				("This setting prevents marker 1000 from drawing. Older versions of the mod placed a large plane under the sea to terminate rays\n"
+				 "which was needed for absorption to kick in. This is no longer needed."),
+				"1.7.0",
+				true
+			};
+
+			variable api_water_enabled =
+			{
+				"api_water_enabled",
+				("Draw the water surface through the Remix API (one mesh per frame) instead of the fixed function draw.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.7.0",
+				true
+			};
+
+			variable api_water_cull_pieces =
+			{
+				"api_water_cull_pieces",
+				("Remix API water: skip tessellated water pieces outside the view like the fixed function path.\n"
+				 "Off submits the whole tessellated area so reflections see the waves behind the camera."),
+				"1.7.0",
+				true
+			};
+
+			// -----
+			variable distant_lights_enabled =
+			{
+				"distant_lights_enabled",
+				("Render the distant street light and aircraft sprites along the road light strings at night (CDistantLights).\n"
+				 "Off skips the game's render like the commandline argument 'disableimposters' does for this part."),
+				"1.7.0",
+				true
+			};
+
+			variable distant_cars_enabled =
+			{
+				"distant_cars_enabled",
+				("Render the fake distant cars along the road light strings: headlight models at night, car models by day (vehicle imposters).\n"
+				 "Off skips the game's render like the commandline argument 'disableimposters' does for this part."),
+				"1.7.0",
+				true
+			};
+
+			variable api_distant_lights_enabled =
+			{
+				"api_distant_lights_enabled",
+				("Draw the distant light sprites through the Remix API (one mesh per frame) instead of the game's D3D9 draw.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.7.0",
+				true
+			};
+
+			variable api_distant_cars_enabled =
+			{
+				"api_distant_cars_enabled",
+				("Draw the fake distant cars through the Remix API (one instance per car) instead of the game's hardware instanced D3D9 draw.\n"
+				 "Can be toggled at runtime to compare both paths."),
+				"1.7.0",
+				true
+			};
+
+			variable api_distant_lights_emissive_scale =
+			{
+				"api_distant_lights_emissive_scale",
+				("Emissive intensity multiplier of the distant light sprites drawn through the Remix API."),
+				"1.7.0",
+				2.0f
+			};
+
+			variable api_distant_cars_emissive_scale =
+			{
+				"api_distant_cars_emissive_scale",
+				("Emissive intensity multiplier of the fake distant car headlights drawn through the Remix API (night only)."),
+				"1.7.0",
+				20.0f
+			};
+
+			variable api_distant_lights_size_scale =
+			{
+				"api_distant_lights_size_scale",
+				("Size multiplier of the distant light sprites drawn through the Remix API."),
+				"1.7.0",
+				1.0f
+			};
+
+			variable api_distant_lights_size_scale_foggy =
+			{
+				"api_distant_lights_size_scale_foggy",
+				("Size multiplier of the distant light sprites drawn through the Remix API while the weather is foggy (the game enlarges them\n"
+				 "in fog). The game's weather transition blends between 'api_distant_lights_size_scale' and this value."),
+				"1.7.0",
+				1.5f
+			};
 
 			// -----
 			variable gta_rmptfx_litsprite_alpha_scalar =
@@ -1261,12 +1594,22 @@ namespace gta4
 				1.5f
 			};
 
+			variable gta_rmptfx_litsprite_unlit =
+			{
+				"gta_rmptfx_litsprite_unlit",
+				("Remove the game lighting from gta_rmptfx_litsprite particles (smoke, dust) so only Remix lights them.\n"
+				 "The game lights them in the vertex shader and Remix takes that colour, clamped per channel, as the particle colour,\n"
+				 "which shows as yellow or green tints near game lights."),
+				"1.7.0",
+				true
+			};
+
 			variable rain_particle_system_enabled =
 			{
 				"rain_particle_system_enabled",
 				("Enable rain handled by a remix particle system. Has limited collision detection - can still rain 'inside' - WIP"),
-				"1.3.0",
-				true
+				"1.7.0",
+				false
 			};
 
 
@@ -1415,6 +1758,15 @@ namespace gta4
 				1.0f
 			};
 
+			variable timecycle_wetness_vehicle_wet_seconds =
+			{
+				"timecycle_wetness_vehicle_wet_seconds",
+				("Seconds it takes vehicles to get fully wet once it starts to rain.\n"
+				 "Vehicles dry up over half of 'timecycle_wetness_afterrain_fade_seconds', starting with the after-rain hold."),
+				"1.7.0",
+				8.0f
+			};
+
 
 			variable timecycle_wetness_vehicle_raindrop_enable = {
 				"timecycle_wetness_vehicle_raindrop_enable",
@@ -1464,6 +1816,64 @@ namespace gta4
 				("Defines the blending strength used to go from original roughness to adjusted roughness."),
 				"1.3.0",
 				1.0f
+			};
+
+			// -----
+
+			variable timecycle_wetness_afterrain_hold_seconds =
+			{
+				"timecycle_wetness_afterrain_hold_seconds",
+				("Seconds surfaces stay at the after-rain wetness level once the game's own wetness dropped below it."),
+				"1.7.0",
+				90.0f
+			};
+
+			variable timecycle_wetness_afterrain_fade_seconds =
+			{
+				"timecycle_wetness_afterrain_fade_seconds",
+				("Seconds it takes to dry up after the hold time ran out."),
+				"1.7.0",
+				120.0f
+			};
+
+			variable timecycle_wetness_afterrain_scalar =
+			{
+				"timecycle_wetness_afterrain_scalar",
+				("After-rain wetness level relative to the highest wetness reached while it rained (0-1).\n"
+				 "0 disables the prolonged wetness, 1 holds the full rain wetness."),
+				"1.7.0",
+				1.0f
+			};
+
+			variable timecycle_wetness_ripple_enabled = {
+				"timecycle_wetness_ripple_enabled",
+				("Scales 'rtx.wet.rippleStrength' with the game's wetness. Ripples settle at the min value once the rain stopped."),
+				"1.7.0",
+				true
+			};
+
+			variable timecycle_wetness_ripple_min =
+			{
+				"timecycle_wetness_ripple_min",
+				("Value of 'rtx.wet.rippleStrength' when it does not rain."),
+				"1.7.0",
+				0.006f
+			};
+
+			variable timecycle_wetness_ripple_max =
+			{
+				"timecycle_wetness_ripple_max",
+				("Value of 'rtx.wet.rippleStrength' at full rain wetness."),
+				"1.7.0",
+				0.08f
+			};
+
+			variable timecycle_wetness_ripple_curve =
+			{
+				"timecycle_wetness_ripple_curve",
+				("Exponent applied to the wetness before it is mapped onto the ripple range. Values above 1 keep light rain subtle."),
+				"1.7.0",
+				0.1f
 			};
 
 			// -----
@@ -1595,8 +2005,8 @@ namespace gta4
 			variable timecycle_colorcorrection_influence = {
 				"timecycle_colorcorrection_influence",
 				("Controls how much the timecycle color correction variable influences 'rtx.tonemap.colorBalance'"),
-				"1.3.2",
-				1.8f
+				"1.7.1",
+				2.0f
 			};
 
 			variable timecycle_colortemp_enabled = {
@@ -1646,51 +2056,79 @@ namespace gta4
 			variable timecycle_gamma_enabled = {
 				"timecycle_gamma_enabled",
 				("Enables automatic adjustment of 'rtx.tonemap.exposureBias' based on timecycle settings."),
-				"1.3.0",
-				true
+				"1.7.0",
+				false
 			};
 
 			variable timecycle_gamma_offset = {
 				"timecycle_gamma_offset",
 				("Controls the offset that's added to the gamma timecycle variable which influences 'rtx.tonemap.exposureBias'."),
-				"1.3.0",
-				0.3f
+				"1.7.0",
+				0.0f
 			};
 
 			// -----
 			variable timecycle_bloom_enabled = {
 				"timecycle_bloom_enabled",
 				("Enables automatic adjustment of 'rtx.bloom.burnIntensity' and 'rtx.bloom.luminanceThreshold' based on timecycle settings."),
-				"1.3.0",
+				"1.7.0",
 				true
 			};
 
 			variable timecycle_bloomintensity_scalar = {
 				"timecycle_bloomintensity_scalar",
 				("Scales the bloom intensity timecycle variable which influences 'rtx.tonemap.saturation'."),
-				"1.3.0",
+				"1.7.0",
 				1.5f
 			};
 
 			variable timecycle_bloomthreshold_scalar = {
 				"timecycle_bloomthreshold_scalar",
 				("Scales the bloom threshold timecycle variable which influences 'rtx.tonemap.luminanceThreshold'."),
-				"1.3.0",
+				"1.7.0",
 				1.0f
 			};
 
 			variable timecycle_bloom_night_min_clamp_enabled = {
 				"timecycle_bloom_night_min_clamp_enabled",
 				("Lower bound clamp bloom intensity at night with no cutscene playing."),
-				"1.3.0",
+				"1.7.0",
 				true
 			};
 
 			variable timecycle_bloom_night_min_clamp_value = {
 				"timecycle_bloom_night_min_clamp_value",
 				("Min value of bloom intensity at night with no cutscene playing. Needs 'timecycle_bloom_night_min_clamp_enabled'"),
-				"1.3.0",
+				"1.7.0",
 				1.5f
+			};
+
+			variable timecycle_bloomthreshold_night_min_clamp_value = {
+				"timecycle_bloomthreshold_night_min_clamp_value",
+				("Min value of bloom threshold at night with no cutscene playing. Needs 'timecycle_bloom_night_min_clamp_enabled'"),
+				"1.7.0",
+				0.5f
+			};
+
+			variable timecycle_bloom_day_min_clamp_enabled = {
+				"timecycle_bloom_day_min_clamp_enabled",
+				("Enable min. bloom intensity at day with no cutscene playing."),
+				"1.7.0",
+				true
+			};
+
+			variable timecycle_bloom_day_min_clamp_value = {
+				"timecycle_bloom_day_min_clamp_value",
+				("Min value of bloom intensity at day with no cutscene playing. Needs 'timecycle_bloom_day_min_clamp_enabled'"),
+				"1.7.0",
+				2.0f
+			};
+
+			variable timecycle_bloomthreshold_day_min_clamp_value = {
+				"timecycle_bloomthreshold_day_min_clamp_value",
+				("Min value of bloom threshold at day with no cutscene playing. Needs 'timecycle_bloom_day_min_clamp_enabled'"),
+				"1.7.0",
+				4.0f
 			};
 
 			// ----------------------------------

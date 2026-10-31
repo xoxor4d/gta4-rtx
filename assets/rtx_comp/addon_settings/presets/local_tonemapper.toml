@@ -1,9 +1,0 @@
-# Controls how much the timecycle color correction variable influences 'rtx.tonemap.colorBalance'
-# Type: FLOAT || Default: 1.00
-# Ver: 1.3.0
-timecycle_colorcorrection_influence = 1.8
-
-# Controls how much the fogdensity timecycle variable influences 'rtx.volumetrics.transmittanceMeasurementDistanceMeters'
-# Type: FLOAT || Default: 1.00
-# Ver: 1.3.0
-timecycle_fogdensity_influence_scalar = 2.00

@@ -54,8 +54,111 @@ namespace gta4
 		return std::clamp(weather_factor, 0.0f, 1.0f);
 	}
 
+	timecycle::wetness_state_s timecycle::m_wetness = {};
+
+	// wetness of the game's weather blend or the debug override
+	float timecycle::get_game_wetness()
+	{
+		if (const auto im = imgui::get(); im && im->m_dbg_global_wetness_override) {
+			return im->m_dbg_global_wetness;
+		}
+
+		if (!game::pTimeCycleWetnessChange || !game::pTimeCycleSpecularOffset) {
+			return 0.0f;
+		}
+
+		// normally pTimeCycleWetness but we use wetness change
+		return std::clamp(*game::pTimeCycleSpecularOffset * std::clamp(*game::pTimeCycleWetnessChange, 0.0f, 1.0f), 0.0f, 1.0f);
+	}
+
+	// follows the game wetness while it rains and holds + fades out a level derived from the rain peak once the weather clears.
+	// the result never exceeds the rain peak and the game takes over again as soon as it rains or is wetter than the held level.
+	// vehicles get wet within a few seconds of rain and dry up over half the fade time, starting with the hold
+	void timecycle::update_wetness()
+	{
+		const auto gs = comp_settings::get();
+		auto& w = m_wetness;
+
+		// clamped so a single hitch does not eat the hold time
+		const float dt = remix_vars::is_paused() ? 0.0f : std::min(remix_vars::get_frametime() * 0.001f, 0.25f);
+
+		const auto is_rain_weather = [](const game::eWeatherType wt)
+			{
+				return wt == game::WEATHER_RAIN || wt == game::WEATHER_DRIZZLE || wt == game::WEATHER_LIGHTNING;
+			};
+
+		// the game wetness dips while it rains, the hold only starts once the weather moves away from rain
+		const bool rain_ahead = game::weather_type_new && is_rain_weather(*game::weather_type_new);
+
+		w.game = get_game_wetness();
+
+		if (w.phase == wetness_phase::follow_game) {
+			w.peak = std::max(w.peak, w.game);
+		} else {
+			w.timer += dt;
+		}
+
+		const float level_scalar = std::clamp(gs->timecycle_wetness_afterrain_scalar._float(), 0.0f, 1.0f);
+		w.level = w.peak * level_scalar;
+
+		if (w.phase == wetness_phase::follow_game && !rain_ahead && (w.game < w.level || w.game <= 0.0f))
+		{
+			w.phase = wetness_phase::after_rain;
+			w.timer = 0.0f;
+			w.vehicle_drying_from = w.vehicle_progress;
+		}
+
+		const float fade_duration = std::max(gs->timecycle_wetness_afterrain_fade_seconds._float(), 0.0f);
+
+		float level_left = 1.0f;
+		if (w.phase == wetness_phase::after_rain)
+		{
+			const float fade_time = w.timer - std::max(gs->timecycle_wetness_afterrain_hold_seconds._float(), 0.0f);
+
+			if (fade_time > 0.0f)
+			{
+				const float x = fade_duration > 0.0f ? std::min(fade_time / fade_duration, 1.0f) : 1.0f;
+				level_left = 1.0f - x * x * (3.0f - 2.0f * x);
+			}
+
+			// raining again: the faded peak keeps the world where it is
+			if (w.game > w.level * level_left || (rain_ahead && w.game > 0.0f))
+			{
+				w.phase = wetness_phase::follow_game;
+				w.peak = std::max(w.game, w.peak * level_left);
+				w.level = w.peak * level_scalar;
+				w.timer = 0.0f;
+				level_left = 1.0f;
+			}
+		}
+
+		w.effective = std::max(w.game, w.level * level_left);
+
+		if (w.phase == wetness_phase::follow_game)
+		{
+			if (w.game > 0.0f)
+			{
+				const float wet_duration = std::max(gs->timecycle_wetness_vehicle_wet_seconds._float(), 0.0f);
+				w.vehicle_progress = wet_duration > 0.0f ? std::min(w.vehicle_progress + dt / wet_duration, 1.0f) : 1.0f;
+			}
+		}
+		else
+		{
+			const float dry_duration = fade_duration * 0.5f;
+			w.vehicle_progress = dry_duration > 0.0f ? w.vehicle_drying_from * std::max(1.0f - w.timer / dry_duration, 0.0f) : 0.0f;
+		}
+
+		w.vehicle = w.vehicle_progress * w.vehicle_progress * (3.0f - 2.0f * w.vehicle_progress);
+
+		// ripples follow the rain itself so they settle at the min value while the after-rain wetness is held
+		const float ripple_min = gs->timecycle_wetness_ripple_min._float();
+		const float ripple_max = gs->timecycle_wetness_ripple_max._float();
+		w.ripple_strength = ripple_min + (ripple_max - ripple_min) * std::pow(w.game, std::max(gs->timecycle_wetness_ripple_curve._float(), 0.0f));
+	}
+
 	void timecycle::translate_and_apply_timecycle_settings()
 	{
+		PROFILE_ZONE();
 		auto unpack_uint32 = [](const uint32_t& in, float* out)
 			{
 				out[0] = static_cast<float>(in >> 16 & 0xFF) / 255.0f;
@@ -128,7 +231,17 @@ namespace gta4
 
 			// ----------------
 
-			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness");
+			update_wetness();
+
+			static auto rtxWetRippleStrength = vars->get_option("rtx.wet.rippleStrength", "0.08");
+			if (gs->timecycle_wetness_enabled._bool() && gs->timecycle_wetness_ripple_enabled._bool() && rtxWetRippleStrength)
+			{
+				val.value = m_wetness.ripple_strength;
+				vars->add_queue_entry(rtxWetRippleStrength, val, 0.0f, false, 0.0005f); // the ripple range is smaller than the default epsilon
+			}
+
+
+			static auto rtxSkybrightness = vars->get_option("rtx.skyBrightness", "0.1");
 			if (!using_atmos && gs->timecycle_skylight_enabled.get_as<bool>() && rtxSkybrightness)
 			{
 				val.value = timecycle->mSkyLightMultiplier * gs->timecycle_skylight_scalar.get_as<float>();
@@ -163,46 +276,61 @@ namespace gta4
 			}
 
 
-			static auto rtxBloomBurnIntensity = vars->get_option("rtx.bloom.burnIntensity");
-			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold");
+			static auto rtxBloomBurnIntensity = vars->get_option("rtx.bloom.burnIntensity", "0");
+			static auto rtxBloomLuminanceThreshold = vars->get_option("rtx.bloom.luminanceThreshold", "0");
 			if (gs->timecycle_bloom_enabled.get_as<bool>() && rtxBloomBurnIntensity && rtxBloomLuminanceThreshold)
 			{
-				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
-
-				// allow min clamping at night with no cutscene playing
-				if (gs->timecycle_bloom_night_min_clamp_enabled._bool() && !is_playing_cutscene && game::m_game_clock_hours && game::m_game_clock_minutes &&
-					(*game::m_game_clock_hours < 6 || *game::m_game_clock_hours >= 19)) 
+				float night_factor = 0.0f;
+				const bool can_clamp = !is_playing_cutscene && game::m_game_clock_hours && game::m_game_clock_minutes;
+				if (can_clamp)
 				{
 					const int& hour = *game::m_game_clock_hours;
 					const int& minute = *game::m_game_clock_minutes;
-					float fade_scale = 1.0f;
 
 					if (hour >= 20 || hour < 5) {
-						fade_scale = 1.0f;
+						night_factor = 1.0f;
+					} else if (hour == 19) {
+						night_factor = static_cast<float>(minute) / 60.0f;
+					} else if (hour == 5) {
+						night_factor = 1.0f - static_cast<float>(minute) / 60.0f;
 					}
-					else if (hour >= 19) {
-						fade_scale = static_cast<float>(minute) / 60.0f; // 0.0 at 18:00, 1.0 at 19:00
-					}
-					else if (hour == 5)
-					{
-						const float fade_progress = static_cast<float>(minute) / 60.0f; // 0.0 at 05:00, 1.0 at 06:00
-						fade_scale = 1.0f - fade_progress;
-					}
-					
-					val.value = std::max(gs->timecycle_bloom_night_min_clamp_value._float() * fade_scale, val.value);
+				}
+
+				const bool clamp_night = can_clamp && gs->timecycle_bloom_night_min_clamp_enabled._bool();
+				const bool clamp_day = can_clamp && gs->timecycle_bloom_day_min_clamp_enabled._bool();
+				const float day_factor = 1.0f - night_factor;
+
+				val.value = timecycle->mBloomIntensity * gs->timecycle_bloomintensity_scalar.get_as<float>();
+				
+				if (clamp_night) {
+					val.value = std::max(gs->timecycle_bloom_night_min_clamp_value._float() * night_factor, val.value);
+				}
+
+				if (clamp_day) {
+					val.value = std::max(gs->timecycle_bloom_day_min_clamp_value._float() * day_factor, val.value);
 				}
 
 				vars->add_queue_entry(rtxBloomBurnIntensity, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mBloomIntensity);
-				
+
+				// -----
 
 				val.value = timecycle->mBloomThreshold * gs->timecycle_bloomthreshold_scalar.get_as<float>();
+				
+				if (clamp_night) {
+					val.value = std::max(gs->timecycle_bloomthreshold_night_min_clamp_value._float() * night_factor, val.value);
+				}
+
+				if (clamp_day) {
+					val.value = std::max(gs->timecycle_bloomthreshold_day_min_clamp_value._float() * day_factor, val.value);
+				}
+
 				vars->add_queue_entry(rtxBloomLuminanceThreshold, val);
 				ASSIGN_IMGUI_VIS_FLOAT(mBloomThreshold);
 			}
 
 
-			static auto rtxTonemapColorBalance = vars->get_option("rtx.tonemap.colorBalance");
+			static auto rtxTonemapColorBalance = vars->get_option("rtx.tonemap.colorBalance", "1 1 1");
 			if (gs->timecycle_colorcorrection_enabled.get_as<bool>() && rtxTonemapColorBalance)
 			{
 				Vector temp_color_offset;
@@ -217,8 +345,10 @@ namespace gta4
 					im->m_timecyc_curr_mTemperature_offset = temp_color_offset;
 				}
 
-				Vector4D color_correction;
-				unpack_uint32(timecycle->mColorCorrection, &color_correction.x);
+				Vector4D color_correction_og;
+				unpack_uint32(timecycle->mColorCorrection, &color_correction_og.x);
+
+				Vector4D color_correction(color_correction_og);
 
 				const auto& cc_influence = gs->timecycle_colorcorrection_influence.get_as<float>();
 				color_correction.x *= cc_influence;
@@ -229,11 +359,11 @@ namespace gta4
 				val.vector[1] = color_correction.y + temp_color_offset.y;
 				val.vector[2] = color_correction.z + temp_color_offset.z;
 				vars->add_queue_entry(rtxTonemapColorBalance, val);
-				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction);
+				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction_og);
 			}
 
 
-			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation");
+			static auto rtxTonemapSaturation = vars->get_option("rtx.tonemap.saturation", "1");
 			if (gs->timecycle_desaturation_enabled.get_as<bool>() && rtxTonemapSaturation)
 			{
 				const float far_desaturation_influence = gs->timecycle_fardesaturation_influence.get_as<float>() * map_range(timecycle->mDesaturationFar, 0.0f, 1.0f, 0.0f, 0.4f);
@@ -246,7 +376,7 @@ namespace gta4
 			}
 
 
-			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias");
+			static auto rtxTonemapExposureBias = vars->get_option("rtx.tonemap.exposureBias", "0");
 			if (gs->timecycle_gamma_enabled.get_as<bool>() && rtxTonemapExposureBias)
 			{
 				val.value = -(1.0f - timecycle->mGamma) + gs->timecycle_gamma_offset.get_as<float>();
@@ -274,7 +404,7 @@ namespace gta4
 			im->m_timecyc_curr_mSkyBottomColorFogDensity.z = val.vector[2];
 			im->m_timecyc_curr_mSkyBottomColorFogDensity.w = val.vector[3];
 
-			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo");
+			static auto rtxVolumetricsSingleScatteringAlbedo = vars->get_option("rtx.volumetrics.singleScatteringAlbedo", "1 1 1");
 			if (!using_atmos && gs->timecycle_fogcolor_enabled.get_as<bool>() && rtxVolumetricsSingleScatteringAlbedo)
 			{
 				const auto& base_strength = gs->timecycle_fogcolor_base_strength.get_as<float>();
@@ -298,7 +428,7 @@ namespace gta4
 			}
 
 			float atmos_height = 0.0f;
-			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters");
+			static auto rtxVolumetricsAtmosphereHeightMeters = vars->get_option("rtx.volumetrics.atmosphereHeightMeters", "1000");
 			if (gs->timecycle_skyhorizonheight_enabled.get_as<bool>() && rtxVolumetricsAtmosphereHeightMeters)
 			{
 				// Base atmosphere height from timecycle
@@ -344,7 +474,7 @@ namespace gta4
 				ASSIGN_IMGUI_VIS_FLOAT(mSkyHorizonHeight);
 			}
 
-			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters");
+			static auto rtxVolumetricsTransmittanceMeasurementDistanceMeters = vars->get_option("rtx.volumetrics.transmittanceMeasurementDistanceMeters", "200");
 			if (!using_atmos && gs->timecycle_fogdensity_enabled.get_as<bool>() && rtxVolumetricsTransmittanceMeasurementDistanceMeters)
 			{
 				val.value = map_range(fog_color_density.w, 0.0f, 0.9f, 200.0f, 0.6f)
@@ -382,28 +512,40 @@ namespace gta4
 				const char* const game_prev = weather_type_to_preset(*game::weather_type_prev);
 				const char* const game_new  = weather_type_to_preset(*game::weather_type_new);
 
-				static char game_val_buff[256] = {};
-				uint32_t game_val_str_size = 0u;
+				// reading the runtime's weather blocks until the runtime has processed everything queued before the call,
+				// so it is only compared when the game's weather changes and every few hundred frames
+				constexpr std::uint32_t WEATHER_CHECK_INTERVAL_FRAMES = 300u;
+				constexpr std::uint32_t WEATHER_MISMATCH_CHECK_INTERVAL_FRAMES = 30u;
 
-				const auto bridge = shared::common::remix_api::get().m_bridge;
+				static game::eWeatherType s_checked_prev = static_cast<game::eWeatherType>(~0u);
+				static game::eWeatherType s_checked_new = static_cast<game::eWeatherType>(~0u);
+				static std::uint32_t s_frames_until_check = 0u;
+				static bool s_mismatch = true;
 
-				bridge.GetGameValue("__weather.previous", game_val_buff, sizeof(game_val_buff), &game_val_str_size);
-				const auto remix_prev = std::string_view(game_val_buff);
+				const auto& bridge = shared::common::remix_api::get().m_bridge;
 
-				bridge.GetGameValue("__weather.target", game_val_buff, sizeof(game_val_buff), &game_val_str_size);
-				const auto remix_target = std::string_view(game_val_buff);
+				if (!s_frames_until_check || s_checked_prev != *game::weather_type_prev || s_checked_new != *game::weather_type_new)
+				{
+					char remix_prev[256] = {};
+					char remix_target[256] = {};
+					uint32_t str_size = 0u;
 
-				const bool mismatch =	remix_prev.empty() || remix_prev == "(initial)" ||
-										remix_prev != game_prev || remix_target != game_new;
+					bridge.GetGameValue("__weather.previous", remix_prev, sizeof(remix_prev), &str_size);
+					bridge.GetGameValue("__weather.target", remix_target, sizeof(remix_target), &str_size);
+
+					const std::string_view prev = remix_prev;
+					s_mismatch = prev.empty() || prev == "(initial)" || prev != game_prev || std::string_view(remix_target) != game_new;
+
+					s_checked_prev = *game::weather_type_prev;
+					s_checked_new = *game::weather_type_new;
+					s_frames_until_check = s_mismatch ? WEATHER_MISMATCH_CHECK_INTERVAL_FRAMES : WEATHER_CHECK_INTERVAL_FRAMES;
+				}
+
+				s_frames_until_check--;
 
 				bridge.SetGameValue("__weather.target", game_new);
 				bridge.SetGameValue("__weather.blend_absolute", std::to_string(*game::weather_change_value).c_str());
-
-				if (mismatch) {
-					bridge.SetGameValue("__weather.previous_target", game_prev);
-				} else {
-					bridge.SetGameValue("__weather.previous_target", "");
-				}
+				bridge.SetGameValue("__weather.previous_target", s_mismatch ? game_prev : "");
 			}
 		}
 	}

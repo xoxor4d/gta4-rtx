@@ -2,22 +2,27 @@
 
 ### Install using the installer:
 1. Download <LINK_TO_MOD_ZIP>
-2. Download <LINK_TO_INSTALLER>
+2. Download <LINK_TO_RUNTIME_ZIP>
+3. Download <LINK_TO_INSTALLER>
 
-3. Place both files in the same folder (_no need to copy them to your game folder_) and run `GTAIV-Remix-CompMod-Installer.exe` 
-4. Use the File Dialog to select your `GTAIV.exe` which is located in your GTAIV install folder
+4. Place all three files in the same folder (_no need to copy them to your game folder_) and run `GTAIV-Remix-CompMod-Installer.exe` 
+5. Use the File Dialog to select your `GTAIV.exe` which is located in your GTAIV install folder
 
-5. If this is your first time installing, the installer will ask if you want to install a custom Fork of [FusionFix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix/tree/feature/rtx-remix-rebase1)  
+6. If this is your first time installing, the installer will ask if you want to install a custom Fork of [FusionFix](https://github.com/xoxor4d/GTAIV.EFLC.FusionFix.RTXRemix/tree/feature/rtx-remix-rebase1)  
     - Press YES - If you already have FusionFix installed, it's definitely recommended to install this because the original, unmodified version has a few incompatibilities with RTX Remix. If you do not have FusionFix installed, you are free to choose. It's not a requirement but highly recommended.
 
-6. The installer will ask you if you want to download the required [base-remix-mod](https://github.com/xoxor4d/gta4-rtx-base-mod).  
+7. The installer will ask you if you want to download the required [base-remix-mod](https://github.com/xoxor4d/gta4-rtx-base-mod).  
     - Press YES - The CompMod will not function correctly without it - so make sure to install it.
     - Use the `GIT` install method (recommended) because its easier and faster to update to new versions (and uses less bandwidth)
 
-7. The installer will ask you if you want to download the optional [gta4-autopbr-mod](https://github.com/xoxor4d/gta4-rtx-autopbr-mod).
+8. The installer will ask which version of the optional [gta4-autopbr-mod](https://github.com/xoxor4d/gta4-rtx-autopbr-mod) you want to use.
     - This mod converts a bunch of game materials to approximated PBR-materials and makes the game less plasticy. It is entirely optional.
+    - `Packaged version` (highly recommended, loads much faster): the installer opens a download page (Mega or Google Drive) and shows two steps:  
+      download `GTAIV-AutoPBR-X.X.X.zip` and extract it into your GTAIV folder (next to `GTAIV.exe`). The zip already contains `rtx-remix/mods/z_gta4rtx_autopbr`.  
+      To update later, re-run the installer, pick the packaged version again and compare the installed version it shows with the newest zip. Delete everything inside `rtx-remix/mods/z_gta4rtx_autopbr` before extracting a newer zip.
+    - `GitHub version`: loose files downloaded by the installer using the `GIT`/zip method chosen for the base mod. Slower to load.
 
-8. Make sure that you remove all custom launch arguments for GTAIV in Steam (if you have any set and use Steam to run the game)
+9. Make sure that you remove all custom launch arguments for GTAIV in Steam (if you have any set and use Steam to run the game)
 
 <br>
 
@@ -36,9 +41,10 @@
 
 ### OR Install manually (no need to do this if you've used the installer):
 1. Download <LINK_TO_MOD_ZIP>
+2. Download <LINK_TO_RUNTIME_ZIP>
 
-3. Open the zip and extract all files contained inside the `GTAIV-Remix-CompatibilityMod` folder into your GTAIV directory (next to the `GTAIV.exe`). Overwrite all when prompted.
-4. Go into your `.trex` folder and find `d3d9_runtime.zip`. Extract the content (`d3d9.dll`) into your `.trex` folder.
+3. Open the compatibility mod zip and extract all files contained inside the `GTAIV-Remix-CompatibilityMod` folder into your GTAIV directory (next to the `GTAIV.exe`). Overwrite all when prompted.
+4. Open the remix runtime zip and extract its content (the `.trex` folder and the files next to it) into your GTAIV directory as well. Overwrite all when prompted.
 5. If you want to use FusionFix or have it installed already, it's definitely recommended to install rtx-remix fork of it.  
 You can find the files inside `_installer_options/FusionFix_RTXRemixFork`. Extract the `plugins` & `update` into your GTAIV directory and override any existing files.  
 You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen/plugins` or `mode_windowed/plugins`.

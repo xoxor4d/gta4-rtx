@@ -129,6 +129,8 @@ namespace gta4::game
 	extern uint32_t hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub;
 	extern uint32_t retn_addr__on_instanced_render__pre_setup_vs_ps_pass_stub;
 	extern uint32_t retn_addr__on_instanced_render__post_setup_vs_ps_pass_stub;
+	extern uint32_t hk_addr__on_instanced_render__geometry_stub;
+	extern uint32_t retn_addr__on_instanced_render__geometry_stub;
 	extern uint32_t retn_addr__on_phone_phase_clear_stub;
 	extern uint32_t func_addr__on_sky_render_stub;
 	extern uint32_t retn_addr__on_sky_render_stub;
@@ -142,6 +144,41 @@ namespace gta4::game
 
 	extern uint32_t retn_addr__pre_entity_surfs_stub;
 	extern uint32_t hk_addr__post_entity_surfs_stub;
+	extern uint32_t hk_addr__post_entity_surfs_stub2; // second return of CDrawEntityDC::ExecuteCommand (no drawable, alternate draw)
+
+	// remix api static geometry path
+	extern uint32_t func_addr__CEntity_AddToDrawListBuckets;
+	extern uint32_t func_addr__CRenderPhase_BuildDrawListWrapper;
+	extern uint32_t func_addr__CEntityDrawInfo_RenderBuckets; // sorted alpha entities (gta_alpha, glass, wire ...)
+	extern uint32_t func_addr__CDrawSkinnedEntityDC_Execute;  // dynamic entities (CObject), skinned or not
+	extern uint32_t func_addr__CRenderer_RenderDrawableGeometriesWithLightsInArea; // per geometry area lights (large alpha entities, wires)
+	extern uint32_t hk_addr__frag_type_dc_draw; // call rage::fragType::Draw inside CDrawFragTypeDC::Execute
+	extern uint32_t func_addr__fragType_Draw;   // resolved from the call above
+	extern void** pModelInfoPtrs;               // CModelInfo::ms_modelInfoPtrs
+	extern uint32_t func_addr__CBaseDC_operator_new;
+	extern uint32_t func_addr__CBaseDC_Init;
+	extern uint32_t func_addr__CDrawListMgr_AddModelInfoReference;
+	extern uint32_t func_addr__grmGeometryQB_Draw;
+	extern uint32_t func_addr__grmGeometryQB_dtor;
+	extern uint32_t func_addr__grcTexturePC_dtor; // releases the D3D texture (+0x18), its address can be reused by a new texture
+	extern uint32_t func_addr__grmShader_DrawGeometry; // runs every pass of the shader's technique for one geometry
+	extern uint32_t func_addr__grmShader_DrawSkinned;  // same for skinned geometry (grmGeometryQB::DrawSkinned uploads the bones)
+	extern int* pForcedTechnique;  // -1 = none (CShaderFx_PushForcedTechnique)
+	extern std::uint8_t* pBikeHelmetDrawFlag; // set while CPed::EnableBikeHelmet draws (grmShader::DrawSkinned adds device state)
+	extern int* pTechniqueDefault;
+	extern int* pTechniqueAlt;     // used instead of the default technique while grmRenderState1 is set
+	extern int* pGrmRenderState1;
+	extern uint32_t func_addr__CDrawPedDC_Execute;
+	extern uint32_t func_addr__CDrawPlayerDC_Execute;
+	extern uint32_t func_addr__CDrawPedPropDC_Execute;
+	extern uint32_t func_addr__CDrawPedPropsDC_Execute;
+	extern uint32_t func_addr__CDrawSLODPedDC_Execute; // super low lod ped (one shared skinned model, gta_default)
+	extern uint32_t func_addr__CCustomShaderEffectPedBoneDamageFX_SetShaderVariables; // per component: bone damage palette and wound textures of a ped
+	extern DWORD func_addr__CGtaDrawable_BeforeAddToDrawList;
+	extern DWORD func_addr__CGtaDrawable_AfterDraw;
+	extern void* pgDrawListMgr;
+	extern uint32_t* pDrawCommandIndexCounter;
+	extern void** pCRenderPhase_sm_pCurrent;
 
 	extern uint32_t retn_addr__pre_vehicle_surfs_stub;
 	extern uint32_t hk_addr__post_vehicle_surfs_stub;
@@ -162,6 +199,28 @@ namespace gta4::game
 
 	extern uint32_t retn_addr__pre_draw_water;
 	extern uint32_t hk_addr__post_draw_water;
+
+	extern uint32_t func_addr__CWater_ScanThroughBlocks;
+	extern uint32_t func_addr__CWater_BlockHit;
+	extern uint32_t func_addr__CWater_CalculateWavesForCoordinate;
+	extern uint32_t func_addr__CWater_RenderHighDetailWaterRectangle;
+	extern uint32_t func_addr__CWater_DrawHighDetailPrimitive;
+	extern uint32_t func_addr__CWater_RenderWaterRectangle;
+	extern uint32_t func_addr__grcViewport_IsSphereVisible;
+	extern int* pWaterDetailDist;            // DETAILEDWATERDIST, half size of the tessellated window around the camera
+	extern int* pWaterRenderBufferIndex;     // render thread buffer of the double buffered water state
+	extern float* pWaterCameraCoordsRT;      // [2][4]: camera x, y of each buffer
+	extern int* pWaterDetailRangeRender;     // x min, x max, y min, y max of the tessellated window (render thread)
+	extern float* pWaterDynamicHeightRT;     // [2][100][100] simulation heights, 2 units per cell
+	extern std::uint8_t* pWaterRectFrustumCull; // block scan tests each water rectangle against the render phase frustum
+
+	// "vehicle imposters" (-disableimposters): distant street light / aircraft sprites and instanced fake cars, render thread
+	extern uint32_t func_addr__CDistantLights_Render;               // (float night_fade): street light + aircraft sprites
+	extern uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer; // flushes the sprite buffer through grcBegin / grcEnd (also used by CScrollBars)
+	extern uint32_t func_addr__VehicleImposters_RenderNight;        // instanced headlight model along the light strings
+	extern uint32_t func_addr__VehicleImposters_RenderDay;          // instanced car models along the light strings
+	extern uint32_t func_addr__VehicleImposters_FlushInstances;     // uploads the instance records and issues the instanced draw
+	extern void** pCurrentImTexture;                                // grcTexturePC* of the immediate mode draws (rage::grcBindTexture)
 
 	extern uint32_t retn_addr__pre_draw_statics;
 	extern uint32_t hk_addr__post_draw_statics;

@@ -1,8 +1,8 @@
 #pragma once
 
 constexpr auto COMP_MOD_VERSION_MAJOR = 1;
-constexpr auto COMP_MOD_VERSION_MINOR = 5;
-constexpr auto COMP_MOD_VERSION_PATCH = 2;
+constexpr auto COMP_MOD_VERSION_MINOR = 7;
+constexpr auto COMP_MOD_VERSION_PATCH = 1;
 
 // adjust for pre-release builds
 constexpr auto COMP_MOD_PRE_RELEASE_NUM = 0;
@@ -72,6 +72,7 @@ constexpr auto COMP_MOD_PRE_RELEASE_NUM = 0;
 #include "../shared/utils/memory.hpp"
 #include "../shared/utils/function.hpp"
 #include "../shared/common/console.hpp"
+#include "../shared/common/profiler.hpp"
 #include "../shared/common/loader.hpp"
 #include "game/structs.hpp"
 #include "game/model_hashes.hpp"

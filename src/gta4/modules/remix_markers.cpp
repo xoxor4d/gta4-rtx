@@ -131,6 +131,8 @@ namespace gta4
 			return;
 		}
 
+		const auto cs = comp_settings::get();
+
 		Vector player_pos;
 		player_pos = game::FindPlayerCentreOfWorld(&player_pos);
 
@@ -202,6 +204,11 @@ namespace gta4
 			}
 
 			if (m.internal__is_hidden) {
+				continue;
+			}
+
+			// ignore seabed marker (no longer required, water with shoreline modifier terminates rays itself)
+			if (cs->water_disable_seabed_plane._bool() && m.index == 1000) {
 				continue;
 			}
 
