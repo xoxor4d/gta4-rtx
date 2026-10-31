@@ -81,7 +81,17 @@ jobs:
             }
             exit 1
           }
-          
+
+          # Copy the pdb of the asi (keeps the linker name so debuggers can match it)
+          $pdbPath = "build\bin\Release\gta4-rtx.pdb"
+          if (Test-Path $pdbPath) {
+            Copy-Item -Path $pdbPath -Destination $modFolder -Force
+            Write-Host "Copied gta4-rtx.pdb to mod folder"
+          } else {
+            Write-Host "Error: gta4-rtx.pdb not found at $pdbPath"
+            exit 1
+          }
+
           # Create _installer_options folder and copy assets_installer
           $installerOptionsFolder = Join-Path $tempDir "_installer_options"
           New-Item -ItemType Directory -Path $installerOptionsFolder -Force | Out-Null
