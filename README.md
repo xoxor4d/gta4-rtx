@@ -65,9 +65,10 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 
 ###### The good:  
 - **DLSS 4.5 (Ray Reconstruction 2) support**
-- **DLSS 5.0 (V2) (Neural Rendering) support** - Official NV version (with additional changes by [Sparkles (RemixPlus)](https://github.com/RemixProjGroup/dxvk-remix/commits/rebased-9-19/)
-- Includes an **Atmospheric sky system with Volumetric Clouds** made by the Community [Remix Plus / Numos](https://github.com/RemixProjGroup/dxvk-remix)
-- **99% of Meshes are Rendered via the RemixApi** - this drastically improves performance and reduces the CPU-Bottleneck
+- **DLSS 5.0 (V2) (Neural Rendering) support** - Official NV version with additional changes by [Sparkles (RemixPlus)](https://github.com/RemixProjGroup/dxvk-remix/commits/rebased-9-19/)
+- Includes __Numos__, an atmospheric sky system with volumetric clouds by [Sparkles (Remix Plus)](https://github.com/RemixProjGroup/dxvk-remix)
+- **99% of Meshes are Rendered via the RemixApi** - this drastically improves performance and reduces the CPU-Bottleneck  
+- HDR support by [TheGreatHMMMM](https://github.com/TheGreatHMMMM/halo-dxvk-remix/commit/af8905c67acde9f3f5e9128fc6c793daa259ed80) (Alt HDR10 tonemapper) and added HDR support for the default Psycho17 tonemapper
 - Full fixed-function fallback in case the API isn't used. Still increases performance compared to grabbing data from Vertexshaders
 - Cascaded Anti Culling of meshes
 - All game lights (including the sun) are translated to remix lights
@@ -180,7 +181,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [Alex from Digital Foundry](https://www.youtube.com/watch?v=vGxPdcMQfwg)
 - [Sparkles (Remix Plus - Numos - Remix Optimization)](https://github.com/Kim2091)
 - [CR (Remix Plus)](https://github.com/sambow23)
-- [TheGreatHMMMM (Remix Plus)](https://github.com/TheGreatHMMMM)
+- [TheGreatHMMMM (Remix Plus - HDR implementation)](https://github.com/TheGreatHMMMM)
 - [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)
 - All 🍓 Testers
 

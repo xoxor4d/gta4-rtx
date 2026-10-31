@@ -345,8 +345,10 @@ namespace gta4
 					im->m_timecyc_curr_mTemperature_offset = temp_color_offset;
 				}
 
-				Vector4D color_correction;
-				unpack_uint32(timecycle->mColorCorrection, &color_correction.x);
+				Vector4D color_correction_og;
+				unpack_uint32(timecycle->mColorCorrection, &color_correction_og.x);
+
+				Vector4D color_correction(color_correction_og);
 
 				const auto& cc_influence = gs->timecycle_colorcorrection_influence.get_as<float>();
 				color_correction.x *= cc_influence;
@@ -357,7 +359,7 @@ namespace gta4
 				val.vector[1] = color_correction.y + temp_color_offset.y;
 				val.vector[2] = color_correction.z + temp_color_offset.z;
 				vars->add_queue_entry(rtxTonemapColorBalance, val);
-				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction);
+				ASSIGN_IMGUI_VIS_UNPACKED_COLOR(mColorCorrection, color_correction_og);
 			}
 
 

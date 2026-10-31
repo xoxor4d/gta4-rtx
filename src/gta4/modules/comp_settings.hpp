@@ -2005,8 +2005,8 @@ namespace gta4
 			variable timecycle_colorcorrection_influence = {
 				"timecycle_colorcorrection_influence",
 				("Controls how much the timecycle color correction variable influences 'rtx.tonemap.colorBalance'"),
-				"1.7.0",
-				1.5f
+				"1.7.1",
+				2.0f
 			};
 
 			variable timecycle_colortemp_enabled = {

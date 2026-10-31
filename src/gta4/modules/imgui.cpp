@@ -290,7 +290,7 @@ namespace gta4
 		CENTER_URL("Alex from Digital Foundry", "https://www.youtube.com/watch?v=vGxPdcMQfwg");
 		CENTER_URL("Sparkles (Remix Plus - Numos - Initial DLSS5 Integration)", "https://github.com/Kim2091");
 		CENTER_URL("CR (Remix Plus)", "https://github.com/sambow23");
-		CENTER_URL("TheGreatHMMMM (Remix Plus)", "https://github.com/TheGreatHMMMM");
+		CENTER_URL("TheGreatHMMMM (Remix Plus - HDR Impl.)", "https://github.com/TheGreatHMMMM");
 		CENTER_URL("Gokuwashere (Remix Plus)", "https://github.com/BrunchyChineapple");
 
 		ImGui::Spacing(0.0f, 24.0f);
@@ -1755,18 +1755,17 @@ namespace gta4
 
 				ImGui::BeginDisabled(!gs->api_static_enabled.get_as<bool>());
 				compsettings_bool_widget("Static Geometry: Retained Instances", gs->api_static_retained);
-				ImGui::BeginDisabled(!gs->api_static_retained.get_as<bool>());
-				compsettings_int_widget("Hide Retained Placements After (frames)", gs->api_static_retained_hide_frames, 1, 600);
-				ImGui::EndDisabled();
 				ImGui::EndDisabled();
 
 				compsettings_bool_widget("Peds", gs->api_peds_enabled);
 				compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
 
-				ImGui::SameLine(275, 0);
+				ImGui::SameLine(0, 30);
+				const auto curr_x = ImGui::GetCursorPosX();
 				ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
 				{
-					compsettings_float_widget("Ped Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
+					ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - ImGui::GetCursorPosX() - curr_x);
+					compsettings_float_widget("Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
 					ImGui::EndDisabled();
 				}
 				
@@ -2697,7 +2696,8 @@ namespace gta4
 		ImGui::SameLine(275, 0);
 		ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
 		{
-			compsettings_float_widget("Ped Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("Wounds Opacity").x - 8.0f);
+			compsettings_float_widget("Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
 			ImGui::EndDisabled();
 		}
 
@@ -2811,6 +2811,9 @@ namespace gta4
 		ImGui::Indent(4);
 		ImGui::TextURL("Game Graphic Settings", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#game-graphic-settings", true);
 		
+		ImGui::Spacing(0, 2);
+		ImGui::TextURL("60 FPS Cap Suggestion", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#suggestion-60-fps-target", true);
+
 		ImGui::Spacing(0, 2);
 		ImGui::TextURL("Performance / Quality Tipps", "https://github.com/xoxor4d/gta4-rtx/wiki/Troubleshooting---Guides#performance--quality-tipps", true);
 		
