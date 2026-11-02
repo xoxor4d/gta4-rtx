@@ -105,16 +105,34 @@ std::wstring to_wide(const std::string& text)
 	return result;
 }
 
-// Renames `path` to `path + suffix` and logs it when the file existed
-bool rename_with_suffix(const std::string& path, const std::string& suffix, const std::string& display_name)
+// Renames `from` to `to` (replacing an existing target) and logs it when the file existed
+bool rename_file(const std::string& from, const std::string& to, const std::string& display_from, const std::string& display_to)
 {
-	const bool renamed = MoveFileExA(path.c_str(), (path + suffix).c_str(), MOVEFILE_REPLACE_EXISTING) != FALSE;
+	const bool renamed = MoveFileExA(from.c_str(), to.c_str(), MOVEFILE_REPLACE_EXISTING) != FALSE;
 	if (renamed) {
-		std::cout << PAD << "Renamed '" << display_name << "' to '" << display_name << suffix << "'\n";
+		std::cout << PAD << "Renamed '" << display_from << "' to '" << display_to << "'\n";
 	}
 
 	Sleep(25);
 	return renamed;
+}
+
+bool rename_with_suffix(const std::string& path, const std::string& suffix, const std::string& display_name)
+{
+	return rename_file(path, path + suffix, display_name, display_name + suffix);
+}
+
+// Windows build number read from the registry (unaffected by compatibility shims or the manifest), 0 on failure
+DWORD get_windows_build_number()
+{
+	wchar_t build[32] = { 0 };
+	DWORD size = sizeof(build);
+	const auto res = RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"CurrentBuildNumber", RRF_RT_REG_SZ, nullptr, build, &size);
+	if (res != ERROR_SUCCESS) {
+		return 0;
+	}
+
+	return static_cast<DWORD>(wcstoul(build, nullptr, 10));
 }
 
 // Whether a file can be created in `dir`; the installer runs as the invoking user and tells them
@@ -516,6 +534,18 @@ bool download_file_to_path(const std::wstring& url, const std::filesystem::path&
 
 	out_file.close();
 	return success;
+}
+
+bool zip_contains_file(const std::filesystem::path& zip_path, const std::string& file_path_in_zip)
+{
+	mz_zip_archive zip = {};
+	if (!init_zip_from_file(zip_path, zip)) {
+		return false;
+	}
+
+	const bool found = mz_zip_reader_locate_file(&zip, file_path_in_zip.c_str(), nullptr, 0) >= 0;
+	mz_zip_reader_end(&zip);
+	return found;
 }
 
 bool extract_single_file_from_zip(const std::filesystem::path& zip_path, const std::string& file_path_in_zip, const std::filesystem::path& target_path)
@@ -943,9 +973,9 @@ bool write_delivery_mode(const std::string& game_dir, const RemoteModConfig& con
 DeliveryMode select_delivery_mode()
 {
 	const int choice = select_console_option(
-		"\n  Select how the base mod (and the AutoPBR mod, if installed via GitHub) should be installed/updated:",
+		"\n  Select how the base-remix-mod and the AutoPBR mod should be installed/updated:",
 		{
-			"Use Git checkout (RECOMMENDED, only download new/modified files without redownloading everything.",
+			"Use Git checkout (RECOMMENDED, only download new/modified files without redownloading everything.)",
 			"Use GitHub zip downloads (Downloads the complete mod even if only a single file has changed since the installer was last run.)"
 		});
 
@@ -1785,8 +1815,8 @@ int main()
 		const int reinstall_choice = select_console_option(
 			"RTX Remix Compatibility Mod was already detected. What do you want to do?",
 			{
-				"Full reinstall of the compatibility mod, base mod, and optional AutoPBR mod",
-				"Only check for updates for the base remix mod and optional AutoPBR mod"
+				"Fully reinstall (or update) the compatibility mod, base-remix-mod, and optional AutoPBR mod",
+				"ONLY check for updates for the base-remix-mod and optional AutoPBR mod"
 			});
 
 		update_remote_mods_only = reinstall_choice == 1;
@@ -1839,7 +1869,7 @@ int main()
 
 		const std::filesystem::path found_zip = comp_zip.path;
 
-		std::cout << PAD << "\nChecking for FusionFix presence ...\n";
+		std::cout << "\n" << PAD << "Checking for FusionFix presence ...\n";
 		Sleep(500);
 
 
@@ -1996,6 +2026,24 @@ int main()
 		if (!extract_zip(runtime_zip.path, game_dir)) {
 			report_extract_failure(zip_failed);
 		}
+		else if (zip_contains_file(runtime_zip.path, ".trex/rtxio_win10.dll"))
+		{
+			// the default rtxio.dll requires Windows 11 (build 22000+), the zip ships a Windows 10 variant alongside it
+			const DWORD build = get_windows_build_number();
+			if (build == 0) {
+				log_warn("Could not determine the Windows version. Keeping the default (Windows 11) rtxio.dll.");
+			}
+			else if (build >= 22000) {
+				std::cout << PAD << "Detected Windows 11 (build " << build << "), keeping the default rtxio.dll\n";
+			}
+			else
+			{
+				std::cout << PAD << "Detected Windows 10 (build " << build << "), switching to the Windows 10 rtxio.dll\n";
+				const std::string trex_dir = game_dir + "\\.trex\\";
+				rename_file(trex_dir + "rtxio.dll", trex_dir + "rtxio_win11.dll", "rtxio.dll", "rtxio_win11.dll");
+				rename_file(trex_dir + "rtxio_win10.dll", trex_dir + "rtxio.dll", "rtxio_win10.dll", "rtxio.dll");
+			}
+		}
 
 		std::cout << PAD << "> Done!\n";
 		Sleep(100); // Small delay between extractions
@@ -2100,6 +2148,8 @@ int main()
 	}
 
 	install_or_update_remote_mod(game_dir, base_mod, selected_delivery_mode, true);
+
+	std::cout << "\n";
 	install_or_update_remote_mod(game_dir, autopbr_mod, selected_delivery_mode, has_selected_delivery_mode);
 
 	// Only prompt about DirectX if this is a fresh install (a_gta4-rtx.asi doesn't exist)
