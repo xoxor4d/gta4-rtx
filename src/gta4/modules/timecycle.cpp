@@ -512,8 +512,9 @@ namespace gta4
 				const char* const game_prev = weather_type_to_preset(*game::weather_type_prev);
 				const char* const game_new  = weather_type_to_preset(*game::weather_type_new);
 
-				// reading the runtime's weather blocks until the runtime has processed everything queued before the call,
-				// so it is only compared when the game's weather changes and every few hundred frames
+				// reading and writing the runtime's weather blocks until the runtime has processed everything queued before
+				// the call, so the weather is only compared when the game's changes and every few hundred frames, and
+				// values are only written when they differ from the last write
 				constexpr std::uint32_t WEATHER_CHECK_INTERVAL_FRAMES = 300u;
 				constexpr std::uint32_t WEATHER_MISMATCH_CHECK_INTERVAL_FRAMES = 30u;
 
@@ -521,6 +522,9 @@ namespace gta4
 				static game::eWeatherType s_checked_new = static_cast<game::eWeatherType>(~0u);
 				static std::uint32_t s_frames_until_check = 0u;
 				static bool s_mismatch = true;
+				static std::string s_sent_target, s_sent_previous_target;
+				static float s_sent_blend = -1.0f;
+				constexpr float BLEND_WRITE_EPSILON = 0.005f; // the blend runs 0..1 over a weather transition
 
 				const auto& bridge = shared::common::remix_api::get().m_bridge;
 
@@ -539,13 +543,31 @@ namespace gta4
 					s_checked_prev = *game::weather_type_prev;
 					s_checked_new = *game::weather_type_new;
 					s_frames_until_check = s_mismatch ? WEATHER_MISMATCH_CHECK_INTERVAL_FRAMES : WEATHER_CHECK_INTERVAL_FRAMES;
+
+					// written again below, in case something else (dev menu) changed them in the runtime
+					s_sent_target.clear();
+					s_sent_blend = -1.0f;
+					s_sent_previous_target.clear();
 				}
 
 				s_frames_until_check--;
 
-				bridge.SetGameValue("__weather.target", game_new);
-				bridge.SetGameValue("__weather.blend_absolute", std::to_string(*game::weather_change_value).c_str());
-				bridge.SetGameValue("__weather.previous_target", s_mismatch ? game_prev : "");
+				const auto set_if_changed = [&bridge](const char* key, std::string& last_sent, std::string value)
+				{
+					if (value != last_sent)
+					{
+						bridge.SetGameValue(key, value.c_str());
+						last_sent = std::move(value);
+					}
+				};
+
+				set_if_changed("__weather.target", s_sent_target, game_new);
+				if (const float blend = *game::weather_change_value; std::fabs(blend - s_sent_blend) > BLEND_WRITE_EPSILON)
+				{
+					bridge.SetGameValue("__weather.blend_absolute", std::format("{:.4f}", blend).c_str());
+					s_sent_blend = blend;
+				}
+				set_if_changed("__weather.previous_target", s_sent_previous_target, s_mismatch ? game_prev : "");
 			}
 		}
 	}
