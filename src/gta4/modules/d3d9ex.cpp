@@ -33,7 +33,13 @@ namespace gta4
 	ULONG d3d9ex::D3D9Device::Release()
 	{
 		ULONG count = m_pIDirect3DDevice9->Release();
-		if (!count) delete this;
+		if (!count)
+		{
+			if (shared::globals::d3d_device == this) {
+				shared::globals::d3d_device = nullptr;
+			}
+			delete this;
+		}
 		return count;
 	}
 
@@ -873,7 +879,13 @@ namespace gta4
 	ULONG __stdcall d3d9ex::_d3d9::Release()
 	{
 		ULONG count = m_pIDirect3D9->Release();
-		if (!count) delete this;
+		if (!count)
+		{
+			if (shared::globals::d3d9_interface == this) {
+				shared::globals::d3d9_interface = nullptr;
+			}
+			delete this;
+		}
 		return count;
 	}
 
@@ -942,10 +954,34 @@ namespace gta4
 		return m_pIDirect3D9->GetAdapterMonitor(Adapter);
 	}
 
+	// Overlays (Social Club SDK 2.4+) create a throwaway device on their own window to hook the vtable.
+	// Such a device is refused so it never reaches the bridge.
+	bool d3d9ex::is_game_device(HWND hFocusWindow, const D3DPRESENT_PARAMETERS* pp)
+	{
+		const auto game_wnd = shared::globals::main_window;
+		if (!game_wnd) {
+			return true;
+		}
+
+		return hFocusWindow == game_wnd || (pp && pp->hDeviceWindow == game_wnd);
+	}
+
 	HRESULT __stdcall d3d9ex::_d3d9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
 	{
+		if (!is_game_device(hFocusWindow, pPresentationParameters))
+		{
+			shared::common::log("d3d9", "m_pIDirect3D9->CreateDevice: not for the game window. Refusing the device.", shared::common::LOG_TYPE::LOG_TYPE_WARN, false);
+			if (ppReturnedDeviceInterface) *ppReturnedDeviceInterface = nullptr;
+			return D3DERR_NOTAVAILABLE;
+		}
+
 		HRESULT hres = m_pIDirect3D9->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
 		shared::common::log("d3d9", "m_pIDirect3D9->CreateDevice", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+
+		if (FAILED(hres)) {
+			return hres;
+		}
+
 		*ppReturnedDeviceInterface = new d3d9ex::D3D9Device(*ppReturnedDeviceInterface);
 		shared::globals::d3d_device = *ppReturnedDeviceInterface;
 
@@ -979,7 +1015,13 @@ namespace gta4
 	ULONG __stdcall d3d9ex::_d3d9ex::Release()
 	{
 		ULONG count = m_pIDirect3D9Ex->Release();
-		if (!count) delete this;
+		if (!count)
+		{
+			if (shared::globals::d3d9_interface == this) {
+				shared::globals::d3d9_interface = nullptr;
+			}
+			delete this;
+		}
 		return count;
 	}
 
@@ -1050,8 +1092,19 @@ namespace gta4
 
 	HRESULT __stdcall d3d9ex::_d3d9ex::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
 	{
+		if (!is_game_device(hFocusWindow, pPresentationParameters))
+		{
+			shared::common::log("d3d9", "m_pIDirect3D9Ex->CreateDevice: not for the game window. Refusing the device.", shared::common::LOG_TYPE::LOG_TYPE_WARN, false);
+			if (ppReturnedDeviceInterface) *ppReturnedDeviceInterface = nullptr;
+			return D3DERR_NOTAVAILABLE;
+		}
+
 		HRESULT hres = m_pIDirect3D9Ex->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
 		shared::common::log("d3d9", "m_pIDirect3D9Ex->CreateDevice", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+
+		if (FAILED(hres)) {
+			return hres;
+		}
 
 		*ppReturnedDeviceInterface = new d3d9ex::D3D9Device(*ppReturnedDeviceInterface);
 		shared::globals::d3d_device = *ppReturnedDeviceInterface;

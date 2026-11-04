@@ -227,5 +227,6 @@ namespace gta4
 
 		static IDirect3D9* __stdcall direct3d_create9_stub(UINT sdk);
 		static IDirect3D9* WINAPI HookedDirect3DCreate9(UINT SDKVersion);
+		static bool is_game_device(HWND hFocusWindow, const D3DPRESENT_PARAMETERS* pp);
 	};
 }
