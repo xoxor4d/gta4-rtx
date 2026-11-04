@@ -78,7 +78,7 @@ workspace "gta4-rtx"
 
 	-- Release
 
-	filter "configurations:Release or configurations:ReleaseTracy"
+	filter "configurations:Release or configurations:ReleaseTracy or configurations:ReleaseSteam"
 		optimize "Full"
 
 		buildoptions {
