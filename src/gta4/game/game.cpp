@@ -85,6 +85,9 @@ namespace gta4::game
 	DWORD g_modelPointersAddr = 0u;
 	CBaseModelInfo** g_modelPointers = nullptr;
 
+	CPool** ppBuildingPool = nullptr;
+	render_cell_grid_near_s* pRenderCellGridNear = nullptr;
+
 	// --------------
 	// game functions
 
@@ -520,6 +523,12 @@ namespace gta4::game
 			pCurrentRenderPhase = (void**)*(DWORD*)offset;
 			found_pattern_count++;
 		} total_pattern_count++;
+
+		// ppBuildingPool = (CPool**)0x12BD0E8;
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(ppBuildingPool, CPool**, "81 FB ? ? ? ? 7C ? 8B 0D ? ? ? ? E8 ? ? ? ? 8B 0D ? ? ? ? E8 ? ? ? ? 5F 5E 5D B9", 10, 0x94171B);
+
+		// pRenderCellGridNear = (render_cell_grid_near_s*)0x15C1610;
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pRenderCellGridNear, render_cell_grid_near_s*, "F6 40 24 40 56 51 57 74 ? B9 ? ? ? ? E8 ? ? ? ? 5F 5E C3 B9 ? ? ? ? E8", 23, 0xAE5E78);
 
 		// end GAME_VARIABLES
 #pragma endregion

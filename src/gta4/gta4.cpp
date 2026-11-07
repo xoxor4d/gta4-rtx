@@ -117,17 +117,291 @@ namespace gta4
 		game::grcViewport viewport;
 	};
 
-	DETOUR_TYPEDEF(static_world_culling_check, BOOL, __thiscall, void* this_ptr, unkown_struct_culling* unk);
-	BOOL __fastcall static_world_culling_check_hk(game::CEntity* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
+
+	// ---
+	// anti culling mesh inspector (mapsettings ui)
+	// the snapshot runs on the game thread before the scene traversal, so it sees the finished culling state of the previous frame
+
+	namespace anticull_inspector
 	{
-		PROFILE_ZONE_N("static world culling check");
-		PROFILE_ZONE_VALUE(this_ptr->m_wModelIndex);
+		using frustum_reason = imgui::anticull_inspector_s::frustum_reason;
+		using lod_view_mode = imgui::anticull_inspector_s::lod_view_mode;
+		using instance_s = imgui::anticull_inspector_s::instance_s;
+		using trace_s = imgui::anticull_inspector_s::trace_s;
+
+		constexpr std::size_t MAX_INSTANCES = 1500u;
+		constexpr std::uint32_t SNAPSHOT_INTERVAL_FRAMES = 4u;
+
+		std::vector<instance_s> snapshot;
+		std::uint32_t frame_counter = 0u;
+
+		std::uint32_t phase_bit(const void* phase) {
+			return 1u << *reinterpret_cast<const int*>(static_cast<const std::uint8_t*>(phase) + game::RENDER_PHASE_OFFSET_INDEX);
+		}
+
+		Vector entity_position(const game::CEntity* ent) {
+			return ent->worldTransform ? Vector(&ent->worldTransform->m[3][0]) : ent->m_pos;
+		}
+
+		// temporarily hidden meshes and the lod level view (job threads)
+		bool hides(const game::CEntity* ent)
+		{
+			const auto& ins = imgui::get()->m_anticull_inspector;
+			switch (ins.active_lod_view.load(std::memory_order_relaxed))
+			{
+				case lod_view_mode::lods:
+					if (ent->m_pLod && !(ent->m_dwFlags & 0x40)) {
+						return true;
+					}
+					break;
+
+				case lod_view_mode::lowest:
+					if (ent->m_pLod) {
+						return true;
+					}
+					break;
+
+				default:
+					break;
+			}
+
+			const auto count = ins.hidden_count.load(std::memory_order_acquire);
+			for (auto i = 0u; i < count; ++i)
+			{
+				const auto& slot = ins.hidden_slots[i];
+
+				if (slot.entity.load(std::memory_order_relaxed) == ent && slot.model_index.load(std::memory_order_relaxed) == ent->m_wModelIndex) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		// called for every perspective render phase while it marks its map cells
+		void capture_primary_phase(const game::CRenderPhase_struct* phase)
+		{
+			if (phase && phase->is_primary)
+			{
+				auto& ins = imgui::get()->m_anticull_inspector;
+				ins.primary_phase_bit.store(phase_bit(phase), std::memory_order_relaxed);
+				ins.primary_lod_scale.store(*reinterpret_cast<const float*>(reinterpret_cast<const std::uint8_t*>(phase) + game::RENDER_PHASE_OFFSET_LOD_SCALE), std::memory_order_relaxed);
+			}
+		}
+
+		// returns the trace of the entity for its current visit, resets it when the entity got visited again. Needs the inspector mutex.
+		trace_s& trace_for_visit(imgui::anticull_inspector_s& ins, const game::CEntity* ent)
+		{
+			auto& t = ins.trace;
+			if (t.entity != ent || t.stamp != ent->m_dwVisibilityStamp) {
+				t = { .entity = ent, .stamp = ent->m_dwVisibilityStamp };
+			}
+
+			return t;
+		}
+
+		// frustum stage of the traced entity (job threads)
+		void trace_frustum(const game::CEntity* ent, const void* phase, const BOOL visible, const frustum_reason reason)
+		{
+			auto& ins = imgui::get()->m_anticull_inspector;
+			if (!ins.enabled || !ent || ent != ins.traced_entity.load(std::memory_order_relaxed)) {
+				return;
+			}
+
+			const auto bit = phase_bit(phase);
+			std::lock_guard lock(ins.mutex);
+			auto& t = trace_for_visit(ins, ent);
+
+			t.frustum_tested |= bit;
+			if (visible) {
+				t.frustum_passed |= bit;
+			}
+
+			if (bit & ins.primary_phase_bit.load(std::memory_order_relaxed)) {
+				t.primary_reason = reason;
+			}
+		}
+
+		// occlusion stage (job threads). Runs for every visited entity that is not past its lod distance, so it also remembers the traversal stamp.
+		void trace_occlusion(const game::CEntity* ent, const bool forced)
+		{
+			auto& ins = imgui::get()->m_anticull_inspector;
+			if (!ins.enabled || !ent) {
+				return;
+			}
+
+			if (ins.traversal_stamp.load(std::memory_order_relaxed) != ent->m_dwVisibilityStamp) {
+				ins.traversal_stamp.store(ent->m_dwVisibilityStamp, std::memory_order_relaxed);
+			}
+
+			if (ent != ins.traced_entity.load(std::memory_order_relaxed)) {
+				return;
+			}
+
+			std::lock_guard lock(ins.mutex);
+			auto& t = trace_for_visit(ins, ent);
+			t.occlusion_tested = true;
+			t.occlusion_forced = forced;
+		}
+
+		// collects building instances around the camera and publishes them to the ui (game thread)
+		void update()
+		{
+			auto& ins = imgui::get()->m_anticull_inspector;
+			if (!ins.enabled || ++frame_counter % SNAPSHOT_INTERVAL_FRAMES) {
+				return;
+			}
+
+			PROFILE_ZONE();
+			const auto pool = game::ppBuildingPool ? *game::ppBuildingPool : nullptr;
+			const auto vp = game::pViewports;
+
+			if (!pool || !pool->m_pObjects || !pool->m_pFlags || !vp || !vp->sceneviewport || !game::g_modelPointers) {
+				return;
+			}
+
+			const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
+			const auto stamp = ins.traversal_stamp.load(std::memory_order_relaxed);
+			const auto primary_bit = ins.primary_phase_bit.load(std::memory_order_relaxed);
+			const auto lod_scale = ins.primary_lod_scale.load(std::memory_order_relaxed);
+
+			snapshot.clear();
+			for (auto slot = 0; slot < pool->m_nSize; ++slot)
+			{
+				if (pool->m_pFlags[slot] & 0x80) {
+					continue;
+				}
+
+				const auto ent = reinterpret_cast<const game::CEntity*>(pool->m_pObjects + slot * pool->m_nEntrySize);
+
+				// cheap reject via the map cells the entity is linked into, before touching its model info
+				{
+					const bool lod = ent->m_dwFlags & 0x40;
+					const float cell_size = lod ? 200.0f : 50.0f;
+					const float cam_x = cam_org.x / cell_size + (lod ? 15.0f : 60.0f);
+					const float cam_y = cam_org.y / cell_size + (lod ? 15.0f : 60.0f);
+
+					const auto rect = ent->m_dwCellRect;
+					const float min_x = static_cast<float>(static_cast<int>(rect & 0x7FF) - 1024);
+					const float min_y = static_cast<float>(static_cast<int>((rect >> 11) & 0x7FF) - 1024);
+					const float max_x = min_x + static_cast<float>((rect >> 22) & 0x1F) + 1.0f;
+					const float max_y = min_y + static_cast<float>(rect >> 27) + 1.0f;
+
+					const float dx = std::max({ min_x - cam_x, 0.0f, cam_x - max_x }) * cell_size;
+					const float dy = std::max({ min_y - cam_y, 0.0f, cam_y - max_y }) * cell_size;
+					
+					if (dx * dx + dy * dy > ins.radius * ins.radius) {
+						continue;
+					}
+				}
+
+				const auto model = ent->m_wModelIndex >= 0 ? game::g_modelPointers[ent->m_wModelIndex] : nullptr;
+				if (!model) {
+					continue;
+				}
+
+				const float height = model->m_vAabbMax.z - model->m_vAabbMin.z;
+				if (model->m_fRadius < ins.min_radius || height < ins.min_height) {
+					continue;
+				}
+
+				const auto pos = entity_position(ent);
+				const float reach = ins.radius + model->m_fRadius + model->m_vCenter.Length();
+				
+				if (cam_org.DistToSqr(pos) > reach * reach) {
+					continue;
+				}
+
+				instance_s inst = {};
+				if (ent->worldTransform)
+				{
+					inst.world = *ent->worldTransform;
+					inst.world.m[0][3] = 0.0f;
+					inst.world.m[1][3] = 0.0f;
+					inst.world.m[2][3] = 0.0f;
+					inst.world.m[3][3] = 1.0f;
+				}
+				else
+				{
+					D3DXMatrixRotationZ(&inst.world, ent->m_fHeading);
+					inst.world.m[3][0] = pos.x;
+					inst.world.m[3][1] = pos.y;
+					inst.world.m[3][2] = pos.z;
+				}
+
+				const auto local_center = ((model->m_vAabbMin + model->m_vAabbMax) * 0.5f).ToD3DXVector();
+				
+				D3DXVECTOR3 center;
+				D3DXVec3TransformCoord(&center, &local_center, &inst.world);
+
+				inst.center = { center.x, center.y, center.z };
+				inst.distance = cam_org.DistTo(inst.center);
+				
+				if (inst.distance > ins.radius + model->m_fRadius) {
+					continue;
+				}
+
+				inst.entity = ent;
+				inst.lod_entity = ent->m_pLod;
+				inst.local_mins = model->m_vAabbMin;
+				inst.local_maxs = model->m_vAabbMax;
+				inst.radius = model->m_fRadius;
+				inst.height = height;
+				inst.lod_distance = ent->m_fLodDistance;
+				inst.model_index = ent->m_wModelIndex;
+				inst.lod_model_index = ent->m_pLod ? ent->m_pLod->m_wModelIndex : -1;
+				inst.lod_children = ent->m_nLodChildren;
+				inst.alpha = ent->m_alpha;
+				inst.is_lod = (ent->m_dwFlags & 0x40) != 0;
+				inst.model_loaded = ent->m_pDrawableReference != nullptr;
+				inst.visited = stamp && ent->m_dwVisibilityStamp == stamp;
+				inst.visible = inst.visited && (ent->m_dwPhaseVisible & ~ent->m_dwPhaseCulled & primary_bit) != 0u;
+
+				// the game measures an HD entity from its lod parent
+				if (!inst.is_lod && ent->m_fLodDistance > 0.0f) {
+					inst.past_lod_distance = cam_org.DistTo(ent->m_pLod ? entity_position(ent->m_pLod) : pos) > ent->m_fLodDistance * lod_scale;
+				}
+
+				if (const auto it = game::g_modelHashToName.find(static_cast<std::uint32_t>(model->m_dwModel)); it != game::g_modelHashToName.end()) {
+					inst.model_name = it->second;
+				}
+
+				snapshot.emplace_back(inst);
+			}
+
+			if (snapshot.size() > MAX_INSTANCES)
+			{
+				std::nth_element(snapshot.begin(), snapshot.begin() + MAX_INSTANCES, snapshot.end(), [](const instance_s& a, const instance_s& b) {
+					return a.distance < b.distance;
+				});
+
+				snapshot.resize(MAX_INSTANCES);
+			}
+
+			std::lock_guard lock(ins.mutex);
+			ins.published.swap(snapshot);
+			++ins.published_generation;
+		}
+	}
+
+
+	DETOUR_TYPEDEF(static_world_culling_check, BOOL, __thiscall, void* this_ptr, unkown_struct_culling* unk);
+
+	// anti culling rules for static world objects, falls back to the stock frustum test
+	std::pair<BOOL, anticull_inspector::frustum_reason> static_world_culling_verdict(game::CEntity* this_ptr, unkown_struct_culling* unk)
+	{
+		using reason = anticull_inspector::frustum_reason;
+
+		if (anticull_inspector::hides(this_ptr)) {
+			return { FALSE, reason::inspector };
+		}
+
 		// this = AVCBuilding : AVCEntity : AUCVirtualBase
-		auto im = imgui::get();
-		auto gs = comp_settings::get();
+		const auto im = imgui::get();
+		const auto gs = comp_settings::get();
 
 		if (im->m_dbg_never_cull_statics) {
-			return TRUE;
+			return { TRUE, reason::never_cull };
 		}
 
 		const auto& nc_dist_near = gs->nocull_dist_near_static.get_as<float>();
@@ -146,11 +420,10 @@ namespace gta4
 
 		// do not cull if near
 		if (dist_sqr < nc_dist_near * nc_dist_near) {
-			return TRUE;
+			return { TRUE, reason::near_dist };
 		}
 
 		const float object_radius = shared::utils::hook::call_virtual<22, float>(this_ptr);
-
 		const auto object_mins = shared::utils::hook::call_virtual<24, Vector*>(this_ptr);
 		const auto object_maxs = shared::utils::hook::call_virtual<25, Vector*>(this_ptr);
 
@@ -159,107 +432,24 @@ namespace gta4
 			object_height = object_maxs->z - object_mins->z;
 		}
 
-		bool dbg_vis_added = false, dbg_vis_forced_visible = false;
-		const float dbg_vis_draw_dist = im->m_dbg_visualize_anti_cull_info_distance;
-
-		if (im->m_dbg_visualize_anti_cull_info
-			&& im->visualized_anti_cull.size() < 160
-			&& object_radius > im->m_dbg_visualize_anti_cull_info_min_radius
-			&& dist_sqr < dbg_vis_draw_dist * dbg_vis_draw_dist)
-		{
-			std::lock_guard lock(im->visualized_anti_cull_mutex); // multi thread
-			imgui::visualized_anti_cull_s vis = { {object_origin.x, object_origin.y, object_origin.z}, object_radius, object_height, this_ptr->m_wModelIndex };
-
-			if (im->m_dbg_visualize_anti_cull_highlight && im->m_dbg_visualize_anti_cull_highlight == this_ptr->m_wModelIndex)
-			{
-				// transform mins/maxs 
-				if (this_ptr->worldTransform)
-				{
-					D3DXVECTOR3 corners[8];
-					corners[0] = object_mins->ToD3DXVector();
-					corners[1] = D3DXVECTOR3(object_maxs->x, object_mins->y, object_mins->z);
-					corners[2] = D3DXVECTOR3(object_mins->x, object_maxs->y, object_mins->z);
-					corners[3] = D3DXVECTOR3(object_maxs->x, object_maxs->y, object_mins->z);
-					corners[4] = D3DXVECTOR3(object_mins->x, object_mins->y, object_maxs->z);
-					corners[5] = D3DXVECTOR3(object_maxs->x, object_mins->y, object_maxs->z);
-					corners[6] = D3DXVECTOR3(object_mins->x, object_maxs->y, object_maxs->z);
-					corners[7] = object_maxs->ToD3DXVector();
-
-					D3DXVECTOR3 world_mins(FLT_MAX, FLT_MAX, FLT_MAX), world_maxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-
-					D3DXMATRIX world = *this_ptr->worldTransform;
-					world.m[0][3] = 0.0f;
-					world.m[1][3] = 0.0f;
-					world.m[2][3] = 0.0f;
-					world.m[3][3] = 1.0f;
-
-					for (auto i = 0u; i < 8u; ++i)
-					{
-						D3DXVec3TransformCoord(&corners[i], &corners[i], &world);
-						world_mins.x = std::min(world_mins.x, corners[i].x);
-						world_mins.y = std::min(world_mins.y, corners[i].y);
-						world_mins.z = std::min(world_mins.z, corners[i].z);
-						world_maxs.x = std::max(world_maxs.x, corners[i].x);
-						world_maxs.y = std::max(world_maxs.y, corners[i].y);
-						world_maxs.z = std::max(world_maxs.z, corners[i].z);
-					}
-
-					vis.mins.x = world_mins.x;
-					vis.mins.y = world_mins.y;
-					vis.mins.z = world_mins.z;
-
-					vis.maxs.x = world_maxs.x;
-					vis.maxs.y = world_maxs.y;
-					vis.maxs.z = world_maxs.z;
-				}
-				else
-				{
-					vis.mins = *object_mins + object_origin;
-					vis.maxs = *object_maxs + object_origin;
-				}
-
-				vis.draw_debug_box = true;
-				dbg_vis_forced_visible = true;
-			}
-
-			im->visualized_anti_cull.emplace_back(vis);
-			dbg_vis_added = true;
-		}
-
-		// perfect -> Map Settings
-		/*if (im->m_dbg_int_01)
-		{
-			if (this_ptr->m_wModelIndex == im->m_dbg_int_01) {
-				return TRUE;
-			}
-		}*/
-
 		// do not cull if obj is within medium dist and larger then medium radius setting
 		if (nc_dist_med > 0.0f && dist_sqr < nc_dist_med * nc_dist_med)
 		{
 			if (object_radius > nc_radius_med) {
-				return TRUE;
+				return { TRUE, reason::medium_radius };
 			}
-
-			/*if (im->m_debug_vector3.x > 0.0f && object_origin.z + object_height >= im->m_debug_vector3.x) {
-				return TRUE;
-			}*/
 		}
 
 		// do not cull if obj is within far dist and larger then far radius setting
 		if (nc_dist_far > 0.0f && dist_sqr < nc_dist_far * nc_dist_far)
 		{
 			if (object_radius > nc_radius_far) {
-				return TRUE;
+				return { TRUE, reason::far_radius };
 			}
 
 			if (object_height > 0.0f && object_height > nc_height_far) {
-				return TRUE;
+				return { TRUE, reason::far_height };
 			}
-
-			/*if (im->m_debug_vector3.y > 0.0f && object_origin.z + object_height >= im->m_debug_vector3.y) {
-				return TRUE;
-			}*/
 		}
 
 		if (const auto& ms = map_settings::get_map_settings(); !ms.anticull_meshes.empty())
@@ -270,28 +460,29 @@ namespace gta4
 				if (!cat.distance || (int)dist_sqr < cat.distance * cat.distance)
 				{
 					if (cat.indices.contains(this_ptr->m_wModelIndex)) {
-						return TRUE;
+						return { TRUE, reason::anticull_mesh };
 					}
 				}
 			}
 		}
 
-		// if vis was added but we did not return (to force vis) - draw as white text
-		if (dbg_vis_added && !dbg_vis_forced_visible
-			&& im->m_dbg_visualize_anti_cull_info && !im->visualized_anti_cull.empty())
-		{
-			std::lock_guard lock(im->visualized_anti_cull_mutex); // multi thread
-			im->visualized_anti_cull.back().forced_visible = false;
-		}
+		return { static_world_culling_check_og(this_ptr, unk), reason::stock };
+	}
 
-		return static_world_culling_check_og(this_ptr, unk);
+	BOOL __fastcall static_world_culling_check_hk(game::CEntity* this_ptr, [[maybe_unused]] void* fastcall, unkown_struct_culling* unk)
+	{
+		PROFILE_ZONE_N("static world culling check");
+		PROFILE_ZONE_VALUE(this_ptr->m_wModelIndex);
+
+		const auto [visible, reason] = static_world_culling_verdict(this_ptr, unk);
+		anticull_inspector::trace_frustum(this_ptr, unk, visible, reason);
+		return visible;
 	}
 
 
 	// extended anti culling for objects defined via map_settings
-	int extended_anticull_hk(game::CEntity* ent)
+	int extended_anticull_verdict(game::CEntity* ent)
 	{
-		PROFILE_ZONE_N("extended anti culling check");
 		const auto im = imgui::get();
 		const auto cs = comp_settings::get();
 
@@ -355,7 +546,15 @@ namespace gta4
 
 		return FALSE;
 	}
-	
+
+	int extended_anticull_hk(game::CEntity* ent)
+	{
+		PROFILE_ZONE_N("extended anti culling check");
+		const int forced = extended_anticull_verdict(ent);
+		anticull_inspector::trace_occlusion(ent, forced == TRUE);
+		return forced;
+	}
+
 	__declspec(naked) void extended_anticull_stub()
 	{
 		__asm
@@ -500,11 +699,177 @@ namespace gta4
 
 
 	// ---
+	// anti culling meshes (mapsettings) outside of the camera frustum
+	// the scene traversal only walks map cells a render phase marked as visible, so meshes behind the camera never reach
+	// static_world_culling_check_hk or extended_anticull_hk. Their cells get marked here so the game processes them.
+
+	namespace anticull_offscreen
+	{
+		struct tracked_instance_s
+		{
+			std::int32_t slot;
+			std::uint8_t flag;
+		};
+
+		constexpr std::int32_t POOL_SLOTS_PER_SCAN = 4096;
+
+		/// max squared distance per model index, negative = not an anti culling mesh
+		std::vector<float> model_dist_sqr(0x10000, -1.0f);
+		std::vector<std::uint16_t> model_dist_sqr_used;
+
+		std::vector<tracked_instance_s> tracked;
+		std::vector<tracked_instance_s> scan_results;
+		std::int32_t scan_cursor = 0;
+		int marked_near = 0, marked_lod = 0;
+
+		void rebuild_model_lut()
+		{
+			for (const auto index : model_dist_sqr_used) {
+				model_dist_sqr[index] = -1.0f;
+			}
+
+			model_dist_sqr_used.clear();
+
+			for (const auto& cat : map_settings::get_map_settings().anticull_meshes)
+			{
+				// dist 0 = always active
+				const float dist_sqr = cat.distance > 0 ? static_cast<float>(cat.distance) * static_cast<float>(cat.distance) : FLT_MAX;
+
+				for (const auto index : cat.indices)
+				{
+					const auto lut_index = static_cast<std::uint16_t>(index);
+
+					if (model_dist_sqr[lut_index] < 0.0f) {
+						model_dist_sqr_used.push_back(lut_index);
+					}
+
+					model_dist_sqr[lut_index] = std::max(model_dist_sqr[lut_index], dist_sqr);
+				}
+			}
+		}
+
+		// walks a slice of the building pool per call and swaps in the found instances once a full pass is done.
+		// The model lut is rebuilt on every pass so mapsetting edits apply without explicit invalidation.
+		void scan_building_pool(const game::CPool* pool)
+		{
+			if (!scan_cursor)
+			{
+				rebuild_model_lut();
+				scan_results.clear();
+			}
+
+			const auto end = std::min(scan_cursor + POOL_SLOTS_PER_SCAN, pool->m_nSize);
+			for (auto slot = scan_cursor; slot < end; ++slot)
+			{
+				const auto flag = pool->m_pFlags[slot];
+				if (flag & 0x80) {
+					continue;
+				}
+
+				const auto ent = reinterpret_cast<const game::CEntity*>(pool->m_pObjects + slot * pool->m_nEntrySize);
+				if (model_dist_sqr[static_cast<std::uint16_t>(ent->m_wModelIndex)] >= 0.0f) {
+					scan_results.push_back({ slot, flag });
+				}
+			}
+
+			scan_cursor = end;
+			if (scan_cursor >= pool->m_nSize)
+			{
+				tracked.swap(scan_results);
+				scan_cursor = 0;
+			}
+		}
+
+		// marks one map cell per tracked instance within category distance for the current render phase.
+		// The game links an entity into every cell its bounds touch, so the cell closest to the camera is enough.
+		void mark_cells(const int render_context, const bool lod_grid)
+		{
+			PROFILE_ZONE();
+			const auto cs = comp_settings::get();
+			const auto im = imgui::get();
+			const auto pool = game::ppBuildingPool ? *game::ppBuildingPool : nullptr;
+			const auto phase = game::get_current_renderphase();
+			const auto grid = game::pRenderCellGridNear;
+
+			if (!cs->nocull_extended._bool() || !cs->nocull_extended_offscreen._bool() || map_settings::get_map_settings().anticull_meshes.empty()
+				|| !pool || !pool->m_pObjects || !pool->m_pFlags || !phase || !grid)
+			{
+				tracked.clear();
+				scan_cursor = 0;
+				marked_near = marked_lod = 0;
+
+				im->m_dbg_anticull_offscreen_tracked = im->m_dbg_anticull_offscreen_marked = 0;
+				return;
+			}
+
+			if (!lod_grid) {
+				scan_building_pool(pool);
+			}
+
+			const Vector cam_org = &phase->viewport_0xB0.cameraInv.m[3][0];
+			const float cell_scale = lod_grid ? 0.005f : 0.02f;
+			const float cell_bias = lod_grid ? 15.0f : 60.0f;
+			const int cam_cell_x = static_cast<int>(floorf(cam_org.x * cell_scale + cell_bias));
+			const int cam_cell_y = static_cast<int>(floorf(cam_org.y * cell_scale + cell_bias));
+
+			const auto mark_cell = reinterpret_cast<void(__cdecl*)(int, int, int, int)>(
+				lod_grid ? game::fn_addr__mark_render_sector_far_callback : game::fn_addr__mark_render_sector_near_callback);
+
+			int marked = 0;
+			for (const auto& t : tracked)
+			{
+				if (t.slot >= pool->m_nSize || pool->m_pFlags[t.slot] != t.flag) {
+					continue;
+				}
+
+				const auto ent = reinterpret_cast<game::CEntity*>(pool->m_pObjects + t.slot * pool->m_nEntrySize);
+				if (((ent->m_dwFlags & 0x40) != 0) != lod_grid) {
+					continue;
+				}
+
+				const float max_dist_sqr = model_dist_sqr[static_cast<std::uint16_t>(ent->m_wModelIndex)];
+				if (max_dist_sqr < 0.0f) {
+					continue;
+				}
+
+				// same origin as the anti culling checks in static_world_culling_check_hk and extended_anticull_hk
+				Vector4D object_origin = {};
+				shared::utils::hook::call_virtual<20, void, Vector4D*>(ent, &object_origin);
+
+				if (fabs(cam_org.DistToSqr(object_origin)) > max_dist_sqr) {
+					continue;
+				}
+
+				const auto rect = ent->m_dwCellRect;
+				const int min_x = static_cast<int>(rect & 0x7FF) - 1024;
+				const int min_y = static_cast<int>((rect >> 11) & 0x7FF) - 1024;
+				const int x = std::clamp(cam_cell_x, min_x, min_x + static_cast<int>((rect >> 22) & 0x1F));
+				const int y = std::clamp(cam_cell_y, min_y, min_y + static_cast<int>(rect >> 27));
+
+				// the near grid clamps cells outside of its window onto the border, which would mark an unrelated cell
+				if (!lod_grid && (static_cast<unsigned>(x - grid->origin_x) >= 48u || static_cast<unsigned>(y - grid->origin_y) >= 48u)) {
+					continue;
+				}
+
+				mark_cell(x, y, render_context, reinterpret_cast<int>(phase));
+				++marked;
+			}
+
+			(lod_grid ? marked_lod : marked_near) = marked;
+			im->m_dbg_anticull_offscreen_tracked = static_cast<int>(tracked.size());
+			im->m_dbg_anticull_offscreen_marked = marked_near + marked_lod;
+		}
+	}
+
+
+	// ---
 	// area / sector anti-culling adding the lowest LOD outside the camera frustum
 
 	void add_far_grid_map_sections(const int render_context)
 	{
 		PROFILE_ZONE();
+		anticull_offscreen::mark_cells(render_context, true);
+
 		const auto cs = comp_settings::get();
 		const auto sector_count = cs->nocull_map_areas_count._int();
 
@@ -626,6 +991,9 @@ namespace gta4
 	void add_near_grid_map_sections(const int render_context)
 	{
 		PROFILE_ZONE();
+		anticull_inspector::capture_primary_phase(game::get_current_renderphase());
+		anticull_offscreen::mark_cells(render_context, false);
+
 		const auto cs = comp_settings::get();
 		const auto sector_count = 1;
 

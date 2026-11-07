@@ -122,6 +122,8 @@ namespace gta4
 		bool m_dbg_disable_ignore_baked_lighting_enforcement = false;
 		bool m_dbg_never_cull_statics = false;
 		bool m_dbg_extended_anticull_always_true = false;
+		int m_dbg_anticull_offscreen_tracked = 0;
+		int m_dbg_anticull_offscreen_marked = 0;
 		bool m_dbg_disable_hud_fixup = false;
 		bool m_dbg_disable_hud_fixup2 = false;
 		bool m_dbg_disable_phone_fixup = false;
@@ -210,25 +212,123 @@ namespace gta4
 
 		// --
 
-		float m_dbg_visualize_anti_cull_info_distance = 80.0f;
-		float m_dbg_visualize_anti_cull_info_min_radius = 16.0f;
-		float m_dbg_visualize_anti_cull_info_highlight_line_width = 0.25f;
-		int m_dbg_visualize_anti_cull_highlight = 0;
-		bool m_dbg_visualize_anti_cull_info = false;
-
-		struct visualized_anti_cull_s
+		// anti culling mesh inspector. The game thread publishes snapshots of nearby building instances,
+		// the ui swaps them in and names the entity the culling hooks should trace.
+		struct anticull_inspector_s
 		{
-			Vector pos;
-			float radius = 0.0f;
-			float height = 0.0f;
-			int m_wModelIndex = 0;
-			Vector mins;
-			Vector maxs;
-			bool draw_debug_box = false;
-			bool forced_visible = true;
+			enum class frustum_reason : std::uint8_t
+			{
+				none,
+				stock,
+				never_cull,
+				near_dist,
+				medium_radius,
+				far_radius,
+				far_height,
+				anticull_mesh,
+				inspector,
+			};
+
+			// culls detail levels map wide: lods = every HD mesh that has a lod parent, lowest = every mesh that has a lod parent
+			enum class lod_view_mode : std::uint8_t
+			{
+				off,
+				lods,
+				lowest,
+			};
+
+			struct hidden_s
+			{
+				const void* entity = nullptr;
+				std::int16_t model_index = 0;
+			};
+
+			struct hidden_slot_s
+			{
+				std::atomic<const void*> entity = nullptr;
+				std::atomic<std::int16_t> model_index = 0;
+			};
+
+			static constexpr std::uint32_t MAX_HIDDEN = 32u;
+
+			struct instance_s
+			{
+				const void* entity = nullptr;
+				const void* lod_entity = nullptr;
+				D3DXMATRIX world;
+				Vector local_mins;
+				Vector local_maxs;
+				Vector center;
+				const char* model_name = nullptr;
+				float radius = 0.0f;
+				float height = 0.0f;
+				float distance = 0.0f;
+				float lod_distance = 0.0f;
+				std::int16_t model_index = 0;
+				std::int16_t lod_model_index = -1;
+				std::uint8_t lod_children = 0u;
+				std::uint8_t alpha = 0u;
+				bool is_lod = false;
+				bool model_loaded = false;
+				bool visited = false;          // visited by the last scene traversal
+				bool visible = false;          // not culled in the primary phase of the last traversal
+				bool past_lod_distance = false;
+			};
+
+			// culling stage results of the traced entity for its last visit, phase bits
+			struct trace_s
+			{
+				const void* entity = nullptr;
+				std::uint32_t stamp = 0u;
+				std::uint32_t frustum_tested = 0u;
+				std::uint32_t frustum_passed = 0u;
+				frustum_reason primary_reason = frustum_reason::none;
+				bool occlusion_tested = false;
+				bool occlusion_forced = false;
+			};
+
+			bool enabled = false;
+			float radius = 400.0f;
+			float min_radius = 20.0f;
+			float min_height = 30.0f;
+			bool show_hd = true;
+			bool show_lod = false;
+			bool only_forced = false;
+			bool show_labels = true;
+			int max_labels = 30;
+			bool boxes_on_forced = false;
+			bool pick_visible_only = true;
+			int highlight_model_index = -1;
+			lod_view_mode lod_view = lod_view_mode::off;
+
+			// render thread
+			std::vector<instance_s> instances;
+			std::uint32_t instances_generation = 0u;
+			trace_s trace_copy;
+			const void* hovered = nullptr;
+			const void* selected = nullptr;
+			int pick_hit = 0;
+			int pick_hit_count = 0;
+			instance_s context;                // mesh the context menu was opened for
+			std::vector<hidden_s> hidden;
+
+			// read by the culling hooks
+			std::array<hidden_slot_s, MAX_HIDDEN> hidden_slots;
+			std::atomic<std::uint32_t> hidden_count = 0u;
+			std::atomic<lod_view_mode> active_lod_view = lod_view_mode::off;
+
+			// written by the game / job threads
+			std::atomic<std::uint32_t> traversal_stamp = 0u;
+			std::atomic<std::uint32_t> primary_phase_bit = 0u;
+			std::atomic<float> primary_lod_scale = 1.0f;
+			std::atomic<const void*> traced_entity = nullptr;
+
+			std::mutex mutex;
+			std::vector<instance_s> published;
+			std::uint32_t published_generation = 0u;
+			trace_s trace;
 		};
-		std::vector<visualized_anti_cull_s> visualized_anti_cull;
-		std::mutex visualized_anti_cull_mutex;
+		anticull_inspector_s m_anticull_inspector;
 
 		// --
 

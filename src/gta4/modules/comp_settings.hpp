@@ -718,6 +718,15 @@ namespace gta4
 				true
 			};
 
+			variable nocull_extended_offscreen = {
+				"nocull_extended_offscreen",
+				("Also keeps anti culling meshes added via mapsettings visible when they are outside of the camera view (e.g. behind the player).\n"
+				 "The game skips map cells outside of the view entirely. This marks the cells of those meshes so the game processes them.\n"
+				 "Only applies within the distance of the mesh category."),
+				"1.7.4",
+				true
+			};
+
 			variable nocull_extended_auto = {
 				"nocull_extended_auto",
 				("Automated - Extended Anti Culling. Considers objects in specified range with fitting radii / height and prevents culling.\n"

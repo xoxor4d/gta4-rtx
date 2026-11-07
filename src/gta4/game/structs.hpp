@@ -82,56 +82,89 @@ namespace gta4::game
 	struct CEntity
 	{
 		void* vtbl;
-		int field_4;
-		int field_8;
-		int field_C;
+		std::uint32_t m_dwCellRect;				// packed map cell rect the entity is linked into: x 11 bits, y 11 bits (both +1024), width 5 bits, height 5 bits
+												// 50m cells (render_cell_grid_near_s), 200m cells for lod entities (m_dwFlags 0x40)
+		std::uint32_t m_dwPhaseVisible;			// render phases that may see the entity, written by the scene traversal
+		std::uint32_t m_dwPhaseCulled;			// render phases the entity got culled in
 		Vector m_pos;
-		int m_fHeading;                       ///< float
-		D3DXMATRIX* worldTransform;                        ///< pointer to position matrix
-		int m_dwFlags;                        ///< see CFlags
-		///< 0x1 = UsesCollision
-		///< 0x4 = Fixed (frozen)
-		///< 0x8 = FixedWaitingForCollision
-		///< 0x10 = FixedByPhysics
-		///< 0x20 = Visible
-		///< 0x100 = Damaged
-		///< 0x1000 = draw last
-		///< 0x4000000 = Has Physics Inst
-		int m_dwFlags2;                       ///< flags - 2 - lights, 21 - onFire
-		///< 0x40 thru 0x200 (4 bits)
-		///< --> & 0x3C0
-		///< --> object type (2 = playerPed, 4 = ped)
-		///< 0x200000 = OnFire
-		///< 0x400000 = have coords matrix
+		float m_fHeading;
+		D3DXMATRIX* worldTransform;				// pointer to position matrix
+		int m_dwFlags;							// see CFlags
+												// 0x1 = UsesCollision
+												// 0x4 = Fixed (frozen)
+												// 0x8 = FixedWaitingForCollision
+												// 0x10 = FixedByPhysics
+												// 0x20 = Visible
+												// 0x40 = Lod entity (200m cell grid)
+												// 0x100 = Damaged
+												// 0x1000 = draw last
+												// 0x4000000 = Has Physics Inst
+
+		int m_dwFlags2;							// flags - 2 - lights, 21 - onFire
+												// 0x40 thru 0x200 (4 bits)
+												// --> & 0x3C0
+												// --> object type (2 = playerPed, 4 = ped)
+												// 0x200000 = OnFire
+												// 0x400000 = have coords matrix
 		__int16 field_2C;
 		__int16 m_wModelIndex;
 		//int m_pReference;
 		std::uint16_t m_pReference01;
 		std::uint16_t m_pReference02;
 		drawableReference* m_pDrawableReference;
-		int m_pPhysics;                       ///< phInst *
-		int field_3C;
+		int m_pPhysics;							// phInst *
+		std::uint32_t m_dwVisibilityStamp;		// scene traversal stamp of the last visit
 		char field_40;
 		char field_41;
 		__int16 field_42;
 		__int16 field_44;
 		__int16 field_46;
 		int m_hInterior;
-		int field_4C;
-		int field_50;                         ///< float
+		CEntity* m_pLod;						// lod parent (HD -> LOD -> SLOD)
+		float m_fLodDistance;
 		int field_54;
 		int field_58;
 		__int16 m_wIplIndex;
 		__int16 field_5E;
 		char field_60;
-		char field_61;
+		std::uint8_t m_nLodChildren;
 		char field_62;
-		char m_alpha;
+		std::uint8_t m_alpha;
 		int field_64;
 		int field_68;
 		int m_pNetEntity;
 	};
 	STATIC_ASSERT_OFFSET(CEntity, m_pReference01, 0x30);
+	STATIC_ASSERT_OFFSET(CEntity, m_pLod, 0x4C);
+	STATIC_ASSERT_OFFSET(CEntity, m_alpha, 0x63);
+
+	// entity pool (Building, Objects ...). A slot is free when its flag has 0x80 set, the low 7 bits count slot reuse
+	struct CPool
+	{
+		std::uint8_t* m_pObjects;
+		std::uint8_t* m_pFlags;
+		std::int32_t m_nSize;
+		std::int32_t m_nEntrySize;
+		std::int32_t m_nFirstFree;
+		std::int32_t m_nCount;
+		bool m_bOwnsArrays;
+	};
+
+	// 48x48 window of 50m map cells centered on the camera, reset once per frame.
+	// Render phases OR their bit into every cell they see and the scene traversal only walks marked cells.
+	struct render_cell_grid_near_s
+	{
+		int origin_x;
+		int origin_y;
+		std::uint32_t cells[48][48];
+		int row_min_x[48];
+		int row_max_x[48];
+		int min_x;
+		int max_x;
+		int min_y;
+		int max_y;
+	};
+	STATIC_ASSERT_OFFSET(render_cell_grid_near_s, row_min_x, 0x2408);
 
 	struct cmdarg
 	{
@@ -363,7 +396,7 @@ namespace gta4::game
 		int m_pEvtSet;
 		DNameNode field_14[20];
 		int field_B4;
-		int field_B8;                         ///< float
+		int field_B8;                         // float
 		int field_BC;
 		int field_C0;
 		int field_C4;
@@ -492,18 +525,18 @@ namespace gta4::game
 	{
 		rmcDrawable __parent;
 		Matrix34 field_80;
-		int field_C0;                         ///< pgPtr<phBound>
+		int field_C0;							// pgPtr<phBound>
 		sysArray field_C4;
-		int field_CC;                         ///< pointer
+		int field_CC;							// pointer
 		__int16 field_D0;
 		char field_D2;
 		char field_D3;
 		int m_pBoneTag;
 		int field_D8;
 		int field_DC;
-		int m_pszSkeletonType;                ///< pointer
-		int field_E4;                         ///< pgPtr<{pgPtr<?>, pgPtr<?>}>
-		sysArray m_animations;                ///< pgObjectArray<fragAnimation>
+		int m_pszSkeletonType;					// pointer
+		int field_E4;							// pgPtr<{pgPtr<?>, pgPtr<?>}>
+		sysArray m_animations;					// pgObjectArray<fragAnimation>
 		int field_F0;
 	};
 
@@ -650,13 +683,21 @@ namespace gta4::game
 	struct CRenderPhase_struct
 	{
 		void* vtbl;
-		char pad_0x0004[76];
+		char pad_0x0004[22];
+		bool is_primary;                      // main camera phase, drives lod fading
+		char pad_0x001B[53];
 		CRenderPhase_frustum frustum;
 		grcViewport viewport_0xB0;
 		grcViewport grcviewport;
 		BYTE ga[100];
 		int unk;
 	};
+	STATIC_ASSERT_OFFSET(CRenderPhase_struct, is_primary, 0x1A);
+	STATIC_ASSERT_OFFSET(CRenderPhase_struct, viewport_0xB0, 0xB0);
+
+	// offsets past the (incomplete) CRenderPhase_struct layout
+	constexpr std::uint32_t RENDER_PHASE_OFFSET_LOD_SCALE = 0x934;
+	constexpr std::uint32_t RENDER_PHASE_OFFSET_INDEX = 0x938;
 
 	struct currentViewport_ptr {
 		grcViewport* wp;

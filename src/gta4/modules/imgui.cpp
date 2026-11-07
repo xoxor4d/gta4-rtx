@@ -713,6 +713,8 @@ namespace gta4
 
 			ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
 			ImGui::Checkbox("Extended Anticull Always TRUE", &im->m_dbg_extended_anticull_always_true); TT("Always return true when extended anticull is on.");
+			ImGui::Text("Offscreen Anticull Meshes: %d tracked, %d marked", im->m_dbg_anticull_offscreen_tracked, im->m_dbg_anticull_offscreen_marked);
+			TT("Tracked: anti culling mesh instances found in the building pool.\nMarked: instances within category distance whose map cell got forced this frame (last phase).");
 
 			ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
 			ImGui::Checkbox("Disable HUD Hack #2", &im->m_dbg_disable_hud_fixup2); TT("Disables 2nd hack that helps remix detect the first HUD elem (on drawing radar background)");
@@ -1986,6 +1988,7 @@ namespace gta4
 				compsettings_bool_widget("Use Extended AntiCulling", gs->nocull_extended);
 
 				ImGui::BeginDisabled(!gs->nocull_extended._bool());
+				compsettings_bool_widget("Force Offscreen AntiCull Meshes", gs->nocull_extended_offscreen);
 				compsettings_bool_widget("Use Auto Extended AntiCulling", gs->nocull_extended_auto);
 				ImGui::EndDisabled();
 
@@ -2711,6 +2714,7 @@ namespace gta4
 				compsettings_bool_widget("Use Extended AntiCulling", gs->nocull_extended);
 
 				ImGui::BeginDisabled(!gs->nocull_extended._bool());
+					compsettings_bool_widget("Force Offscreen AntiCull Meshes", gs->nocull_extended_offscreen);
 					compsettings_bool_widget("Use Auto Extended AntiCulling", gs->nocull_extended_auto);
 				ImGui::EndDisabled();
 				
@@ -3462,7 +3466,7 @@ namespace gta4
 					ImGui::Style_InvisibleSelectorPop();
 
 					if (ImGui::IsItemHovered()) {
-						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.6f)));///*ImGui::GetColorU32(ImGuiCol_TableRowBgAlt)*/);
+						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.6f)));
 					}
 				}
 				else {
@@ -5644,16 +5648,596 @@ namespace gta4
 		}
 	}
 
+	// ---
+	// anti culling mesh inspector
+
+	using inspector_s = imgui::anticull_inspector_s;
+	ImGuiTextFilter g_inspector_filter;
+
+	// first category that forces the model index, -1 if none
+	int find_anticull_category(const int model_index)
+	{
+		const auto& ac = map_settings::get_map_settings().anticull_meshes;
+		for (auto i = 0u; i < ac.size(); ++i)
+		{
+			if (ac[i].indices.contains(model_index)) {
+				return static_cast<int>(i);
+			}
+		}
+
+		return -1;
+	}
+
+	bool inspector_passes_filter(const inspector_s& ins, const inspector_s::instance_s& inst)
+	{
+		if (inst.is_lod ? !ins.show_lod : !ins.show_hd) {
+			return false;
+		}
+
+		if (ins.only_forced && find_anticull_category(inst.model_index) < 0) {
+			return false;
+		}
+
+		if (g_inspector_filter.IsActive())
+		{
+			const bool name_passes = inst.model_name && g_inspector_filter.PassFilter(inst.model_name);
+			if (!name_passes && !g_inspector_filter.PassFilter(shared::utils::va("%d", inst.model_index))) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	const inspector_s::instance_s* inspector_find(const inspector_s& ins, const void* entity)
+	{
+		if (entity)
+		{
+			for (const auto& inst : ins.instances)
+			{
+				if (inst.entity == entity) {
+					return &inst;
+				}
+			}
+		}
+
+		return nullptr;
+	}
+
+	bool inspector_is_hidden(const inspector_s& ins, const void* entity)
+	{
+		return std::ranges::any_of(ins.hidden, [entity](const inspector_s::hidden_s& h) { return h.entity == entity; });
+	}
+
+	void inspector_set_hidden(inspector_s& ins, const void* entity, const std::int16_t model_index, const bool hide)
+	{
+		std::erase_if(ins.hidden, [entity](const inspector_s::hidden_s& h) { return h.entity == entity; });
+
+		if (hide && ins.hidden.size() < inspector_s::MAX_HIDDEN) {
+			ins.hidden.push_back({ entity, model_index });
+		}
+	}
+
+	// also hides the lod parents, so nothing takes the place of the mesh
+	void inspector_hide_with_parents(inspector_s& ins, const inspector_s::instance_s& inst)
+	{
+		inspector_set_hidden(ins, inst.entity, inst.model_index, true);
+
+		const void* parent = inst.lod_entity;
+		std::int16_t parent_model_index = inst.lod_model_index;
+
+		while (parent && !inspector_is_hidden(ins, parent))
+		{
+			inspector_set_hidden(ins, parent, parent_model_index, true);
+
+			const auto p = inspector_find(ins, parent);
+			parent = p ? p->lod_entity : nullptr;
+			parent_model_index = p ? p->lod_model_index : -1;
+		}
+	}
+
+	const char* frustum_reason_name(const inspector_s::frustum_reason reason)
+	{
+		using r = inspector_s::frustum_reason;
+		switch (reason)
+		{
+			case r::stock:			return "stock frustum test";
+			case r::never_cull:		return "debug: never cull statics";
+			case r::near_dist:		return "near distance";
+			case r::medium_radius:	return "medium cascade radius";
+			case r::far_radius:		return "far cascade radius";
+			case r::far_height:		return "far cascade height";
+			case r::anticull_mesh:	return "anti cull mesh";
+			case r::inspector:		return "hidden or lod view of the inspector";
+			default:				return "-";
+		}
+	}
+
+	std::pair<const char*, ImVec4> inspector_state(const inspector_s& ins, const inspector_s::instance_s& inst)
+	{
+		if (inspector_is_hidden(ins, inst.entity)) {
+			return { "hidden", ImVec4(0.85f, 0.4f, 0.95f, 1.0f) };
+		}
+
+		if (!inst.visited) {
+			return { "not visited", ImVec4(0.55f, 0.55f, 0.55f, 1.0f) };
+		}
+
+		if (inst.past_lod_distance) {
+			return { "past lod dist", ImVec4(0.9f, 0.6f, 0.2f, 1.0f) };
+		}
+
+		if (inst.visible) {
+			return { "visible", ImVec4(0.4f, 0.85f, 0.3f, 1.0f) };
+		}
+
+		return { "culled", ImVec4(0.9f, 0.35f, 0.3f, 1.0f) };
+	}
+
+	// right click menu of a table row or a mesh in the world
+	void inspector_context_menu(inspector_s& ins)
+	{
+		const auto& inst = ins.context;
+		auto& ac = map_settings::get_map_settings().anticull_meshes;
+		ins.hovered = inst.entity;
+
+		shared::imgui::draw_window_blur();
+
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		ImGui::Text("%d  %s", inst.model_index, inst.model_name ? inst.model_name : "");
+		ImGui::PopFont();
+		ImGui::Separator();
+
+		if (ImGui::BeginMenu("Anti Cull Categories"))
+		{
+			shared::imgui::draw_window_blur();
+			if (ac.empty()) {
+				ImGui::TextDisabled("No categories");
+			}
+
+			for (auto i = 0; i < static_cast<int>(ac.size()); ++i)
+			{
+				auto& indices = ac[i].indices;
+				const bool contained = indices.contains(inst.model_index);
+
+				ImGui::PushID(i);
+				if (ImGui::MenuItem(ac[i].comment.c_str(), nullptr, contained))
+				{
+					if (contained) {
+						indices.erase(inst.model_index);
+					}
+					else {
+						indices.emplace(inst.model_index);
+					}
+				}
+				ImGui::PopID();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::MenuItem("Remove from all Categories", nullptr, false, find_anticull_category(inst.model_index) >= 0))
+		{
+			for (auto& cat : ac) {
+				cat.indices.erase(inst.model_index);
+			}
+		}
+
+		ImGui::Separator();
+
+		const bool selected = ins.selected == inst.entity;
+		if (ImGui::MenuItem("Select", nullptr, selected)) {
+			ins.selected = selected ? nullptr : inst.entity;
+		}
+
+		const bool highlighted = ins.highlight_model_index == inst.model_index;
+		if (ImGui::MenuItem("Highlight all Instances", nullptr, highlighted)) {
+			ins.highlight_model_index = highlighted ? -1 : inst.model_index;
+		}
+
+		const bool hidden = inspector_is_hidden(ins, inst.entity);
+		const bool can_hide = hidden || ins.hidden.size() < inspector_s::MAX_HIDDEN;
+		if (ImGui::MenuItem("Hide", nullptr, hidden, can_hide)) {
+			inspector_set_hidden(ins, inst.entity, inst.model_index, !hidden);
+		}
+
+		if (ImGui::MenuItem("Hide with Lod Parents", nullptr, false, inst.lod_entity && can_hide)) {
+			inspector_hide_with_parents(ins, inst);
+		}
+
+		ImGui::Separator();
+		if (ImGui::MenuItem("Copy Index")) {
+			ImGui::SetClipboardText(shared::utils::va("%d", inst.model_index));
+		}
+	}
+
+	void inspector_details(inspector_s& ins)
+	{
+		const auto inst = inspector_find(ins, ins.selected);
+		auto& ac = map_settings::get_map_settings().anticull_meshes;
+		const int category = inst ? find_anticull_category(inst->model_index) : -1;
+
+		// fixed height and placeholders, so that everything below keeps its position when the selection changes
+		const float height = ImGui::GetTextLineHeightWithSpacing() * 9.0f + ImGui::GetFrameHeightWithSpacing() + 16.0f;
+		ImGui::BeginChild("##inspector_details", ImVec2(0.0f, height), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+		ImGui::BeginDisabled(!inst);
+
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (inst) {
+			ImGui::Text("%d  %s", inst->model_index, inst->model_name ? inst->model_name : "");
+		}
+		else {
+			ImGui::TextUnformatted("<no mesh selected>");
+		}
+		ImGui::PopFont();
+
+		if (inst && ins.pick_hit_count > 1)
+		{
+			ImGui::SameLine();
+			ImGui::TextDisabled("(hit %d / %d, click again to cycle)", ins.pick_hit + 1, ins.pick_hit_count);
+		}
+
+		if (inst) {
+			ImGui::Text("%s  |  Height %.1f  Radius %.1f  Dist %.1f  LodDist %.1f", inst->is_lod ? "LOD" : "HD", inst->height, inst->radius, inst->distance, inst->lod_distance);
+		}
+		else {
+			ImGui::TextUnformatted("-  |  Height -  Radius -  Dist -  LodDist -");
+		}
+
+		const auto parent = inst ? inspector_find(ins, inst->lod_entity) : nullptr;
+		if (inst && inst->lod_model_index >= 0) {
+			ImGui::Text("Lod Parent: %d %s", inst->lod_model_index, parent && parent->model_name ? parent->model_name : "");
+		}
+		else {
+			ImGui::TextUnformatted("Lod Parent: -");
+		}
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!parent);
+		if (ImGui::SmallButton("Select##lod_parent")) {
+			ins.selected = parent->entity;
+		}
+
+		ImGui::EndDisabled();
+		ImGui::SameLine(0, 16);
+
+		if (inst) {
+			ImGui::Text("Lod Children: %d", inst->lod_children);
+		} else {
+			ImGui::TextUnformatted("Lod Children: -");
+		}
+
+		ImGui::Text("Forced by: %s", category >= 0 ? ac[category].comment.c_str() : "-");
+		ImGui::Spacing(0, 4);
+
+		if (inst)
+		{
+			const auto [state, state_color] = inspector_state(ins, *inst);
+			ImGui::TextColored(state_color, "Last Traversal: %s", state);
+			
+			if (!inst->model_loaded)
+			{
+				ImGui::SameLine();
+				ImGui::TextDisabled("(model not loaded)");
+			}
+		} else {
+			ImGui::TextUnformatted("Last Traversal: -");
+		}
+
+		const auto& t = ins.trace_copy;
+		const auto primary = ins.primary_phase_bit.load(std::memory_order_relaxed);
+		const bool has_trace = inst && inst->visited && t.entity == inst->entity && t.stamp == ins.traversal_stamp.load(std::memory_order_relaxed);
+
+		if (!has_trace)
+		{
+			const bool not_visited = inst && !inst->visited;
+			ImGui::TextUnformatted(not_visited ? "Frustum: not reached" : "Frustum: -");
+			ImGui::TextUnformatted(not_visited ? "Occlusion: not reached" : "Occlusion: -");
+
+			if (not_visited) {
+				ImGui::TextWrapped("Its map cells were not scanned. They are outside of every render phase or beyond the ~300m HD range in front of the camera.");
+			} else if (inst) {
+				ImGui::TextDisabled("Stage trace not available yet.");
+			}
+		}
+		else
+		{
+			if (!(t.frustum_tested & primary)) {
+				ImGui::TextUnformatted("Frustum: not reached (past lod distance or no phase bit)");
+			} else if (t.frustum_passed & primary) {
+				ImGui::Text("Frustum: passed (%s)", frustum_reason_name(t.primary_reason));
+			} else {
+				ImGui::Text("Frustum: culled (%s)", frustum_reason_name(t.primary_reason));
+			}
+
+			if (!t.occlusion_tested) {
+				ImGui::TextUnformatted("Occlusion: not reached");
+			} else {
+				ImGui::Text("Occlusion: %s", t.occlusion_forced ? "skipped (extended anti culling)" : "tested");
+			}
+
+			if ((t.frustum_passed & primary) && !inst->visible && !inst->past_lod_distance) {
+				ImGui::TextWrapped("Culled after the frustum test: occluded, or its lod parent swap hides it.");
+			}
+		}
+
+		ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), height - ImGui::GetFrameHeightWithSpacing()));
+
+		static int add_category = 0;
+		add_category = ac.empty() ? 0 : std::clamp(add_category, 0, static_cast<int>(ac.size()) - 1);
+
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.35f);
+		ImGui::BeginDisabled(ac.empty());
+		if (ImGui::BeginCombo("##inspector_category", ac.empty() ? "No categories" : ac[add_category].comment.c_str()))
+		{
+			for (auto i = 0; i < static_cast<int>(ac.size()); ++i)
+			{
+				ImGui::PushID(i);
+				if (ImGui::Selectable(ac[i].comment.c_str(), i == add_category)) {
+					add_category = i;
+				}
+				ImGui::PopID();
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(ac.empty() || category >= 0);
+		if (ImGui::Button("Add Index")) {
+			ac[add_category].indices.emplace(inst->model_index);
+		}
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(category < 0);
+		if (ImGui::Button("Remove Index"))
+		{
+			for (auto& cat : ac) {
+				cat.indices.erase(inst->model_index);
+			}
+		}
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		if (ImGui::Button("Deselect")) {
+			ins.selected = nullptr;
+		}
+
+		ImGui::SameLine();
+		const bool hidden = inst && inspector_is_hidden(ins, inst->entity);
+		ImGui::BeginDisabled(!hidden && ins.hidden.size() >= inspector_s::MAX_HIDDEN);
+		if (ImGui::Button(hidden ? "Unhide###inspector_hide" : "Hide###inspector_hide")) {
+			inspector_set_hidden(ins, inst->entity, inst->model_index, !hidden);
+		}
+		ImGui::EndDisabled();
+
+		ImGui::EndDisabled();
+		ImGui::EndChild();
+	}
+
+	void inspector_table(inspector_s& ins)
+	{
+		static std::vector<int> rows;
+		rows.clear();
+
+		for (auto i = 0; i < static_cast<int>(ins.instances.size()); ++i)
+		{
+			if (inspector_passes_filter(ins, ins.instances[i])) {
+				rows.emplace_back(i);
+			}
+		}
+
+		ImGui::TextDisabled("%d meshes", static_cast<int>(rows.size()));
+
+		bool open_context = false;
+		enum column_id : int { COL_INDEX, COL_NAME, COL_HEIGHT, COL_RADIUS, COL_DIST, COL_TYPE, COL_STATE, COL_FORCED };
+		constexpr auto flags = ImGuiTableFlags_Sortable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
+
+		if (ImGui::BeginTable("##inspector_table", 8, flags, ImVec2(0.0f, 300.0f)))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1);
+			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_None, 0.0f, COL_INDEX);
+			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 0.0f, COL_NAME);
+			ImGui::TableSetupColumn("Height", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, 0.0f, COL_HEIGHT);
+			ImGui::TableSetupColumn("Radius", ImGuiTableColumnFlags_PreferSortDescending, 0.0f, COL_RADIUS);
+			ImGui::TableSetupColumn("Dist", ImGuiTableColumnFlags_None, 0.0f, COL_DIST);
+			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 0.0f, COL_TYPE);
+			ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_None, 0.0f, COL_STATE);
+			ImGui::TableSetupColumn("Forced", ImGuiTableColumnFlags_None, 0.0f, COL_FORCED);
+			ImGui::TableHeadersRow();
+
+			if (const auto specs = ImGui::TableGetSortSpecs(); specs && specs->SpecsCount > 0)
+			{
+				const auto column = specs->Specs[0].ColumnUserID;
+				const bool ascending = specs->Specs[0].SortDirection == ImGuiSortDirection_Ascending;
+
+				std::ranges::sort(rows, [&](const int a, const int b)
+					{
+						const auto& ia = ins.instances[a];
+						const auto& ib = ins.instances[b];
+
+						float ka = 0.0f, kb = 0.0f;
+						switch (column)
+						{
+							case COL_NAME:
+							{
+								const int cmp = std::strcmp(ia.model_name ? ia.model_name : "", ib.model_name ? ib.model_name : "");
+								return ascending ? cmp < 0 : cmp > 0;
+							}
+							case COL_HEIGHT:	ka = ia.height; kb = ib.height; break;
+							case COL_RADIUS:	ka = ia.radius; kb = ib.radius; break;
+							case COL_DIST:		ka = ia.distance; kb = ib.distance; break;
+							case COL_TYPE:		ka = ia.is_lod; kb = ib.is_lod; break;
+							case COL_STATE:		ka = ia.visible; kb = ib.visible; break;
+							case COL_FORCED:	ka = static_cast<float>(find_anticull_category(ia.model_index)); kb = static_cast<float>(find_anticull_category(ib.model_index)); break;
+							default:			ka = ia.model_index; kb = ib.model_index; break;
+						}
+
+						return ascending ? ka < kb : ka > kb;
+					});
+			}
+
+			auto& ac = map_settings::get_map_settings().anticull_meshes;
+
+			ImGuiListClipper clipper;
+			clipper.Begin(static_cast<int>(rows.size()));
+			while (clipper.Step())
+			{
+				for (auto r = clipper.DisplayStart; r < clipper.DisplayEnd; ++r)
+				{
+					const auto& inst = ins.instances[rows[r]];
+					const bool is_selected = inst.entity == ins.selected;
+
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+
+					ImGui::PushID(rows[r]);
+					if (ImGui::Selectable(shared::utils::va("%d", inst.model_index), is_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+						ins.selected = is_selected ? nullptr : inst.entity;
+					}
+
+					if (ImGui::IsItemHovered())
+					{
+						ins.hovered = inst.entity;
+						if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+						{
+							ins.context = inst;
+							open_context = true;
+						}
+					}
+					ImGui::PopID();
+
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(inst.model_name ? inst.model_name : "-");
+
+					ImGui::TableNextColumn();
+					ImGui::Text("%.1f", inst.height);
+
+					ImGui::TableNextColumn();
+					ImGui::Text("%.1f", inst.radius);
+
+					ImGui::TableNextColumn();
+					ImGui::Text("%.0f", inst.distance);
+
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(inst.is_lod ? "LOD" : "HD");
+
+					ImGui::TableNextColumn();
+					const auto [state, state_color] = inspector_state(ins, inst);
+					ImGui::TextColored(state_color, "%s", state);
+
+					ImGui::TableNextColumn();
+					const int category = find_anticull_category(inst.model_index);
+					ImGui::TextUnformatted(category >= 0 ? ac[category].comment.c_str() : "");
+				}
+			}
+
+			ImGui::EndTable();
+		}
+
+		if (open_context) {
+			ImGui::OpenPopup("##inspector_context");
+		}
+
+		if (ImGui::BeginPopup("##inspector_context"))
+		{
+			inspector_context_menu(ins);
+			ImGui::EndPopup();
+		}
+	}
+
+	void anticull_inspector_ui()
+	{
+		auto& ins = imgui::get()->m_anticull_inspector;
+
+		if (ImGui::Checkbox("Enable Mesh Inspector", &ins.enabled) && !ins.enabled)
+		{
+			ins.hidden.clear();
+			ins.lod_view = inspector_s::lod_view_mode::off;
+		}
+		TT("Lists building meshes around the camera, draws labels and boxes in the world and traces why the selected mesh is culled.\n"
+		   "Left click into the world (menu open, no window hovered) to pick a mesh. Click again at the same spot to cycle through overlapping meshes.\n"
+		   "Right click a mesh in the world or in the table to add it to a category, hide it or highlight its instances.");
+
+		if (!ins.enabled) {
+			return;
+		}
+
+		constexpr float CHECKBOX_SPACING = 14.0f;
+
+		SET_CHILD_WIDGET_WIDTH;
+		ImGui::DragFloat("Radius", &ins.radius, 1.0f, 10.0f, 3000.0f, "%.0f");
+		TT("Only meshes within this distance around the camera are listed.");
+
+		SET_CHILD_WIDGET_WIDTH;
+		ImGui::DragFloat("Min. Mesh Radius", &ins.min_radius, 0.5f, 0.0f, 1000.0f, "%.1f");
+
+		SET_CHILD_WIDGET_WIDTH;
+		ImGui::DragFloat("Min. Mesh Height", &ins.min_height, 0.5f, 0.0f, 1000.0f, "%.1f");
+
+		SET_CHILD_WIDGET_WIDTH;
+		ImGui::DragInt("Highlight Index", &ins.highlight_model_index, 1.0f, -1, 0xFFFF);
+		TT("Draws a box around every listed instance of this model index. -1 = off.\nClicking an index in a category below sets it.");
+
+		SET_CHILD_WIDGET_WIDTH;
+		auto lod_view = static_cast<int>(ins.lod_view);
+		if (ImGui::Combo("LOD View", &lod_view, "Off\0LOD (hide HD)\0Lowest LOD\0"))
+		{
+			ins.lod_view = static_cast<inspector_s::lod_view_mode>(lod_view);
+			if (ins.lod_view != inspector_s::lod_view_mode::off) {
+				ins.show_lod = true;
+			}
+		}
+		TT("Culls detail levels map wide to look at the lod meshes.\n"
+		   "LOD: hides every HD mesh that has a lod parent, so its LOD is drawn instead.\n"
+		   "Lowest LOD: only draws meshes without a lod parent.\n"
+		   "Picking a mode enables LOD entries in the list.");
+
+		ImGui::Spacing(0, 4);
+		ImGui::Checkbox("HD", &ins.show_hd);
+		
+		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+		ImGui::Checkbox("LOD", &ins.show_lod); TT("LOD boxes span several buildings and get in the way when picking.");
+		
+		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+		ImGui::Checkbox("Only Forced", &ins.only_forced);
+		
+		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+		ImGui::Checkbox("Boxes on Forced", &ins.boxes_on_forced);
+		ImGui::Checkbox("Labels", &ins.show_labels);
+		
+		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+		ImGui::SetNextItemWidth(120.0f);
+		ImGui::DragInt("Max Labels", &ins.max_labels, 0.2f, 1, 300);
+		TT("Labels go to the largest meshes first and are skipped where they would overlap.");
+		
+		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+		ImGui::Checkbox("Pick Visible Only", &ins.pick_visible_only);
+		TT("Clicks in the world only pick meshes that were drawn last frame. The table still lists every mesh.");
+
+		ImGui::Text("Hidden: %d / %d", static_cast<int>(ins.hidden.size()), static_cast<int>(inspector_s::MAX_HIDDEN));
+		
+		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+		ImGui::BeginDisabled(ins.hidden.empty());
+		if (ImGui::SmallButton("Unhide All")) {
+			ins.hidden.clear();
+		}
+		ImGui::EndDisabled();
+		TT("Hidden meshes stay culled until you unhide them or disable the inspector. Their boxes are drawn in purple.\n"
+		   "Hiding an HD mesh shows its LOD, use 'Hide with Lod Parents' to see what is behind it.");
+
+		g_inspector_filter.Draw("Filter (index or name)", ImGui::GetContentRegionAvail().x * 0.6f);
+
+		ImGui::Spacing(0, 8);
+		inspector_details(ins);
+
+		ImGui::Spacing(0, 8);
+		inspector_table(ins);
+	}
+
 	void cont_mapsettings_anticull_meshes()
 	{
-		/*ImGui::Checkbox("Visualize Anti Culling Info", &im->m_dbg_visualize_anti_cull_info); TT("Visualize Anti Culling Info");
-		ImGui::DragFloat("Info Distance", &im->m_dbg_visualize_anti_cull_info_distance, 0.05f);  TT("Only draw mesh vis. up until this distance.");
-		ImGui::DragFloat("Info Min Radius", &im->m_dbg_visualize_anti_cull_info_min_radius, 0.05f); TT("A mesh needs to have at least this radius to be visualized.");
-		ImGui::DragInt("Highlight Mesh with Index", &im->m_dbg_visualize_anti_cull_highlight); TT("Draw bounding box around mesh with this index.");
-		ImGui::DragFloat("Highlight Line Width", &im->m_dbg_visualize_anti_cull_info_highlight_line_width, 0.05f); TT("Line width for bounding box.");*/
-
-		//const auto& gs = comp_settings::get();
-
 		const auto& im = imgui::get();
 		auto& ac = map_settings::get_map_settings().anticull_meshes;
 		
@@ -5673,11 +6257,7 @@ namespace gta4
 		ImGui::Separator();
 		ImGui::Spacing(0, 4);
 
-		ImGui::Checkbox("Visualize Anti Culling Info", &im->m_dbg_visualize_anti_cull_info); TT("Visualize Anti Culling Info");
-		ImGui::DragFloat("Info Distance", &im->m_dbg_visualize_anti_cull_info_distance, 0.05f);  TT("Only draw mesh vis. up until this distance.");
-		ImGui::DragFloat("Info Min Radius", &im->m_dbg_visualize_anti_cull_info_min_radius, 0.05f); TT("A mesh needs to have at least this radius to be visualized.");
-		ImGui::DragInt("Highlight Mesh with Index", &im->m_dbg_visualize_anti_cull_highlight); TT("Draw bounding box around mesh with this index.");
-		ImGui::DragFloat("Highlight Line Width", &im->m_dbg_visualize_anti_cull_info_highlight_line_width, 0.05f); TT("Line width for bounding box.");
+		anticull_inspector_ui();
 
 		ImGui::Spacing(0, 4);
 		ImGui::Separator();
@@ -5780,7 +6360,7 @@ namespace gta4
 											erase_this = true;
 										}
 										else {
-											im->m_dbg_visualize_anti_cull_highlight = *set_it;
+											im->m_anticull_inspector.highlight_model_index = *set_it;
 										}
 									}
 
@@ -5996,6 +6576,364 @@ namespace gta4
 
 		return IM_COL32(r, g, b, a);
 	};
+
+	struct inspector_view_s
+	{
+		D3DXMATRIX view;
+		D3DXMATRIX proj;
+		D3DXMATRIX view_proj;
+		D3DVIEWPORT9 vp;
+	};
+
+	bool inspector_get_view(inspector_view_s& out)
+	{
+		const auto vpscene = game::pViewports;
+		if (!vpscene || !vpscene->sceneviewport || !shared::globals::d3d_device) {
+			return false;
+		}
+
+		shared::globals::d3d_device->GetViewport(&out.vp);
+		out.view = vpscene->sceneviewport->view;
+		out.proj = vpscene->sceneviewport->proj;
+		D3DXMatrixMultiply(&out.view_proj, &out.view, &out.proj);
+		return true;
+	}
+
+	// clips the segment against the camera plane, imgui clips against the screen
+	bool inspector_project_segment(const inspector_view_s& v, const D3DXVECTOR3& a, const D3DXVECTOR3& b, ImVec2& out_a, ImVec2& out_b)
+	{
+		constexpr float MIN_W = 0.05f;
+
+		D3DXVECTOR4 ca, cb;
+		D3DXVec3Transform(&ca, &a, &v.view_proj);
+		D3DXVec3Transform(&cb, &b, &v.view_proj);
+
+		if (ca.w < MIN_W && cb.w < MIN_W) {
+			return false;
+		}
+
+		if (ca.w < MIN_W) {
+			ca += (cb - ca) * ((MIN_W - ca.w) / (cb.w - ca.w));
+		}
+		else if (cb.w < MIN_W) {
+			cb += (ca - cb) * ((MIN_W - cb.w) / (ca.w - cb.w));
+		}
+
+		const auto to_screen = [&v](const D3DXVECTOR4& c)
+			{
+				return ImVec2(static_cast<float>(v.vp.X) + (c.x / c.w * 0.5f + 0.5f) * static_cast<float>(v.vp.Width),
+							  static_cast<float>(v.vp.Y) + (0.5f - c.y / c.w * 0.5f) * static_cast<float>(v.vp.Height));
+			};
+
+		out_a = to_screen(ca);
+		out_b = to_screen(cb);
+		return true;
+	}
+
+	void inspector_draw_box(const inspector_view_s& v, const inspector_s::instance_s& inst, const ImU32 color, const float thickness)
+	{
+		D3DXVECTOR3 corners[8];
+		for (auto i = 0; i < 8; ++i)
+		{
+			const D3DXVECTOR3 local(
+				(i & 1) ? inst.local_maxs.x : inst.local_mins.x,
+				(i & 2) ? inst.local_maxs.y : inst.local_mins.y,
+				(i & 4) ? inst.local_maxs.z : inst.local_mins.z);
+
+			D3DXVec3TransformCoord(&corners[i], &local, &inst.world);
+		}
+
+		const auto dl = ImGui::GetBackgroundDrawList();
+		for (auto i = 0; i < 8; ++i)
+		{
+			for (const auto axis : { 1, 2, 4 })
+			{
+				ImVec2 a, b;
+				if (!(i & axis) && inspector_project_segment(v, corners[i], corners[i | axis], a, b)) {
+					dl->AddLine(a, b, color, thickness);
+				}
+			}
+		}
+	}
+
+	// ray vs the oriented model box, inside = ray starts within the box
+	bool inspector_ray_hit(const inspector_s::instance_s& inst, const D3DXVECTOR3& origin, const D3DXVECTOR3& dir, float& out_t, bool& out_inside)
+	{
+		D3DXMATRIX inv;
+		if (!D3DXMatrixInverse(&inv, nullptr, &inst.world)) {
+			return false;
+		}
+
+		D3DXVECTOR3 o, d;
+		D3DXVec3TransformCoord(&o, &origin, &inv);
+		D3DXVec3TransformNormal(&d, &dir, &inv);
+
+		const float ro[3] = { o.x, o.y, o.z };
+		const float rd[3] = { d.x, d.y, d.z };
+		const float mins[3] = { inst.local_mins.x, inst.local_mins.y, inst.local_mins.z };
+		const float maxs[3] = { inst.local_maxs.x, inst.local_maxs.y, inst.local_maxs.z };
+
+		float t_min = 0.0f, t_max = FLT_MAX;
+		out_inside = true;
+
+		for (auto a = 0; a < 3; ++a)
+		{
+			if (ro[a] < mins[a] || ro[a] > maxs[a]) {
+				out_inside = false;
+			}
+
+			if (fabsf(rd[a]) < 1e-6f)
+			{
+				if (ro[a] < mins[a] || ro[a] > maxs[a]) {
+					return false;
+				}
+				continue;
+			}
+
+			float t1 = (mins[a] - ro[a]) / rd[a];
+			float t2 = (maxs[a] - ro[a]) / rd[a];
+			if (t1 > t2) {
+				std::swap(t1, t2);
+			}
+
+			t_min = std::max(t_min, t1);
+			t_max = std::min(t_max, t2);
+			if (t_min > t_max) {
+				return false;
+			}
+		}
+
+		out_t = t_min;
+		return true;
+	}
+
+	// meshes under the mouse, nearest first. Boxes the camera is inside come last
+	std::vector<const void*> inspector_hits(const inspector_s& ins, const inspector_view_s& v)
+	{
+		const auto mouse = ImGui::GetIO().MousePos;
+		const D3DXVECTOR3 screen_near(mouse.x, mouse.y, 0.0f), screen_mid(mouse.x, mouse.y, 0.5f);
+
+		D3DXVECTOR3 origin, mid, dir;
+		D3DXVec3Unproject(&origin, &screen_near, &v.vp, &v.proj, &v.view, nullptr);
+		D3DXVec3Unproject(&mid, &screen_mid, &v.vp, &v.proj, &v.view, nullptr);
+		dir = mid - origin;
+		D3DXVec3Normalize(&dir, &dir);
+
+		struct hit_s
+		{
+			const void* entity;
+			bool inside;
+			float t;
+		};
+
+		std::vector<hit_s> hits;
+		for (const auto& inst : ins.instances)
+		{
+			if (!inspector_passes_filter(ins, inst) || (ins.pick_visible_only && (!inst.visible || inst.past_lod_distance))) {
+				continue;
+			}
+
+			float t; bool inside;
+			if (inspector_ray_hit(inst, origin, dir, t, inside)) {
+				hits.push_back({ inst.entity, inside, t });
+			}
+		}
+
+		std::ranges::sort(hits, [](const hit_s& a, const hit_s& b) {
+			return a.inside != b.inside ? !a.inside : a.t < b.t;
+		});
+
+		std::vector<const void*> hit_entities;
+		hit_entities.reserve(hits.size());
+		for (const auto& h : hits) {
+			hit_entities.emplace_back(h.entity);
+		}
+
+		return hit_entities;
+	}
+
+	// selects the mesh under the mouse, clicking the same spot again cycles through all hits
+	void inspector_pick(inspector_s& ins, const inspector_view_s& v)
+	{
+		static ImVec2 last_click = { -1000.0f, -1000.0f };
+		static std::vector<const void*> last_hits;
+		static int cycle = 0;
+
+		const auto mouse = ImGui::GetIO().MousePos;
+		auto hit_entities = inspector_hits(ins, v);
+
+		const float dx = mouse.x - last_click.x, dy = mouse.y - last_click.y;
+		const bool same_spot = dx * dx + dy * dy < 36.0f && hit_entities == last_hits;
+
+		cycle = same_spot && !hit_entities.empty() ? (cycle + 1) % static_cast<int>(hit_entities.size()) : 0;
+		ins.selected = hit_entities.empty() ? nullptr : hit_entities[cycle];
+		ins.pick_hit = cycle;
+		ins.pick_hit_count = static_cast<int>(hit_entities.size());
+
+		last_click = mouse;
+		last_hits = std::move(hit_entities);
+	}
+
+	// returns true when a mesh got right clicked, ins.context holds it
+	bool inspector_draw_overlay(inspector_s& ins, const bool allow_pick)
+	{
+		inspector_view_s v;
+		if (!inspector_get_view(v)) {
+			return false;
+		}
+
+		// boxes
+		for (const auto& inst : ins.instances)
+		{
+			if (inst.entity == ins.selected) {
+				inspector_draw_box(v, inst, IM_COL32(60, 200, 255, 255), 2.5f);
+			}
+			else if (inst.entity == ins.hovered) {
+				inspector_draw_box(v, inst, IM_COL32(255, 220, 60, 255), 2.0f);
+			}
+			else if (!ins.hidden.empty() && inspector_is_hidden(ins, inst.entity)) {
+				inspector_draw_box(v, inst, IM_COL32(215, 100, 240, 255), 1.5f);
+			}
+			else if (inst.model_index == ins.highlight_model_index) {
+				inspector_draw_box(v, inst, IM_COL32(120, 255, 120, 255), 1.5f);
+			}
+			else if (ins.boxes_on_forced && inspector_passes_filter(ins, inst) && find_anticull_category(inst.model_index) >= 0) {
+				inspector_draw_box(v, inst, IM_COL32(80, 200, 80, 140), 1.0f);
+			}
+		}
+
+		// labels: selected and hovered first, then the largest meshes, skipped where they would overlap
+		if (ins.show_labels)
+		{
+			struct label_s
+			{
+				const inspector_s::instance_s* inst;
+				ImVec2 pos;
+				int priority;
+			};
+
+			struct rect_s
+			{
+				ImVec2 min, max;
+			};
+
+			static std::vector<label_s> labels;
+			static std::vector<rect_s> placed;
+			labels.clear();
+			placed.clear();
+
+			for (const auto& inst : ins.instances)
+			{
+				ImVec2 pos;
+				if (inspector_passes_filter(ins, inst) && w2s(inst.center, pos)) {
+					labels.push_back({ &inst, pos, inst.entity == ins.selected ? 2 : inst.entity == ins.hovered ? 1 : 0 });
+				}
+			}
+
+			std::ranges::sort(labels, [](const label_s& a, const label_s& b) {
+				return a.priority != b.priority ? a.priority > b.priority : a.inst->height > b.inst->height;
+			});
+
+			const auto dl = ImGui::GetBackgroundDrawList();
+			int count = 0;
+
+			for (const auto& l : labels)
+			{
+				if (!l.priority && count >= ins.max_labels) {
+					break;
+				}
+
+				const char* text = l.inst->model_name
+					? shared::utils::va("%d\n%s", l.inst->model_index, l.inst->model_name)
+					: shared::utils::va("%d", l.inst->model_index);
+
+				const ImVec2 half = ImGui::CalcTextSize(text) * 0.5f + ImVec2(4.0f, 2.0f);
+				const rect_s rect = { l.pos - half, l.pos + half };
+
+				const bool overlaps = std::ranges::any_of(placed, [&rect](const rect_s& p) {
+					return rect.min.x < p.max.x && rect.max.x > p.min.x && rect.min.y < p.max.y && rect.max.y > p.min.y;
+				});
+
+				if (!l.priority && overlaps) {
+					continue;
+				}
+
+				placed.push_back(rect);
+				++count;
+
+				ImU32 color = l.inst->visible ? IM_COL32(235, 235, 235, 255) : IM_COL32(150, 150, 150, 255);
+				if (l.priority == 2) {
+					color = IM_COL32(60, 200, 255, 255);
+				}
+				else if (l.priority == 1) {
+					color = IM_COL32(255, 220, 60, 255);
+				}
+				else if (!ins.hidden.empty() && inspector_is_hidden(ins, l.inst->entity)) {
+					color = IM_COL32(215, 100, 240, 255);
+				}
+				else if (find_anticull_category(l.inst->model_index) >= 0) {
+					color = IM_COL32(110, 230, 90, 255);
+				}
+
+				dl->AddRectFilled(rect.min, rect.max, IM_COL32(0, 0, 0, 150), 3.0f);
+				dl->AddText(rect.min + ImVec2(4.0f, 2.0f), color, text);
+			}
+		}
+
+		if (!allow_pick) {
+			return false;
+		}
+
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+			inspector_pick(ins, v);
+		}
+
+		// holding the right mouse button moves the game camera, so only a short click without movement opens the menu
+		const auto& io = ImGui::GetIO();
+		if (   ImGui::IsMouseReleased(ImGuiMouseButton_Right)
+			&& io.MouseDownDurationPrev[ImGuiMouseButton_Right] < 0.3f
+			&& io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] < 36.0f)
+		{
+			const auto hits = inspector_hits(ins, v);
+			const auto selected = std::ranges::find(hits, ins.selected);
+			const void* target = selected != hits.end() ? *selected : hits.empty() ? nullptr : hits.front();
+
+			if (const auto inst = inspector_find(ins, target))
+			{
+				ins.context = *inst;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	// takes the newest snapshot of the game thread, names the entity the culling hooks trace and hands them the hidden meshes
+	void inspector_sync(inspector_s& ins)
+	{
+		{
+			std::lock_guard lock(ins.mutex);
+			if (ins.published_generation != ins.instances_generation)
+			{
+				ins.instances.swap(ins.published);
+				ins.instances_generation = ins.published_generation;
+			}
+
+			ins.trace_copy = ins.trace;
+		}
+
+		ins.traced_entity.store(ins.selected ? ins.selected : ins.hovered, std::memory_order_relaxed);
+
+		const auto hidden_count = ins.enabled ? static_cast<std::uint32_t>(std::min<std::size_t>(ins.hidden.size(), inspector_s::MAX_HIDDEN)) : 0u;
+		for (auto i = 0u; i < hidden_count; ++i)
+		{
+			ins.hidden_slots[i].entity.store(ins.hidden[i].entity, std::memory_order_relaxed);
+			ins.hidden_slots[i].model_index.store(ins.hidden[i].model_index, std::memory_order_relaxed);
+		}
+
+		ins.hidden_count.store(hidden_count, std::memory_order_release);
+		ins.active_lod_view.store(ins.enabled ? ins.lod_view : inspector_s::lod_view_mode::off, std::memory_order_relaxed);
+	}
 
 	void imgui::draw_debug()
 	{
@@ -6309,40 +7247,29 @@ namespace gta4
 			}
 		}
 
-		if (m_dbg_visualize_anti_cull_info)
 		{
-			const auto vp = game::pViewports;
-			if (vp->sceneviewport)
+			auto& ins = m_anticull_inspector;
+			inspector_sync(ins);
+
+			if (ins.enabled)
 			{
-				//const float draw_dist = im->m_dbg_visualize_anti_cull_info_distance;
-
-				ImVec2 viewport_pos = {};
-				//const Vector cam_org = &vp->sceneviewport->cameraInv.m[3][0];
-
-				for (auto& l : visualized_anti_cull)
+				if (ImGui::BeginPopup("##inspector_world_context"))
 				{
-					//if (fabs(cam_org.DistToSqr(l.pos) < draw_dist * draw_dist))
-					{
-						if (w2s(l.pos, viewport_pos))
-						{
-							std::ostringstream oss;
-							oss << "R: " << std::format("{:.2f}", l.radius) << "\n"
-								<< "H: " << std::format("{:.2f}", l.height) << "\n"
-								<< "ID: " << std::to_string(l.m_wModelIndex);
-
-							ImGui::GetBackgroundDrawList()->AddText(viewport_pos,
-								l.forced_visible ? ImGui::GetColorU32(ImVec4(0.3f, 0.8f, 0.2f, 1.0f)) : ImGui::GetColorU32(ImGuiCol_Text),
-								oss.str().c_str());
-
-							if (l.draw_debug_box) {
-								shared::common::remix_api::get().debug_draw_box(l.mins, l.maxs, im->m_dbg_visualize_anti_cull_info_highlight_line_width, shared::common::remix_api::DEBUG_REMIX_LINE_COLOR::GREEN);
-							}
-						}
+					if (shared::globals::imgui_menu_open) {
+						inspector_context_menu(ins);
 					}
+					else {
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::EndPopup();
 				}
 
-				visualized_anti_cull.clear();
+				if (inspector_draw_overlay(ins, shared::globals::imgui_menu_open && !ImGui::GetIO().WantCaptureMouse)) {
+					ImGui::OpenPopup("##inspector_world_context");
+				}
 			}
+
+			ins.hovered = nullptr;
 		}
 
 		if (static auto debug_model_hash = shared::common::flags::has_flag("debug_model_hash"); debug_model_hash)

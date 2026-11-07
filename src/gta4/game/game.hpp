@@ -93,6 +93,9 @@ namespace gta4::game
 	extern DWORD g_modelPointersAddr;
 	extern CBaseModelInfo** g_modelPointers;
 
+	extern CPool** ppBuildingPool;
+	extern render_cell_grid_near_s* pRenderCellGridNear;
+
 	// --------------
 	// game functions
 

@@ -199,6 +199,7 @@ namespace gta4
 				ASSIGN(nocull_dist_sphere_interior);
 
 				ASSIGN(nocull_extended);
+				ASSIGN(nocull_extended_offscreen);
 				ASSIGN(nocull_extended_auto);
 				ASSIGN(nocull_extended_dist);
 				ASSIGN(nocull_extended_radius);

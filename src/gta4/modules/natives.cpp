@@ -20,6 +20,8 @@ namespace gta4
 			natives::on_game_frame_callback();
 		}
 
+		anticull_inspector::update();
+
 		// TODO: hack to fix issues with SSS-fixing commit (that makes head mesh invisible)
 		// + latest remix versions also make player char invisible
 		// + sometimes even parts of the world ...
