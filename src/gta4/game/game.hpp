@@ -96,6 +96,10 @@ namespace gta4::game
 	extern CPool** ppBuildingPool;
 	extern render_cell_grid_near_s* pRenderCellGridNear;
 
+	/// CShaderLib "globalScalars" (render thread): x = alpha of the entity being drawn (SetGlobalAlpha, set by every draw command
+	/// and before the split alpha draws), y = hdr intensity multiplier, z = natural ambient scale
+	extern float* pShaderGlobalScalars;
+
 	// --------------
 	// game functions
 
@@ -266,6 +270,8 @@ namespace gta4::game
 
 	extern uint32_t retn_addr__extended_anti_culling_check_stub;
 	extern uint32_t jmp_addr__extended_anti_culling_check_stub;
+	extern uint32_t hk_addr__lod_fade_in_stub;
+
 
 	extern uint32_t hk_addr__frustum_check;
 	extern uint32_t retn_addr__frustum_check_interior_objs;

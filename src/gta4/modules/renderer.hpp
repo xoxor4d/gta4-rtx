@@ -17,7 +17,7 @@ namespace gta4
 	extern int g_in_draw_frag_dc_object; // inside CDrawFragDC::Execute of a fragment instance that is not a vehicle (props with physics)
 	extern int g_in_draw_entity_info; // inside CEntityDrawInfo::RenderBuckets of an unskinned entity (sorted alpha entities)
 	extern int g_in_draw_dynamic_entity_dc; // inside CDrawSkinnedEntityDC::Execute of an unskinned dynamic entity (CObject)
-	extern int g_in_draw_lights_in_area; // inside CRenderer::RenderDrawableGeometriesWithLightsInArea (large alpha entities, wires)
+	extern int g_in_draw_lights_in_area; // inside CRenderer::RenderDrawableGeometriesWithLightsInArea (buildings cross fading with their lod, wires)
 
 	void reset_world_transform();
 	extern int g_is_sky_rendering;
@@ -62,8 +62,8 @@ namespace gta4
 		UseGlobalUVs = 1 << 6, // use gta4's global uv constant to animate uvs
 		Translucent_WorldposAsUVs = 1 << 7, // use worldpos instead of surface uvs
 		Translucent_FadeNormalUntilDist = 1 << 8,
-		Free09 = 1 << 9,
-		Free10 = 1 << 10,
+		LodFade = 1 << 9, // api path only: bits 24-31 of the modifier word carry the opacity of a lod cross fade
+		LodFadePartner = 1 << 10, // api path only: the opaque side of a lod cross fade while the other side fades
 		Free11 = 1 << 11,
 		Free12 = 1 << 12,
 		Free13 = 1 << 13,

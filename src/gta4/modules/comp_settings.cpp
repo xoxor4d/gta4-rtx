@@ -179,6 +179,7 @@ namespace gta4
 				ASSIGN(api_static_pass_refresh_frames);
 				ASSIGN(api_static_retained);
 				ASSIGN(api_static_retained_hide_frames);
+				ASSIGN(api_static_lod_fade);
 				ASSIGN(api_peds_enabled);
 				ASSIGN(api_peds_blendshapes);
 				ASSIGN(api_peds_wounds_enabled);

@@ -87,6 +87,7 @@ namespace gta4::game
 
 	CPool** ppBuildingPool = nullptr;
 	render_cell_grid_near_s* pRenderCellGridNear = nullptr;
+	float* pShaderGlobalScalars = nullptr;
 
 	// --------------
 	// game functions
@@ -242,6 +243,7 @@ namespace gta4::game
 
 	uint32_t retn_addr__extended_anti_culling_check_stub = 0u;
 	uint32_t jmp_addr__extended_anti_culling_check_stub = 0u;
+	uint32_t hk_addr__lod_fade_in_stub = 0u;
 	uint32_t hk_addr__frustum_check = 0u;
 	uint32_t retn_addr__frustum_check_interior_objs = 0u;
 
@@ -529,6 +531,9 @@ namespace gta4::game
 
 		// pRenderCellGridNear = (render_cell_grid_near_s*)0x15C1610;
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pRenderCellGridNear, render_cell_grid_near_s*, "F6 40 24 40 56 51 57 74 ? B9 ? ? ? ? E8 ? ? ? ? 5F 5E C3 B9 ? ? ? ? E8", 23, 0xAE5E78);
+
+		// pShaderGlobalScalars = (float*)0x103F260;
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pShaderGlobalScalars, float*, "F3 0F 10 0D ? ? ? ? F3 0F 59 4C 24 04 F3 0F 10 05", 18, 0xAC6EF0);
 
 		// end GAME_VARIABLES
 #pragma endregion
@@ -833,6 +838,8 @@ namespace gta4::game
 		if (const auto offset = shared::utils::mem::find_pattern("0F 85 ? ? ? ? 53 55 8B 6C 24 ? 33 DB", 0, "jmp_addr__extended_anti_culling_check_stub", use_pattern, 0xAE868C); offset) {
 			jmp_addr__extended_anti_culling_check_stub = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++;
 		} total_pattern_count++;
+
+		PATTERN_OFFSET_SIMPLE(hk_addr__lod_fade_in_stub, "C6 46 63 FF 83 3D ? ? ? ? 00 74 ? 85 D2", 0, 0xAE82C0);
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__frustum_check, "55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, 0x431E40);
 		PATTERN_OFFSET_SIMPLE(retn_addr__frustum_check_interior_objs, "? ? ? ? F3 0F 10 50 ? ? ? ? ? F3 0F 5C 51 ? F3 0F 10 49", 0, 0xA0FCF9);

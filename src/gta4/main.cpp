@@ -366,18 +366,15 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		shared::globals::setup_exe_module();
 		shared::globals::setup_homepath();
 
-		shared::common::set_console_color_blue(true);
-		std::cout << "\n  Launching GTAIV RTX Remix Compatiblity Mod Version [" << COMP_MOD_VERSION_MAJOR << "." << COMP_MOD_VERSION_MINOR << "." << COMP_MOD_VERSION_PATCH << "]";
-		
+		//shared::common::set_console_color_blue(true);
+		shared::common::log("Main", std::format("Launching GTAIV RTX Remix Compatiblity Mod Version [{:d}.{:d}.{:d}]", COMP_MOD_VERSION_MAJOR, COMP_MOD_VERSION_MINOR, COMP_MOD_VERSION_PATCH), shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
+
 		if constexpr (COMP_MOD_PRE_RELEASE_NUM != 0) {
-			std::cout << "   - Pre-Release " << std::to_string(COMP_MOD_PRE_RELEASE_NUM) << "\n";
-		} else {
-			std::cout << "\n";
+			shared::common::log("Main", std::format("Pre-Release [{:d}]", COMP_MOD_PRE_RELEASE_NUM), shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
 		}
 		
-		std::cout << "  > Compiled On : " + std::string(__DATE__) + " " + std::string(__TIME__) + "\n";
-		std::cout << "  > https://github.com/xoxor4d/gta4-rtx\n\n";
-		shared::common::set_console_color_default();
+		shared::common::log("Main", std::format("> Compiled On: {} {}", __DATE__, __TIME__), shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
+		shared::common::log("Main", "> https://github.com/xoxor4d/gta4-rtx\n", shared::common::LOG_TYPE::LOG_TYPE_STATUS, true);
 
 		if (const auto MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)
 		{

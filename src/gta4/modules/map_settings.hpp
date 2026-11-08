@@ -108,6 +108,7 @@ namespace gta4
 		std::unordered_map<std::string, light_overrides_toml_info_s> light_overrides_toml_info; // TOML filename -> TOML info (preserves all data for rebuilding)
 		std::unordered_map<std::string, lights_toml_info_s> lights_toml_info; // TOML filename -> lights info (preserves all data for ignored/allow lights)
 		std::vector<anti_cull_meshes_s> anticull_meshes;
+		std::unordered_set<int> lod_fade_excluded; // model indices never dithered: not drawn while the game cross fades them with their lod
 
 		template <typename Map>
 		std::vector<typename Map::key_type> get_sorted_keys(const Map& map)

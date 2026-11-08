@@ -87,9 +87,12 @@
 // PATCH 7 adds retained instances (CreateRetainedInstances, UpdateRetainedInstance,
 // UpdateRetainedInstances, DestroyRetainedInstances, DrawRetainedInstances), appended
 // to remixapi_Interface. Older callers never read the new slots.
+// PATCH 8 adds REMIXAPI_RETAINED_UPDATE_LOD_FADE and remixapi_RetainedInstanceUpdate::lodFadeOpacity.
+// PATCH 9 renames it lodFadeState: bits 0-7 stay the opacity, bit 8 (REMIXAPI_LOD_FADE_STATE_PARTNER)
+// marks the opaque side of a cross fade. Same layout.
 #define REMIXAPI_VERSION_MAJOR 0
 #define REMIXAPI_VERSION_MINOR 1000
-#define REMIXAPI_VERSION_PATCH 7
+#define REMIXAPI_VERSION_PATCH 9
 
 
 // External
@@ -1089,11 +1092,17 @@ extern "C" {
   // retained instance before its mesh.
 #define REMIXAPI_RETAINED_UPDATE_TRANSFORM  0x1u
 #define REMIXAPI_RETAINED_UPDATE_VISIBILITY 0x2u
+#define REMIXAPI_RETAINED_UPDATE_LOD_FADE   0x4u
+  // lodFadeState: bits 0-7 the LOD fade opacity (255 = not fading), bit 8 the fade partner flag
+#define REMIXAPI_LOD_FADE_STATE_PARTNER     0x100u
   typedef struct remixapi_RetainedInstanceUpdate {
     uint64_t           handle;
-    remixapi_Transform transform;   // valid with REMIXAPI_RETAINED_UPDATE_TRANSFORM
-    uint32_t           flags;       // REMIXAPI_RETAINED_UPDATE_*
-    remixapi_Bool      visible;     // valid with REMIXAPI_RETAINED_UPDATE_VISIBILITY
+    remixapi_Transform transform;    // valid with REMIXAPI_RETAINED_UPDATE_TRANSFORM
+    uint32_t           flags;        // REMIXAPI_RETAINED_UPDATE_*
+    remixapi_Bool      visible;      // valid with REMIXAPI_RETAINED_UPDATE_VISIBILITY
+    uint32_t           lodFadeState; // valid with REMIXAPI_RETAINED_UPDATE_LOD_FADE (0.1000.9): the LOD fade state of the entry's
+                                     // D3D overrides: the opacity (bits 24-31 of the modifier word) and, with
+                                     // REMIXAPI_LOD_FADE_STATE_PARTNER, the partner bit (bit 10). 255 = opaque, no partner
   } remixapi_RetainedInstanceUpdate;
 
   // Registers count draws under the host's handles. Nothing is created unless every item is valid.

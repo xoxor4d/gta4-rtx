@@ -1757,6 +1757,7 @@ namespace gta4
 
 				ImGui::BeginDisabled(!gs->api_static_enabled.get_as<bool>());
 				compsettings_bool_widget("Static Geometry: Retained Instances", gs->api_static_retained);
+				compsettings_bool_widget("Static Geometry: LOD Cross Fade", gs->api_static_lod_fade);
 				ImGui::EndDisabled();
 
 				compsettings_bool_widget("Peds", gs->api_peds_enabled);
@@ -5653,6 +5654,9 @@ namespace gta4
 
 	using inspector_s = imgui::anticull_inspector_s;
 	ImGuiTextFilter g_inspector_filter;
+	constexpr float INSPECTOR_RIGHT_PAD = 4.0f;
+	const ImVec4 INSPECTOR_COL_HIDE = ImVec4(0.16f, 0.40f, 0.55f, 1.0f);   // the selection box blue, darkened
+	const ImVec4 INSPECTOR_COL_HIDDEN = ImVec4(0.45f, 0.20f, 0.55f, 1.0f); // the hidden state purple, darkened
 
 	// first category that forces the model index, -1 if none
 	int find_anticull_category(const int model_index)
@@ -5823,6 +5827,17 @@ namespace gta4
 			}
 		}
 
+		auto& excluded = map_settings::get_map_settings().lod_fade_excluded;
+		const bool fade_excluded = excluded.contains(inst.model_index);
+		if (ImGui::MenuItem("Exclude from LOD Fade", nullptr, fade_excluded))
+		{
+			if (fade_excluded) {
+				excluded.erase(inst.model_index);
+			} else {
+				excluded.emplace(inst.model_index);
+			}
+		}
+
 		ImGui::Separator();
 
 		const bool selected = ins.selected == inst.entity;
@@ -5851,17 +5866,9 @@ namespace gta4
 		}
 	}
 
-	void inspector_details(inspector_s& ins)
+	// the info lines of a mesh, with placeholders so the panel keeps its layout when nothing is selected
+	void inspector_name_line(const inspector_s& ins, const inspector_s::instance_s* inst, const bool show_hits)
 	{
-		const auto inst = inspector_find(ins, ins.selected);
-		auto& ac = map_settings::get_map_settings().anticull_meshes;
-		const int category = inst ? find_anticull_category(inst->model_index) : -1;
-
-		// fixed height and placeholders, so that everything below keeps its position when the selection changes
-		const float height = ImGui::GetTextLineHeightWithSpacing() * 9.0f + ImGui::GetFrameHeightWithSpacing() + 16.0f;
-		ImGui::BeginChild("##inspector_details", ImVec2(0.0f, height), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
-		ImGui::BeginDisabled(!inst);
-
 		ImGui::PushFont(shared::imgui::font::BOLD);
 		if (inst) {
 			ImGui::Text("%d  %s", inst->model_index, inst->model_name ? inst->model_name : "");
@@ -5871,50 +5878,36 @@ namespace gta4
 		}
 		ImGui::PopFont();
 
-		if (inst && ins.pick_hit_count > 1)
+		if (inst && show_hits && ins.pick_hit_count > 1)
 		{
 			ImGui::SameLine();
 			ImGui::TextDisabled("(hit %d / %d, click again to cycle)", ins.pick_hit + 1, ins.pick_hit_count);
 		}
+	}
 
+	void inspector_stats_line(const inspector_s::instance_s* inst)
+	{
 		if (inst) {
-			ImGui::Text("%s  |  Height %.1f  Radius %.1f  Dist %.1f  LodDist %.1f", inst->is_lod ? "LOD" : "HD", inst->height, inst->radius, inst->distance, inst->lod_distance);
+			ImGui::Text("%s  |  Height %.1f  Radius %.1f  Dist %.1f  LodDist %.1f  Alpha %d", inst->is_lod ? "LOD" : "HD", inst->height, inst->radius, inst->distance, inst->lod_distance, inst->alpha);
 		}
 		else {
-			ImGui::TextUnformatted("-  |  Height -  Radius -  Dist -  LodDist -");
+			ImGui::TextUnformatted("-  |  Height -  Radius -  Dist -  LodDist -  Alpha -");
 		}
+	}
 
-		const auto parent = inst ? inspector_find(ins, inst->lod_entity) : nullptr;
-		if (inst && inst->lod_model_index >= 0) {
-			ImGui::Text("Lod Parent: %d %s", inst->lod_model_index, parent && parent->model_name ? parent->model_name : "");
-		}
-		else {
-			ImGui::TextUnformatted("Lod Parent: -");
-		}
-
-		ImGui::SameLine();
-		ImGui::BeginDisabled(!parent);
-		if (ImGui::SmallButton("Select##lod_parent")) {
-			ins.selected = parent->entity;
-		}
-
-		ImGui::EndDisabled();
-		ImGui::SameLine(0, 16);
-
-		if (inst) {
-			ImGui::Text("Lod Children: %d", inst->lod_children);
-		} else {
-			ImGui::TextUnformatted("Lod Children: -");
-		}
+	void inspector_forced_line(const inspector_s& ins, const inspector_s::instance_s* inst)
+	{
+		const auto& ac = map_settings::get_map_settings().anticull_meshes;
+		const int category = inst ? find_anticull_category(inst->model_index) : -1;
 
 		ImGui::Text("Forced by: %s", category >= 0 ? ac[category].comment.c_str() : "-");
-		ImGui::Spacing(0, 4);
+		ImGui::SameLine(0, 16);
 
 		if (inst)
 		{
 			const auto [state, state_color] = inspector_state(ins, *inst);
 			ImGui::TextColored(state_color, "Last Traversal: %s", state);
-			
+
 			if (!inst->model_loaded)
 			{
 				ImGui::SameLine();
@@ -5923,50 +5916,300 @@ namespace gta4
 		} else {
 			ImGui::TextUnformatted("Last Traversal: -");
 		}
+	}
 
-		const auto& t = ins.trace_copy;
-		const auto primary = ins.primary_phase_bit.load(std::memory_order_relaxed);
-		const bool has_trace = inst && inst->visited && t.entity == inst->entity && t.stamp == ins.traversal_stamp.load(std::memory_order_relaxed);
+	// lod tree of the shown mesh: its lod parent on top, the siblings below it and its own children one level deeper
+	namespace lod_tree
+	{
+		constexpr float INDENT = 18.0f;
+		constexpr float ROWS = 8.0f;
 
-		if (!has_trace)
+		struct ctx_s
 		{
-			const bool not_visited = inst && !inst->visited;
-			ImGui::TextUnformatted(not_visited ? "Frustum: not reached" : "Frustum: -");
-			ImGui::TextUnformatted(not_visited ? "Occlusion: not reached" : "Occlusion: -");
+			inspector_s& ins;
+			const inspector_s::instance_s* shown;
+			float x0;    // screen x of depth 0
+			float right; // local x where the state text ends
+		};
 
-			if (not_visited) {
-				ImGui::TextWrapped("Its map cells were not scanned. They are outside of every render phase or beyond the ~300m HD range in front of the camera.");
-			} else if (inst) {
-				ImGui::TextDisabled("Stage trace not available yet.");
+		// returns the vertical center of the row in screen space
+		float row(const ctx_s& c, const inspector_s::instance_s* inst, const int model_index, const int depth)
+		{
+			const bool shown = inst && inst == c.shown;
+			const bool is_selected = inst && inst->entity == c.ins.selected;
+
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + depth * INDENT);
+			ImGui::PushID(inst ? inst->entity : nullptr);
+			if (shown) {
+				ImGui::PushFont(shared::imgui::font::BOLD);
+			}
+			ImGui::BeginDisabled(!inst);
+			if (ImGui::Selectable(inst ? shared::utils::va("%d  %s", model_index, inst->model_name ? inst->model_name : "") : shared::utils::va("%d  <not listed>", model_index), is_selected)) {
+				c.ins.selected = is_selected ? nullptr : inst->entity;
+			}
+			ImGui::EndDisabled();
+			if (shown) {
+				ImGui::PopFont();
+			}
+			ImGui::PopID();
+
+			const auto rect_min = ImGui::GetItemRectMin();
+			const auto rect_max = ImGui::GetItemRectMax();
+
+			if (inst)
+			{
+				if (ImGui::IsItemHovered()) {
+					c.ins.hovered = inst->entity;
+				}
+
+				const auto [state, state_color] = inspector_state(c.ins, *inst);
+				const auto state_str = shared::utils::va("%s  %s", inst->is_lod ? "LOD" : "HD", state);
+				ImGui::SameLine(); ImGui::SetCursorPosX(c.right - ImGui::CalcTextSize(state_str).x);
+				ImGui::TextColored(state_color, "%s", state_str);
+			}
+
+			// keep the shown mesh in view when it changes
+			static const void* last_shown = nullptr;
+			if (shown && last_shown != inst->entity)
+			{
+				ImGui::SetScrollHereY(0.5f);
+				last_shown = inst->entity;
+			}
+
+			return (rect_min.y + rect_max.y) * 0.5f;
+		}
+
+		// the listed children of an entity under its row, connected with tree lines. The shown mesh unfolds its own children
+		void children(const ctx_s& c, const void* parent, const int child_count, const int depth)
+		{
+			const auto dl = ImGui::GetWindowDrawList();
+			const auto line_color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+			const float x_line = c.x0 + (depth - 1) * INDENT + 6.0f;
+			const float y_top = ImGui::GetItemRectMax().y;
+			float y_last = 0.0f;
+			int listed = 0;
+
+			for (const auto& inst : c.ins.instances)
+			{
+				if (inst.lod_entity != parent) {
+					continue;
+				}
+
+				listed++;
+				y_last = row(c, &inst, inst.model_index, depth);
+				dl->AddLine(ImVec2(x_line, y_last), ImVec2(c.x0 + depth * INDENT - 3.0f, y_last), line_color);
+
+				if (&inst == c.shown && inst.lod_children) {
+					children(c, inst.entity, inst.lod_children, depth + 1);
+				}
+			}
+
+			if (listed) {
+				dl->AddLine(ImVec2(x_line, y_top), ImVec2(x_line, y_last), line_color);
+			}
+
+			if (child_count > listed)
+			{
+				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + depth * INDENT);
+				ImGui::TextDisabled("%d more outside the inspector radius or below Min Radius / Min Height", child_count - listed);
 			}
 		}
-		else
+
+		// the selected mesh gets its own info lines below the tree while another one is pinned
+		void draw(inspector_s& ins, const inspector_s::instance_s& shown, const inspector_s::instance_s* other, const float height)
 		{
-			if (!(t.frustum_tested & primary)) {
-				ImGui::TextUnformatted("Frustum: not reached (past lod distance or no phase bit)");
-			} else if (t.frustum_passed & primary) {
-				ImGui::Text("Frustum: passed (%s)", frustum_reason_name(t.primary_reason));
-			} else {
-				ImGui::Text("Frustum: culled (%s)", frustum_reason_name(t.primary_reason));
+			ImGui::Indent();
+			ImGui::BeginChild("##inspector_lod_tree", ImVec2(-INSPECTOR_RIGHT_PAD, height), ImGuiChildFlags_FrameStyle);
+
+			const ctx_s c = { ins, &shown, ImGui::GetCursorScreenPos().x, ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x };
+			const auto parent = inspector_find(ins, shown.lod_entity);
+
+			if (shown.lod_entity)
+			{
+				row(c, parent, shown.lod_model_index, 0);
+				children(c, shown.lod_entity, parent ? parent->lod_children : 0, 1);
+			}
+			else
+			{
+				row(c, &shown, shown.model_index, 0);
+				children(c, shown.entity, shown.lod_children, 1);
 			}
 
-			if (!t.occlusion_tested) {
-				ImGui::TextUnformatted("Occlusion: not reached");
-			} else {
-				ImGui::Text("Occlusion: %s", t.occlusion_forced ? "skipped (extended anti culling)" : "tested");
-			}
+			ImGui::EndChild();
 
-			if ((t.frustum_passed & primary) && !inst->visible && !inst->past_lod_distance) {
-				ImGui::TextWrapped("Culled after the frustum test: occluded, or its lod parent swap hides it.");
+			if (other)
+			{
+				inspector_name_line(ins, other, true);
+				inspector_stats_line(other);
+				inspector_forced_line(ins, other);
+			}
+			ImGui::Unindent();
+		}
+	}
+
+	void inspector_details(inspector_s& ins)
+	{
+		const auto& style = ImGui::GetStyle();
+		auto& ac = map_settings::get_map_settings().anticull_meshes;
+
+		// the pinned mesh stays in the panel while others of its lod tree get selected, the buttons and the trace follow the selection
+		const auto sel = inspector_find(ins, ins.selected);
+		const auto pinned = inspector_find(ins, ins.pinned);
+		const auto inst = pinned ? pinned : sel;
+		const auto other = pinned && sel && sel != pinned ? sel : nullptr;
+		const int sel_category = sel ? find_anticull_category(sel->model_index) : -1;
+
+		// fixed height and placeholders, so that everything below keeps its position when the selection changes
+		static bool trace_open = false;
+		static bool tree_open = false;
+		const float line = ImGui::GetTextLineHeightWithSpacing();
+		const float frame = ImGui::GetFrameHeightWithSpacing();
+		const float tree_height = line * lod_tree::ROWS + style.FramePadding.y * 2.0f;
+
+		float height = line * 5.0f + frame * 2.0f + 16.0f;
+		
+		if (trace_open) {
+			height += line * 4.0f;
+		}
+
+		if (tree_open) {
+			height += tree_height + style.ItemSpacing.y + (other ? line * 3.0f : 0.0f);
+		}
+
+		ImGui::BeginChild("##inspector_details", ImVec2(0.0f, height), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+		const float grid_x = ImGui::GetCursorPosX();
+		const float avail = ImGui::GetContentRegionAvail().x - INSPECTOR_RIGHT_PAD;
+		const float button_width = (avail - style.ItemSpacing.x * 4.0f) / 5.0f;
+		const float column = button_width + style.ItemSpacing.x;
+		ImGui::BeginDisabled(!inst);
+
+		inspector_name_line(ins, inst, !other);
+
+		ImGui::SameLine(); 
+		ImGui::SetCursorPosX(grid_x + avail - ImGui::CalcTextSize(ICON_FA_THUMBTACK).x - style.FramePadding.x * 2.0f);
+		
+		if (pinned) {
+			ImGui::Style_ColorButtonPush(INSPECTOR_COL_HIDE, true);
+		}
+
+		if (ImGui::SmallButton(ICON_FA_THUMBTACK "##inspector_pin")) {
+			ins.pinned = pinned ? nullptr : inst->entity;
+		}
+
+		if (pinned) {
+			ImGui::Style_ColorButtonPop();
+		} TT("Pins the mesh to this panel. Selecting another mesh of its lod tree then shows that one below the tree while the pinned mesh stays up.");
+
+		inspector_stats_line(inst);
+		const auto parent = inst ? inspector_find(ins, inst->lod_entity) : nullptr;
+
+		if (inst && inst->lod_model_index >= 0) {
+			ImGui::Text("Lod Parent: %d %s", inst->lod_model_index, parent && parent->model_name ? parent->model_name : "");
+		} else {
+			ImGui::TextUnformatted("Lod Parent: -");
+		}
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!parent);
+		if (ImGui::SmallButton("Select##lod_parent")) {
+			ins.selected = parent->entity;
+		}
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!inst || (!inst->lod_children && !inst->lod_entity));
+		
+		if (ImGui::SmallButton(tree_open ? ICON_FA_CHEVRON_UP "##inspector_tree_toggle" : ICON_FA_CHEVRON_DOWN "##inspector_tree_toggle")) {
+			tree_open = !tree_open;
+		} TT("Shows the lod tree of this mesh: its lod parent, the siblings and its own children. Click a row to select it.");
+
+		ImGui::EndDisabled();
+
+		ImGui::SameLine(0, 16);
+		if (inst) {
+			ImGui::Text("Lod Children: %d", inst->lod_children);
+		} else {
+			ImGui::TextUnformatted("Lod Children: -");
+		}
+
+		if (tree_open)
+		{
+			if (inst) {
+				lod_tree::draw(ins, *inst, other, tree_height);
+			} else {
+				ImGui::Dummy(ImVec2(0.0f, tree_height));
 			}
 		}
 
-		ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), height - ImGui::GetFrameHeightWithSpacing()));
+		inspector_forced_line(ins, inst);
+
+		trace_open = ImGui::TreeNodeEx(other ? "Culling Trace: selection###inspector_trace" : "Culling Trace###inspector_trace", ImGuiTreeNodeFlags_SpanAvailWidth);
+		if (trace_open)
+		{
+			const auto& t = ins.trace_copy;
+			const auto primary = ins.primary_phase_bit.load(std::memory_order_relaxed);
+			const bool has_trace = sel && sel->visited && t.entity == sel->entity && t.stamp == ins.traversal_stamp.load(std::memory_order_relaxed);
+
+			if (!has_trace)
+			{
+				const bool not_visited = sel && !sel->visited;
+				ImGui::TextUnformatted(not_visited ? "Frustum: not reached" : "Frustum: -");
+				ImGui::TextUnformatted(not_visited ? "Occlusion: not reached" : "Occlusion: -");
+
+				if (not_visited) {
+					ImGui::TextWrapped("Its map cells were not scanned. They are outside of every render phase or beyond the ~300m HD range in front of the camera.");
+				} else if (sel) {
+					ImGui::TextDisabled("Stage trace not available yet.");
+				}
+			}
+			else
+			{
+				if (!(t.frustum_tested & primary)) {
+					ImGui::TextUnformatted("Frustum: not reached (past lod distance or no phase bit)");
+				} else if (t.frustum_passed & primary) {
+					ImGui::Text("Frustum: passed (%s)", frustum_reason_name(t.primary_reason));
+				} else {
+					ImGui::Text("Frustum: culled (%s)", frustum_reason_name(t.primary_reason));
+				}
+
+				if (!t.occlusion_tested) {
+					ImGui::TextUnformatted("Occlusion: not reached");
+				} else {
+					ImGui::Text("Occlusion: %s", t.occlusion_forced ? "skipped (extended anti culling)" : "tested");
+				}
+
+				if ((t.frustum_passed & primary) && !sel->visible && !sel->past_lod_distance) {
+					ImGui::TextWrapped("Culled after the frustum test: occluded, or its lod parent swap hides it.");
+				}
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::EndDisabled();
+		ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), height - frame * 2.0f));
+
+		// hidden count and unhide on the button grid below
+		ImGui::SetCursorPosX(grid_x + column * 2.0f);
+		ImGui::AlignTextToFramePadding();
+		ImGui::Text("Hidden: %d / %d", static_cast<int>(ins.hidden.size()), static_cast<int>(inspector_s::MAX_HIDDEN));
+		TT("Hidden meshes stay culled until you unhide them or disable the inspector. Their boxes are drawn in purple.\n"
+		   "Hiding an HD mesh shows its LOD, use 'Hide with Lod Parents' to see what is behind it.");
+
+		ImGui::SameLine(); ImGui::SetCursorPosX(grid_x + column * 3.0f);
+		ImGui::BeginDisabled(ins.hidden.empty());
+		if (ImGui::Button("Unhide All", ImVec2(button_width * 2.0f + style.ItemSpacing.x, 0.0f))) {
+			ins.hidden.clear();
+		}
+		ImGui::EndDisabled();
 
 		static int add_category = 0;
 		add_category = ac.empty() ? 0 : std::clamp(add_category, 0, static_cast<int>(ac.size()) - 1);
 
-		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.35f);
+		const ImVec2 button_size = ImVec2(button_width, 0.0f);
+		ImGui::BeginDisabled(!sel);
+
+		ImGui::SetNextItemWidth(button_width);
 		ImGui::BeginDisabled(ac.empty());
 		if (ImGui::BeginCombo("##inspector_category", ac.empty() ? "No categories" : ac[add_category].comment.c_str()))
 		{
@@ -5983,37 +6226,75 @@ namespace gta4
 		ImGui::EndDisabled();
 
 		ImGui::SameLine();
-		ImGui::BeginDisabled(ac.empty() || category >= 0);
-		if (ImGui::Button("Add Index")) {
-			ac[add_category].indices.emplace(inst->model_index);
+		ImGui::BeginDisabled(ac.empty() || sel_category >= 0);
+		ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonGreen, true);
+		if (ImGui::Button("Add Index", button_size)) {
+			ac[add_category].indices.emplace(sel->model_index);
 		}
+		ImGui::Style_ColorButtonPop();
 		ImGui::EndDisabled();
 
 		ImGui::SameLine();
-		ImGui::BeginDisabled(category < 0);
-		if (ImGui::Button("Remove Index"))
+		ImGui::BeginDisabled(sel_category < 0);
+		ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonRed, true);
+		if (ImGui::Button("Remove Index", button_size))
 		{
 			for (auto& cat : ac) {
-				cat.indices.erase(inst->model_index);
+				cat.indices.erase(sel->model_index);
 			}
 		}
+		ImGui::Style_ColorButtonPop();
 		ImGui::EndDisabled();
 
 		ImGui::SameLine();
-		if (ImGui::Button("Deselect")) {
+		if (ImGui::Button("Deselect", button_size)) {
 			ins.selected = nullptr;
 		}
 
 		ImGui::SameLine();
-		const bool hidden = inst && inspector_is_hidden(ins, inst->entity);
+		const bool hidden = sel && inspector_is_hidden(ins, sel->entity);
 		ImGui::BeginDisabled(!hidden && ins.hidden.size() >= inspector_s::MAX_HIDDEN);
-		if (ImGui::Button(hidden ? "Unhide###inspector_hide" : "Hide###inspector_hide")) {
-			inspector_set_hidden(ins, inst->entity, inst->model_index, !hidden);
+		ImGui::Style_ColorButtonPush(hidden ? INSPECTOR_COL_HIDDEN : INSPECTOR_COL_HIDE, true);
+		if (ImGui::Button(hidden ? "Unhide###inspector_hide" : "Hide###inspector_hide", button_size)) {
+			inspector_set_hidden(ins, sel->entity, sel->model_index, !hidden);
 		}
+		ImGui::Style_ColorButtonPop();
 		ImGui::EndDisabled();
 
 		ImGui::EndDisabled();
 		ImGui::EndChild();
+	}
+
+	// the filter box with its hint and the count of listed meshes inside, a clear button next to it
+	void inspector_filter(const inspector_s& ins)
+	{
+		int count = 0;
+		for (const auto& inst : ins.instances)
+		{
+			if (inspector_passes_filter(ins, inst)) {
+				count++;
+			}
+		}
+
+		const auto& style = ImGui::GetStyle();
+		const float clear_width = ImGui::GetFrameHeight();
+
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - INSPECTOR_RIGHT_PAD - clear_width - style.ItemSpacing.x);
+		if (ImGui::InputTextWithHint("##inspector_filter", "Filter (index or name)", g_inspector_filter.InputBuf, IM_ARRAYSIZE(g_inspector_filter.InputBuf))) {
+			g_inspector_filter.Build();
+		}
+
+		const auto count_str = shared::utils::va("%d meshes", count);
+		const auto count_size = ImGui::CalcTextSize(count_str);
+		const auto box_min = ImGui::GetItemRectMin();
+		const auto box_max = ImGui::GetItemRectMax();
+		ImGui::GetWindowDrawList()->AddText(ImVec2(box_max.x - count_size.x - style.FramePadding.x, box_min.y + (box_max.y - box_min.y - count_size.y) * 0.5f),
+			ImGui::GetColorU32(ImGuiCol_TextDisabled), count_str);
+
+		ImGui::SameLine();
+		if (ImGui::Button("X##inspector_filter_clear", ImVec2(clear_width, clear_width))) {
+			g_inspector_filter.Clear();
+		}
 	}
 
 	void inspector_table(inspector_s& ins)
@@ -6027,8 +6308,6 @@ namespace gta4
 				rows.emplace_back(i);
 			}
 		}
-
-		ImGui::TextDisabled("%d meshes", static_cast<int>(rows.size()));
 
 		bool open_context = false;
 		enum column_id : int { COL_INDEX, COL_NAME, COL_HEIGHT, COL_RADIUS, COL_DIST, COL_TYPE, COL_STATE, COL_FORCED };
@@ -6100,7 +6379,11 @@ namespace gta4
 					if (ImGui::IsItemHovered())
 					{
 						ins.hovered = inst.entity;
-						if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+
+						// a held right button hands the input to the game and closes popups, so a short click opens the menu on release
+						const auto& io = ImGui::GetIO();
+						if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && io.MouseDownDurationPrev[ImGuiMouseButton_Right] < 0.3f
+							&& io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] < 36.0f)
 						{
 							ins.context = inst;
 							open_context = true;
@@ -6151,9 +6434,23 @@ namespace gta4
 	{
 		auto& ins = imgui::get()->m_anticull_inspector;
 
+		// two labeled items per line share the width, their boxes end on the same x: the labels of a column get the width
+		// of its widest label. The checkboxes sit on a grid of four columns
+		const auto& style = ImGui::GetStyle();
+		const float avail = ImGui::GetContentRegionAvail().x - INSPECTOR_RIGHT_PAD;
+		const float gap = 16.0f;
+		const float half = (avail - gap) * 0.5f;
+		const float column = (avail + style.ItemSpacing.x) * 0.25f;
+		const float grid_x = ImGui::GetCursorPosX();
+		const auto label_column = [&](const char* a, const char* b) { return std::max(ImGui::CalcTextSize(a).x, ImGui::CalcTextSize(b).x) + style.ItemInnerSpacing.x; };
+		const float label_left = label_column("Min Radius", "Highlight");
+		const float label_right = label_column("Min Height", "LOD View");
+		const auto second_column = [&]() { ImGui::SameLine(); ImGui::SetCursorPosX(grid_x + half + gap); ImGui::SetNextItemWidth(half - label_right); };
+
 		if (ImGui::Checkbox("Enable Mesh Inspector", &ins.enabled) && !ins.enabled)
 		{
 			ins.hidden.clear();
+			ins.pinned = nullptr;
 			ins.lod_view = inspector_s::lod_view_mode::off;
 		}
 		TT("Lists building meshes around the camera, draws labels and boxes in the world and traces why the selected mesh is culled.\n"
@@ -6164,23 +6461,23 @@ namespace gta4
 			return;
 		}
 
-		constexpr float CHECKBOX_SPACING = 14.0f;
-
-		SET_CHILD_WIDGET_WIDTH;
+		second_column();
 		ImGui::DragFloat("Radius", &ins.radius, 1.0f, 10.0f, 3000.0f, "%.0f");
 		TT("Only meshes within this distance around the camera are listed.");
 
-		SET_CHILD_WIDGET_WIDTH;
-		ImGui::DragFloat("Min. Mesh Radius", &ins.min_radius, 0.5f, 0.0f, 1000.0f, "%.1f");
+		ImGui::SetNextItemWidth(half - label_left);
+		ImGui::DragFloat("Min Radius", &ins.min_radius, 0.5f, 0.0f, 1000.0f, "%.1f");
+		TT("Meshes with a smaller bounding radius are not listed.");
 
-		SET_CHILD_WIDGET_WIDTH;
-		ImGui::DragFloat("Min. Mesh Height", &ins.min_height, 0.5f, 0.0f, 1000.0f, "%.1f");
+		second_column();
+		ImGui::DragFloat("Min Height", &ins.min_height, 0.5f, 0.0f, 1000.0f, "%.1f");
+		TT("Meshes lower than this are not listed.");
 
-		SET_CHILD_WIDGET_WIDTH;
-		ImGui::DragInt("Highlight Index", &ins.highlight_model_index, 1.0f, -1, 0xFFFF);
+		ImGui::SetNextItemWidth(half - label_left);
+		ImGui::DragInt("Highlight", &ins.highlight_model_index, 1.0f, -1, 0xFFFF);
 		TT("Draws a box around every listed instance of this model index. -1 = off.\nClicking an index in a category below sets it.");
 
-		SET_CHILD_WIDGET_WIDTH;
+		second_column();
 		auto lod_view = static_cast<int>(ins.lod_view);
 		if (ImGui::Combo("LOD View", &lod_view, "Off\0LOD (hide HD)\0Lowest LOD\0"))
 		{
@@ -6194,46 +6491,122 @@ namespace gta4
 		   "Lowest LOD: only draws meshes without a lod parent.\n"
 		   "Picking a mode enables LOD entries in the list.");
 
-		ImGui::Spacing(0, 4);
+		ImGui::Spacing(0, 12);
 		ImGui::Checkbox("HD", &ins.show_hd);
-		
-		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+
+		ImGui::SameLine(); ImGui::SetCursorPosX(grid_x + column);
 		ImGui::Checkbox("LOD", &ins.show_lod); TT("LOD boxes span several buildings and get in the way when picking.");
-		
-		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+
+		ImGui::SameLine(); ImGui::SetCursorPosX(grid_x + column * 2.0f);
 		ImGui::Checkbox("Only Forced", &ins.only_forced);
-		
-		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+
+		ImGui::SameLine(); ImGui::SetCursorPosX(grid_x + column * 3.0f);
 		ImGui::Checkbox("Boxes on Forced", &ins.boxes_on_forced);
 		ImGui::Checkbox("Labels", &ins.show_labels);
-		
-		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
-		ImGui::SetNextItemWidth(120.0f);
+
+		ImGui::SameLine(); ImGui::SetCursorPosX(grid_x + column);
+		ImGui::SetNextItemWidth(column - style.ItemSpacing.x - ImGui::CalcTextSize("Max Labels").x - style.ItemInnerSpacing.x);
 		ImGui::DragInt("Max Labels", &ins.max_labels, 0.2f, 1, 300);
 		TT("Labels go to the largest meshes first and are skipped where they would overlap.");
-		
-		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
+
+		ImGui::SameLine(); ImGui::SetCursorPosX(grid_x + column * 3.0f);
 		ImGui::Checkbox("Pick Visible Only", &ins.pick_visible_only);
 		TT("Clicks in the world only pick meshes that were drawn last frame. The table still lists every mesh.");
 
-		ImGui::Text("Hidden: %d / %d", static_cast<int>(ins.hidden.size()), static_cast<int>(inspector_s::MAX_HIDDEN));
-		
-		ImGui::SameLine(0.0f, CHECKBOX_SPACING);
-		ImGui::BeginDisabled(ins.hidden.empty());
-		if (ImGui::SmallButton("Unhide All")) {
-			ins.hidden.clear();
-		}
-		ImGui::EndDisabled();
-		TT("Hidden meshes stay culled until you unhide them or disable the inspector. Their boxes are drawn in purple.\n"
-		   "Hiding an HD mesh shows its LOD, use 'Hide with Lod Parents' to see what is behind it.");
-
-		g_inspector_filter.Draw("Filter (index or name)", ImGui::GetContentRegionAvail().x * 0.6f);
-
-		ImGui::Spacing(0, 8);
+		ImGui::Spacing(0, 12);
 		inspector_details(ins);
 
 		ImGui::Spacing(0, 8);
+		inspector_filter(ins);
 		inspector_table(ins);
+	}
+
+	// map_settings LOD_FADE_EXCLUDE: meshes the lod cross fade never dithers
+	void lod_fade_exclusions_ui()
+	{
+		auto& excluded = map_settings::get_map_settings().lod_fade_excluded;
+		static std::string add_buffer;
+
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		ImGui::SeparatorText("LOD Fade Exclusions");
+		ImGui::PopFont();
+		ImGui::TextWrapped("Excluded meshes are not drawn while the game cross fades them with their lod: they pop instead of dithering. "
+						   "Right click a mesh in the inspector to exclude it.");
+		ImGui::Spacing(0, 4);
+
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		if (ImGui::Button("Copy LOD_FADE_EXCLUDE to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+		{
+			ImGui::LogToClipboard();
+			ImGui::LogText("%s", shared::common::toml_ext::build_lod_fade_exclude_array(excluded).c_str());
+			ImGui::LogFinish();
+		} ImGui::PopFont();
+
+		ImGui::Spacing(0, 4);
+		ImGui::PushFont(shared::imgui::font::REGULAR_SMALL);
+		ImGui::TextUnformatted("  Click to highlight, double click to remove .. ");
+		ImGui::PopFont();
+
+		ImGui::Widget_ContainerWithDropdownShadowSquare(120, [&excluded]()
+			{
+				if (ImGui::BeginTable("##fade_exclude_table", 5, ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg, ImVec2(ImGui::GetContentRegionAvail().x, 100)))
+				{
+					for (auto c = 0; c < 5; c++) {
+						ImGui::TableSetupColumn(shared::utils::va("##col%d", c), ImGuiTableColumnFlags_WidthFixed, ImGui::GetContentRegionAvail().x / 5);
+					}
+
+					int col = 0;
+					for (auto it = excluded.begin(); it != excluded.end(); )
+					{
+						if (col++ % 4 == 0) {
+							ImGui::TableNextRow();
+						}
+
+						ImGui::TableNextColumn();
+						bool erase_this = false;
+
+						if (ImGui::Selectable(shared::utils::va("%d", *it), false, ImGuiSelectableFlags_AllowDoubleClick))
+						{
+							if (ImGui::IsMouseDoubleClicked(0)) {
+								erase_this = true;
+							} else {
+								imgui::get()->m_anticull_inspector.highlight_model_index = *it;
+							}
+						}
+
+						if (erase_this) {
+							it = excluded.erase(it);
+						} else {
+							++it;
+						}
+					}
+					ImGui::EndTable();
+				}
+			});
+
+		auto add_index = [&]()
+		{
+			try {
+				excluded.emplace(std::stoi(add_buffer));
+			} catch (const std::exception&) {
+				shared::common::log("ImGui", "LOD Fade Exclude - Add Index - Invalid Argument", shared::common::LOG_TYPE::LOG_TYPE_ERROR);
+			}
+
+			add_buffer.clear();
+		};
+
+		ImGui::BeginDisabled(add_buffer.empty());
+		if (ImGui::Button(" + ##fade_exclude")) {
+			add_index();
+		}
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+		SET_CHILD_WIDGET_WIDTH;
+
+		if (ImGui::InputText("Add Index##fade_exclude", &add_buffer, ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_EnterReturnsTrue)) {
+			add_index();
+		} TT("Use the + Button on the left or press ENTER to add the index.");
 	}
 
 	void cont_mapsettings_anticull_meshes()
@@ -6243,7 +6616,7 @@ namespace gta4
 		
 		ImGui::Spacing(0, 4);
 		ImGui::PushFont(shared::imgui::font::BOLD);
-		if (ImGui::Button("Copy to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
+		if (ImGui::Button("Copy ANTICULL to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
 		{
 			ImGui::LogToClipboard();
 			ImGui::LogText("%s", shared::common::toml_ext::build_anticull_array(ac).c_str());
@@ -6261,7 +6634,18 @@ namespace gta4
 
 		ImGui::Spacing(0, 4);
 		ImGui::Separator();
+		ImGui::Spacing(0, 4);
+
+		lod_fade_exclusions_ui();
+
+		ImGui::Spacing(0, 4);
+		ImGui::Separator();
 		ImGui::Spacing(0, 12);
+
+		ImGui::PushFont(shared::imgui::font::BOLD);
+		ImGui::SeparatorText("Anti Cull Categories");
+		ImGui::PopFont();
+		ImGui::Spacing(0, 4);
 
 		ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonGreen, true);
 		if (ImGui::Button(ICON_FA_PLUS "  Category", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -6463,7 +6847,7 @@ namespace gta4
 		// anticull meshes
 		{
 			static float cont_anticull_height = 0.0f;
-			cont_anticull_height = ImGui::Widget_ContainerWithCollapsingTitle("Anti Cull Meshes", cont_anticull_height, cont_mapsettings_anticull_meshes,
+			cont_anticull_height = ImGui::Widget_ContainerWithCollapsingTitle("Anti Cull / Mesh Inspector / LOD Fade", cont_anticull_height, cont_mapsettings_anticull_meshes,
 				false, ICON_FA_EYE, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
@@ -6787,6 +7171,9 @@ namespace gta4
 		{
 			if (inst.entity == ins.selected) {
 				inspector_draw_box(v, inst, IM_COL32(60, 200, 255, 255), 2.5f);
+			}
+			else if (inst.entity == ins.pinned) {
+				inspector_draw_box(v, inst, IM_COL32(255, 170, 60, 255), 2.0f);
 			}
 			else if (inst.entity == ins.hovered) {
 				inspector_draw_box(v, inst, IM_COL32(255, 220, 60, 255), 2.0f);

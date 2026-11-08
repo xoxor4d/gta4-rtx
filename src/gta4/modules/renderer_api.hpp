@@ -190,6 +190,7 @@ namespace gta4
 			std::uint32_t retained_touched_last_frame = 0u;  // placements the game drew
 			std::uint32_t retained_creates_last_frame = 0u;
 			std::uint32_t retained_updates_last_frame = 0u;
+			std::uint32_t retained_lod_fades_last_frame = 0u;
 			std::uint32_t retained_shows_last_frame = 0u;
 			std::uint32_t retained_hides_last_frame = 0u;
 			std::uint32_t retained_destroys_last_frame = 0u;

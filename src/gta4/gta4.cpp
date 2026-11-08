@@ -578,6 +578,42 @@ namespace gta4
 		}
 	}
 
+	// the lod render list pass forces a parent to alpha 255 while one of its children is unloaded or fading in, so a lod that
+	// streams in before its children pops. Ramp it like the other fade-in sites instead: below 239 add 16, else 255
+	namespace lod_fade_in
+	{
+		uint32_t retn_addr = 0u;
+		uint32_t streambox_addr = 0u; // &CStreamBoxes::m_PreviousBox, taken from the compare the hook overwrites
+
+		__declspec(naked) void stub()
+		{
+			__asm
+			{
+				movzx	eax, byte ptr [esi + 0x63];
+				cmp		eax, 0xEF;
+				jge		SNAP;
+				add		al, 0x10;
+				mov		[esi + 0x63], al;
+				jmp		CONT;
+
+			SNAP:
+				mov		byte ptr [esi + 0x63], 0xFF;
+
+			CONT:
+				mov		eax, streambox_addr;
+				cmp		dword ptr [eax], 0; // og, the jz behind the hook reads its flags
+				jmp		retn_addr;
+			}
+		}
+
+		void install()
+		{
+			streambox_addr = *reinterpret_cast<uint32_t*>(game::hk_addr__lod_fade_in_stub + 6u);
+			retn_addr = game::hk_addr__lod_fade_in_stub + 11u;
+			shared::utils::hook(game::hk_addr__lod_fade_in_stub, stub, HOOK_JUMP).install()->quick();
+			shared::utils::hook::nop(game::hk_addr__lod_fade_in_stub + 5u, 6);
+		}
+	}
 
 	// A general culling function used by lights, npc's and other? things ..
 	int __fastcall frustum_planes_check_hk(game::grcViewport* vp, [[maybe_unused]] void* fastcall_arg, float orgX, float orgY, float orgZ, float distanceToObject, float* outAdjustedNearDistance)
@@ -1249,6 +1285,9 @@ namespace gta4
 
 		// extended anti culling for objects defined via map_settings - helpful for multi-story buildings where each story is a single obj
 		shared::utils::hook(game::retn_addr__extended_anti_culling_check_stub - 5u, extended_anticull_stub, HOOK_JUMP).install()->quick(); // 0xAE8735
+
+		// a lod that streams in while its children are still missing fades in instead of popping to alpha 255
+		lod_fade_in::install(); // 0xAE82C0
 
 		// light culling check 0xABD093 - detour frustum check function - can lead to issues when a script waits for certain objects to culled?
 		shared::utils::hook::detour(game::hk_addr__frustum_check, &frustum_planes_check_hk, nullptr); // 0x431E40

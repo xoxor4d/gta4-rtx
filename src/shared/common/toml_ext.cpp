@@ -257,6 +257,27 @@ namespace shared::common::toml_ext
 		return toml_str;
 	}
 
+	/// Builds the LOD_FADE_EXCLUDE array
+	/// @return the final string in toml format
+	std::string build_lod_fade_exclude_array(const std::unordered_set<int>& indices)
+	{
+		std::string toml_str = "LOD_FADE_EXCLUDE = [\n    "s;
+
+		auto count = 0u;
+		for (const auto index : indices)
+		{
+			if (count) {
+				toml_str += count % 10 ? ", " : ",\n    ";
+			}
+
+			toml_str += std::to_string(index);
+			count++;
+		}
+
+		toml_str += "\n]";
+		return toml_str;
+	}
+
 	/// Builds a string containing all light override entries
 	/// @return the final string in toml format
 	std::string build_lightweak_array(const std::unordered_map<uint64_t, gta4::map_settings::light_override_s>& entries)

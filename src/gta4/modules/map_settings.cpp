@@ -676,6 +676,15 @@ namespace gta4
 					}
 				}
 			} // end 'ANTICULL'
+
+			// ####################
+			// parse 'LOD_FADE_EXCLUDE' array
+			if (config.contains("LOD_FADE_EXCLUDE"))
+			{
+				if (const auto& ex = config.at("LOD_FADE_EXCLUDE"); ex.is_array()) {
+					m_map_settings.lod_fade_excluded = toml::get<std::unordered_set<int>>(ex);
+				}
+			}
 		}
 
 		catch (const toml::syntax_error& err)

@@ -307,6 +307,7 @@ namespace gta4
 			trace_s trace_copy;
 			const void* hovered = nullptr;
 			const void* selected = nullptr;
+			const void* pinned = nullptr;      // stays in the details panel while its lod children get selected
 			int pick_hit = 0;
 			int pick_hit_count = 0;
 			instance_s context;                // mesh the context menu was opened for

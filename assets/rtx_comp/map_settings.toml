@@ -38,3 +38,18 @@ ANTICULL = [
         15946, 7264, 7253, 15353, 15056, 16819, 16840
     ]},
 ]
+
+
+# ##########################################################################################################################################
+# >> LOD Fade Exclusions
+# 
+# :: Meshes that are never dithered by the lod cross fade. While the game cross fades one of them with its lod,
+# :: it is not drawn at all (it pops in or out at the end of its fade), the other side of the pair fades as usual.
+# :: For the rare pair whose shared faces still fight while one of them fades.
+# 
+# :: How to retrieve indices:
+#    > GUI -> Map Settings -> Anti Cull / Mesh Inspector / LOD Fade -> Mesh Inspector -> right click a mesh -> Exclude from LOD Fade
+#    > ! Export to clipboard when done -> override LOD_FADE_EXCLUDE with clipboard data
+#
+LOD_FADE_EXCLUDE = [
+]

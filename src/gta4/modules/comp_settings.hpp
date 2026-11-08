@@ -574,6 +574,15 @@ namespace gta4
 				1
 			};
 
+			variable api_static_lod_fade = {
+				"api_static_lod_fade",
+				("While the game cross fades a building and its lod (the new one fades in over the old one, then the old one fades out),\n"
+				 "the Remix API path draws both with the game's alpha and the runtime dithers them by it (rtx.lodFade.*).\n"
+				 "Off draws both opaque until the old one disappears."),
+				"1.7.4",
+				true
+			};
+
 			variable api_peds_enabled = {
 				"api_peds_enabled",
 				("Render peds through the Remix API (needs 'api_static_enabled'). Skinned geometry becomes a skinned api mesh that gets\n"
@@ -1493,8 +1502,8 @@ namespace gta4
 			{
 				"water_block_distance_scale",
 				("Scales how far the game looks for water blocks (500 x 500 units) in front of the camera. Blocks outside of the view are still culled."),
-				"1.7.0",
-				3.0f
+				"1.7.4",
+				2.3f
 			};
 
 			variable water_disable_seabed_plane =
