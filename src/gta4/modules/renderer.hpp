@@ -63,7 +63,7 @@ namespace gta4
 		Translucent_WorldposAsUVs = 1 << 7, // use worldpos instead of surface uvs
 		Translucent_FadeNormalUntilDist = 1 << 8,
 		LodFade = 1 << 9, // api path only: bits 24-31 of the modifier word carry the opacity of a lod cross fade
-		LodFadePartner = 1 << 10, // api path only: the opaque side of a lod cross fade while the other side fades
+		Free10 = 1 << 10,
 		Free11 = 1 << 11,
 		Free12 = 1 << 12,
 		Free13 = 1 << 13,

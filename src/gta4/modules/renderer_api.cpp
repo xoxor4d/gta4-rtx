@@ -144,13 +144,10 @@ namespace gta4
 			std::uint64_t replacement_hash = 0u;	// geometry asset hash of the D3D9 draw (USD replacement key), 0 = none
 		};
 
-		// the lod cross fade state of a static draw, packed like remixapi_RetainedInstanceUpdate::lodFadeState: bits 0-7 the
-		// engine's alpha of the entity (below 255 while it cross fades with its lod), bit 8 set on the opaque side of a cross
-		// fade while the other side fades (the runtime gives the hit to a kept cell of the fading side on a shared plane)
-		using lod_fade_t = std::uint16_t;
+		// the lod cross fade state of a static draw, remixapi_RetainedInstanceUpdate::lodFadeState: the engine's alpha of the
+		// entity, below 255 while it cross fades with its lod
+		using lod_fade_t = std::uint8_t;
 		constexpr lod_fade_t LOD_FADE_OPAQUE = 255u;
-		constexpr lod_fade_t LOD_FADE_PARTNER = REMIXAPI_LOD_FADE_STATE_PARTNER;
-		constexpr std::uint32_t LOD_FADE_PARTNER_FRAMES = 2u; // a draw list runs a frame after it was built
 
 		// one per geometry and draw state (a geometry can be drawn by several passes with different states)
 		struct geometry_record
@@ -161,7 +158,6 @@ namespace gta4
 			renderer_api::reject_reason reason = renderer_api::reject_reason::none;
 			std::uint64_t mesh_hash = 0u;	// key into g_meshes, also the api mesh handle
 			std::uint32_t last_frame = 0u;
-			std::uint32_t partner_frame = 0u; // game frame the draw list last left the geometry to the engine as the opaque side of a cross fade
 			remixapi_InstanceInfoD3DOverridesEXT overrides = {}; // of the last draw that went through the draw hook
 			std::uint64_t vertex_hash = 0u; // double buffered geometry: the vertices the mesh was built from
 			DWORD tfactor = 0xFFFFFFFFu;
@@ -773,18 +769,13 @@ namespace gta4
 				return blend;
 			}
 
-			/// overrides of a draw in a lod cross fade: LodFade marks the fading side, the top byte of the modifier word is its
-			/// opacity and the runtime dithers it by that; LodFadePartner marks the opaque side (rtx.lodFade.*)
+			/// overrides of a draw in a lod cross fade: LodFade marks a fading draw, the top byte of the modifier word is its
+			/// opacity and the runtime dithers it by that (rtx.lodFade.*)
 			remixapi_InstanceInfoD3DOverridesEXT with_lod_fade(remixapi_InstanceInfoD3DOverridesEXT overrides, const lod_fade_t lod_fade)
 			{
-				const auto alpha = static_cast<std::uint32_t>(lod_fade & 0xFFu);
-				if (alpha != 255u)
+				if (lod_fade != LOD_FADE_OPAQUE)
 				{
-					overrides.modifierFlags = (overrides.modifierFlags & 0x00FFFFFFu) | static_cast<std::uint32_t>(RemixModifier::LodFade) | (alpha << 24u);
-				}
-
-				if (lod_fade & LOD_FADE_PARTNER) {
-					overrides.modifierFlags |= static_cast<std::uint32_t>(RemixModifier::LodFadePartner);
+					overrides.modifierFlags = (overrides.modifierFlags & 0x00FFFFFFu) | static_cast<std::uint32_t>(RemixModifier::LodFade) | (static_cast<std::uint32_t>(lod_fade) << 24u);
 				}
 
 				return overrides;
@@ -3224,17 +3215,15 @@ namespace gta4
 			/// the lod cross fade state of a static draw the engine runs (render thread). Its alpha is the engine's global alpha,
 			/// below 255 while the building cross fades with its lod: every draw command and the split alpha draws
 			/// (CLights::SplitAndRenderAlphaObject, how fading buildings are drawn) set it with CShaderLib::SetGlobalAlpha before
-			/// drawing. The draw is the fade partner while the draw list marked its geometry as the opaque side of a cross fade
-			lod_fade_t static_draw_lod_fade(const bool static_world, const geometry_record& rec)
+			/// drawing
+			lod_fade_t static_draw_lod_fade(const bool static_world)
 			{
 				static const auto gs = comp_settings::get();
 				if (!static_world || !game::pShaderGlobalScalars || !gs->api_static_lod_fade.get_as<bool>()) {
 					return LOD_FADE_OPAQUE;
 				}
 
-				const auto alpha = static_cast<lod_fade_t>(std::clamp(game::pShaderGlobalScalars[0], 0.0f, 1.0f) * 255.0f + 0.5f);
-				const bool partner = alpha == 255u && rec.partner_frame && g_game_frame - rec.partner_frame <= LOD_FADE_PARTNER_FRAMES;
-				return partner ? static_cast<lod_fade_t>(alpha | LOD_FADE_PARTNER) : alpha;
+				return static_cast<lod_fade_t>(std::clamp(game::pShaderGlobalScalars[0], 0.0f, 1.0f) * 255.0f + 0.5f);
 			}
 
 			DETOUR_TYPEDEF(grmGeometryQB_Draw, void, __thiscall, const game::grmGeometryQB* geom);
@@ -3459,7 +3448,7 @@ namespace gta4
 				for (auto i = 0u; i < set_it->count; i++)
 				{
 					if (!records[i]->hidden && !g_debug_hide_api) {
-						cache::submit_record_locked(*records[i], transform, bones, 0u, i == 0u ? wound : nullptr, static_world, static_draw_lod_fade(static_world, *records[i]));
+						cache::submit_record_locked(*records[i], transform, bones, 0u, i == 0u ? wound : nullptr, static_world, static_draw_lod_fade(static_world));
 					}
 				}
 				return true;
@@ -3634,7 +3623,6 @@ namespace gta4
 				std::uint32_t api_frame = 0u;    // last game frame our command replaced the engine's
 				std::uint32_t engine_frame = 0u; // last game frame the engine drew the entity (refreshes the records)
 				std::uint32_t generation = 0u;   // g_overrides_generation the engine last drew it under
-				std::uint32_t partner_frame = 0u; // last game frame a cross fading lod child marked the entity as the opaque side of its fade
 			};
 
 			// game thread: entity -> frame of its last api submission (dedupes the per bucket pushes)
@@ -3844,62 +3832,6 @@ namespace gta4
 				return any;
 			}
 
-			/// a cross fading entity marks its lod parent as the opaque side of the fade (game thread)
-			void mark_fade_partner(const CEntityPC* parent)
-			{
-				std::unique_lock lock(g_mutex);
-				g_entity_frames[parent].partner_frame = g_game_frame;
-			}
-
-			/// the opaque side of a cross fade while the other side fades: the entity's lod parent fades in, or a lod child of
-			/// the entity fades out and marked it (this frame or the last, the list does not order the two)
-			bool is_fade_partner(const CEntityPC* ent)
-			{
-				if (ent->lod_parent && ent->lod_parent->alpha < 239u) {
-					return !map_settings::get_map_settings().lod_fade_excluded.contains(ent->lod_parent->model_index);
-				}
-
-				if (!ent->lod_children) {
-					return false;
-				}
-
-				std::shared_lock lock(g_mutex);
-				const auto it = g_entity_frames.find(ent);
-				return it != g_entity_frames.end() && g_game_frame - it->second.partner_frame <= 1u;
-			}
-
-			/// the engine's draws of a fade partner carry no entity: its geometry is marked and the draw hook reads the mark
-			/// (passes::static_draw_lod_fade)
-			void mark_fade_partner_records(const rmcDrawable* drawable)
-			{
-				const auto lod = drawable->lods[0];
-				if (!lod) {
-					return;
-				}
-
-				std::unique_lock lock(g_mutex);
-				for (auto m = 0u; m < lod->model_count; m++)
-				{
-					const auto model = reinterpret_cast<const game::grmModel*>(lod->models[m]);
-					if (!model) {
-						continue;
-					}
-
-					const auto geometries = reinterpret_cast<game::grmGeometryQB* const*>(model->m_geometries.pData);
-					for (auto g = 0; g < model->m_geometries.wCount; g++)
-					{
-						const auto it = g_records.find(geometries[g]);
-						if (it == g_records.end()) {
-							continue;
-						}
-
-						for (auto& rec : it->second) {
-							rec.partner_frame = g_game_frame;
-						}
-					}
-				}
-			}
-
 			int __fastcall CEntity_AddToDrawListBuckets_hk(CEntityPC* ent, [[maybe_unused]] void* edx, std::uint32_t bucket, std::uint32_t render_mode, std::uint8_t alpha, int lod)
 			{
 				PROFILE_ZONE_N("CEntity::AddToDrawListBuckets");
@@ -3911,7 +3843,6 @@ namespace gta4
 				// takes its fade alpha from its own alpha only: below 239 while it cross fades, else 255 (the one frame between 239
 				// and 255 stays opaque like the engine draws it). Entities without a lod parent keep the list alpha, it is their own.
 				// The engine's command gets the same value: its SetGlobalAlpha is what the draws it leaves to the engine read (static_draw_lod_fade).
-				// The opaque side of the cross fade is the fade partner: the runtime gives its hits to the kept cells of the fading side
 				static const auto gs = comp_settings::get();
 				const bool lod_fade = render_mode == 0u && renderer_api::is_enabled() && gs->api_static_lod_fade.get_as<bool>();
 				const bool cross_fading = lod_fade && ent->lod_parent && ent->alpha < 239u;
@@ -3923,20 +3854,11 @@ namespace gta4
 					return 0;
 				}
 
-				const bool partner = lod_fade && !fading && is_fade_partner(ent);
-				const auto fade_state = static_cast<lod_fade_t>(entity_alpha | (partner ? LOD_FADE_PARTNER : 0u));
-
-				if (cross_fading) {
-					mark_fade_partner(ent->lod_parent);
-				}
+				const lod_fade_t fade_state = entity_alpha;
 
 				// the engine returns 0 unconditionally and ignores lod
 				const auto fallback = [&]()
 				{
-					if (partner && ent->drawable_handle && *ent->drawable_handle) {
-						mark_fade_partner_records(*ent->drawable_handle);
-					}
-
 					return CEntity_AddToDrawListBuckets_og(ent, bucket, render_mode, entity_alpha, lod);
 				};
 
@@ -4468,7 +4390,7 @@ namespace gta4
 				peds::sync_wound_locked(dev, ctx, *rec, geom, prim_count, state, wound);
 
 				const bool static_world = pose == nullptr && passes::static_window();
-				cache::submit_record_locked(*rec, transform, bones, mesh_it->first, wound, static_world, passes::static_draw_lod_fade(static_world, *rec));
+				cache::submit_record_locked(*rec, transform, bones, mesh_it->first, wound, static_world, passes::static_draw_lod_fade(static_world));
 
 				if (count_uv_fallback && mesh_it->second.uv_fallback) {
 					vehicles::count_vehicle_stat(vehicles::vehicle_stat::overlay_uv_fallbacks);
@@ -4709,7 +4631,7 @@ namespace gta4
 		peds::sync_wound_locked(dev, ctx, rec, geom, prim_count, state, wound);
 
 		const bool static_world = pose == nullptr && passes::static_window();
-		cache::submit_record_locked(rec, transform, bones, draw_hash, wound, static_world, passes::static_draw_lod_fade(static_world, rec));
+		cache::submit_record_locked(rec, transform, bones, draw_hash, wound, static_world, passes::static_draw_lod_fade(static_world));
 
 		if (count_uv_fallback && mesh_it->second.uv_fallback) {
 			vehicles::count_vehicle_stat(vehicles::vehicle_stat::overlay_uv_fallbacks);
