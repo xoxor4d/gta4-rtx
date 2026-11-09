@@ -79,7 +79,19 @@ namespace gta4::game
 	extern uint32_t** ms_pNatives;
 
 	extern uint8_t* m_CodePause;
+	extern uint8_t* ms_bUserPause;
 	extern int* m_dwCutsceneState;
+	extern float* ms_fTimePassedSinceLastAudioStart;
+	extern void* g_CutsceneAudioEntity;
+	typedef int(__fastcall* audCutsceneAudioEntity__GetPlayTimeMs_t)(void* self, void* edx_unused);
+	extern audCutsceneAudioEntity__GetPlayTimeMs_t audCutsceneAudioEntity__GetPlayTimeMs;
+	extern float* ms_fCutsceneTimer; // CCutsceneManager::ms_fTimer
+	typedef void(__cdecl* CCutsceneManager__ShutdownAudio_t)(bool stop_next_section_too);
+	typedef void(__cdecl* CCutsceneManager__PreloadAudio_t)(float time_ms, bool check_streaming_section); // blocks until the stream is prepared
+	typedef void(__cdecl* CCutsceneManager__StartAudio_t)();
+	extern CCutsceneManager__ShutdownAudio_t CCutsceneManager__ShutdownAudio;
+	extern CCutsceneManager__PreloadAudio_t CCutsceneManager__PreloadAudio;
+	extern CCutsceneManager__StartAudio_t CCutsceneManager__StartAudio;
 	extern bool* ms_bNoBlockOnLostFocus;
 	extern bool* ms_bFocusLost;
 	extern bool* ms_bWindowed;
@@ -271,6 +283,7 @@ namespace gta4::game
 	extern uint32_t retn_addr__extended_anti_culling_check_stub;
 	extern uint32_t jmp_addr__extended_anti_culling_check_stub;
 	extern uint32_t hk_addr__lod_fade_in_stub;
+	extern uint32_t hk_addr__cutscene_get_time_step;
 
 
 	extern uint32_t hk_addr__frustum_check;

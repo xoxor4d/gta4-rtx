@@ -12,6 +12,12 @@ namespace gta4
 		void update();
 	}
 
+	namespace game_pause
+	{
+		void update();
+		void on_game_frame();
+	}
+
 	extern bool g_installed_signature_patches;
 	extern bool g_install_signature_patches_async;
 }

@@ -3146,8 +3146,13 @@ namespace gta4
 			ImGui::SeparatorText("    Misc     ");
 			ImGui::Spacing(0, 2);
 			
+			constexpr auto misc_button_height = 48.0f;
+			const auto step_button_width = ImGui::CalcTextSize(ICON_FA_STEP_FORWARD).x + ImGui::GetStyle().FramePadding.x * 2.0f + 16.0f;
+			const auto pause_button_width = ImGui::CalcTextSize(ICON_FA_PAUSE "  Pause Game").x + ImGui::GetStyle().FramePadding.x * 2.0f + 24.0f;
+			const auto anticull_button_width = ImGui::GetContentRegionAvail().x - pause_button_width - step_button_width - ImGui::GetStyle().ItemSpacing.x * 2.0f;
+
 			ImGui::Style_ColorButtonPush(im->m_anti_cull_capture_toggle ? ImVec4(0.72f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("Quick AntiCull Toggle for Smaller Captures", ImVec2(ImGui::GetContentRegionAvail().x, 48)))
+			if (ImGui::Button("Quick AntiCull Toggle", ImVec2(anticull_button_width, misc_button_height)))
 			{
 				im->m_anti_cull_capture_toggle = !im->m_anti_cull_capture_toggle;
 				const bool temp_overwrite = im->m_anti_cull_capture_toggle;
@@ -3167,6 +3172,26 @@ namespace gta4
 
 			} TT("Quickly toggle all anti culling logic if you want quicker and smaller captures.");
 			ImGui::Style_ColorButtonPop();
+
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!game::is_in_game || !game::ms_bUserPause);
+			ImGui::Style_ColorButtonPush(im->m_pause_game ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
+			if (ImGui::Button(im->m_pause_game ? ICON_FA_PLAY "  Resume Game" : ICON_FA_PAUSE "  Pause Game", ImVec2(pause_button_width, misc_button_height)))
+			{
+				im->m_pause_game = !im->m_pause_game;
+				if (!im->m_pause_game && !(game::CMenuManager__m_MenuActive && *game::CMenuManager__m_MenuActive)) {
+					*game::ms_bUserPause = 0u;
+				}
+			} TT("Pause the game like the pause menu does, cutscenes included. The scene and its lights keep rendering, so light overrides can be tweaked on a frozen frame.");
+			ImGui::Style_ColorButtonPop();
+
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!im->m_pause_game);
+			ImGui::Button(ICON_FA_STEP_FORWARD "##pause_step", ImVec2(step_button_width, misc_button_height));
+			im->m_pause_step_held = ImGui::IsItemActive();
+			TT("Click to advance a single frame, hold to let the game run until released");
+			ImGui::EndDisabled();
+			ImGui::EndDisabled();
 
 			ImGui::Spacing(0, TREENODE_SPACING);
 			if (const auto p = performance_logger::get(); p) {

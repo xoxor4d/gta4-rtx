@@ -85,11 +85,13 @@ namespace gta4
 			*game::ms_bNoBlockOnLostFocus = false;
 		}
 
-		if (im->m_do_not_pause_on_lost_focus_changed && !im->m_do_not_pause_on_lost_focus) 
+		if (im->m_do_not_pause_on_lost_focus_changed && !im->m_do_not_pause_on_lost_focus)
 		{
 			*game::ms_bNoBlockOnLostFocus = true;
 			im->m_do_not_pause_on_lost_focus_changed = false;
 		}
+
+		game_pause::update();
 
 		// camera setup
 		{
@@ -614,6 +616,121 @@ namespace gta4
 			shared::utils::hook::nop(game::hk_addr__lod_fade_in_stub + 5u, 6);
 		}
 	}
+
+
+	// Utilities pause toggle. CTimer::ms_bUserPause freezes the world but CCutsceneManager::GetTimeStep never reads it: the
+	// cutscene timer follows the audio play time (the system clock without audio), so a cutscene keeps running while paused.
+	// Skip the step while paused and keep the audio offset in sync with the frozen timer so it does not jump on resume.
+	// The PC audio engine only mutes on pause, so the cutscene stream is stopped and restarted at the frozen time instead,
+	// the way the engine's own cutscene rewind does it
+	namespace game_pause
+	{
+		uint8_t frozen = 0u;
+		uint32_t retn_addr = 0u;
+
+		bool was_paused = false;
+		bool audio_stopped = false;
+		float saved_audio_offset = 0.0f;
+
+		bool cutscene_audio_available()
+		{
+			return game::m_dwCutsceneState && game::ms_fCutsceneTimer && game::ms_fTimePassedSinceLastAudioStart
+				&& game::CCutsceneManager__ShutdownAudio && game::CCutsceneManager__PreloadAudio && game::CCutsceneManager__StartAudio;
+		}
+
+		// game thread: stop the cutscene stream when the pause starts and restart it at the frozen time when it ends.
+		// Stepping keeps the stream stopped, the timer then advances with the system clock
+		void on_game_frame()
+		{
+			const auto im = imgui::get();
+			if (im->m_pause_game == was_paused) {
+				return;
+			}
+
+			was_paused = im->m_pause_game;
+			if (!cutscene_audio_available()) {
+				return;
+			}
+
+			if (was_paused)
+			{
+				if (*game::m_dwCutsceneState == 8 && game::audCutsceneAudioEntity__GetPlayTimeMs(game::g_CutsceneAudioEntity, nullptr) != -1)
+				{
+					saved_audio_offset = *game::ms_fTimePassedSinceLastAudioStart;
+					game::CCutsceneManager__ShutdownAudio(true);
+					audio_stopped = true;
+				}
+			}
+			else if (audio_stopped)
+			{
+				audio_stopped = false;
+				if (*game::m_dwCutsceneState == 8)
+				{
+					*game::ms_fTimePassedSinceLastAudioStart = saved_audio_offset;
+					game::CCutsceneManager__PreloadAudio(*game::ms_fCutsceneTimer + saved_audio_offset, false);
+					game::CCutsceneManager__StartAudio();
+					*game::ms_fTimePassedSinceLastAudioStart = saved_audio_offset; // StartAudio rewrites a zero offset from the play time
+					game::CCutsceneManager__PreloadAudio(0.0f, true); // re-register the next section, ShutdownAudio(true) dropped it
+				}
+			}
+		}
+
+		void __cdecl keep_audio_offset(float* timer)
+		{
+			if (game::m_dwCutsceneState && *game::m_dwCutsceneState == 8 && game::ms_fTimePassedSinceLastAudioStart)
+			{
+				const auto play_time = game::audCutsceneAudioEntity__GetPlayTimeMs(game::g_CutsceneAudioEntity, nullptr);
+				if (play_time != -1) {
+					*game::ms_fTimePassedSinceLastAudioStart = static_cast<float>(play_time) - *timer;
+				}
+			}
+		}
+
+		__declspec(naked) void get_time_step_stub()
+		{
+			__asm
+			{
+				cmp		byte ptr frozen, 0;
+				jne		FROZEN;
+				push	ecx; // og
+				push	esi;
+				mov		esi, [esp + 0xC];
+				jmp		retn_addr;
+
+			FROZEN:
+				push	dword ptr [esp + 4];
+				call	keep_audio_offset;
+				add		esp, 4;
+				xor		eax, eax;
+				retn;
+			}
+		}
+
+		// the frontend clears the user pause when it closes, so the flag is written every frame while the toggle is on.
+		// Holding the step button lets the game run for as long as it is held
+		void update()
+		{
+			const auto im = imgui::get();
+			const bool active = im->m_pause_game && !im->m_pause_step_held;
+			frozen = active ? 1u : 0u;
+
+			if (im->m_pause_game && game::ms_bUserPause) {
+				*game::ms_bUserPause = active ? 1u : 0u;
+			}
+		}
+
+		void install()
+		{
+			if (!game::hk_addr__cutscene_get_time_step) {
+				return;
+			}
+
+			retn_addr = game::hk_addr__cutscene_get_time_step + 6u;
+			shared::utils::hook(game::hk_addr__cutscene_get_time_step, get_time_step_stub, HOOK_JUMP).install()->quick();
+			shared::utils::hook::nop(game::hk_addr__cutscene_get_time_step + 5u, 1);
+		}
+	}
+
 
 	// A general culling function used by lights, npc's and other? things ..
 	int __fastcall frustum_planes_check_hk(game::grcViewport* vp, [[maybe_unused]] void* fastcall_arg, float orgX, float orgY, float orgZ, float distanceToObject, float* outAdjustedNearDistance)
@@ -1288,6 +1405,9 @@ namespace gta4
 
 		// a lod that streams in while its children are still missing fades in instead of popping to alpha 255
 		lod_fade_in::install(); // 0xAE82C0
+
+		// cutscene timer honors the utilities pause toggle
+		game_pause::install(); // 0x9C2C80
 
 		// light culling check 0xABD093 - detour frustum check function - can lead to issues when a script waits for certain objects to culled?
 		shared::utils::hook::detour(game::hk_addr__frustum_check, &frustum_planes_check_hk, nullptr); // 0x431E40

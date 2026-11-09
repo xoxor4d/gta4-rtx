@@ -33,6 +33,8 @@ namespace gta4
 
 		bool m_do_not_pause_on_lost_focus = false;
 		bool m_do_not_pause_on_lost_focus_changed = false;
+		bool m_pause_game = false;
+		bool m_pause_step_held = false;
 
 		bool m_screenshot_mode = false;
 		bool m_screenshot_mode_hide_player = true;

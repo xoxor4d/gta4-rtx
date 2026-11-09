@@ -71,7 +71,15 @@ namespace gta4::game
 	uint32_t** ms_pNatives = nullptr;
 
 	uint8_t* m_CodePause = nullptr;
+	uint8_t* ms_bUserPause = nullptr;
 	int* m_dwCutsceneState = nullptr;
+	float* ms_fTimePassedSinceLastAudioStart = nullptr;
+	void* g_CutsceneAudioEntity = nullptr;
+	audCutsceneAudioEntity__GetPlayTimeMs_t audCutsceneAudioEntity__GetPlayTimeMs = nullptr;
+	float* ms_fCutsceneTimer = nullptr;
+	CCutsceneManager__ShutdownAudio_t CCutsceneManager__ShutdownAudio = nullptr;
+	CCutsceneManager__PreloadAudio_t CCutsceneManager__PreloadAudio = nullptr;
+	CCutsceneManager__StartAudio_t CCutsceneManager__StartAudio = nullptr;
 	bool* ms_bNoBlockOnLostFocus = nullptr;
 	bool* ms_bFocusLost = nullptr;
 	bool* ms_bWindowed = nullptr;
@@ -244,6 +252,7 @@ namespace gta4::game
 	uint32_t retn_addr__extended_anti_culling_check_stub = 0u;
 	uint32_t jmp_addr__extended_anti_culling_check_stub = 0u;
 	uint32_t hk_addr__lod_fade_in_stub = 0u;
+	uint32_t hk_addr__cutscene_get_time_step = 0u;
 	uint32_t hk_addr__frustum_check = 0u;
 	uint32_t retn_addr__frustum_check_interior_objs = 0u;
 
@@ -472,6 +481,16 @@ namespace gta4::game
 
 		if (const auto offset = shared::utils::mem::find_pattern("0A 05 ? ? ? ? 75 ? F6 43", 2, "m_CodePause", use_pattern, 0x4C4D4F); offset) {
 			m_CodePause = (uint8_t*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		// CTimer::ms_bUserPause, the pause menu's pause flag, read right before m_CodePause (CTimer::ms_bScriptPause)
+		if (const auto offset = shared::utils::mem::find_pattern("0A 05 ? ? ? ? 0A 05 ? ? ? ? 75 ? F6 43", 2, "ms_bUserPause", use_pattern, 0x4C4D49); offset) {
+			ms_bUserPause = (uint8_t*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		// CCutsceneManager::GetTimeStep: timer = audio play time - ms_fTimePassedSinceLastAudioStart
+		if (const auto offset = shared::utils::mem::find_pattern("66 0F 6E C0 0F 5B C0 F3 0F 5C 05 ? ? ? ? 0F 2F D0", 11, "ms_fTimePassedSinceLastAudioStart", use_pattern, 0x9C2F13); offset) {
+			ms_fTimePassedSinceLastAudioStart = (float*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
 
@@ -840,6 +859,33 @@ namespace gta4::game
 		} total_pattern_count++;
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__lod_fade_in_stub, "C6 46 63 FF 83 3D ? ? ? ? 00 74 ? 85 D2", 0, 0xAE82C0);
+
+		// CCutsceneManager::GetTimeStep, its first call is audCutsceneAudioEntity::GetPlayTimeMs on g_CutsceneAudioEntity
+		PATTERN_OFFSET_SIMPLE(hk_addr__cutscene_get_time_step, "51 56 8B 74 24 0C 57 F3 0F 10 06 B9 ? ? ? ? F3 0F 11 44 24 10 E8", 0, 0x9C2C80);
+		if (hk_addr__cutscene_get_time_step)
+		{
+			g_CutsceneAudioEntity = *reinterpret_cast<void**>(hk_addr__cutscene_get_time_step + 0xCu);
+			audCutsceneAudioEntity__GetPlayTimeMs = reinterpret_cast<audCutsceneAudioEntity__GetPlayTimeMs_t>(
+				shared::utils::mem::resolve_relative_jump_address(hk_addr__cutscene_get_time_step + 0x16u, 5u, 1u));
+		}
+
+		// CCutsceneManager::Update tail: push offset ms_fTimer; call GetTimeStep
+		if (const auto offset = shared::utils::mem::find_pattern("E8 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 83 C4 04 5E C3", 11, "ms_fCutsceneTimer", use_pattern, 0x9C6280); offset) {
+			ms_fCutsceneTimer = (float*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("FF 74 24 04 B9 ? ? ? ? E8 ? ? ? ? C7 05 ? ? ? ? 00 00 00 00 C3", 0, "CCutsceneManager__ShutdownAudio", use_pattern, 0x9C9720); offset) {
+			CCutsceneManager__ShutdownAudio = (CCutsceneManager__ShutdownAudio_t)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("80 7C 24 08 00 A1 ? ? ? ? 56 8B 04 85 ? ? ? ? 57 8B B8 ? ? ? ? B9", 0, "CCutsceneManager__PreloadAudio", use_pattern, 0x9C6B60); offset) {
+			CCutsceneManager__PreloadAudio = (CCutsceneManager__PreloadAudio_t)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("F3 0F 10 0D ? ? ? ? 0F 57 C0 0F 2E C8 9F F6 C4 44 7A ? B9 ? ? ? ? E8 ? ? ? ? 83 F8 FF", 0, "CCutsceneManager__StartAudio", use_pattern, 0x9C9C20); offset) {
+			CCutsceneManager__StartAudio = (CCutsceneManager__StartAudio_t)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__frustum_check, "55 8B EC 83 E4 ? 51 8B 45 ? 56 8B F1 0F 57 F6", 0, 0x431E40);
 		PATTERN_OFFSET_SIMPLE(retn_addr__frustum_check_interior_objs, "? ? ? ? F3 0F 10 50 ? ? ? ? ? F3 0F 5C 51 ? F3 0F 10 49", 0, 0xA0FCF9);
