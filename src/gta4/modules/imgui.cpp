@@ -8116,8 +8116,6 @@ namespace gta4
 						shared::globals::imgui_allow_input_bypass_timeout--;
 					}
 
-					shared::globals::imgui_wants_text_input = ImGui::GetIO().WantTextInput;
-
 					if (shared::globals::imgui_menu_open) 
 					{
 						io.MouseDrawCursor = true;

@@ -244,7 +244,6 @@ namespace gta4
 	{
 		HRESULT hr = g_dinput8_device_get_device_state_original(device, cbData, lpvData);
 		const auto di = dinput::get();
-		bool do_not_clear = false;
 
 		switch (cbData)
 		{
@@ -255,19 +254,10 @@ namespace gta4
 			case sizeof(DIMOUSESTATE2) :
 				di->updateMouseState(static_cast<DIMOUSESTATE2*>(lpvData), di->MouseAxisMode == DIPROPAXISMODE_ABS);
 				break;
-
-			case 256:
-				//di->updateKeyState(static_cast<LPBYTE>(lpvData)); // game sends keyboard input via window messages so no need
-				//di->KeyboardDeviceStateUsed = true;
-
-				if (!shared::globals::imgui_wants_text_input) {
-					do_not_clear = true;
-				}
-				
-				break;
 		}
 
-		if (!do_not_clear && shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass) {
+		// mouse and keyboard state alike, keys would otherwise reach the game the moment a text field loses focus
+		if (shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass) {
 			memset(lpvData, 0, cbData);
 		}
 

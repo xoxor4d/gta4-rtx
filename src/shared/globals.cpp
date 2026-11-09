@@ -69,7 +69,6 @@ namespace shared::globals
 	bool imgui_is_rendering = false;
 	bool imgui_menu_open = false;
 	bool imgui_allow_input_bypass = false;
-	bool imgui_wants_text_input = false;
 	uint32_t imgui_allow_input_bypass_timeout = 0u;
 
 
