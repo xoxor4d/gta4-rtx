@@ -128,11 +128,6 @@ namespace gta4::game
 
 	uint32_t hk_addr__on_cgame_process_hk = 0u;
 
-	uint32_t retn_addr__on_add_frontendhelpertext_stub = 0u;
-	uint32_t func_addr__add_renderfontbufferdc = 0u;
-	uint32_t func_addr__frontendhelpertext_add_drawcmd = 0u;
-	uint32_t retn_addr__radar_background_flicker_fix = 0u;
-
 	uint32_t retn_addr__pre_entity_surfs_stub = 0u;
 	uint32_t hk_addr__post_entity_surfs_stub = 0u;
 	uint32_t hk_addr__post_entity_surfs_stub2 = 0u;
@@ -185,7 +180,10 @@ namespace gta4::game
 	uint32_t import_addr__SetRect = 0u;
 	uint32_t import_addr__CreateWindowExA = 0u;
 
-	uint32_t nop_addr__disable_postfx_drawing = 0u;
+	uint32_t hk_addr__postfx_process_postprocess_call = 0u;
+	uint32_t hk_addr__scene_render_3d_markers = 0u;
+	uint32_t func_addr__c3dmarkers_render_3d_markers = 0u;
+	uint32_t func_addr__dlc_add_callback = 0u;
 
 	uint32_t retn_addr__pre_draw_water = 0u;
 	uint32_t hk_addr__post_draw_water = 0u;
@@ -636,11 +634,6 @@ namespace gta4::game
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__on_cgame_process_hk, "E8 ? ? ? ? E8 ? ? ? ? E8 ? ? ? ? 84 C0 74 ? E8 ? ? ? ? 84 DB", 0, 0x59D79F);
 
-		PATTERN_OFFSET_SIMPLE(retn_addr__on_add_frontendhelpertext_stub, "81 EC ? ? ? ? 53 56 8B 35 ? ? ? ? 57 85 F6", 0, 0x8B6C86);
-		PATTERN_OFFSET_SIMPLE(func_addr__add_renderfontbufferdc, "56 57 E8 ? ? ? ? 8B F0 8B CE", 0, 0x923950);
-		PATTERN_OFFSET_SIMPLE(func_addr__frontendhelpertext_add_drawcmd, "55 8B EC 83 E4 ? 83 EC ? A1 ? ? ? ? 33 C4 89 44 24 ? 56 57 8B 7D ? 85 FF", 0, 0x921DA0);
-		PATTERN_OFFSET_SIMPLE(retn_addr__radar_background_flicker_fix, "83 3D ? ? ? ? ? 0F 84 ? ? ? ? ? ? ? ? ? ? ? ? ? ? 89 44 24", 0, 0x902E6E);
-
 		if (const auto offset = shared::utils::mem::find_pattern("83 EC ? 53 56 8B F1 57 0F B7 46 ? 8B 04 85", 0, "retn_addr__pre_entity_surfs_stub", use_pattern, 0x8DCBF6); offset) {
 			retn_addr__pre_entity_surfs_stub = offset; found_pattern_count++;
 		} total_pattern_count++;
@@ -733,9 +726,17 @@ namespace gta4::game
 		} total_pattern_count++;
 
 
-		if (const auto offset = shared::utils::mem::find_pattern("A2 ? ? ? ? E8 ? ? ? ? 8B CE E8 ? ? ? ? 8B CE", 12, "nop_addr__disable_postfx_drawing", use_pattern, 0x92F547); offset) {
-			nop_addr__disable_postfx_drawing = offset; found_pattern_count++;
+		if (const auto offset = shared::utils::mem::find_pattern("A2 ? ? ? ? E8 ? ? ? ? 8B CE E8 ? ? ? ? 8B CE", 12, "hk_addr__postfx_process_postprocess_call", use_pattern, 0x92F547); offset) {
+			hk_addr__postfx_process_postprocess_call = offset; found_pattern_count++;
 		} total_pattern_count++;
+
+		// both exits of CRenderPhaseDrawScene::AddToDrawList end with a call to the thunk CScene::Render3dMarkers, which jumps to C3dMarkers::Render3dMarkers
+		if (const auto offset = shared::utils::mem::find_pattern("E8 ? ? ? ? 83 C4 04 E8 ? ? ? ? 5F 5E 8B E5 5D C3 33 C0 50 E8 ? ? ? ? 83 C4 04 E8 ? ? ? ? 5F 5E 8B E5 5D C3", 8, "hk_addr__scene_render_3d_markers", use_pattern, 0xADDBD5); offset) {
+			hk_addr__scene_render_3d_markers = shared::utils::mem::resolve_relative_call_address(offset); // 0xB1E7F0
+			func_addr__c3dmarkers_render_3d_markers = shared::utils::mem::resolve_relative_jump_address(hk_addr__scene_render_3d_markers, 5u, 1u); found_pattern_count++; // 0x9BC010
+		} total_pattern_count++;
+
+		PATTERN_OFFSET_SIMPLE(func_addr__dlc_add_callback, "56 6A 00 6A 0C E8 ? ? ? ? 8B F0 83 C4 08 85 F6 74 33 8B 15 ? ? ? ? 8B 4E 04 8B 44 24 08", 0, 0x5EECB0);
 
 
 		if (const auto offset = shared::utils::mem::find_pattern("81 EC ? ? ? ? 56 57 E8 ? ? ? ? ? ? ? 0F 84", 0, "retn_addr__pre_draw_water", use_pattern, 0xAD7EF6); offset) {

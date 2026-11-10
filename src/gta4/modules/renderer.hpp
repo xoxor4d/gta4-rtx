@@ -32,7 +32,6 @@ namespace gta4
 	extern bool g_was_rendering_phone_last_frame_delay_reset_helper;
 
 	extern bool g_rendered_first_primitive;
-	extern bool g_applied_hud_hack;
 	extern bool g_applied_phone_hack;
 
 	extern std::uint32_t g_model_hash;

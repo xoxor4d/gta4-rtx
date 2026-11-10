@@ -34,7 +34,6 @@ namespace gta4
 	bool g_was_rendering_phone_last_frame_delay_reset_helper = false;
 
 	bool g_rendered_first_primitive = false;
-	bool g_applied_hud_hack = false; // was hud "injection" applied this frame
 	bool g_applied_phone_hack = false;
 
 	std::uint32_t g_model_hash = 0u;
@@ -3229,19 +3228,21 @@ namespace gta4
 			// the quad below ends the runtime's frame: everything the api path still owes this frame goes first
 			renderer_api::on_before_injection();
 
-			//const auto& dev = shared::globals::d3d_device;
-			auto& ctx = dc_ctx;
+			// the runtime takes a fixed function draw as UI only with an orthographic projection transform and ZWRITE off.
+			// the quad brings that state itself (the last draw may have left a perspective projection) and restores everything
+			// afterwards so the game's cached device state stays truthful
+			IDirect3DStateBlock9* state = nullptr;
+			dev->CreateStateBlock(D3DSBT_ALL, &state);
 
-			dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
-
-			ctx.save_vs(dev);
+			dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY);
+			dev->SetTransform(D3DTS_VIEW, &shared::globals::IDENTITY);
+			dev->SetTransform(D3DTS_PROJECTION, &shared::globals::IDENTITY);
 			dev->SetVertexShader(nullptr);
-			ctx.save_ps(dev);
-			dev->SetPixelShader(nullptr); // needed
-
-			ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
-			dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE); // required - const bool zWriteEnabled = d3d9State().renderStates[D3DRS_ZWRITEENABLE]; -> if (isOrthographic && !zWriteEnabled)
-
+			dev->SetPixelShader(nullptr);
+			dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+			dev->SetTexture(0, nullptr);
+			dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+			dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
 
 			struct CUSTOMVERTEX
 			{
@@ -3263,9 +3264,11 @@ namespace gta4
 
 			dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(CUSTOMVERTEX));
 
-			ctx.restore_vs(dev);
-			ctx.restore_ps(dev);
-			ctx.restore_render_state(dev, D3DRS_ZWRITEENABLE);
+			if (state) {
+				state->Apply();
+				state->Release();
+			}
+
 			m_triggered_remix_injection = true;
 		}
 	}
@@ -3564,7 +3567,12 @@ namespace gta4
 
 	// ---
 
-	void on_add_frontendhelpertext_hk()
+	// rage::CPostFX::ProcessNonDepthFX (0x92F540) is a render thread draw command of the scene phase and of the player
+	// settings phase (display menu). Its call to rage::CPostFX::ProcessPostProcess (0x92F553) would draw the postfx quad in
+	// front of the camera, so it is replaced with this stub and nothing of it is drawn.
+	// With the pause menu open it also makes remix inject (manually_trigger_remix_injection): the menu is drawn next and
+	// the scene phase with its own trigger (scene_end_inject_dc) is not guaranteed to run.
+	void postfx_inject_hk()
 	{
 		const auto im = imgui::get();
 
@@ -3576,72 +3584,49 @@ namespace gta4
 			natives::get()->HideHudAndRadarThisFrame();
 		}
 
-		// reset in gta4::on_begin_scene_cb
-		if (g_applied_hud_hack || *game::m_bMobilePhoneActive) {
-			return;
-		}
-
-		if (im->m_dbg_disable_hud_fixup) {
-			return;
-		}
-
-		g_applied_hud_hack = true;
-
-		// get drawlist and add CRenderFontBufferDC
-		shared::utils::hook::call<void(__cdecl)()>(game::func_addr__add_renderfontbufferdc)();
-
-		struct pos_s
-		{
-			float x = 0.0f;
-			float y = 0.0f;
-		};
-		const pos_s p = {};
-
-		// add actual text/img drawcmd
-		shared::utils::hook::call<void(__cdecl)(pos_s, char*, int, int)>(game::func_addr__frontendhelpertext_add_drawcmd)(p, (char*)".", 0xFFFFFFFF, 0xFFFFFFFF);
-	}
-
-	__declspec (naked) void on_add_frontendhelpertext_stub()
-	{
-		__asm
-		{
-			mov     ebp, esp;
-			and		esp, 0xFFFFFFF8;
-
-			pushad;
-			call	on_add_frontendhelpertext_hk;
-			popad;
-
-			jmp		game::retn_addr__on_add_frontendhelpertext_stub;
-		}
-	}
-
-	// manually inject remix (auto UI detection) when the above fails
-	// which normally results in the radar background flickering
-	void radar_bg_draw_hk()
-	{
-		/*if (!renderer::get()->m_triggered_remix_injection) {
-			int x = 1;
-		}*/
-
-		if (!imgui::get()->m_dbg_disable_hud_fixup2) {
+		if (!im->m_dbg_disable_scene_injection && game::CMenuManager__m_MenuActive && *game::CMenuManager__m_MenuActive) {
 			renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);
 		}
 	}
 
-	// stub before drawing radar bg
-	__declspec (naked) void radar_bg_draw_stub()
+	__declspec (naked) void postfx_inject_stub()
 	{
 		__asm
 		{
 			pushad;
-			call	radar_bg_draw_hk;
+			call	postfx_inject_hk;
 			popad;
-
-			xor		eax, esp;			// og
-			mov		[esp + 0x28], eax;	// og
-			jmp		game::retn_addr__radar_background_flicker_fix; // 0x902E6E
+			retn;
 		}
+	}
+
+	// Render thread draw command queued by scene_render_3d_markers_hk. Runs after the last 3D draw of the scene phase
+	// (postfx, then the 3D mission markers) and before the game's 2D drawing (HUD, radar, scripted text): issues the quad
+	// that makes remix inject (manually_trigger_remix_injection).
+	// The phone model is drawn later and has to stay raytraced. With the phone up only the api geometry is flushed, so the
+	// world is part of the frame no matter which 2D draw makes remix inject.
+	void scene_end_inject_dc()
+	{
+		if (!game::is_in_game || imgui::get()->m_dbg_disable_scene_injection) {
+			return;
+		}
+
+		if (*game::m_bMobilePhoneActive)
+		{
+			renderer_api::on_before_injection();
+			return;
+		}
+
+		renderer::get()->manually_trigger_remix_injection(shared::globals::d3d_device);
+	}
+
+	// Replaces the thunk CScene::Render3dMarkers (0xB1E7F0), the last call of CRenderPhaseDrawScene::AddToDrawList (update
+	// thread, builds the draw list of the scene phase): queues the markers like the game does (C3dMarkers::Render3dMarkers)
+	// and scene_end_inject_dc right behind them (DLC_Add, the game's "add callback draw command").
+	void scene_render_3d_markers_hk()
+	{
+		shared::utils::hook::call<void(__cdecl)()>(game::func_addr__c3dmarkers_render_3d_markers)(); // 0x9BC010
+		shared::utils::hook::call<void(__cdecl)(void(__cdecl*)())>(game::func_addr__dlc_add_callback)(scene_end_inject_dc); // 0x5EECB0
 	}
 
 
@@ -3934,15 +3919,11 @@ namespace gta4
 		shared::utils::hook(game::retn_addr__pre_draw_mirror - 5u, pre_draw_mirror_stub, HOOK_JUMP).install()->quick(); // 0xB59906
 		shared::utils::hook(game::hk_addr__post_draw_mirror, post_draw_mirror_stub, HOOK_JUMP).install()->quick(); // 0xB59911
 
-		// do not render postfx RT infront of the camera
-		shared::utils::hook::nop(game::nop_addr__disable_postfx_drawing, 5);
+		// rage::CPostFX::ProcessNonDepthFX -> call rage::CPostFX::ProcessPostProcess: postfx quad not drawn, remix injection trigger in the pause menu (postfx_inject_hk)
+		shared::utils::hook(game::hk_addr__postfx_process_postprocess_call, postfx_inject_stub, HOOK_CALL).install()->quick(); // 0x92F553
 
-		// hack to properly detect UI - we need to "inject" frontend helper text to trigger remix injection asap
-		// doing this fixes the sniper scope + shadow background of radar
-		shared::utils::hook(game::retn_addr__on_add_frontendhelpertext_stub - 5u, on_add_frontendhelpertext_stub, HOOK_JUMP).install()->quick(); // 0x8B6C81
-
-		shared::utils::hook::nop(game::retn_addr__radar_background_flicker_fix - 6u, 6);
-		shared::utils::hook(game::retn_addr__radar_background_flicker_fix - 6u, radar_bg_draw_stub, HOOK_JUMP).install()->quick(); // 0x902E68
+		// CScene::Render3dMarkers thunk, end of CRenderPhaseDrawScene::AddToDrawList: remix injection trigger queued behind the 3D markers (scene_render_3d_markers_hk)
+		shared::utils::hook(game::hk_addr__scene_render_3d_markers, scene_render_3d_markers_hk, HOOK_JUMP).install()->quick(); // 0xB1E7F0
 
 		// skip og light rendering
 		shared::utils::hook::conditional_jump_to_jmp(game::cond_jmp_addr__skip_deferred_light_rendering01); // 0x928AE5

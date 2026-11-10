@@ -716,8 +716,7 @@ namespace gta4
 			ImGui::Text("Offscreen Anticull Meshes: %d tracked, %d marked", im->m_dbg_anticull_offscreen_tracked, im->m_dbg_anticull_offscreen_marked);
 			TT("Tracked: anti culling mesh instances found in the building pool.\nMarked: instances within category distance whose map cell got forced this frame (last phase).");
 
-			ImGui::Checkbox("Disable HUD Hack", &im->m_dbg_disable_hud_fixup); TT("Disables hack that helps remix detect the first HUD elem");
-			ImGui::Checkbox("Disable HUD Hack #2", &im->m_dbg_disable_hud_fixup2); TT("Disables 2nd hack that helps remix detect the first HUD elem (on drawing radar background)");
+			ImGui::Checkbox("Disable Scene Injection Trigger", &im->m_dbg_disable_scene_injection); TT("Disables the remix injection trigger at the end of the scene phase (behind the 3D markers) and in the pause menu. Remix then injects on the first game UI draw instead (radar background flicker, missing rooms behind api meshes).");
 
 			ImGui::Checkbox("Disable Phone Hack", &im->m_dbg_disable_phone_fixup); TT("Disables phone hack that clears the RT before drawing the first elem on the phone screen. Fixes smearing.");
 

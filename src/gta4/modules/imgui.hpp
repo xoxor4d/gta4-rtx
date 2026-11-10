@@ -126,8 +126,7 @@ namespace gta4
 		bool m_dbg_extended_anticull_always_true = false;
 		int m_dbg_anticull_offscreen_tracked = 0;
 		int m_dbg_anticull_offscreen_marked = 0;
-		bool m_dbg_disable_hud_fixup = false;
-		bool m_dbg_disable_hud_fixup2 = false;
+		bool m_dbg_disable_scene_injection = false;
 		bool m_dbg_disable_phone_fixup = false;
 		bool m_dbg_disable_global_uv_anims = false;
 		bool m_dbg_disable_omm_override_on_alpha_uv_anims = false;
