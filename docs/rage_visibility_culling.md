@@ -113,6 +113,18 @@ An entity below alpha 239 goes to the alpha render list. `0xAE38B0` draws that l
 ## Interiors
 Interior entities are not visited through the map cells. They are added room by room through the portal traversal (`0xA10140`), which uses the same sphere test `0xA31C20`.
 
+## Entity pools
+Map entities live in fixed-size pools (`CPool`: storage, flag bytes, size, entry size, last slot, used count). `CFileLoader::LoadObjectInstance` (`0x9D76C0`) takes a slot for every placement of a streamed map section and uses it unchecked, so a full pool crashes at `0x9D77E0`.
+
+| Pool | Pointer | Size | Created at |
+|---|---|---|---|
+| Building | `0x12BD0E8` | 32000 | `0xA0D370` |
+| Dummy Object (placeholders of dynamic props) | `0x166D9EC` | 14000, mod: 20000 | `0xB588B0` |
+| AnimatedBuilding | `0x16F7D60` | 500 | |
+
+- The mod makes `LoadObjectInstance` return null on a full pool (that placement is missing) and raises Dummy Object, which overflowed when a mission loaded its area after a skipped cutscene. Building was at 29353 then.
+- Building stays at 32000: it sits just under the signed 16 bit limit and it is unverified whether building indices are stored in 16 bits. Its entry size was `0x84` at runtime while the exe pushes `0x70`, so another plugin already patches its creation site.
+
 ## CEntity fields used by visibility
 
 | Offset | Meaning |

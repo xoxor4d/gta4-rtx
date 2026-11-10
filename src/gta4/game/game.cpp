@@ -175,6 +175,10 @@ namespace gta4::game
 	uint32_t jmp_addr__allow_commandline02 = 0u;
 	uint32_t hk_addr__commandlinearg_get_int = 0u;
 
+	uint32_t retn_addr__load_object_instance_pool_check = 0u;
+	uint32_t jmp_addr__load_object_instance_return_null = 0u;
+	uint32_t patch_addr__dummy_object_pool_size = 0u;
+
 	uint32_t hk_addr__on_create_game_window_hk = 0u;
 	uint32_t retn_addr__on_create_game_window_hk = 0u;
 	uint32_t import_addr__SetRect = 0u;
@@ -708,6 +712,19 @@ namespace gta4::game
 		} total_pattern_count++;
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__commandlinearg_get_int, "8B 41 ? 85 C0 74 ? ? ? ? 74 ? 6A ? 6A ? 50", 0, 0x4102D0);
+
+		// CFileLoader::LoadObjectInstance: first use of the entity that was just taken from the Dummy Object / AnimatedBuilding / Building pool
+		if (const auto offset = shared::utils::mem::find_pattern("33 FF C6 44 24 17 01 8B 07 FF 74 24 1C 8B CF FF 50 38", 7, "retn_addr__load_object_instance_pool_check", use_pattern, 0x9D77D9); offset) {
+			retn_addr__load_object_instance_pool_check = offset + 6u; found_pattern_count++; // 0x9D77E6
+		} total_pattern_count++;
+
+		// CFileLoader::LoadObjectInstance: the jz behind the model info lookup leads to the "return nullptr" exit
+		if (const auto offset = shared::utils::mem::find_pattern("85 FF 0F 84 ? ? ? ? F7 47 40 00 00 80 00 0F 85", 2, "jmp_addr__load_object_instance_return_null", use_pattern, 0x9D76EE); offset) {
+			jmp_addr__load_object_instance_return_null = shared::utils::mem::resolve_relative_jump_address(offset, 6u, 2u); found_pattern_count++; // 0x9D7AB9
+		} total_pattern_count++;
+
+		// creation of the Dummy Object pool: push entry size (0x80), push name, push pool size (14000)
+		PATTERN_OFFSET_SIMPLE(patch_addr__dummy_object_pool_size, "68 80 00 00 00 68 ? ? ? ? 68 B0 36 00 00 8B C8 E8", 11, 0xB588BE);
 
 		// 
 		if (const auto offset = shared::utils::mem::find_pattern("6A ? 0F 45 DF", 0, "hk_addr__on_create_game_window_hk", use_pattern, 0x420D91); offset) {

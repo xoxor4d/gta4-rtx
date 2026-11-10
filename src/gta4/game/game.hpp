@@ -204,6 +204,10 @@ namespace gta4::game
 	extern uint32_t jmp_addr__allow_commandline02;
 	extern uint32_t hk_addr__commandlinearg_get_int;
 
+	extern uint32_t retn_addr__load_object_instance_pool_check;
+	extern uint32_t jmp_addr__load_object_instance_return_null;
+	extern uint32_t patch_addr__dummy_object_pool_size;
+
 	extern uint32_t hk_addr__on_create_game_window_hk;
 	extern uint32_t retn_addr__on_create_game_window_hk;
 	extern uint32_t import_addr__SetRect;

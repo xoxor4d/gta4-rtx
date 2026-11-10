@@ -301,6 +301,25 @@ __declspec (naked) void on_create_game_window_stub()
 	}
 }
 
+// CFileLoader::LoadObjectInstance (0x9D76C0) creates the entity for a placement of a streamed map section. It takes a slot
+// from the Dummy Object, AnimatedBuilding or Building pool and uses it without a check, so a full pool crashes the game.
+// A full pool now takes the function's own "no entity" exit, which its callers handle: that one placement is missing.
+__declspec (naked) void load_object_instance_pool_check_stub()
+{
+	__asm
+	{
+		test	edi, edi;
+		jz		POOL_FULL;
+
+		mov		eax, [edi];				// og
+		push	dword ptr [esp + 0x1C];	// og
+		jmp		gta4::game::retn_addr__load_object_instance_pool_check;
+
+	POOL_FULL:
+		jmp		gta4::game::jmp_addr__load_object_instance_return_null;
+	}
+}
+
 #ifdef BLOCK_DISCORDHOOK
 
 bool is_discord_dll(const char* name)
@@ -400,6 +419,17 @@ BOOL APIENTRY DllMain(HMODULE hmodule, const DWORD ul_reason_for_call, LPVOID)
 		// allow actual commandline args + commandline.txt
 		shared::utils::hook::nop(gta4::game::nop_addr__allow_commandline01, 6);
 		shared::utils::hook::conditional_jump_to_jmp(gta4::game::jmp_addr__allow_commandline02);
+
+		if (gta4::game::retn_addr__load_object_instance_pool_check && gta4::game::jmp_addr__load_object_instance_return_null)
+		{
+			shared::utils::hook::nop(gta4::game::retn_addr__load_object_instance_pool_check - 6u, 6);
+			shared::utils::hook(gta4::game::retn_addr__load_object_instance_pool_check - 6u, load_object_instance_pool_check_stub, HOOK_JUMP).install()->quick(); // 0x9D77E0
+		}
+
+		// Dummy Object pool (placeholders of dynamic map props): 14000 -> 20000, has to happen before the game creates its pools
+		if (gta4::game::patch_addr__dummy_object_pool_size) {
+			shared::utils::hook::set<std::uint32_t>(gta4::game::patch_addr__dummy_object_pool_size, 20000u); // 0xB588C9
+		}
 
 		// detour cmd line get int func
 		shared::utils::hook::detour(gta4::game::hk_addr__commandlinearg_get_int, &commandlinearg_get_int_hk, nullptr);
