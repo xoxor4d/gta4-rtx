@@ -285,9 +285,11 @@ namespace gta4
 		dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 		dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 
+		// the vertex alpha holds the brighter edges of the 3D markers, the diffuseCol alpha is the distance fade
 		dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-		dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+		dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
 		dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+		ctx.modifiers.allow_vertex_colors = true;
 
 		ctx.save_rs(shared::globals::d3d_device, D3DRS_ALPHABLENDENABLE);
 		ctx.save_rs(shared::globals::d3d_device, D3DRS_SRCBLEND);
