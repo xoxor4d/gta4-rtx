@@ -519,8 +519,8 @@ namespace gta4
 				"api_static_creates_per_frame",
 				("Maximum number of Remix API meshes created per frame.\n"
 				 "Geometry that could not be built yet stays on the fixed function path for that frame, which spreads streaming spikes."),
-				"1.7.0",
-				18
+				"1.7.4",
+				128
 			};
 
 			variable api_static_cache_mb = {
