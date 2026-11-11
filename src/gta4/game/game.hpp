@@ -86,6 +86,9 @@ namespace gta4::game
 	typedef int(__fastcall* audCutsceneAudioEntity__GetPlayTimeMs_t)(void* self, void* edx_unused);
 	extern audCutsceneAudioEntity__GetPlayTimeMs_t audCutsceneAudioEntity__GetPlayTimeMs;
 	extern float* ms_fCutsceneTimer; // CCutsceneManager::ms_fTimer
+	extern const char* ms_cCutsceneName; // CCutsceneManager::ms_cName
+	extern int* ms_iCutsceneSectionPlaying; // CCutsceneManager::ms_iSectionPlaying
+	extern std::uint8_t** ms_CutsceneSections; // CCutsceneManager::ms_Section
 	typedef void(__cdecl* CCutsceneManager__ShutdownAudio_t)(bool stop_next_section_too);
 	typedef void(__cdecl* CCutsceneManager__PreloadAudio_t)(float time_ms, bool check_streaming_section); // blocks until the stream is prepared
 	typedef void(__cdecl* CCutsceneManager__StartAudio_t)();
@@ -128,7 +131,7 @@ namespace gta4::game
 		extern AddSingleVehicleLight_t AddSingleVehicleLight;
 
 	typedef	void* (__cdecl* AddSceneLight_t)(int unk_flag, game::eLightType type, int flag, float* dir, float* otherdir, float* pos, float* color, float intensity, int tex_hash, int txd_hash, float radius, float inner_cone, float outer_cone, int inter_index, int room_index, int shadow_rel_index);
-		extern AddSceneLight_t AddSceneLight; // // int unk_flag, game::eLightType type, int flag, float* dir, float* otherdir, float* pos, float* color, float intensity, int tex_hash, int txd_hash, float radius, float inner_cone, float outer_cone, int inter_index, int room_index, int shadow_rel_index
+		extern AddSceneLight_t AddSceneLight; // the overload without volume args; inter_index / room_index -1 = exterior
 
 	typedef	void (__fastcall* SetupTextureAndSampler_t)(uint32_t tex_register, grcTextureReference* a2, int sampler_state_count, int a4);
 		extern SetupTextureAndSampler_t SetupTextureAndSampler;
@@ -270,6 +273,11 @@ namespace gta4::game
 
 	extern uint32_t hk_addr__vehicle_barshaped_sirens;
 	extern uint32_t hk_addr__vehicle_fbibuffalo_sirens;
+
+	extern uint32_t hk_addr__vehicle_do_lights;
+	extern uint32_t hk_addr__scene_light_list_assign01;
+	extern uint32_t hk_addr__scene_light_list_assign02;
+	extern uint32_t hk_addr__cutscene_add_light;
 
 
 	extern uint32_t hk_addr__static_world_culling_check_hk;

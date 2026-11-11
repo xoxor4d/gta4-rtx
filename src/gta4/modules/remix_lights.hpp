@@ -62,7 +62,7 @@ namespace gta4
 
 		bool spawn_or_update_remix_sphere_light(remix_light_def& light, bool update = false, bool custom = false, const map_settings::light_override_s* custom_lov = nullptr);
 
-		void add_light(const game::CLightSource& def, const uint64_t& hash, bool is_filler = false, bool add_but_do_not_draw = false);
+		void add_light(const game::CLightSource& def, const uint64_t& key, const uint64_t& hash, bool is_filler = false, bool add_but_do_not_draw = false);
 		void destroy_light(remix_light_def& light);
 
 		void destroy_all_lights();

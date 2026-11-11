@@ -839,6 +839,40 @@ namespace gta4
 				false
 			};
 
+			variable translate_game_lights_cull =
+			{
+				"translate_game_lights_cull",
+				("Do not translate game-lights that are far away and too dim to contribute.\n"
+				 "The score of a light is 'intensity * brightest color channel * radius^2 / distance^2'. Lights with an override are never culled."),
+				"1.7.4",
+				true
+			};
+
+			variable translate_game_lights_cull_min_distance =
+			{
+				"translate_game_lights_cull_min_distance",
+				("Lights closer to the camera than this are never culled."),
+				"1.7.4",
+				40.0f
+			};
+
+			variable translate_game_lights_cull_threshold_in_view =
+			{
+				"translate_game_lights_cull_threshold_in_view",
+				("Lights that touch the camera view are culled if their score is below this value. 0.0 = disabled\n"
+				 "Lights the game fades in over time can pop in with this."),
+				"1.7.4",
+				0.0f
+			};
+
+			variable translate_game_lights_cull_threshold_out_of_view =
+			{
+				"translate_game_lights_cull_threshold_out_of_view",
+				("Lights outside of the camera view (kept alive by 'nocull_dist_lights') are culled if their score is below this value. 0.0 = disabled"),
+				"1.7.4",
+				0.05f
+			};
+
 			variable translate_game_lights_no_volumetrics_on_filler_lights =
 			{
 				"translate_game_lights_no_volumetrics_on_filler_lights",

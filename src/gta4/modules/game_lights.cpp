@@ -205,6 +205,237 @@ namespace gta4
 		sun_debug_s g_sun_debug;
 	}
 
+#pragma region LIGHT_IDS
+
+	/// Stable identities for game lights that move.
+	/// The scene light list holds no owner info and the hash of a light includes its position, so a moving light gets a new
+	/// hash every frame. Hooks around known light sources set the identity of the light that is being added and the copy
+	/// into the scene light list writes it into the unused tail of the entry (CLightSource::mStableId / mInstanceId).
+	namespace light_ids
+	{
+		struct scope_s
+		{
+			std::uint32_t stable_id = 0u;
+			std::uint32_t instance_id = 0u;
+		};
+
+		scope_s g_scope; // identity of the light that is being added, game update thread only
+
+		std::mutex g_names_mtx;
+		std::unordered_map<std::uint32_t, std::string> g_names; // stable id -> readable source, for the gui
+
+		std::uint32_t hash_lowercase(std::uint32_t hash, const char* str)
+		{
+			for (; *str; ++str) {
+				hash = (hash ^ static_cast<std::uint8_t>(std::tolower(static_cast<std::uint8_t>(*str)))) * 16777619u;
+			}
+			return hash;
+		}
+
+		template <typename make_name_fn>
+		void register_name(const std::uint32_t id, make_name_fn&& make_name)
+		{
+			std::lock_guard lock(g_names_mtx);
+			if (!g_names.contains(id)) {
+				g_names.emplace(id, make_name());
+			}
+		}
+
+		/// replaces CLightSource::operator= of the two copies into the scene light list
+		game::CLightSource* __fastcall scene_light_list_assign_hk(game::CLightSource* dst, [[maybe_unused]] void* edx, const game::CLightSource* src)
+		{
+			std::memcpy(dst, src, offsetof(game::CLightSource, mStableId));
+			dst->mStableId = g_scope.stable_id;
+			dst->mInstanceId = g_scope.instance_id;
+			return dst;
+		}
+
+		// ----- cutscene lights: cutscene name + name of the light in the [LIGHTS] block of the .cut file
+
+		constexpr std::uint32_t CUTSCENE_LIGHT_NAME_OFFSET = 4u; // section light entry: { CCutsceneAnimation* anim; char name[32]; }
+		std::uint32_t g_cutscene_light_entry_offset = 0u; // offset of the light's entry within its cutscene section
+
+		void cutscene_add_light_hk(int unk_flag, game::eLightType type, int flag, float* dir, float* otherdir, float* pos, float* color, float intensity, int tex_hash, int txd_hash, float radius, float inner_cone, float outer_cone, int inter_index, int room_index, int shadow_rel_index)
+		{
+			if (game::ms_cCutsceneName && game::ms_CutsceneSections && game::ms_iCutsceneSectionPlaying)
+			{
+				if (const auto section = game::ms_CutsceneSections[*game::ms_iCutsceneSectionPlaying]; section)
+				{
+					const char* cutscene_name = game::ms_cCutsceneName;
+					const char* light_name = reinterpret_cast<const char*>(section + g_cutscene_light_entry_offset + CUTSCENE_LIGHT_NAME_OFFSET);
+
+					auto id = hash_lowercase(2166136261u, cutscene_name);
+					id = hash_lowercase(id, "/");
+					id = hash_lowercase(id, light_name);
+					id = id ? id : 1u;
+
+					register_name(id, [&] { return std::format("cutscene {} / {}", cutscene_name, light_name); });
+					g_scope = { .stable_id = id, .instance_id = 0u };
+				}
+			}
+
+			game::AddSceneLight(unk_flag, type, flag, dir, otherdir, pos, color, intensity, tex_hash, txd_hash, radius, inner_cone, outer_cone, inter_index, room_index, shadow_rel_index);
+			g_scope = {};
+		}
+
+		__declspec (naked) void cutscene_add_light_stub()
+		{
+			__asm
+			{
+				mov		g_cutscene_light_entry_offset, esi;
+				jmp		cutscene_add_light_hk;
+			}
+		}
+
+		// ----- vehicle lights: vehicle model + light slot, one instance per vehicle
+
+		enum class vehicle_light : int
+		{
+			headlight_left = 1,
+			headlight_right,
+			headlight_single,
+			rearlight_left,
+			rearlight_right,
+			rearlight_single,
+		};
+
+		constexpr const char* VEHICLE_LIGHT_NAMES[] = { "", "headlight left", "headlight right", "headlight single", "rearlight left", "rearlight right", "rearlight single" };
+
+		game::CEntity* g_vehicle = nullptr; // vehicle whose lights are being updated
+
+		/// gives the lights added within its lifetime the identity of a light slot of 'g_vehicle'
+		struct vehicle_light_scope
+		{
+			explicit vehicle_light_scope(const vehicle_light slot) {
+				set(slot);
+			}
+
+			void set(const vehicle_light slot) const
+			{
+				g_scope = {};
+
+				if (!g_vehicle || g_vehicle->m_wModelIndex < 0 || !game::g_modelPointers) {
+					return;
+				}
+
+				const auto model = game::g_modelPointers[g_vehicle->m_wModelIndex];
+				if (!model) {
+					return;
+				}
+
+				auto id = shared::utils::hash32_combine(static_cast<std::uint32_t>(model->m_dwModel), static_cast<int>(slot));
+				id = id ? id : 1u;
+
+				register_name(id, [&] { return std::format("vehicle model {:#x} / {}", static_cast<std::uint32_t>(model->m_dwModel), VEHICLE_LIGHT_NAMES[static_cast<int>(slot)]); });
+				g_scope = { .stable_id = id, .instance_id = reinterpret_cast<std::uint32_t>(g_vehicle) };
+			}
+
+			~vehicle_light_scope() {
+				g_scope = {};
+			}
+
+			vehicle_light_scope(const vehicle_light_scope&) = delete;
+			vehicle_light_scope& operator=(const vehicle_light_scope&) = delete;
+		};
+
+		DETOUR_TYPEDEF(vehicle_do_lights, char, __fastcall, game::CEntity* vehicle, void* edx, float* a2, char a3);
+		char __fastcall vehicle_do_lights_hk(game::CEntity* vehicle, void* edx, float* a2, char a3)
+		{
+			g_vehicle = vehicle;
+			const auto result = vehicle_do_lights_og(vehicle, edx, a2, a3);
+			g_vehicle = nullptr;
+			return result;
+		}
+	}
+
+#pragma endregion
+
+#pragma region LIGHT_CULLING
+
+	/// Skips lights that are too far away and too dim to matter.
+	/// The score of a light is the irradiance it delivers at the camera (game units). Lights the game added because they touch
+	/// the view frustum are held to a lower threshold than lights that are only there because of 'nocull_dist_lights'.
+	namespace light_culling
+	{
+		constexpr float ACTIVE_LIGHT_THRESHOLD_SCALE = 0.8f; // translated lights stay until they drop a bit further, so nothing flickers
+
+		struct context_s
+		{
+			bool enabled = false;
+			Vector cam_org;
+			const float* frustum_planes = nullptr; // 6 planes, 4 floats each
+			float min_dist_sqr = 0.0f;
+			float threshold_in_view = 0.0f;
+			float threshold_out_of_view = 0.0f;
+		};
+
+		context_s setup()
+		{
+			context_s ctx;
+			const auto gs = comp_settings::get();
+			const auto vp = game::pViewports;
+
+			ctx.threshold_in_view = gs->translate_game_lights_cull_threshold_in_view._float();
+			ctx.threshold_out_of_view = gs->translate_game_lights_cull_threshold_out_of_view._float();
+
+			if (gs->translate_game_lights_cull._bool() && (ctx.threshold_in_view > 0.0f || ctx.threshold_out_of_view > 0.0f)
+				&& vp && vp->sceneviewport && !imgui::get()->m_dbg_visualize_api_light_hashes)
+			{
+				// the scene viewport is a 0x10 byte header followed by the grcViewport
+				const auto grc_viewport = reinterpret_cast<const game::grcViewport*>(reinterpret_cast<const std::uint8_t*>(vp->sceneviewport) + 0x10u);
+				const float min_dist = gs->translate_game_lights_cull_min_distance._float();
+
+				ctx.enabled = true;
+				ctx.cam_org = Vector(&vp->sceneviewport->cameraInv.m[3][0]);
+				ctx.frustum_planes = grc_viewport->frustumClipPlane0;
+				ctx.min_dist_sqr = min_dist * min_dist;
+			}
+
+			return ctx;
+		}
+
+		bool touches_frustum(const float* planes, const Vector& pos, const float radius)
+		{
+			for (auto i = 0u; i < 6u; i++, planes += 4)
+			{
+				if (planes[0] * pos.x + planes[1] * pos.y + planes[2] * pos.z + planes[3] + radius < 0.0f) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		bool should_cull(const context_s& ctx, const game::CLightSource& def, const bool is_active)
+		{
+			const float dist_sqr = ctx.cam_org.DistToSqr(def.mPosition);
+			if (dist_sqr < ctx.min_dist_sqr) {
+				return false;
+			}
+
+			float threshold = touches_frustum(ctx.frustum_planes, def.mPosition, def.mRadius) ? ctx.threshold_in_view : ctx.threshold_out_of_view;
+			if (threshold <= 0.0f) {
+				return false;
+			}
+
+			if (is_active) {
+				threshold *= ACTIVE_LIGHT_THRESHOLD_SCALE;
+			}
+
+			const float score = def.mIntensity * std::max({ def.mColor.x, def.mColor.y, def.mColor.z }) * def.mRadius * def.mRadius / dist_sqr;
+			return score < threshold;
+		}
+	}
+
+#pragma endregion
+
+	std::string game_lights::get_light_source_name(const std::uint64_t hash)
+	{
+		std::lock_guard lock(light_ids::g_names_mtx);
+		const auto it = light_ids::g_names.find(static_cast<std::uint32_t>(hash));
+		return it != light_ids::g_names.end() ? it->second : std::string();
+	}
+
 	uint64_t calculate_light_hash(const game::CLightSource& def)
 	{
 		std::uint32_t hash = 0u;
@@ -222,6 +453,17 @@ namespace gta4
 		//hash = shared::utils::hash32_combine(hash, def.mIntensity);
 
 		return hash;
+	}
+
+	/// exact comparison of everything that ends up in the translated light, for lights that are matched by a stable id
+	bool compare_dynamic_light(const game::CLightSource& l1, const game::CLightSource& l2)
+	{
+		return l1.mPosition.x == l2.mPosition.x && l1.mPosition.y == l2.mPosition.y && l1.mPosition.z == l2.mPosition.z
+			&& l1.mDirection.x == l2.mDirection.x && l1.mDirection.y == l2.mDirection.y && l1.mDirection.z == l2.mDirection.z
+			&& l1.mColor.x == l2.mColor.x && l1.mColor.y == l2.mColor.y && l1.mColor.z == l2.mColor.z
+			&& l1.mIntensity == l2.mIntensity && l1.mRadius == l2.mRadius
+			&& l1.mInnerConeAngle == l2.mInnerConeAngle && l1.mOuterConeAngle == l2.mOuterConeAngle
+			&& l1.mVolumeScale == l2.mVolumeScale && l1.mType == l2.mType;
 	}
 
 	bool compare_dynamic_light_without_position(const game::CLightSource& l1, const game::CLightSource& l2, float eps = 1.e-6f)
@@ -250,12 +492,9 @@ namespace gta4
 			game::CLightSource* list = game::get_renderLights();
 			const auto count = game::get_renderLightsCount();
 
-			for (auto i = 0u; count; i++)
+			for (auto i = 0u; i < count; i++)
 			{
 				auto& def = list[i];
-				if (def.mDirection.LengthSqr() == 0.0f) {
-					break;
-				}
 
 				const Vector circle_pos = def.mPosition;
 				if (fabs(circle_pos.DistToSqr(player_pos)) > im->m_dbg_visualize_api_lights_3d_distance * im->m_dbg_visualize_api_lights_3d_distance) {
@@ -439,15 +678,23 @@ namespace gta4
 		const auto light_list = game::get_renderLights();
 		const auto light_count = game::get_renderLightsCount();
 
-		const auto& ignored_lights = map_settings::get()->get_map_settings().ignored_lights;
-		const auto& allowed_lights = map_settings::get()->get_map_settings().allow_lights;
+		const auto& ignored_lights = map_settings::get_map_settings().ignored_lights;
+		const auto& allowed_lights = map_settings::get_map_settings().allow_lights;
+		const auto& light_overrides = map_settings::get_map_settings().light_overrides;
 
-		if (comp_settings::get()->translate_game_lights.get_as<bool>() && light_count && light_list)
+		const auto cull = light_culling::setup();
+		m_culled_light_count = 0u;
+
+		if (gs->translate_game_lights.get_as<bool>() && light_count && light_list)
 		{
 			for (auto i = 0u; i < light_count; i++)
 			{
 				auto& def = light_list[i];
-				const auto hash = calculate_light_hash(def);
+
+				// 'hash' identifies the light for map settings, 'key' the translated light (several lights can share a stable id)
+				const bool has_stable_id = def.mStableId != 0u;
+				const std::uint64_t hash = has_stable_id ? def.mStableId : calculate_light_hash(def);
+				const std::uint64_t key = hash | (static_cast<std::uint64_t>(def.mInstanceId) << 32);
 
 				bool is_filler_light = def.mFlags & 0x10;
 
@@ -507,19 +754,28 @@ namespace gta4
 					}
 				}
 
-				
+				const auto it = active_lights.find(key);
+				const bool is_active = it != active_lights.end();
+
+				// an untouched light gets destroyed below
+				if (cull.enabled && !add_zero_intensity_light && light_culling::should_cull(cull, def, is_active) && !light_overrides.contains(hash))
+				{
+					m_culled_light_count++;
+					continue;
+				}
 
 				bool touched_light = false;
-				if (auto it = active_lights.find(hash); it != active_lights.end())
+				if (is_active)
 				{
 					const auto always_update = it->second.m_def.mFlags & 0x400; 
 					const auto custom_game_light = it->second.m_def.mFlags & 0x40000;
 
-					bool should_update = im->m_dbg_visualize_api_light_hashes || always_update; // always update if in vis mode -- or light requests it
+					// always update if in vis mode -- or light requests it (a light with a stable id is compared in full instead)
+					bool should_update = im->m_dbg_visualize_api_light_hashes || (always_update && !has_stable_id);
 					it->second.m_is_filler = is_filler_light;
 
 					// check if most important properties changed - position unchanged as matched a hash
-					if (!should_update && compare_dynamic_light_without_position(def, it->second.m_def)) {
+					if (!should_update && (has_stable_id ? compare_dynamic_light(def, it->second.m_def) : compare_dynamic_light_without_position(def, it->second.m_def))) {
 						it->second.m_updateframe = updateframe; // light is up to date
 					}
 					else
@@ -544,13 +800,13 @@ namespace gta4
 
 					touched_light = true;
 				}
-				else
+				else if (!has_stable_id && !(def.mFlags & 0x400))
 				{
 					// search for light with very very similar settings, then check if within a certain distance comp. to last state
 					for (auto& l : active_lights)
 					{
-						// do not try to match an existing light if flag 0x400 (always update)
-						if (l.second.m_def.mFlags & 0x400) {
+						// do not try to match an existing light if flag 0x400 (always update) or if it has its own identity
+						if (l.second.m_def.mFlags & 0x400 || l.second.m_def.mStableId) {
 							continue;
 						}
 
@@ -571,7 +827,7 @@ namespace gta4
 
 				// this is a new light
 				if (!touched_light) {
-					rml->add_light(def, hash, add_zero_intensity_light, is_filler_light);
+					rml->add_light(def, key, hash, is_filler_light, add_zero_intensity_light);
 				}
 			}
 		}
@@ -603,6 +859,7 @@ namespace gta4
 		const float inner_cone = 0.8f * (1.0f * 20.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC54) * *reinterpret_cast<float*>(0x12E23C8))
 		const float outer_cone = 0.8f * (1.0f * 50.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC58) * *reinterpret_cast<float*>(0x12E23CC))
 
+		light_ids::vehicle_light_scope light_scope(light_ids::vehicle_light::headlight_left);
 		game::AddSingleVehicleLight(some_mtx, &left_light_pos->m[3][0],
 			light_dir,
 			im->m_dbg_custom_veh_headlight_enabled ? &im->m_dbg_custom_veh_headlight_color.x : color,
@@ -612,6 +869,7 @@ namespace gta4
 			outer_cone,
 			inter_index, room_index, shadow_rel_index, 1, some_flag);
 
+		light_scope.set(light_ids::vehicle_light::headlight_right);
 		game::AddSingleVehicleLight(some_mtx, &right_light_pos->m[3][0],
 			light_dir,
 			im->m_dbg_custom_veh_headlight_enabled ? &im->m_dbg_custom_veh_headlight_color.x : color,
@@ -657,6 +915,7 @@ namespace gta4
 		const float inner_cone = 0.8f * (1.0f * 20.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC54) * *reinterpret_cast<float*>(0x12E23C8))
 		const float outer_cone = 0.8f * (1.0f * 50.0f); // *reinterpret_cast<float*>(0x103CC5C) * (*reinterpret_cast<float*>(0x103CC58) * *reinterpret_cast<float*>(0x12E23CC))
 
+		const light_ids::vehicle_light_scope light_scope(light_ids::vehicle_light::headlight_single);
 		game::AddSingleVehicleLight(some_mtx, light_pos,
 			light_dir,
 			im->m_dbg_custom_veh_headlight_enabled ? &im->m_dbg_custom_veh_headlight_color.x : color,
@@ -679,6 +938,7 @@ namespace gta4
 		Vector light_dir = { 0.0f, -1.0f, 0.0f };
 		light_dir += *gs->translate_vehicle_rearlight_direction_offset.get_as<Vector*>();
 
+		light_ids::vehicle_light_scope light_scope(light_ids::vehicle_light::rearlight_left);
 		game::AddSingleVehicleLight(some_mtx, &left_light_pos->m[3][0],
 			&light_dir.x,
 			color,
@@ -688,6 +948,7 @@ namespace gta4
 			outer_cone,
 			inter_index, room_index, shadow_rel_index, flag1, flag2);
 
+		light_scope.set(light_ids::vehicle_light::rearlight_right);
 		game::AddSingleVehicleLight(some_mtx, &right_light_pos->m[3][0],
 			&light_dir.x,
 			color,
@@ -733,6 +994,7 @@ namespace gta4
 		Vector light_dir = { 0.0f, -1.0f, 0.0f };
 		light_dir += *gs->translate_vehicle_rearlight_direction_offset.get_as<Vector*>();
 
+		const light_ids::vehicle_light_scope light_scope(light_ids::vehicle_light::rearlight_single);
 		game::AddSingleVehicleLight(some_mtx, light_pos,
 			&light_dir.x,
 			color,
@@ -991,6 +1253,21 @@ namespace gta4
 		shared::utils::hook(game::hk_addr__vehicle_fbibuffalo_sirens, veh_fbi_buffalo_siren_hk, HOOK_CALL).install()->quick(); // 0xA417DF - fbi rear projected lights
 
 
+
+		// stable ids for moving lights
+		if (game::hk_addr__scene_light_list_assign01 && game::hk_addr__scene_light_list_assign02)
+		{
+			shared::utils::hook(game::hk_addr__scene_light_list_assign01, light_ids::scene_light_list_assign_hk, HOOK_CALL).install()->quick(); // 0xABD2E0
+			shared::utils::hook(game::hk_addr__scene_light_list_assign02, light_ids::scene_light_list_assign_hk, HOOK_CALL).install()->quick(); // 0xABD32C
+
+			if (game::hk_addr__cutscene_add_light) {
+				shared::utils::hook(game::hk_addr__cutscene_add_light, light_ids::cutscene_add_light_stub, HOOK_CALL).install()->quick(); // 0x9CAAB3
+			}
+
+			if (game::hk_addr__vehicle_do_lights) {
+				shared::utils::hook::detour(game::hk_addr__vehicle_do_lights, &light_ids::vehicle_do_lights_hk, DETOUR_CAST(light_ids::vehicle_do_lights_og)); // 0xA435E0
+			}
+		}
 
 		// -----
 		m_initialized = true;

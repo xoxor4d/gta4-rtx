@@ -68,12 +68,12 @@ namespace gta4
 	bool remix_lights::spawn_or_update_remix_sphere_light(remix_light_def& light, bool update, bool custom, const map_settings::light_override_s* custom_lov)
 	{
 		const auto gs = comp_settings::get();
-		auto msov = map_settings::get_map_settings().light_overrides;
+		const auto& msov = map_settings::get_map_settings().light_overrides;
 
-		map_settings::light_override_s* lov = nullptr;
+		const map_settings::light_override_s* lov = nullptr;
 		if (custom_lov)
 		{
-			lov = const_cast<map_settings::light_override_s*>(custom_lov);
+			lov = custom_lov;
 		}
 		else if (const auto it = msov.find(light.m_hash); it != msov.end())
 		{
@@ -166,14 +166,17 @@ namespace gta4
 	/**
 	 * Adds and immediately spawns a single light
 	 * @param def	The game light definition
+	 * @param key	Key of the light in the active light list and its remixApi hash
+	 * @param hash	Hash of the light for map settings (several lights can share one, e.g. the same light of two vehicles)
 	 */
-	void remix_lights::add_light(const game::CLightSource& def, const uint64_t& hash, bool is_filler, const bool add_but_do_not_draw)
+	void remix_lights::add_light(const game::CLightSource& def, const uint64_t& key, const uint64_t& hash, bool is_filler, const bool add_but_do_not_draw)
 	{
 		if (def.mType == game::LT_POINT || def.mType == game::LT_SPOT)
 		{
-			auto& l = m_active_lights[hash];
+			auto& l = m_active_lights[key];
 			l.m_def = def;
 			l.m_hash = hash;
+			l.m_info.hash = key;
 			l.m_light_num = m_active_light_spawn_tracker++;
 			l.m_is_filler = is_filler;
 
@@ -184,7 +187,7 @@ namespace gta4
 				l.m_is_ignored = true;
 			}
 
-			get()->spawn_or_update_remix_sphere_light(l);
+			get()->spawn_or_update_remix_sphere_light(l, true);
 		}
 	}
 

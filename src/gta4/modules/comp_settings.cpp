@@ -216,6 +216,10 @@ namespace gta4
 				// light translation related settings
 				ASSIGN(translate_game_lights);
 				ASSIGN(translate_game_lights_ignore_filler_lights);
+				ASSIGN(translate_game_lights_cull);
+				ASSIGN(translate_game_lights_cull_min_distance);
+				ASSIGN(translate_game_lights_cull_threshold_in_view);
+				ASSIGN(translate_game_lights_cull_threshold_out_of_view);
 				ASSIGN(translate_game_lights_no_volumetrics_on_filler_lights);
 				ASSIGN(translate_game_light_radius_scalar);
 				ASSIGN(translate_game_light_intensity_scalar);

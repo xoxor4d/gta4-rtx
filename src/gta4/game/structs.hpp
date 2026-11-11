@@ -365,8 +365,8 @@ namespace gta4::game
 		int mRoomIndex;
 		float mVolumeSize;
 		float mVolumeScale;
-		int8_t gap78[7];
-		char field_7F;
+		std::uint32_t mStableId; // unused by the game and not part of its copy; written by game_lights (0 = none)
+		std::uint32_t mInstanceId; // ^ tells lights apart that share a stable id (e.g. two vehicles of the same model)
 	};
 
 	struct CDirectionalLight

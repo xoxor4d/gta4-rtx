@@ -77,6 +77,9 @@ namespace gta4::game
 	void* g_CutsceneAudioEntity = nullptr;
 	audCutsceneAudioEntity__GetPlayTimeMs_t audCutsceneAudioEntity__GetPlayTimeMs = nullptr;
 	float* ms_fCutsceneTimer = nullptr;
+	const char* ms_cCutsceneName = nullptr;
+	int* ms_iCutsceneSectionPlaying = nullptr;
+	std::uint8_t** ms_CutsceneSections = nullptr;
 	CCutsceneManager__ShutdownAudio_t CCutsceneManager__ShutdownAudio = nullptr;
 	CCutsceneManager__PreloadAudio_t CCutsceneManager__PreloadAudio = nullptr;
 	CCutsceneManager__StartAudio_t CCutsceneManager__StartAudio = nullptr;
@@ -240,6 +243,11 @@ namespace gta4::game
 
 	uint32_t hk_addr__vehicle_barshaped_sirens = 0u;
 	uint32_t hk_addr__vehicle_fbibuffalo_sirens = 0u;
+
+	uint32_t hk_addr__vehicle_do_lights = 0u;
+	uint32_t hk_addr__scene_light_list_assign01 = 0u;
+	uint32_t hk_addr__scene_light_list_assign02 = 0u;
+	uint32_t hk_addr__cutscene_add_light = 0u;
 
 	uint32_t hk_addr__static_world_culling_check_hk = 0u;
 	uint32_t nop_addr__static_world_frustum_patch01 = 0u;
@@ -579,7 +587,7 @@ namespace gta4::game
 			AddSingleVehicleLight = (AddSingleVehicleLight_t)offset; found_pattern_count++;
 		} total_pattern_count++;
 
-		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? F3 0F 10 05 ? ? ? ? 81 EC ? ? ? ? 0F 2F 45 ? 56 57 0F 83", 0, "AddSceneLight", use_pattern, 0xABCCD0); offset) {
+		if (const auto offset = shared::utils::mem::find_pattern("FF 74 24 40 F3 0F 10 44 24 38 FF 74 24 40 8B 44 24 14 FF 74 24 40 83 E0 F7 83 EC 14", 0, "AddSceneLight", use_pattern, 0xABCC50); offset) {
 			AddSceneLight = (AddSceneLight_t)offset; found_pattern_count++;
 		} total_pattern_count++;
 
@@ -865,7 +873,31 @@ namespace gta4::game
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_barshaped_sirens, "E8 ? ? ? ? 83 C4 ? EB ? 51 83 C0 ? ? ? ? ? ? ? ? 50 8B 44 24", 0x0, 0xA4146F);
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_fbibuffalo_sirens, "E8 ? ? ? ? F3 0F 10 4C 24 ? 83 C4 ? 0F 2F 0D", 0x0, 0xA417DF);
-		
+
+		// CVehicle light update (head, rear, sirens ..)
+		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_do_lights, "55 8B EC 83 E4 F0 81 EC C8 01 00 00 A1 ? ? ? ? 33 C4 89 84 24 C4 01 00 00 80 3D ? ? ? ? 00 8B 45 08 56 8B F1 57", 0, 0xA435E0);
+
+		// CLights::AddSceneLightOrdered: the two CLightSource copies into the scene light list (append / replace the farthest light when full)
+		PATTERN_OFFSET_SIMPLE(hk_addr__scene_light_list_assign01, "56 8B 35 ? ? ? ? 8D 46 01 3D 80 02 00 00 7D 31 FF 74 24 08", 0x20, 0xABD2C0); // 0xABD2E0
+		PATTERN_OFFSET_SIMPLE(hk_addr__scene_light_list_assign02, "56 8B 35 ? ? ? ? 8D 46 01 3D 80 02 00 00 7D 31 FF 74 24 08", 0x6C, 0xABD2C0); // 0xABD32C
+
+		// CCutsceneManager::UpdateLights: ms_iSectionPlaying, ms_Section and its AddSceneLight call
+		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 F0 A1 ? ? ? ? 83 EC 78 8B 04 85 ? ? ? ? 56 57 85 C0 0F 84", 0, "hk_addr__cutscene_add_light", use_pattern, 0x9CA7E0); offset)
+		{
+			ms_iCutsceneSectionPlaying = *reinterpret_cast<int**>(offset + 0x7u);
+			ms_CutsceneSections = *reinterpret_cast<std::uint8_t***>(offset + 0x11u);
+
+			if (*reinterpret_cast<BYTE*>(offset + 0x2D3u) == 0xE8)
+			{
+				hk_addr__cutscene_add_light = offset + 0x2D3u; // 0x9CAAB3
+				found_pattern_count++;
+			}
+		} total_pattern_count++;
+
+		if (const auto offset = shared::utils::mem::find_pattern("68 ? ? ? ? 8D 44 24 5C 68 ? ? ? ? 50 E8 ? ? ? ? 83 C4 0C", 1, "ms_cCutsceneName", use_pattern, 0x9C6475); offset) {
+			ms_cCutsceneName = (const char*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
 
 		PATTERN_OFFSET_SIMPLE(hk_addr__static_world_culling_check_hk, "55 8B EC 83 E4 ? 83 EC ? 56 8B F1 ? ? 8B 40 ? FF D0 ? ? ? ? ? ? 8D 4C 24 ? 51 8B CE FF 50 ? F3 0F 10 44 24 ? 8B 4D", 0, 0xA31C20);
 		PATTERN_OFFSET_SIMPLE(nop_addr__static_world_frustum_patch01, "0F 84 ? ? ? ? 66 83 7F ? ? 75 ? B9", 0, 0x444C8B);

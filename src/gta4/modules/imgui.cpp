@@ -2055,6 +2055,12 @@ namespace gta4
 				compsettings_bool_widget("Ignore Filler Lights", gs->translate_game_lights_ignore_filler_lights);
 				compsettings_bool_widget("No Volumetrics on Filler Lights", gs->translate_game_lights_no_volumetrics_on_filler_lights);
 
+				compsettings_bool_widget("Cull Distant Dim Lights", gs->translate_game_lights_cull);
+				compsettings_float_widget("Cull Min Distance", gs->translate_game_lights_cull_min_distance, 0.0f, 1000.0f, 0.5f);
+				compsettings_float_widget("Cull Threshold (In View)", gs->translate_game_lights_cull_threshold_in_view, 0.0f, 10.0f, 0.0005f, "%.4f");
+				compsettings_float_widget("Cull Threshold (Out Of View)", gs->translate_game_lights_cull_threshold_out_of_view, 0.0f, 10.0f, 0.0005f, "%.4f");
+				ImGui::TextDisabled("Translated: %zu, culled: %u", remix_lights::get()->get_active_light_count(), game_lights::get()->get_culled_light_count());
+
 				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Radius Scalar", gs->translate_game_light_radius_scalar, 0.0f, 0.0f, 0.005f));
 				CLEAR_CACHE_CHECK(clear, compsettings_float_widget("Light Intensity Scalar", gs->translate_game_light_intensity_scalar, 0.0f, 0.0f, 0.005f));
 
@@ -7353,7 +7359,7 @@ namespace gta4
 		if (m_dbg_visualize_api_light_hashes)
 		{
 			const auto rml = remix_lights::get();
-			auto ms = map_settings::get_map_settings();
+			auto& ms = map_settings::get_map_settings();
 
 			const auto vp = game::pViewports;
 			if (vp->sceneviewport)
@@ -7371,7 +7377,7 @@ namespace gta4
 					{
 						if (fabs(cam_org.DistToSqr(l.second.m_def.mPosition) < draw_dist * draw_dist))
 						{
-							auto msov = ms.light_overrides;
+							const auto& msov = ms.light_overrides;
 
 							const map_settings::light_override_s* lov = nullptr;
 							uint64_t base_hash = l.second.m_hash;
@@ -7421,7 +7427,8 @@ namespace gta4
 												is_light_in_vis_list = true;
 												ign.ignored = l.second.m_is_ignored; // ignored state might have changed
 												ign.allowed_filler = l.second.m_is_allowed_filler; // ^
-												ign.m_updateframe++;
+												ign.m_updateframe = ign.m_frames_since_addition; // several lights can share a hash (stable ids)
+												ign.pos = l.second.m_def.mPosition;
 												is_light_hash_stable = ign.m_frames_since_addition > 5u;
 												break;
 											}
@@ -7553,6 +7560,10 @@ namespace gta4
 										else
 										{
 											std::string toml_str = toml_filename.empty() ? "" : ("\n    ~ " + toml_filename + " ~");
+											if (const auto source = game_lights::get_light_source_name(l.second.m_hash); !source.empty()) {
+												toml_str += "\n    ~ " + source + " ~";
+											}
+
 											const char* text = shared::utils::va("    [HASH] %llx %s%s", l.second.m_hash, lov ? "\n    ~ OVERRIDE ~" : "", toml_str.c_str());
 
 											if (font) {
