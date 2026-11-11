@@ -9,7 +9,8 @@ end
 
 function imgui.includes()
 	includedirs {
-		imgui.source
+		imgui.source,
+		path.join(dependencies.basePath, "imguizmo")
 	}
 end
 
@@ -30,6 +31,8 @@ function imgui.project()
             path.join(imgui.source, "backends/imgui_impl_win32.h"),
             path.join(imgui.source, "misc/cpp/imgui_stdlib.cpp"),
             path.join(imgui.source, "misc/cpp/imgui_stdlib.h"),
+            path.join(dependencies.basePath, "imguizmo/ImGuizmo.cpp"),
+            path.join(dependencies.basePath, "imguizmo/ImGuizmo.h"),
 		}
 
 		warnings "Off"

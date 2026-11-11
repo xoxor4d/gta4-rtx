@@ -3,6 +3,7 @@
 
 #include "discord.hpp"
 #include "imgui.hpp"
+#include "free_camera.hpp"
 #include "remix_vars.hpp"
 
 namespace gta4
@@ -22,6 +23,7 @@ namespace gta4
 
 		anticull_inspector::update();
 		game_pause::on_game_frame();
+		free_camera::on_game_frame();
 
 		// TODO: hack to fix issues with SSS-fixing commit (that makes head mesh invisible)
 		// + latest remix versions also make player char invisible

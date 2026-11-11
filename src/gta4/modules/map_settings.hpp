@@ -62,6 +62,7 @@ namespace gta4
 			bool _use_inner_cone_angle = false;
 			bool _use_volumetric_scale = false;
 			bool _use_light_type = false;
+			std::uint32_t _order = 0u; // position in its toml file, keeps the entry order when the file is written
 		};
 
 		struct anti_cull_meshes_s
@@ -154,6 +155,7 @@ namespace gta4
 		static map_settings_s& get_map_settings() { return m_map_settings; }
 		static void load_settings();
 		static void clear_map_settings();
+		static std::uint32_t next_light_override_order() { return ++m_light_override_order; }
 		static void rebuild_light_overrides_from_toml_info(); // Rebuilds light_overrides from toml_info based on priority
 		static void rebuild_lights_from_toml_info(); // Rebuilds ignored_lights and allow_lights from toml_info based on priority (excludes hashes with overrides)
 
@@ -162,6 +164,7 @@ namespace gta4
 		static inline map_settings_s m_map_settings = {};
 		static inline std::vector<std::string> m_args;
 		static inline bool m_spawned_markers = false;
+		static inline std::uint32_t m_light_override_order = 0u;
 		static inline bool m_loaded = false;
 		bool parse_toml();
 	};

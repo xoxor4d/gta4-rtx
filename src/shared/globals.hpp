@@ -62,8 +62,16 @@ namespace shared::globals
 
 	extern bool imgui_is_rendering;
 	extern bool imgui_menu_open;
+	extern bool imgui_editor_open; // a free floating editor that stays open without the menu
+
+	/// imgui owns mouse and keyboard, the game gets no input
+	inline bool imgui_blocks_game_input();
 	extern bool imgui_allow_input_bypass;
 	extern uint32_t imgui_allow_input_bypass_timeout;
+
+	inline bool imgui_blocks_game_input() {
+		return (imgui_menu_open || imgui_editor_open) && !imgui_allow_input_bypass;
+	}
 
 	extern std::chrono::high_resolution_clock::time_point last_frame_time;
 	extern float frame_time_ms;

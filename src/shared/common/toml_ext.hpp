@@ -21,6 +21,8 @@ namespace shared::common::toml_ext
 	std::string build_lightweak_array(const std::unordered_map<uint64_t, gta4::map_settings::light_override_s>& entries);
 	std::string build_lightweak_toml_file(const std::string& filename, const gta4::map_settings::light_overrides_toml_info_s& toml_info);
 	std::string build_lightweak_single_category(const gta4::map_settings::light_override_category_info_s& category);
+	std::string build_override_properties(const gta4::map_settings::light_override_s& override_data);
+	std::string build_attached_lights_array(const std::vector<gta4::map_settings::light_override_s>& attached_lights, const std::string& indent_prefix);
 	std::string build_lightweak_mixed_array(const std::unordered_map<std::string, gta4::map_settings::light_overrides_toml_info_s>& all_toml_info);
 
 	// format 2 decimals

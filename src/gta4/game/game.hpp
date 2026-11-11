@@ -278,6 +278,8 @@ namespace gta4::game
 	extern uint32_t hk_addr__scene_light_list_assign01;
 	extern uint32_t hk_addr__scene_light_list_assign02;
 	extern uint32_t hk_addr__cutscene_add_light;
+	extern uint32_t hk_addr__camfinal_set_camera_mtx;
+	extern uint32_t hk_addr__camfinal_perspective;
 
 
 	extern uint32_t hk_addr__static_world_culling_check_hk;

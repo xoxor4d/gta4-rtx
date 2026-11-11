@@ -248,6 +248,8 @@ namespace gta4::game
 	uint32_t hk_addr__scene_light_list_assign01 = 0u;
 	uint32_t hk_addr__scene_light_list_assign02 = 0u;
 	uint32_t hk_addr__cutscene_add_light = 0u;
+	uint32_t hk_addr__camfinal_set_camera_mtx = 0u;
+	uint32_t hk_addr__camfinal_perspective = 0u;
 
 	uint32_t hk_addr__static_world_culling_check_hk = 0u;
 	uint32_t nop_addr__static_world_frustum_patch01 = 0u;
@@ -890,6 +892,26 @@ namespace gta4::game
 			if (*reinterpret_cast<BYTE*>(offset + 0x2D3u) == 0xE8)
 			{
 				hk_addr__cutscene_add_light = offset + 0x2D3u; // 0x9CAAB3
+				found_pattern_count++;
+			}
+		} total_pattern_count++;
+
+		// CCamFinal::InformRenderEngineOfFinalFrame: its grcViewport::SetCameraMtx call
+		if (const auto offset = shared::utils::mem::find_pattern("8B 44 24 18 89 87 38 05 00 00 8D 44 24 30 50 8B CB E8 ? ? ? ? F3 0F 10 46 54 51 8B CB", 0x11, "hk_addr__camfinal_set_camera_mtx", use_pattern, 0xC462ED); offset)
+		{
+			if (*reinterpret_cast<BYTE*>(offset) == 0xE8)
+			{
+				hk_addr__camfinal_set_camera_mtx = offset; // 0xC462FE
+				found_pattern_count++;
+			}
+		} total_pattern_count++;
+
+		// ^ its perspective call at the end (fov, aspect, near clip, far clip)
+		if (const auto offset = shared::utils::mem::find_pattern("24 08 F3 0F 10 46 50 F3 0F 11 4C 24 04 F3 0F 11 04 24 53 E8 ? ? ? ? 5F 5E 5B 8B E5", 0x13, "hk_addr__camfinal_perspective", use_pattern, 0xC46398); offset)
+		{
+			if (*reinterpret_cast<BYTE*>(offset) == 0xE8)
+			{
+				hk_addr__camfinal_perspective = offset; // 0xC463AB
 				found_pattern_count++;
 			}
 		} total_pattern_count++;

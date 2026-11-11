@@ -1,6 +1,7 @@
 #include "std_include.hpp"
 
 #include "modules/dinput_hook.hpp"
+#include "modules/free_camera.hpp"
 #include "modules/game_lights.hpp"
 #include "modules/comp_settings.hpp"
 #include "modules/renderer_api.hpp"
@@ -1407,6 +1408,7 @@ namespace gta4
 
 		// cutscene timer honors the utilities pause toggle
 		game_pause::install(); // 0x9C2C80
+		free_camera::install(); // 0xC462FE
 
 		// light culling check 0xABD093 - detour frustum check function - can lead to issues when a script waits for certain objects to culled?
 		shared::utils::hook::detour(game::hk_addr__frustum_check, &frustum_planes_check_hk, nullptr); // 0x431E40

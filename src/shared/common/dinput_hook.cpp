@@ -20,7 +20,7 @@ namespace shared::common::dinput
 	{
 		const auto hr = g_dinput8_device_get_device_state_original(device, cbData, lpvData);
 
-		if (globals::imgui_menu_open && !globals::imgui_allow_input_bypass)
+		if (globals::imgui_blocks_game_input())
 		{
 			if (cbData == sizeof(DIMOUSESTATE) || cbData == sizeof(DIMOUSESTATE2)) {
 				device->Unacquire();
@@ -40,7 +40,7 @@ namespace shared::common::dinput
 	{
 		const auto hr = g_dinput8_device_get_device_data_original(device, cbData, rgdod, pdwInOut, flags);
 
-		if (globals::imgui_menu_open && !globals::imgui_allow_input_bypass) {
+		if (globals::imgui_blocks_game_input()) {
 			device->Unacquire();
 		} else {
 			device->Acquire();
@@ -51,7 +51,7 @@ namespace shared::common::dinput
 
 	HRESULT __stdcall dinput8_device_acquire_hk(IDirectInputDevice8* device)
 	{
-		if (globals::imgui_menu_open && !globals::imgui_allow_input_bypass) {
+		if (globals::imgui_blocks_game_input()) {
 			return DI_OK;
 		}
 

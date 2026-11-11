@@ -161,9 +161,7 @@ namespace gta4
 		bool m_dbg_visualize_api_lights = false;
 		float m_dbg_visualize_api_lights_3d_distance = 20.0f;
 		bool m_dbg_visualize_api_light_hashes = false;
-		bool m_dbg_visualize_api_light_unstable_hashes = false; // enabling this will also show unstable hashes
 		bool m_dbg_disable_ignore_light_hash_logic = false; // disables the map_settings logic that ignores light translation based on a list of hashes
-		float m_dbg_visualize_api_light_hashes_distance = 20.0f;
 
 		// --
 
@@ -355,20 +353,6 @@ namespace gta4
 		bool m_dbg_ignore_lights_with_flag_add_second_flag = false;
 		int m_dbg_ignore_lights_with_flag_02 = 0;
 
-		struct visualized_api_light_s
-		{
-			uint64_t hash = 0u;
-			Vector pos;
-			game::CLightSource m_def_copy;
-			bool ignored = false; // ignored via map_settings
-			bool allowed_filler = false; // allowed via map_settings (only used with ignore filler lights option)
-			bool is_filler = false;
-			std::uint32_t m_updateframe = 0u; // increases when light hash was found in the current frame
-			std::uint32_t m_frames_since_addition = 0u; // increases on each frame
-		};
-
-		std::vector<visualized_api_light_s> visualized_api_lights;
-		bool m_vis_api_lights_show_only_in_view = false;
 
 		// --
 

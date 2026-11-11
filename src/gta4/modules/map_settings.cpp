@@ -536,6 +536,7 @@ namespace gta4
 										}
 									}
 
+									override_data._order = next_light_override_order();
 									return { temp_light_hash, std::move(override_data) };
 								};
 

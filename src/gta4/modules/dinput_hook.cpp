@@ -257,7 +257,7 @@ namespace gta4
 		}
 
 		// mouse and keyboard state alike, keys would otherwise reach the game the moment a text field loses focus
-		if (shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass) {
+		if (shared::globals::imgui_blocks_game_input()) {
 			memset(lpvData, 0, cbData);
 		}
 
@@ -270,7 +270,7 @@ namespace gta4
 		const auto hr = g_dinput8_device_get_device_data_original(device, cbData, rgdod, pdwInOut, flags);
 
 		// Block game input when menu is open
-		if (shared::globals::imgui_menu_open && !shared::globals::imgui_allow_input_bypass)
+		if (shared::globals::imgui_blocks_game_input())
 		{
 			memset(rgdod, 0, *pdwInOut * cbData);
 			*pdwInOut = 0;
