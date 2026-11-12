@@ -2700,6 +2700,7 @@ namespace gta4
 		ImGui::Spacing(0, 6);
 		compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
 		compsettings_bool_widget("Render Imposter Vehicles", gs->distant_cars_enabled);
+		compsettings_bool_widget("Static Geometry: LOD Cross Fade", gs->api_static_lod_fade);
 
 		ImGui::Spacing(0, 6);
 		compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
@@ -3053,7 +3054,7 @@ namespace gta4
 		{
 			static float cont_wip_water_height = 0.0f;
 			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Global Wetness", cont_wip_water_height, wip_wetness_container,
-				true, ICON_FA_TOILET_PAPER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
+				false, ICON_FA_TOILET_PAPER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// general settingsd
