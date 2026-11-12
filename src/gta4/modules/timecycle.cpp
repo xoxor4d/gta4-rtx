@@ -156,6 +156,36 @@ namespace gta4
 		w.ripple_strength = ripple_min + (ripple_max - ripple_min) * std::pow(w.game, std::max(gs->timecycle_wetness_ripple_curve._float(), 0.0f));
 	}
 
+	namespace
+	{
+		// copies of the game's timecycle params, taken on the game thread and read on the render thread
+		struct timecycle_snapshot_s
+		{
+			game::TimeCycleParams params_01 = {};
+			game::TimeCycleParams params_02 = {};
+			game::TimeCycleParams params_cutscene = {};
+			bool is_playing_cutscene = false;
+			bool valid = false;
+		};
+
+		std::mutex g_snapshot_mtx;
+		timecycle_snapshot_s g_snapshot;
+	}
+
+	void timecycle::capture_on_game_frame()
+	{
+		if (!game::m_pCurrentTimeCycleParams_01 || !game::m_pCurrentTimeCycleParams_02 || !game::m_pCurrentTimeCycleParams_Cutscene) {
+			return;
+		}
+
+		std::lock_guard lock(g_snapshot_mtx);
+		g_snapshot.params_01 = *game::m_pCurrentTimeCycleParams_01;
+		g_snapshot.params_02 = *game::m_pCurrentTimeCycleParams_02;
+		g_snapshot.params_cutscene = *game::m_pCurrentTimeCycleParams_Cutscene;
+		g_snapshot.is_playing_cutscene = game::m_dwCutsceneState && *game::m_dwCutsceneState > 0;
+		g_snapshot.valid = true;
+	}
+
 	void timecycle::translate_and_apply_timecycle_settings()
 	{
 		PROFILE_ZONE();
@@ -181,14 +211,19 @@ namespace gta4
 			//auto first_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8910);
 			//auto third_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8B20);
 
-			bool is_playing_cutscene = false;
-			game::TimeCycleParams* timecycle = game::m_pCurrentTimeCycleParams_01;
-
-			if (game::m_dwCutsceneState && *game::m_dwCutsceneState > 0) 
+			// the params of the last game frame, nothing below reads the game's own structs
+			timecycle_snapshot_s snapshot;
 			{
-				timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
-				is_playing_cutscene = true;
+				std::lock_guard lock(g_snapshot_mtx);
+				snapshot = g_snapshot;
 			}
+
+			if (!snapshot.valid) {
+				return;
+			}
+
+			const bool is_playing_cutscene = snapshot.is_playing_cutscene;
+			const game::TimeCycleParams* timecycle = is_playing_cutscene ? &snapshot.params_cutscene : &snapshot.params_01;
 
 			// manual override
 			if (im->m_dbg_used_timecycle >= 0)
@@ -197,15 +232,15 @@ namespace gta4
 				{
 				default:
 				case 0:
-					timecycle = game::m_pCurrentTimeCycleParams_01;
+					timecycle = &snapshot.params_01;
 					break;
 
 				case 1:
-					timecycle = game::m_pCurrentTimeCycleParams_02;
+					timecycle = &snapshot.params_02;
 					break;
 
 				case 2:
-					timecycle = game::m_pCurrentTimeCycleParams_Cutscene;
+					timecycle = &snapshot.params_cutscene;
 					break;
 				}
 			}

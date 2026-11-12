@@ -46,6 +46,11 @@ namespace gta4
 		static void		reset_wetness() { m_wetness = {}; }
 		static void		translate_and_apply_timecycle_settings();
 
+		/// Game thread, once per frame before the game updates its timecycle: copies the game's timecycle params.
+		/// The game keeps them per frame buffer and rewrites one of the buffers every frame, so the render thread
+		/// reads half finished values when it takes them from game memory.
+		static void		capture_on_game_frame();
+
 	private:
 		static void		update_wetness();
 		static wetness_state_s m_wetness;
