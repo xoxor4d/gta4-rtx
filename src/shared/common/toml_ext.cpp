@@ -278,6 +278,19 @@ namespace shared::common::toml_ext
 		return toml_str;
 	}
 
+	/// sphere and spot stay bools so files written before the area shapes existed do not change
+	std::string light_type_to_toml(const int light_type)
+	{
+		switch (light_type)
+		{
+			case gta4::map_settings::LIGHT_TYPE_SPOT:		return "true";
+			case gta4::map_settings::LIGHT_TYPE_RECT:		return "\"rect\"";
+			case gta4::map_settings::LIGHT_TYPE_DISK:		return "\"disk\"";
+			case gta4::map_settings::LIGHT_TYPE_CYLINDER:	return "\"cylinder\"";
+			default:										return "false";
+		}
+	}
+
 	/// Builds a string containing all light override entries
 	/// @return the final string in toml format
 	std::string build_lightweak_array(const std::unordered_map<uint64_t, gta4::map_settings::light_override_s>& entries)
@@ -324,7 +337,7 @@ namespace shared::common::toml_ext
 			}
 
 			if (m.second._use_light_type) {
-				toml_str += ", light_type = " + (m.second.light_type ? "true"s : "false"s);
+				toml_str += ", light_type = " + light_type_to_toml(m.second.light_type);
 			}
 
 			toml_str += " },\n";
@@ -382,7 +395,22 @@ namespace shared::common::toml_ext
 
 		if (override_data._use_light_type) {
 			if (!toml_str.empty()) toml_str += ", ";
-			toml_str += "light_type = " + (override_data.light_type ? "true"s : "false"s);
+			toml_str += "light_type = " + light_type_to_toml(override_data.light_type);
+		}
+
+		if (override_data._use_size) {
+			if (!toml_str.empty()) toml_str += ", ";
+			toml_str += "size = [" + format_float(override_data.size_x) + ", " + format_float(override_data.size_y) + "]";
+		}
+
+		if (override_data._use_length) {
+			if (!toml_str.empty()) toml_str += ", ";
+			toml_str += "length = " + format_float(override_data.length);
+		}
+
+		if (override_data._use_roll) {
+			if (!toml_str.empty()) toml_str += ", ";
+			toml_str += "roll = " + format_float(override_data.roll);
 		}
 
 		return toml_str;

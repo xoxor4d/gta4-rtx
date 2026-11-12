@@ -8,6 +8,8 @@ namespace gta4
 	public:
 		remix_lights();
 
+		static constexpr float CYLINDER_DEFAULT_RADIUS = 0.05f; // tube radius of a cylinder light whose override sets none
+
 		static inline remix_lights* p_this = nullptr;
 		static remix_lights* get() { return p_this; }
 
@@ -29,6 +31,9 @@ namespace gta4
 		{
 			remixapi_LightHandle m_handle = nullptr;
 			remixapi_LightInfoSphereEXT m_ext = {};
+			remixapi_LightInfoRectEXT m_ext_rect = {}; // m_info points at the struct of the light's shape
+			remixapi_LightInfoDiskEXT m_ext_disk = {};
+			remixapi_LightInfoCylinderEXT m_ext_cylinder = {};
 			remixapi_LightInfo m_info = {};
 			game::CLightSource m_def = {};
 			uint64_t m_hash;
@@ -58,7 +63,10 @@ namespace gta4
 		static float			get_light_outer_cone_angle(const game::CLightSource& def, const map_settings::light_override_s* lov= nullptr );
 		static float			get_light_inner_cone_angle(const game::CLightSource& def, const map_settings::light_override_s* lov= nullptr );
 		static float			get_light_volumetric_scale(const game::CLightSource& def, const map_settings::light_override_s* lov= nullptr );
-		static bool				get_light_type(const game::CLightSource& def, const map_settings::light_override_s* lov = nullptr);
+		static int				get_light_type(const game::CLightSource& def, const map_settings::light_override_s* lov = nullptr);
+
+		/// orthonormal axes of a light that points along 'dir', x and y rotated around it by 'roll_degrees'
+		static void				get_light_axes(Vector dir, float roll_degrees, Vector& x_axis, Vector& y_axis, Vector& z_axis);
 
 		bool spawn_or_update_remix_sphere_light(remix_light_def& light, bool update = false, bool custom = false, const map_settings::light_override_s* custom_lov = nullptr);
 

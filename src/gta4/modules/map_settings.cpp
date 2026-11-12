@@ -9,6 +9,67 @@ using namespace shared::common::toml_ext;
 
 namespace gta4
 {
+	namespace
+	{
+		/// 'light_type' of a light override: a bool (false: sphere, true: spot) or the name of the shape
+		int parse_light_type(const toml::value& value)
+		{
+			if (!value.is_string()) {
+				return to_bool(value, false) ? map_settings::LIGHT_TYPE_SPOT : map_settings::LIGHT_TYPE_SPHERE;
+			}
+
+			const std::string name = value.as_string();
+			if (name == "spot") {
+				return map_settings::LIGHT_TYPE_SPOT;
+			}
+
+			if (name == "rect") {
+				return map_settings::LIGHT_TYPE_RECT;
+			}
+
+			if (name == "disk") {
+				return map_settings::LIGHT_TYPE_DISK;
+			}
+
+			if (name == "cylinder") {
+				return map_settings::LIGHT_TYPE_CYLINDER;
+			}
+
+			if (name != "sphere") {
+				TOML_ERROR("[!] [LIGHT_OVERRIDES] #light_type", value, "expected false / true or \"sphere\", \"spot\", \"rect\", \"disk\", \"cylinder\" -> using sphere");
+			}
+
+			return map_settings::LIGHT_TYPE_SPHERE;
+		}
+
+		/// size, length and roll of the area light shapes
+		void parse_light_shape(const toml::value& entry, map_settings::light_override_s& ov)
+		{
+			if (entry.contains("size"))
+			{
+				if (const auto& size = entry.at("size").as_array(); size.size() == 2)
+				{
+					ov.size_x = to_float(size[0]);
+					ov.size_y = to_float(size[1]);
+					ov._use_size = true;
+				}
+				else { TOML_ERROR("[!] [LIGHT_OVERRIDES] #size", entry.at("size"), "expected a 2D vector but got => %d ", entry.at("size").as_array().size()); }
+			}
+
+			if (entry.contains("length"))
+			{
+				ov.length = to_float(entry.at("length"), 1.0f);
+				ov._use_length = true;
+			}
+
+			if (entry.contains("roll"))
+			{
+				ov.roll = to_float(entry.at("roll"), 0.0f);
+				ov._use_roll = true;
+			}
+		}
+	}
+
 	void map_settings::load_settings()
 	{
 		if (m_loaded) {
@@ -365,11 +426,11 @@ namespace gta4
 										temp_use_volumetric_scale = true;
 									}
 
-									bool temp_light_type = false;
+									int temp_light_type = LIGHT_TYPE_SPHERE;
 									bool temp_use_light_type = false;
 									if (entry.contains("light_type"))
 									{
-										temp_light_type = to_bool(entry.at("light_type"), false);
+										temp_light_type = parse_light_type(entry.at("light_type"));
 										temp_use_light_type = true;
 									}
 
@@ -397,6 +458,8 @@ namespace gta4
 										._use_volumetric_scale = temp_use_volumetric_scale,
 										._use_light_type = temp_use_light_type,
 									};
+
+									parse_light_shape(entry, override_data);
 
 									// Parse attached lights if present
 									if (entry.contains("attached") && entry.at("attached").is_array())
@@ -487,11 +550,11 @@ namespace gta4
 													temp_use_volumetric_scale = true;
 												}
 
-												bool temp_light_type = false;
+												int temp_light_type = LIGHT_TYPE_SPHERE;
 												bool temp_use_light_type = false;
 												if (attached_entry.contains("light_type"))
 												{
-													temp_light_type = to_bool(attached_entry.at("light_type"), false);
+													temp_light_type = parse_light_type(attached_entry.at("light_type"));
 													temp_use_light_type = true;
 												}
 
@@ -524,12 +587,14 @@ namespace gta4
 										for (const auto& attached_entry : entry.at("attached").as_array())
 										{
 											light_override_s attached_light = parse_attached_light_entry(attached_entry);
+											parse_light_shape(attached_entry, attached_light);
 
 											// Only add if it has at least one property set
 											if (attached_light._use_pos || attached_light._use_dir || attached_light._use_color ||
 												attached_light._use_radius || attached_light._use_intensity ||
 												attached_light._use_outer_cone_angle || attached_light._use_inner_cone_angle ||
-												attached_light._use_volumetric_scale || attached_light._use_light_type)
+												attached_light._use_volumetric_scale || attached_light._use_light_type ||
+												attached_light._use_size || attached_light._use_length || attached_light._use_roll)
 											{
 												override_data.attached_lights.emplace_back(std::move(attached_light));
 											}

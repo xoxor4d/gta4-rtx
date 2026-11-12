@@ -296,7 +296,7 @@ namespace gta4::light_editor
 			{
 				ov.outer_cone_angle = def.mOuterConeAngle;
 				ov.inner_cone_angle = def.mInnerConeAngle;
-				ov.light_type = true;
+				ov.light_type = map_settings::LIGHT_TYPE_SPOT;
 			}
 			else
 			{
@@ -319,7 +319,7 @@ namespace gta4::light_editor
 			def.mVolumeScale = ov.volumetric_scale;
 			def.mOuterConeAngle = ov.outer_cone_angle;
 			def.mInnerConeAngle = ov.inner_cone_angle;
-			def.mType = ov.light_type ? game::LT_SPOT : game::LT_POINT;
+			def.mType = ov.light_type == map_settings::LIGHT_TYPE_SPOT ? game::LT_SPOT : game::LT_POINT;
 			return def;
 		}
 
@@ -689,6 +689,10 @@ namespace gta4::light_editor
 				"#       inner_cone_angle =  cosine of the inner cone angle           [opt.] [Float]\n"
 				"#       volumetric_scale =  volumetric scale of light                [opt.] [Float]\n"
 				"#       light_type =        false: sphere -- true: spotlight         [opt.] [Bool]\n"
+				"#                           or \"rect\", \"disk\", \"cylinder\"                [opt.] [String]\n"
+				"#       size = []           rect: side lengths -- disk: radii        [opt.] [2D Vector]\n"
+				"#       length =            length of a cylinder (radius = its tube) [opt.] [Float]\n"
+				"#       roll =              rect / disk: degrees around dir          [opt.] [Float]\n"
 				"#       attached = [        attached lights for this hash            [opt.] [Array of light override structures]\n"
 				"#       { ... light override }, { ... }]\n"
 				"#   },\n"
@@ -907,24 +911,6 @@ namespace gta4::light_editor
 			return COL_PLAIN;
 		}
 
-		void build_light_matrix(const Vector& pos, Vector dir, float* m)
-		{
-			if (dir.LengthSqr() < 1.e-6f) {
-				dir = Vector(0.0f, 0.0f, -1.0f);
-			}
-
-			dir.Normalize();
-			const Vector up_ref = fabsf(dir.z) > 0.99f ? Vector(1.0f, 0.0f, 0.0f) : Vector(0.0f, 0.0f, 1.0f);
-			Vector right = up_ref.Cross(dir);
-			right.Normalize();
-			const Vector up = dir.Cross(right);
-
-			m[0] = right.x; m[1] = right.y; m[2]  = right.z; m[3]  = 0.0f;
-			m[4] = up.x;    m[5] = up.y;    m[6]  = up.z;    m[7]  = 0.0f;
-			m[8] = dir.x;   m[9] = dir.y;   m[10] = dir.z;   m[11] = 0.0f;
-			m[12] = pos.x;  m[13] = pos.y;  m[14] = pos.z;   m[15] = 1.0f;
-		}
-
 		/// the override that the selection edits, nullptr if the active file does not own one
 		override_s* editable_override(const selection_s& sel)
 		{
@@ -940,65 +926,184 @@ namespace gta4::light_editor
 			return sel.attached_index < static_cast<int>(ov->attached_lights.size()) ? &ov->attached_lights[sel.attached_index] : nullptr;
 		}
 
-		bool is_spot(const override_s& ov, const game::CLightSource& def) {
-			return ov._use_light_type ? ov.light_type : def.mType == game::LT_SPOT;
+		/// map_settings::light_type_e
+		int light_type_of(const override_s& ov, const game::CLightSource& def)
+		{
+			if (ov._use_light_type) {
+				return ov.light_type;
+			}
+
+			return def.mType == game::LT_SPOT ? map_settings::LIGHT_TYPE_SPOT : map_settings::LIGHT_TYPE_SPHERE;
 		}
 
-		void draw_light_shape(const Vector& pos, Vector dir, const bool spot, const float cos_outer, const float sphere_radius, const ImU32 color)
+		/// switches the shape of an override and gives the area shapes what the game light does not have
+		void set_light_type(override_s& ov, const game::CLightSource& def, const int type)
 		{
-			const auto draw = ImGui::GetBackgroundDrawList();
-			constexpr int segments = 32;
-			ImVec2 ring[segments];
-
-			if (spot)
-			{
-				float m[16];
-				build_light_matrix(pos, dir, m);
-				const Vector right(m[0], m[1], m[2]), up(m[4], m[5], m[6]), fwd(m[8], m[9], m[10]);
-
-				const float angle = acosf(std::clamp(cos_outer, -1.0f, 1.0f));
-				constexpr float length = 2.5f;
-				const float ring_radius = length * tanf(std::min(angle, 1.45f));
-
-				bool all_in_front = true;
-				for (auto i = 0; i < segments; i++)
-				{
-					const float a = 6.2831853f * static_cast<float>(i) / static_cast<float>(segments);
-					bool front = false;
-					project(pos + fwd * length + (right * cosf(a) + up * sinf(a)) * ring_radius, ring[i], &front);
-					all_in_front &= front;
-				}
-
-				ImVec2 apex;
-				bool apex_front = false;
-				project(pos, apex, &apex_front);
-
-				if (all_in_front && apex_front)
-				{
-					draw->AddPolyline(ring, segments, color, ImDrawFlags_Closed, 1.5f);
-					for (auto i = 0; i < segments; i += segments / 4) {
-						draw->AddLine(apex, ring[i], color, 1.5f);
-					}
-				}
-
+			ov.light_type = type;
+			if (type == map_settings::LIGHT_TYPE_SPHERE || type == map_settings::LIGHT_TYPE_SPOT) {
 				return;
 			}
 
-			// sphere light: the size of the remix light as a ring facing the camera
-			const auto& cam = game::pViewports->sceneviewport->cameraInv;
-			const Vector right(cam.m[0][0], cam.m[0][1], cam.m[0][2]), up(cam.m[1][0], cam.m[1][1], cam.m[1][2]);
-
-			bool all_in_front = true;
-			for (auto i = 0; i < segments; i++)
+			// a sphere light of the game points nowhere
+			if (!ov._use_dir)
 			{
-				const float a = 6.2831853f * static_cast<float>(i) / static_cast<float>(segments);
-				bool front = false;
-				project(pos + (right * cosf(a) + up * sinf(a)) * sphere_radius, ring[i], &front);
-				all_in_front &= front;
+				Vector dir = def.mDirection;
+				if (dir.LengthSqr() < 1.e-6f) {
+					dir = Vector(0.0f, 0.0f, -1.0f);
+				}
+
+				dir.Normalize();
+				ov.dir = dir;
+				ov._use_dir = true;
 			}
 
-			if (all_in_front) {
-				draw->AddPolyline(ring, segments, color, ImDrawFlags_Closed, 1.5f);
+			if (type == map_settings::LIGHT_TYPE_CYLINDER)
+			{
+				// 'radius' is the tube radius here, the falloff radius of a sphere light would be a huge tube
+				if (!ov._use_radius || ov.radius > 1.0f) {
+					ov.radius = remix_lights::CYLINDER_DEFAULT_RADIUS;
+				}
+
+				ov._use_radius = true;
+				ov._use_length = true;
+			}
+			else {
+				ov._use_size = true;
+			}
+		}
+
+		struct light_shape_s
+		{
+			int type = map_settings::LIGHT_TYPE_SPHERE;
+			Vector pos;
+			Vector x_axis, y_axis, z_axis; // z points along the light's direction
+			float cos_outer = 0.0f; // spot
+			float sphere_radius = 0.0f;
+			float size_x = 1.0f, size_y = 1.0f; // rect: side lengths, disk: radii
+			float length = 1.0f; // cylinder
+			float radius = 0.05f; // cylinder tube
+		};
+
+		/// closed outline through world space points, skipped if a point is behind the camera
+		bool draw_world_loop(const Vector* points, int count, const ImU32 color)
+		{
+			constexpr int max_points = 32;
+			ImVec2 screen[max_points];
+			count = std::min(count, max_points);
+
+			for (auto i = 0; i < count; i++)
+			{
+				bool front = false;
+				project(points[i], screen[i], &front);
+				if (!front) {
+					return false;
+				}
+			}
+
+			ImGui::GetBackgroundDrawList()->AddPolyline(screen, count, color, ImDrawFlags_Closed, 1.5f);
+			return true;
+		}
+
+		void draw_world_line(const Vector& from, const Vector& to, const ImU32 color)
+		{
+			ImVec2 a, b;
+			bool front_a = false, front_b = false;
+			project(from, a, &front_a);
+			project(to, b, &front_b);
+
+			if (front_a && front_b) {
+				ImGui::GetBackgroundDrawList()->AddLine(a, b, color, 1.5f);
+			}
+		}
+
+		/// ring around 'center' in the plane of two axes
+		void make_ring(const Vector& center, const Vector& axis_a, const Vector& axis_b, const float radius_a, const float radius_b, Vector* points, const int count)
+		{
+			for (auto i = 0; i < count; i++)
+			{
+				const float a = 6.2831853f * static_cast<float>(i) / static_cast<float>(count);
+				points[i] = center + axis_a * (cosf(a) * radius_a) + axis_b * (sinf(a) * radius_b);
+			}
+		}
+
+		void draw_light_shape(const light_shape_s& shape, const ImU32 color)
+		{
+			constexpr int segments = 32;
+			Vector ring[segments];
+
+			switch (shape.type)
+			{
+				case map_settings::LIGHT_TYPE_SPOT:
+				{
+					const float angle = acosf(std::clamp(shape.cos_outer, -1.0f, 1.0f));
+					constexpr float length = 2.5f;
+					const float ring_radius = length * tanf(std::min(angle, 1.45f));
+
+					make_ring(shape.pos + shape.z_axis * length, shape.x_axis, shape.y_axis, ring_radius, ring_radius, ring, segments);
+					if (draw_world_loop(ring, segments, color))
+					{
+						for (auto i = 0; i < segments; i += segments / 4) {
+							draw_world_line(shape.pos, ring[i], color);
+						}
+					}
+					break;
+				}
+
+				case map_settings::LIGHT_TYPE_RECT:
+				{
+					const Vector half_x = shape.x_axis * (shape.size_x * 0.5f);
+					const Vector half_y = shape.y_axis * (shape.size_y * 0.5f);
+					const Vector corners[4] = { shape.pos - half_x - half_y, shape.pos + half_x - half_y, shape.pos + half_x + half_y, shape.pos - half_x + half_y };
+
+					draw_world_loop(corners, 4, color);
+					draw_world_line(corners[0], corners[2], IM_COL32(255, 210, 60, 90));
+					draw_world_line(corners[1], corners[3], IM_COL32(255, 210, 60, 90));
+
+					// the side that emits
+					draw_world_line(shape.pos, shape.pos + shape.z_axis * std::max(std::max(shape.size_x, shape.size_y) * 0.5f, 0.3f), color);
+					break;
+				}
+
+				case map_settings::LIGHT_TYPE_DISK:
+				{
+					make_ring(shape.pos, shape.x_axis, shape.y_axis, shape.size_x, shape.size_y, ring, segments);
+					draw_world_loop(ring, segments, color);
+					draw_world_line(shape.pos - shape.x_axis * shape.size_x, shape.pos + shape.x_axis * shape.size_x, IM_COL32(255, 210, 60, 90));
+					draw_world_line(shape.pos - shape.y_axis * shape.size_y, shape.pos + shape.y_axis * shape.size_y, IM_COL32(255, 210, 60, 90));
+
+					// the side that emits
+					draw_world_line(shape.pos, shape.pos + shape.z_axis * std::max(std::max(shape.size_x, shape.size_y), 0.3f), color);
+					break;
+				}
+
+				case map_settings::LIGHT_TYPE_CYLINDER:
+				{
+					const Vector half = shape.z_axis * (shape.length * 0.5f);
+					Vector ring_b[segments];
+
+					make_ring(shape.pos - half, shape.x_axis, shape.y_axis, shape.radius, shape.radius, ring, segments);
+					make_ring(shape.pos + half, shape.x_axis, shape.y_axis, shape.radius, shape.radius, ring_b, segments);
+					draw_world_loop(ring, segments, color);
+					draw_world_loop(ring_b, segments, color);
+
+					for (auto i = 0; i < segments; i += segments / 4) {
+						draw_world_line(ring[i], ring_b[i], color);
+					}
+
+					draw_world_line(shape.pos - half, shape.pos + half, IM_COL32(255, 210, 60, 90));
+					break;
+				}
+
+				default:
+				{
+					// sphere light: the size of the remix light as a ring facing the camera
+					const auto& cam = game::pViewports->sceneviewport->cameraInv;
+					const Vector right(cam.m[0][0], cam.m[0][1], cam.m[0][2]), up(cam.m[1][0], cam.m[1][1], cam.m[1][2]);
+
+					make_ring(shape.pos, right, up, shape.sphere_radius, shape.sphere_radius, ring, segments);
+					draw_world_loop(ring, segments, color);
+					break;
+				}
 			}
 		}
 
@@ -1045,22 +1150,36 @@ namespace gta4::light_editor
 				return;
 			}
 
-			const bool spot = is_spot(*ov, def);
+			const int type = light_type_of(*ov, def);
+			const bool area = type == map_settings::LIGHT_TYPE_RECT || type == map_settings::LIGHT_TYPE_DISK;
 			const Vector pos = ov->_use_pos ? ov->pos : def.mPosition;
 			const Vector dir = ov->_use_dir ? ov->dir : def.mDirection;
-			const float cos_outer = ov->_use_outer_cone_angle || def.mType != game::LT_SPOT ? ov->outer_cone_angle : def.mOuterConeAngle;
 
-			const float sphere_radius = remix_lights::get_light_radius(def, ov) * comp_settings::get()->translate_game_light_radius_scalar.get_as<float>() * 0.01f;
-			draw_light_shape(pos, dir, spot, cos_outer, sphere_radius, IM_COL32(255, 210, 60, 200));
+			light_shape_s shape;
+			shape.type = type;
+			shape.pos = pos;
+			remix_lights::get_light_axes(dir, area ? ov->roll : 0.0f, shape.x_axis, shape.y_axis, shape.z_axis);
+			shape.cos_outer = ov->_use_outer_cone_angle || def.mType != game::LT_SPOT ? ov->outer_cone_angle : def.mOuterConeAngle;
+			shape.sphere_radius = remix_lights::get_light_radius(def, ov) * comp_settings::get()->translate_game_light_radius_scalar.get_as<float>() * 0.01f;
+			shape.size_x = ov->size_x;
+			shape.size_y = ov->size_y;
+			shape.length = ov->length;
+			shape.radius = ov->_use_radius ? ov->radius : remix_lights::CYLINDER_DEFAULT_RADIUS;
+			draw_light_shape(shape, IM_COL32(255, 210, 60, 200));
 
 			const bool can_translate = !(g.selected_instanced && g.selected.attached_index == MAIN_LIGHT);
-			const bool rotate = g.rotate_mode && spot;
+			const bool rotate = g.rotate_mode && type != map_settings::LIGHT_TYPE_SPHERE;
 			if (!rotate && !can_translate) {
 				return;
 			}
 
-			if (!ImGuizmo::IsUsing()) {
-				build_light_matrix(pos, dir, g.gizmo_matrix);
+			if (!ImGuizmo::IsUsing())
+			{
+				float* m = g.gizmo_matrix;
+				m[0] = shape.x_axis.x;	m[1] = shape.x_axis.y;	m[2] = shape.x_axis.z;		m[3] = 0.0f;
+				m[4] = shape.y_axis.x;	m[5] = shape.y_axis.y;	m[6] = shape.y_axis.z;		m[7] = 0.0f;
+				m[8] = shape.z_axis.x;	m[9] = shape.z_axis.y;	m[10] = shape.z_axis.z;		m[11] = 0.0f;
+				m[12] = pos.x;			m[13] = pos.y;			m[14] = pos.z;				m[15] = 1.0f;
 			}
 
 			const auto& io = ImGui::GetIO();
@@ -1076,6 +1195,17 @@ namespace gta4::light_editor
 					new_dir.Normalize();
 					ov->dir = new_dir;
 					ov->_use_dir = true;
+
+					// rect and disk also turn around their direction
+					if (area)
+					{
+						Vector base_x, base_y, base_z;
+						remix_lights::get_light_axes(new_dir, 0.0f, base_x, base_y, base_z);
+
+						const Vector new_x(g.gizmo_matrix[0], g.gizmo_matrix[1], g.gizmo_matrix[2]);
+						ov->roll = static_cast<float>(RAD2DEG(atan2f(new_x.Dot(base_y), new_x.Dot(base_x))));
+						ov->_use_roll = true;
+					}
 				}
 				else
 				{
@@ -2554,26 +2684,21 @@ namespace gta4::light_editor
 
 						if (ov)
 						{
-							const bool spot = is_spot(*ov, def);
+							const int type = light_type_of(*ov, def);
+							const bool spot = type == map_settings::LIGHT_TYPE_SPOT;
+							const bool area = type == map_settings::LIGHT_TYPE_RECT || type == map_settings::LIGHT_TYPE_DISK;
+							const bool cylinder = type == map_settings::LIGHT_TYPE_CYLINDER;
 
-							// type
+							// the game only has spheres and spots, the other shapes exist as overrides
 							changed |= property_row("Type", ov->_use_light_type, false, [&]
 								{
-									bool edited = false;
-									if (ImGui::RadioButton("Sphere", !spot))
+									int value = type;
+									if (ImGui::Combo("##v", &value, "Sphere\0Spot\0Rect\0Disk\0Cylinder\0"))
 									{
-										ov->light_type = false;
-										edited = true;
+										set_light_type(*ov, def, value);
+										return true;
 									}
-
-									ImGui::SameLine();
-									if (ImGui::RadioButton("Spot", spot))
-									{
-										ov->light_type = true;
-										edited = true;
-									}
-
-									return edited;
+									return false;
 								});
 
 							changed |= property_row("Color", ov->_use_color, false, [&]
@@ -2602,12 +2727,51 @@ namespace gta4::light_editor
 								};
 
 							float_row("Intensity", ov->_use_intensity, ov->intensity, def.mIntensity, 0.025f, 0.0f, FLT_MAX);
-							float_row("Radius", ov->_use_radius, ov->radius, def.mRadius, 0.025f, 0.0f, FLT_MAX);
+
+							// shape sizes are world units, the radius of a sphere / spot is the falloff radius of the game light
+							if (cylinder)
+							{
+								float_row("Tube radius", ov->_use_radius, ov->radius, remix_lights::CYLINDER_DEFAULT_RADIUS, 0.005f, 0.001f, FLT_MAX);
+								float_row("Length", ov->_use_length, ov->length, 1.0f, 0.01f, 0.001f, FLT_MAX);
+							}
+							else if (area)
+							{
+								changed |= property_row(type == map_settings::LIGHT_TYPE_RECT ? "Size" : "Radii", ov->_use_size, false, [&]
+									{
+										float value[2] = { ov->size_x, ov->size_y };
+										if (ImGui::DragFloat2("##v", value, 0.01f, 0.001f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+										{
+											ov->size_x = value[0];
+											ov->size_y = value[1];
+											return true;
+										}
+										return false;
+									});
+
+								float_row("Roll", ov->_use_roll, ov->roll, 0.0f, 0.5f, -180.0f, 180.0f);
+							}
+							else {
+								float_row("Radius", ov->_use_radius, ov->radius, def.mRadius, 0.025f, 0.0f, FLT_MAX);
+							}
+
+							// a reset shape value goes back to its default, the game has none
+							if (!ov->_use_size) {
+								ov->size_x = ov->size_y = 1.0f;
+							}
+
+							if (!ov->_use_length) {
+								ov->length = 1.0f;
+							}
+
+							if (!ov->_use_roll) {
+								ov->roll = 0.0f;
+							}
+
 							float_row("Volumetric", ov->_use_volumetric_scale, ov->volumetric_scale, def.mVolumeScale, 0.01f, 0.0f, 10.0f);
 
-							if (spot)
+							if (type != map_settings::LIGHT_TYPE_SPHERE)
 							{
-								// cone angles are stored as cosines
+								// cone angles are stored as cosines. A rect or disk only gets a cone once the outer cone is overridden
 								const bool game_spot = def.mType == game::LT_SPOT;
 								const auto effective_degrees = [&](const bool use, const float value, const float game_value) {
 									return cone_degrees(use || !game_spot ? value : game_value);
@@ -2638,9 +2802,11 @@ namespace gta4::light_editor
 
 								// the inner cone can not be wider than the outer one, a smaller outer cone takes the inner one with it
 								const float outer_degrees = effective_degrees(ov->_use_outer_cone_angle, ov->outer_cone_angle, def.mOuterConeAngle);
-								cone_row("Inner cone", ov->_use_inner_cone_angle, ov->inner_cone_angle, def.mInnerConeAngle, DEFAULT_INNER_CONE, outer_degrees);
+								if (spot || area) {
+									cone_row("Inner cone", ov->_use_inner_cone_angle, ov->inner_cone_angle, def.mInnerConeAngle, DEFAULT_INNER_CONE, outer_degrees);
+								}
 
-								if (cone_row("Outer cone", ov->_use_outer_cone_angle, ov->outer_cone_angle, def.mOuterConeAngle, DEFAULT_OUTER_CONE, 180.0f))
+								if ((spot || area) && cone_row("Outer cone", ov->_use_outer_cone_angle, ov->outer_cone_angle, def.mOuterConeAngle, DEFAULT_OUTER_CONE, 180.0f))
 								{
 									const float new_outer_degrees = effective_degrees(ov->_use_outer_cone_angle, ov->outer_cone_angle, def.mOuterConeAngle);
 									if (effective_degrees(ov->_use_inner_cone_angle, ov->inner_cone_angle, def.mInnerConeAngle) > new_outer_degrees)
@@ -2698,6 +2864,7 @@ namespace gta4::light_editor
 					{
 						ov->_use_pos = ov->_use_dir = ov->_use_color = ov->_use_radius = ov->_use_intensity = false;
 						ov->_use_outer_cone_angle = ov->_use_inner_cone_angle = ov->_use_volumetric_scale = ov->_use_light_type = false;
+						ov->_use_size = ov->_use_length = ov->_use_roll = false;
 						commit(g.active_file);
 					} TT("Drops every overridden value of this light, the entry stays");
 
@@ -2785,12 +2952,7 @@ namespace gta4::light_editor
 		shared::globals::imgui_editor_open = true;
 		shared::globals::imgui_menu_open = false;
 		ensure_active_file();
-
-		if (static bool opened_before = false; !opened_before)
-		{
-			opened_before = true;
-			free_camera::set_active(true);
-		}
+		free_camera::set_active(true);
 	}
 
 	void toggle() {

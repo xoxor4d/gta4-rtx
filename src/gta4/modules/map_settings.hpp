@@ -39,6 +39,16 @@ namespace gta4
 			bool internal__is_hidden = false;
 		};
 
+		// 'light_type' of a light override. Game lights are spheres or spots, the other shapes only exist as overrides
+		enum light_type_e : int
+		{
+			LIGHT_TYPE_SPHERE = 0,
+			LIGHT_TYPE_SPOT = 1,
+			LIGHT_TYPE_RECT = 2,
+			LIGHT_TYPE_DISK = 3,
+			LIGHT_TYPE_CYLINDER = 4,
+		};
+
 		struct light_override_s
 		{
 			Vector pos;
@@ -49,7 +59,7 @@ namespace gta4
 			float outer_cone_angle = 1.5f;
 			float inner_cone_angle = 0.78f;
 			float volumetric_scale = 1.0f;
-			bool light_type = false;
+			int light_type = LIGHT_TYPE_SPHERE; // light_type_e
 			std::string comment;
 			std::vector<light_override_s> attached_lights; // Attached lights for this override
 
@@ -63,6 +73,15 @@ namespace gta4
 			bool _use_volumetric_scale = false;
 			bool _use_light_type = false;
 			std::uint32_t _order = 0u; // position in its toml file, keeps the entry order when the file is written
+
+			// area light shapes, world units
+			float size_x = 1.0f; // rect: side lengths, disk: radii
+			float size_y = 1.0f;
+			float length = 1.0f; // cylinder, 'radius' is its tube radius
+			float roll = 0.0f; // degrees around 'dir' (rect / disk)
+			bool _use_size = false;
+			bool _use_length = false;
+			bool _use_roll = false;
 		};
 
 		struct anti_cull_meshes_s
