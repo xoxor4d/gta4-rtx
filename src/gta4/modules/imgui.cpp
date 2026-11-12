@@ -4,6 +4,7 @@
 #include "water.hpp"
 #include "distant_lights.hpp"
 #include "game_lights.hpp"
+#include "free_camera.hpp"
 #include "imgui_light_editor.hpp"
 
 #include "comp_settings.hpp"
@@ -87,7 +88,7 @@ namespace gta4
 			}
 		}
 
-		if (shared::globals::imgui_menu_open || shared::globals::imgui_editor_open || imgui::get()->m_freecam_mode)
+		if (shared::globals::imgui_menu_open || shared::globals::imgui_editor_open || shared::globals::free_camera_active || imgui::get()->m_freecam_mode)
 		{
 			//auto& io = ImGui::GetIO();
 			ImGui_ImplWin32_WndProcHandler(shared::globals::main_window, message_type, wparam, lparam);
@@ -95,7 +96,7 @@ namespace gta4
 			shared::globals::imgui_allow_input_bypass = false; // always reset if there is no imgui window open
 		}
 
-		return shared::globals::imgui_menu_open || shared::globals::imgui_editor_open;
+		return shared::globals::imgui_menu_open || shared::globals::imgui_editor_open || shared::globals::free_camera_active;
 	}
 
 	// ------
@@ -3116,34 +3117,110 @@ namespace gta4
 			ImGui::Spacing(0, 2);
 
 			const auto freecam_button_width = ImGui::GetContentRegionAvail().x * 0.33f;
-			const auto freecam_button_height = ImGui::GetFrameHeight() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+			const auto freecam_button_height = ImGui::GetFrameHeight() * 2.0f + ImGui::GetStyle().ItemSpacing.y;
 
-			ImGui::Style_ColorButtonPush(im->m_freecam_mode ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			if (ImGui::Button("FreeCam Mode", ImVec2(freecam_button_width, freecam_button_height)))
-			{
-				const auto n = natives::get();
-
-				natives::Ped ped;
-				n->GetPlayerChar(n->ConvertIntToPlayerindex(n->GetPlayerId()), &ped);
-
-				if (!n->IsCharSittingInAnyCar(ped))
+			// noclip moves the player and is not available in a vehicle
+			const auto set_noclip = [im](const bool enable)
 				{
-					im->m_freecam_mode = !im->m_freecam_mode;
-					n->SetCharCollision(ped, !im->m_freecam_mode);
-					n->FreezeCharPosition(ped, im->m_freecam_mode);
-				}
-			} 
-			TT(	"Enable FreeCam Mode - Not available when sitting in a car!\n"
-				"WASD: Forward & Strafing\n"
-				"Q/E:  Down & Up\n"
-				"Shift/Space: Speedup & Slowdown");
+					const auto n = natives::get();
+
+					natives::Ped ped;
+					n->GetPlayerChar(n->ConvertIntToPlayerindex(n->GetPlayerId()), &ped);
+
+					if (!enable || !n->IsCharSittingInAnyCar(ped))
+					{
+						im->m_freecam_mode = enable;
+						n->SetCharCollision(ped, !enable);
+						n->FreezeCharPosition(ped, enable);
+					}
+				};
+
+			const auto set_freecam = [&](const int type, const bool enable)
+				{
+					if (type == 0)
+					{
+						if (im->m_freecam_mode) {
+							set_noclip(false);
+						}
+
+						free_camera::set_active(enable);
+					}
+					else
+					{
+						free_camera::set_active(false);
+						set_noclip(enable);
+					}
+				};
+
+			const bool freecam_active = free_camera::is_active() || im->m_freecam_mode;
+
+			ImGui::BeginGroup();
+			ImGui::Style_ColorButtonPush(freecam_active ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
+			if (ImGui::Button("FreeCam Mode", ImVec2(freecam_button_width, freecam_button_height))) {
+				set_freecam(im->m_freecam_type, !freecam_active);
+			}
+
+			if (im->m_freecam_type == 0)
+			{
+				TT(	"Enable the FreeCam - The player stays put, works in vehicles and cutscenes\n"
+					"Hold the right mouse button to look around and move:\n"
+					"WASD: Forward & Strafing\n"
+					"Q/E:  Down & Up\n"
+					"Shift/Space: Speedup & Slowdown\n"
+					"Mouse wheel: Speed\n\n"
+					"Switch between FreeCam and Noclip with the box below.");
+			}
+			else
+			{
+				TT(	"Enable Noclip - Moves the player, not available when sitting in a car!\n"
+					"WASD: Forward & Strafing\n"
+					"Q/E:  Down & Up\n"
+					"Shift/Space: Speedup & Slowdown\n\n"
+					"Switch between FreeCam and Noclip with the box below.");
+			}
 			ImGui::Style_ColorButtonPop();
+
+			ImGui::SetNextItemWidth(freecam_button_width);
+			if (int type = im->m_freecam_type; ImGui::Combo("##freecam_type", &type, "FreeCam\0Noclip (Traditional)\0"))
+			{
+				// an active camera switches over
+				if (freecam_active) {
+					set_freecam(type, true);
+				}
+
+				im->m_freecam_type = type;
+			}
+			TT("FreeCam: a camera detached from the player\nNoclip: moves the player through the world");
+			ImGui::EndGroup();
 
 			ImGui::SameLine();
 			ImGui::BeginGroup();
-			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
-			SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
+			if (im->m_freecam_type == 0)
+			{
+				float speed = free_camera::get_speed();
+				SET_CHILD_WIDGET_WIDTH_MAN(100.0f);
+				if (ImGui::SliderFloat("Speed", &speed, 0.25f, 400.0f, "%.2f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+					free_camera::set_speed(speed);
+				} TT("Shared with the FreeCam of the light editor, also changed with the mouse wheel while the right mouse button is held");
+
+				float fov = free_camera::get_fov();
+				SET_CHILD_WIDGET_WIDTH_MAN(100.0f);
+				if (ImGui::SliderFloat("Field of View", &fov, 5.0f, 150.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp)) {
+					free_camera::set_fov(fov);
+				} TT("Vertical field of view in degrees. The FreeCam ignores the field of view of the game's cameras.");
+
+				float sensitivity = free_camera::get_look_sensitivity();
+				SET_CHILD_WIDGET_WIDTH_MAN(100.0f);
+				if (ImGui::SliderFloat("Look Sensitivity", &sensitivity, 0.1f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+					free_camera::set_look_sensitivity(sensitivity);
+				}
+			}
+			else
+			{
+				SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Forward Speed", &im->m_freecam_fwd_speed, 0.01f, 10.0f, "%.2f");
+				SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Strafe Speed", &im->m_freecam_rt_speed, 0.01f, 10.0f, "%.2f");
+				SET_CHILD_WIDGET_WIDTH_MAN(100.0f); ImGui::SliderFloat("Upward Speed", &im->m_freecam_up_speed, 0.01f, 10.0f, "%.2f");
+			}
 			ImGui::EndGroup();
 			ImGui::EndDisabled();
 
@@ -5995,7 +6072,7 @@ namespace gta4
 						// ---
 						// enable game input via right mouse button logic (the light editor only hands it over if asked to)
 
-						const bool rmb_input_allowed = light_editor::is_open() ? light_editor::allows_game_input_on_rmb() : shared::globals::imgui_menu_open;
+						const bool rmb_input_allowed = light_editor::is_open() ? light_editor::allows_game_input_on_rmb() : shared::globals::imgui_menu_open && !free_camera::is_active();
 						if (rmb_input_allowed && !im->m_im_window_hovered && io.MouseDown[1])
 						{
 							// reset stuck rmb if timeout is active 
@@ -6025,6 +6102,10 @@ namespace gta4
 						io.MouseDrawCursor = false;
 						shared::globals::imgui_allow_input_bypass_timeout = 0u;
 						shared::globals::imgui_allow_input_bypass = false;
+					}
+
+					if (free_camera::is_active()) {
+						free_camera::update_input();
 					}
 
 					if (const auto p = performance_logger::get(); p) {

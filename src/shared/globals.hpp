@@ -63,6 +63,7 @@ namespace shared::globals
 	extern bool imgui_is_rendering;
 	extern bool imgui_menu_open;
 	extern bool imgui_editor_open; // a free floating editor that stays open without the menu
+	extern bool free_camera_active; // mouse and keyboard move the free camera, the player stays put
 
 	/// imgui owns mouse and keyboard, the game gets no input
 	inline bool imgui_blocks_game_input();
@@ -70,7 +71,7 @@ namespace shared::globals
 	extern uint32_t imgui_allow_input_bypass_timeout;
 
 	inline bool imgui_blocks_game_input() {
-		return (imgui_menu_open || imgui_editor_open) && !imgui_allow_input_bypass;
+		return (imgui_menu_open || imgui_editor_open || free_camera_active) && !imgui_allow_input_bypass;
 	}
 
 	extern std::chrono::high_resolution_clock::time_point last_frame_time;

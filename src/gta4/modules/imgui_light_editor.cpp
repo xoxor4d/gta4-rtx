@@ -1793,7 +1793,7 @@ namespace gta4::light_editor
 				// camera / input
 				const bool freecam = free_camera::is_active();
 				if (tool_button(ICON_FA_VIDEO "##freecam",
-					"Free camera, the player stays where it is\n"
+					"Free camera, the player stays put\n"
 					"Hold the right mouse button to look around and move:\n"
 					"WASD: Forward & Strafing\n"
 					"Q/E:  Down & Up\n"
@@ -2844,10 +2844,6 @@ namespace gta4::light_editor
 
 		g.hovered_drawn = g.hovered;
 		g.hovered = {};
-
-		if (free_camera::is_active()) {
-			free_camera::update_input();
-		}
 
 		collect_scene_lights();
 		handle_shortcuts();

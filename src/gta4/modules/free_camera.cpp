@@ -22,6 +22,7 @@ namespace gta4::free_camera
 			float pitch = 0.0f;
 			float speed = 8.0f;
 			float fov = 50.0f;
+			float look_sensitivity = 1.0f;
 		};
 
 		std::mutex g_mtx;
@@ -154,7 +155,20 @@ namespace gta4::free_camera
 		{
 			g.active = active;
 			g.initialized = false;
+			shared::globals::free_camera_active = active;
 		}
+	}
+
+	float get_look_sensitivity()
+	{
+		std::lock_guard lock(g_mtx);
+		return g.look_sensitivity;
+	}
+
+	void set_look_sensitivity(const float sensitivity)
+	{
+		std::lock_guard lock(g_mtx);
+		g.look_sensitivity = std::clamp(sensitivity, 0.1f, 5.0f);
 	}
 
 	float get_speed()
@@ -206,8 +220,8 @@ namespace gta4::free_camera
 			return;
 		}
 
-		g.yaw += dx * LOOK_SENSITIVITY;
-		g.pitch = std::clamp(g.pitch - dy * LOOK_SENSITIVITY, -PITCH_LIMIT, PITCH_LIMIT);
+		g.yaw += dx * LOOK_SENSITIVITY * g.look_sensitivity;
+		g.pitch = std::clamp(g.pitch - dy * LOOK_SENSITIVITY * g.look_sensitivity, -PITCH_LIMIT, PITCH_LIMIT);
 
 		if (io.MouseWheel != 0.0f) {
 			g.speed = std::clamp(g.speed * powf(1.2f, io.MouseWheel), SPEED_MIN, SPEED_MAX);

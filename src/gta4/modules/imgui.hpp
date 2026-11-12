@@ -38,7 +38,8 @@ namespace gta4
 
 		bool m_screenshot_mode = false;
 		bool m_screenshot_mode_hide_player = true;
-		bool m_freecam_mode = false;
+		bool m_freecam_mode = false; // noclip: the player is moved around
+		int m_freecam_type = 0; // what the FreeCam button of the utilities tab starts: 0 = free camera, 1 = noclip
 		float m_freecam_fwd_speed = 0.5f;
 		float m_freecam_rt_speed = 0.2f;
 		float m_freecam_up_speed = 0.2f;

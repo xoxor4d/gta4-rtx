@@ -18,6 +18,10 @@ namespace gta4::free_camera
 	float get_fov();
 	void set_fov(float fov);
 
+	/// multiplier of the mouse look speed
+	float get_look_sensitivity();
+	void set_look_sensitivity(float sensitivity);
+
 	/// reads mouse and keyboard, once per imgui frame while the camera is active:
 	/// hold the right mouse button to look around and move (WASD, Q/E down/up, Shift/Space fast/slow), mouse wheel changes the speed
 	void update_input();
