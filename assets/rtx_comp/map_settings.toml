@@ -22,7 +22,7 @@ ANTICULL = [
 
     # skyscrapers
     { distance = 500, indices = [
-        24570, 25679, 26510, 27234, 27224, 15048, 24569, 21376, 16067, 
+        25679, 24570, 26510, 27234, 15048, 27224, 24569, 21376, 16067, 
         19493, 21652, 21400, 21377, 21391, 21218, 21580, 19492, 19491, 15424, 
         15426, 15418, 15417, 27938, 15365, 15363, 16128, 16069, 16070, 26383, 
         27214, 27928, 21225, 25273, 20197, 21223, 21598
@@ -31,25 +31,21 @@ ANTICULL = [
     # skyscrapers_far
     { distance = 1500, indices = [
         13112, 24728, 13113, 
-        13220, 7353, 12710, 13219, 13665, 12940, 13234, 13046, 12939, 15219, 
-        7266, 12342, 15351, 13135, 15352, 13200, 12592, 12344, 12593, 13043, 
-        12709, 24813, 15964, 16028, 16027, 16026, 16030, 16608, 14507, 15217, 
-        16994, 16996, 15218, 16993, 16998, 7252, 7249, 7250, 16817, 7262, 
-        15946, 7264, 7253, 15353, 15056, 16819, 16840
+        7353, 12710, 13220, 12940, 13665, 13219, 13234, 13046, 12939, 12342, 
+        7266, 15219, 13135, 15351, 13200, 15352, 12592, 12344, 12593, 13043, 
+        12709, 24813, 16028, 15964, 16027, 16026, 16608, 16030, 14507, 16994, 
+        15217, 16996, 16993, 15218, 16998, 7252, 7249, 7250, 7262, 16817, 
+        7264, 15946, 7253, 15353, 12354, 15056, 16819, 16840, 12602
     ]},
 ]
 
-
 # ##########################################################################################################################################
-# >> LOD Fade Exclusions
+# >> Exclude certain meshes from LOD fade logic
 # 
-# :: Meshes that are never dithered by the lod cross fade. While the game cross fades one of them with its lod,
-# :: it is not drawn at all (it pops in or out at the end of its fade), the other side of the pair fades as usual.
-# :: For the rare pair whose shared faces still fight while one of them fades.
-# 
-# :: How to retrieve indices:
-#    > GUI -> Map Settings -> Anti Cull / Mesh Inspector / LOD Fade -> Mesh Inspector -> right click a mesh -> Exclude from LOD Fade
-#    > ! Export to clipboard when done -> override LOD_FADE_EXCLUDE with clipboard data
+# ~~ LOD_FADE_EXCLUDE = [
+#       index, index, index, ...
+#    ] 
 #
-LOD_FADE_EXCLUDE = [
-]
+# LOD_FADE_EXCLUDE = [
+#     19580, 19797, 19650, 20025, 12602
+# ]

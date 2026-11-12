@@ -1,40 +1,40 @@
 # ##########################################################################################################################################
 # >> Ignore Game Lights
-# 
-# :: Can be used to disable the translation of specified game lights to remix lights 
-# :: Requires light hash to be stable (not moving)
-# 
-# :: How to retrieve hashes:
-#    > Visualize hashes in 3D Space (GUI -> Map Settings -> Ignore Game Lights -> Draw Hash Visualization)
-#    > DoubleClick hashes in list to ignore lights and export to clipboard when done -> override IGNORE_LIGHTS with clipboard data
+#
+# :: Disables the translation of the listed game lights to remix lights
+# :: Lights are identified by a hash. World lights hash their position and need to stand still.
+#    Cutscene lights (cutscene + light name) and vehicle head / rear lights (model + light) keep their hash while moving.
+#
+# :: How to edit:
+#    > Light Editor (GUI -> Map Settings -> Light Tweaks -> Open Light Editor)
+#    > Right click a light -> Ignore light. Save in the editor's toolbar
 #
 # ~~ IGNORE_LIGHTS = [
 #     0x0, 0x1, 0x2, ...            [uint array - hex format]
-# ]                                                                                              
+# ]
 
 IGNORE_LIGHTS = [
-    0x32734E7F, 0x79B4AF95, 0xDA6E0F5A, 0x403E165F, 0x8207760C, 0x74D3E6F, 0xB9B7A3F3, 0x352AEAAC, 0xDF6EE45C, 
-    0x2CCE00DE, 0xABD45A47, 0x8EC40D31, 0x32AE2E4D, 0x9EC26F3E, 0x445F053B, 0x9ECD1EF7, 0x84CD9FFE, 0xDE7EFC36, 0xFF9457D5, 
-    0x25EE6A9E, 0x4C61B845, 0x2239458F, 0x165B6B4A, 0x2C5246BB, 0xFCB0AF0B, 0xF5B8427B, 0xF9451EE6, 0x634631C3, 0x71ECD9EB, 
-    0x3923EA1E, 0xFCD6983A, 0x26CBB99C, 0xCC257118, 0x7A4F73E0, 0x42C2D3A4, 0x65723A47, 0x1649D8DC, 0x17B7B4C5, 0x627C2FC8, 
-    0x1DE376B5, 0x1437A5DC, 0x5A6F6FB1, 0xC7A31FB5, 0x18A8D004, 0xAD471DBE, 0xE0B1C3CE
+    0x74D3E6F, 0x1437A5DC, 0x1649D8DC, 0x165B6B4A, 0x17B7B4C5, 0x18A8D004, 0x1DE376B5, 0x2239458F, 0x25EE6A9E,
+    0x26CBB99C, 0x2C5246BB, 0x2CCE00DE, 0x32734E7F, 0x32AE2E4D, 0x352AEAAC, 0x3923EA1E, 0x403E165F, 0x42C2D3A4,
+    0x445F053B, 0x4C61B845, 0x5A6F6FB1, 0x627C2FC8, 0x634631C3, 0x65723A47, 0x71ECD9EB, 0x79B4AF95, 0x7A4F73E0,
+    0x8207760C, 0x84CD9FFE, 0x8EC40D31, 0x9EC26F3E, 0x9ECD1EF7, 0xABD45A47, 0xAD471DBE, 0xB9B7A3F3, 0xC7A31FB5,
+    0xCC257118, 0xDA6E0F5A, 0xDE7EFC36, 0xDF6EE45C, 0xE0B1C3CE, 0xF5B8427B, 0xF9451EE6, 0xFCB0AF0B, 0xFCD6983A,
+    0xFF9457D5
 ]
 
 
 
 # ##########################################################################################################################################
 # >> Allow Game Lights
-# 
-# :: This can be used to whitelist disabled filler lights
-# :: Only useful if 'ignore filler lights' is enabled
-# 
-# :: How to retrieve hashes:
-#    > Visualize hashes in 3D Space (GUI -> Map Settings -> Ignore Game Lights -> Draw Hash Visualization)
-#    > DoubleClick hashes in list to allow lights and export to clipboard when done -> override ALLOW_LIGHTS with clipboard data
+#
+# :: Whitelists filler lights, only useful if 'ignore filler lights' is enabled
+#
+# :: How to edit:
+#    > Light Editor: right click a filler light -> Allow filler light
 #
 # ~~ ALLOW_LIGHTS = [
 #     0x0, 0x1, 0x2, ...            [uint array - hex format]
-# ]      
+# ]
 
 ALLOW_LIGHTS = [
     0x8C8CB2FC
@@ -44,49 +44,44 @@ ALLOW_LIGHTS = [
 
 # ##########################################################################################################################################
 # >> Light Overrides
-# 
-# :: This can be used to override light settings.
-# :: Requires a stable light hash!
 #
-# :: How to retrieve hashes & create overrides:
-#    > Visualize hashes in 3D Space (GUI -> Map Settings -> Game Light Tweaks -> Visualize Api Light Hashes)
-#    > Select hash in list and tweak settings. Make sure to export to clipboard when done -> override LIGHT_OVERRIDES with clipboard data
+# :: Overrides settings of game lights and attaches additional lights to them
+#
+# :: How to edit:
+#    > Light Editor: select a light in the world or in the list, create an override and tweak it
 #
 # :: Notes:
-#    > Categories: Use category format to organize related overrides together (optional)
-#    > Attached lights: Create multiple lights attached to a single base hash (useful for adding extra light sources)
-#    > Priority: TOML files are processed in alphabetical order (earlier files have higher priority)
-#    > Comments: Comments above entries are preserved and can be used as identifiers
+#    > Categories: group related overrides (optional)
+#    > Attached lights: additional lights that exist as long as their base light does
+#    > Priority: files are processed in alphabetical order (earlier files have higher priority)
+#    > Comments: the comment above an entry is kept and shown as the name of the light
 #
 # ~~ LIGHT_OVERRIDES = [
-#   {          
-#       #                   comment         
-#       hash =              hash of light                                   [uint - hex format]   
+#   {
+#       #                   comment
+#       hash =              hash of light                                   [uint - hex format]
 #       pos = []            position of light                        [opt.] [3D Vector]
 #       dir = []            direction of light                       [opt.] [3D Vector]
 #       color = []          color of light                           [opt.] [3D Vector]
 #       radius =            radius of light                          [opt.] [Float]
 #       intensity =         intensity of light                       [opt.] [Float]
-#       outer_cone_angle =  outer cone angle of light                [opt.] [Float]
-#       inner_cone_angle =  inner cone angle of light                [opt.] [Float]
+#       outer_cone_angle =  cosine of the outer cone angle           [opt.] [Float]
+#       inner_cone_angle =  cosine of the inner cone angle           [opt.] [Float]
 #       volumetric_scale =  volumetric scale of light                [opt.] [Float]
-#       light_type =        0: sphere -- 1: spotlight                [opt.] [Bool]
+#       light_type =        false: sphere -- true: spotlight         [opt.] [Bool]
+#                           or "rect", "disk", "cylinder"                [opt.] [String]
+#       size = []           rect: side lengths -- disk: radii        [opt.] [2D Vector]
+#       length =            length of a cylinder (radius = its tube) [opt.] [Float]
+#       roll =              rect / disk: degrees around dir          [opt.] [Float]
 #       attached = [        attached lights for this hash            [opt.] [Array of light override structures]
-#       {
-#           ... light override
-#       },
-#       { ... }]       
-#   }, 
+#       { ... light override }, { ... }]
+#   },
 #   {
 #       category =          category name                                   [String]
 #       overrides = [       light overrides                                 [Array of light override structures]
-#       {
-#           ... light override
-#       },
-#       { ... }]      
+#       { ... light override }, { ... }]
 #   },
-#   { ... },
-# ]      
+# ]
 
 LIGHT_OVERRIDES = [
 
@@ -102,15 +97,19 @@ LIGHT_OVERRIDES = [
     ]},
 
     { category = "broker_safehouse", overrides = [
-        { hash = 0x2BF21803, pos = [889.37, -498.60, 20.49], dir = [0.29, -0.62, -0.73], intensity = 14.55, outer_cone_angle = 1.12, inner_cone_angle = 0.02, light_type = true },
+        { hash = 0x2BF21803, pos = [889.37, -498.60, 20.49], dir = [0.29, -0.62, -0.73], intensity = 23.95, outer_cone_angle = 0.62, inner_cone_angle = 1.00, light_type = true },
 
         # day window right
         { hash = 0x124330B1, pos = [895.77, -496.50, 20.67], color = [0.97, 0.90, 0.58], radius = 5.30, intensity = 4.00 },
-        { hash = 0xBCB9080D, pos = [885.61, -499.77, 20.68], radius = 13.38, intensity = 2.00 },
+        { hash = 0xBCB9080D, pos = [885.61, -499.77, 20.68], color = [1.00, 0.91, 0.50], radius = 19.10, intensity = 0.70 },
         { hash = 0x3BE73955, radius = 10.00, intensity = 17.23 },
-        { hash = 0xC5A12985, pos = [888.69, -503.36, 22.17], radius = 5.95, intensity = 9.55 },
+
+        # tube_upstairs
+        { hash = 0xC5A12985, pos = [888.67, -503.36, 22.24], dir = [-1.00, 0.00, -0.02], radius = 0.08, intensity = 0.12, inner_cone_angle = 0.24, light_type = "cylinder", length = 1.31 },
         { hash = 0xA1880678, pos = [895.77, -496.40, 20.68], radius = 4.28, intensity = 2.52 },
-        { hash = 0x36B52713, pos = [892.45, -504.40, 17.94], radius = 6.17, intensity = 8.68 },
+
+        # tube_downstairs
+        { hash = 0x36B52713, pos = [892.43, -504.38, 18.02], dir = [1.00, 0.00, 0.00], radius = 0.08, intensity = 0.38, light_type = "cylinder", length = 1.30 },
         { hash = 0x7E85F30F, pos = [890.32, -494.78, 19.96] },
         { hash = 0xA4D59F91, pos = [895.80, -493.90, 20.68], radius = 6.80, intensity = 2.39 },
 
@@ -119,8 +118,16 @@ LIGHT_OVERRIDES = [
 
         # day center windows
         { hash = 0xA5DE9D19, radius = 5.28 },
+        { hash = 0xFF43E599, intensity = 2.07 },
+        { hash = 0x16078D75, pos = [888.70, -504.10, 20.82], intensity = 10.76, volumetric_scale = 0.00 },
+        { hash = 0xA22EAD8C, intensity = 4.00, volumetric_scale = 0.00 },
+        { hash = 0x6A8DDF32, intensity = 7.99, volumetric_scale = 0.00 },
+        { hash = 0x9903320E, pos = [895.64, -502.99, 20.15], intensity = 3.30, volumetric_scale = 0.00 },
+        { hash = 0x1A25E522, volumetric_scale = 0.00 },
+        { hash = 0xA2F4D73D, pos = [895.37, -505.26, 20.11], intensity = 3.70, volumetric_scale = 0.00 },
+        { hash = 0x2FC7B801, pos = [891.80, -504.35, 15.80], intensity = 1.17 },
     ]},
-    
+
     { category = "broker_diner", overrides = [
         { hash = 0x20F0290F, pos = [890.25, -486.83, 17.69] },
         { hash = 0x75A9BCB5, pos = [887.67, -486.83, 17.65] },
@@ -147,10 +154,35 @@ LIGHT_OVERRIDES = [
         { hash = 0x9B7BE564, pos = [878.23, -482.71, 17.21] },
     ]},
 
+    { category = "broker_roman", overrides = [
+        # face height
+        { hash = 0x2DCCE161, radius = 1.52, intensity = 1.75 },
+        { hash = 0x5AC35825, pos = [815.31, -259.91, 15.45], color = [0.70, 0.42, 0.12], radius = 1.65, intensity = 0.47 },
+        { hash = 0xACB047AF, color = [0.42, 0.13, 0.13], intensity = 4.50 },
+        { hash = 0x7AB07AB8, pos = [821.70, -256.77, 16.57], intensity = 2.02 },
+    ]},
+
+    { category = "broker_bar", overrides = [
+        { hash = 0x5CFC2884, intensity = 10.00 },
+        { hash = 0x3DBE6E0B, intensity = 3.00 },
+        { hash = 0x7FAE443A, intensity = 5.00 },
+        { hash = 0xDCEF7AC4, intensity = 3.00 },
+        { hash = 0x289B1A20, intensity = 7.00 },
+        { hash = 0xAC8F3AA8, intensity = 1.00 },
+        { hash = 0xA3C001E5, intensity = 1.00 },
+        { hash = 0x6219013B, radius = 1.17, intensity = 4.00 },
+        { hash = 0xF1A9321F, intensity = 5.00 },
+        { hash = 0x95FFC178, intensity = 5.00 },
+        { hash = 0xD7240FFA, pos = [938.73, -495.09, 16.49], intensity = 8.00 },
+        { hash = 0xA85F2E97, radius = 16.38 },
+        { hash = 0x11200AAD, intensity = 4.00 },
+        { hash = 0x9031EC7F, pos = [942.73, -493.73, 17.36], radius = 39.30, intensity = 0.15 },
+    ]},
+
     { category = "skyscraper", overrides = [
         # upward spot light below roof (tbogt)
         { hash = 0xC1AD2C8A, pos = [-86.18, -380.73, 125.03] },
-        
+
         # upward spot light below roof (no dlc)
         { hash = 0xB858957D, pos = [-86.18, -380.73, 125.03] },
     ]},
@@ -174,5 +206,13 @@ LIGHT_OVERRIDES = [
         { hash = 0xB475B0F0, pos = [1199.57, -665.54, 18.34] },
         { hash = 0x43499558, pos = [1192.58, -677.55, 17.31], color = [0.89, 0.30, 0.11], radius = 7.90, intensity = 0.85 },
         { hash = 0xF9CDA421, pos = [1203.12, -672.33, 17.33], color = [0.92, 0.31, 0.12], radius = 1.91, intensity = 16.55 },
+    ]},
+
+    { category = "vehicles", overrides = [
+        # sultan rs left headlight
+        { hash = 0x83224350, radius = 20.00, intensity = 80.00 },
+
+        # sultan rs right headlight
+        { hash = 0xB3A701A3, radius = 20.00, intensity = 80.00 },
     ]},
 ]
