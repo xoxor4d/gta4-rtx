@@ -5203,16 +5203,21 @@ namespace gta4
 		ImGui::SeparatorText("Water");
 		
 		ImGui::TextDisabled("Used while water is drawn through the Remix API and no USD water material replaces it. Not saved.");
-		ImGui::Spacing(0, 2);
+		ImGui::Spacing(0, 4);
 
 		ImGui::BeginDisabled(gs->override_water_texture_hash.get_temp_override_state());
 		ImGui::Checkbox("Stabilize Water Texture Hash (USD water material)##api_water", gs->override_water_texture_hash.get_as<bool*>());
 		ImGui::EndDisabled();
+		ImGui::Spacing(0, 4);
 
 		auto& m = water::material();
 		ImGui::DragFloat("Index of refraction##api_water", &m.ior, 0.001f, 1.0f, 3.0f, "%.3f");
 		ImGui::ColorEdit3("Transmittance color##api_water", m.transmittance_color, ImGuiColorEditFlags_Float);
 		ImGui::DragFloat("Transmittance distance##api_water", &m.transmittance_distance, 0.05f, 0.01f, 1000.0f, "%.2f");
+
+		ImGui::Spacing(0, 8);
+		water::devgui_debug();
+		ImGui::Spacing(0, 4);
 		ImGui::PopID();
 
 		// ---

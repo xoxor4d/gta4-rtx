@@ -208,6 +208,9 @@ namespace gta4::game
 	int* pWaterDetailRangeRender = nullptr;
 	float* pWaterDynamicHeightRT = nullptr;
 	std::uint8_t* pWaterRectFrustumCull = nullptr;
+	int* pWaterListBufferIndex = nullptr;
+	std::uint8_t* pWaterListBuffers = nullptr;
+	uint32_t func_addr__CWater_GetRenderLists = 0u;
 
 	uint32_t func_addr__CDistantLights_Render = 0u;
 	uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer = 0u;
@@ -785,6 +788,15 @@ namespace gta4::game
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDetailDist, int*, "66 0F 6E 05 ? ? ? ? F3 0F 10 27 0F 5B C0 F3 0F 5C E0", 4, 0xAD9E58);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterRectFrustumCull, std::uint8_t*, "80 3D ? ? ? ? 00 0F BF 8F ? ? ? ? 0F BF 04 CD", 2, 0xAD7204);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDynamicHeightRT, float*, "F3 0F 10 A7 ? ? ? ? F3 0F 59 E2 89 44 24 18", 4, 0xAD5683);
+
+		// returns the list buffer of the render thread: [1] - 0x10C4 * index
+		if (const auto offset = shared::utils::mem::find_pattern("8B 0D ? ? ? ? 69 C9 C4 10 00 00 B8 ? ? ? ? 2B C1 C3", 0, "CWater::GetRenderLists", use_pattern, 0xAD5CD0); offset)
+		{
+			func_addr__CWater_GetRenderLists = offset;
+			pWaterListBufferIndex = (int*)*(DWORD*)(offset + 2);
+			pWaterListBuffers = (std::uint8_t*)(*(DWORD*)(offset + 13) - 0x10C4u);
+			found_pattern_count++;
+		} total_pattern_count++;
 
 		// vehicle imposters (distant lights)
 		PATTERN_OFFSET_SIMPLE(func_addr__CDistantLights_Render, "55 8B EC 83 E4 F0 81 EC ? ? 00 00 F3 0F 10 45 08 F3 0F 59 05 ? ? ? ? 56 57 F3 0F 2C C0 C7 44 24 3C 00 00 00 00", 0, 0xD65650);

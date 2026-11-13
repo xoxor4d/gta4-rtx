@@ -83,6 +83,90 @@ namespace gta4
 		std::uint32_t g_pieces_culled = 0u;
 		std::uint32_t g_blocks_map = 0u;
 		std::uint32_t g_blocks_sea = 0u;
+		int g_list_buffer_at_begin = -1;
+
+		// The game swaps its two render list buffers while the main thread builds the next frame, which can be before or in the
+		// middle of CWater::Render of the current one. The block scan tags the buffer it fills with the camera of its render phase,
+		// the render reads the buffer tagged with the camera it draws with
+		constexpr std::uint32_t LIST_BUFFER_SIZE = 0x10C4;
+		constexpr std::uint32_t RENDER_PHASE_CAMERA = 0xF0;
+		constexpr int MAX_LIST_SCANS = 8; // render phases scanning into one buffer
+
+		struct list_tags_s
+		{
+			D3DXMATRIX cameras[MAX_LIST_SCANS];
+			int count = 0;
+		};
+
+		std::mutex g_list_mutex;
+		list_tags_s g_list_tags[2];
+		int g_list_scan_buffer = -1;
+		int g_list_buffer_pinned = -1;
+
+		DETOUR_TYPEDEF(CWater_GetRenderLists, std::uint8_t*, __cdecl);
+
+		void tag_list_buffer()
+		{
+			const auto phase = static_cast<const std::uint8_t*>(*game::pCRenderPhase_sm_pCurrent);
+			if (!phase || !game::pWaterListBufferIndex) {
+				return;
+			}
+
+			const int buffer = *game::pWaterListBufferIndex & 1;
+			std::lock_guard lock(g_list_mutex);
+			auto& tags = g_list_tags[buffer];
+
+			if (buffer != g_list_scan_buffer)
+			{
+				tags.count = 0;
+				g_list_scan_buffer = buffer;
+			}
+
+			std::memcpy(&tags.cameras[tags.count++ % MAX_LIST_SCANS], phase + RENDER_PHASE_CAMERA, sizeof(D3DXMATRIX));
+		}
+
+		float camera_distance(const D3DXMATRIX& a, const D3DXMATRIX& b)
+		{
+			float d = 0.0f;
+			for (int r = 0; r < 4; r++)
+			{
+				for (int c = 0; c < 3; c++) {
+					d += std::abs(a.m[r][c] - b.m[r][c]);
+				}
+			}
+			return d;
+		}
+
+		// the buffer the game would read unless the other one was scanned with a closer camera
+		int pick_list_buffer()
+		{
+			const int live = 1 - (*game::pWaterListBufferIndex & 1);
+			const auto viewport = game::pCurrentViewport;
+			if (!viewport || !viewport->wp) {
+				return live;
+			}
+
+			float best[2] = { FLT_MAX, FLT_MAX };
+			std::lock_guard lock(g_list_mutex);
+
+			for (int b = 0; b < 2; b++)
+			{
+				for (int i = 0; i < std::min(g_list_tags[b].count, MAX_LIST_SCANS); i++) {
+					best[b] = std::min(best[b], camera_distance(g_list_tags[b].cameras[i], viewport->wp->cameraInv));
+				}
+			}
+
+			return best[1 - live] < best[live] ? 1 - live : live;
+		}
+
+		std::uint8_t* __cdecl CWater_GetRenderLists_hk()
+		{
+			if (g_list_buffer_pinned < 0) {
+				return CWater_GetRenderLists_og();
+			}
+
+			return game::pWaterListBuffers + static_cast<std::size_t>(g_list_buffer_pinned) * LIST_BUFFER_SIZE;
+		}
 
 		// Remix API path: everything CWater::Render emits goes into one mesh, created, drawn and replaced every render
 		struct api_s
@@ -827,6 +911,7 @@ namespace gta4
 		{
 			PROFILE_ZONE_N("CWater::ScanThroughBlocks");
 			static const auto gs = comp_settings::get();
+			tag_list_buffer();
 
 			if (bypassed())
 			{
@@ -867,6 +952,16 @@ namespace gta4
 		static const auto gs = comp_settings::get();
 		g_api.active = false;
 		sync_overrides();
+		g_list_buffer_at_begin = game::pWaterListBufferIndex ? *game::pWaterListBufferIndex : -1;
+		g_list_buffer_pinned = -1;
+
+		if (get() && CWater_GetRenderLists_og && !bypassed())
+		{
+			g_list_buffer_pinned = pick_list_buffer();
+			if (g_list_buffer_pinned != 1 - (g_list_buffer_at_begin & 1)) {
+				g_stats.list_repicks++;
+			}
+		}
 
 		if (!get() || !game::pWaterDetailDist || !game::pWaterRenderBufferIndex || !game::pWaterCameraCoordsRT || !game::pWaterDetailRangeRender
 			|| !game::pWaterDynamicHeightRT)
@@ -938,6 +1033,13 @@ namespace gta4
 			return;
 		}
 
+		g_list_buffer_pinned = -1;
+		g_stats.renders++;
+
+		if (g_list_buffer_at_begin >= 0 && *game::pWaterListBufferIndex != g_list_buffer_at_begin) {
+			g_stats.list_flips++;
+		}
+
 		const bool submitted = g_api.active && !g_api.indices.empty() && !imgui::get()->m_dbg_do_not_render_water && api_submit();
 		if (!submitted) {
 			api_destroy_mesh();
@@ -972,7 +1074,6 @@ namespace gta4
 
 		ImGui::Text("Tessellated radius %d, last render: %u pieces (%u culled), %u vertices", s.detail_radius, s.pieces, s.pieces_culled, s.vertices);
 		ImGui::Text("Wave height RMS: game simulation %.3f, procedural waves %.3f", s.sim_rms, s.far_wave_rms);
-		ImGui::Text("Last water block scan: map blocks %u, open sea blocks %u (the game keeps at most 400)", s.blocks_map, s.blocks_sea);
 
 		if (s.api_active)
 		{
@@ -980,6 +1081,23 @@ namespace gta4
 				s.api_vertices, s.api_triangles, s.api_detail_pieces, s.api_flat_rectangles);
 		} else {
 			ImGui::TextUnformatted("Drawn through the fixed function path");
+		}
+	}
+
+	void water::devgui_debug()
+	{
+		const auto s = get_stats();
+
+		ImGui::Text("Last water block scan: map blocks %u, open sea blocks %u (the game keeps at most 400)", s.blocks_map, s.blocks_sea);
+		ImGui::Spacing(0, 4);
+
+		if (CWater_GetRenderLists_og)
+		{
+			ImGui::Text("List buffers of %u renders: swapped during %u, swapped before %u", s.renders, s.list_flips, s.list_repicks);
+			ImGui::TextDisabled("The game swaps its two water list buffers while the next frame is built.\n"
+				"Each render reads the buffer that was scanned with its camera.");
+		} else {
+			ImGui::TextDisabled("List buffers are not pinned (address not found), water can cut out while the camera turns.");
 		}
 	}
 
@@ -999,6 +1117,10 @@ namespace gta4
 		shared::utils::hook::detour(game::func_addr__CWater_CalculateWavesForCoordinate, &CWater_CalculateWavesForCoordinate_hk, DETOUR_CAST(CWater_CalculateWavesForCoordinate_og));
 		shared::utils::hook::detour(game::func_addr__CWater_RenderHighDetailWaterRectangle, &CWater_RenderHighDetailWaterRectangle_hk, DETOUR_CAST(CWater_RenderHighDetailWaterRectangle_og));
 		shared::utils::hook::detour(game::func_addr__CWater_RenderWaterRectangle, &CWater_RenderWaterRectangle_hk, DETOUR_CAST(CWater_RenderWaterRectangle_og));
+
+		if (game::func_addr__CWater_GetRenderLists && game::pWaterListBufferIndex && game::pWaterListBuffers) {
+			shared::utils::hook::detour(game::func_addr__CWater_GetRenderLists, &CWater_GetRenderLists_hk, DETOUR_CAST(CWater_GetRenderLists_og));
+		}
 
 		p_this = this;
 		sync_overrides();

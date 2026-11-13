@@ -8,6 +8,7 @@ namespace gta4
 	/// - procedural waves that continue the simulation and fade out towards the edge of the tessellated area
 	/// - a longer reach of the water block scan (500 x 500 unit blocks in front of the camera)
 	/// - optionally the whole water surface as one Remix API mesh per frame instead of the fixed function draw
+	/// - a render reads the water list buffer scanned with its camera (the game swaps them mid render, water cuts out while turning)
 	class water final : public shared::common::loader::component_module
 	{
 	public:
@@ -26,6 +27,9 @@ namespace gta4
 			std::uint32_t pieces_culled = 0u;
 			std::uint32_t blocks_map = 0u;  // blocks of the last water block scan
 			std::uint32_t blocks_sea = 0u;  // open sea blocks (the game keeps at most 400)
+			std::uint32_t renders = 0u;
+			std::uint32_t list_flips = 0u;  // renders during which the main thread swapped the list buffers
+			std::uint32_t list_repicks = 0u; // renders that started after the swap and read the other buffer
 
 			bool api_active = false;        // last water render went through the Remix API
 			std::uint32_t api_vertices = 0u;
@@ -54,5 +58,8 @@ namespace gta4
 
 		static stats_s get_stats();
 		static void devgui_stats();
+
+		/// block scan and list buffer counters (dev tab)
+		static void devgui_debug();
 	};
 }

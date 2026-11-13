@@ -237,6 +237,9 @@ namespace gta4::game
 	extern int* pWaterDetailRangeRender;     // x min, x max, y min, y max of the tessellated window (render thread)
 	extern float* pWaterDynamicHeightRT;     // [2][100][100] simulation heights, 2 units per cell
 	extern std::uint8_t* pWaterRectFrustumCull; // block scan tests each water rectangle against the render phase frustum
+	extern int* pWaterListBufferIndex;       // double buffered quad / triangle / block lists: the main thread fills [index], CWater::Render reads [1 - index]
+	extern std::uint8_t* pWaterListBuffers;  // [2] of 0x10C4 bytes
+	extern uint32_t func_addr__CWater_GetRenderLists; // list buffer CWater::Render reads
 
 	// "vehicle imposters" (-disableimposters): distant street light / aircraft sprites and instanced fake cars, render thread
 	extern uint32_t func_addr__CDistantLights_Render;               // (float night_fade): street light + aircraft sprites
