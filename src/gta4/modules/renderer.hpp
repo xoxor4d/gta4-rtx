@@ -745,6 +745,8 @@ namespace gta4
 		}
 
 		void manually_trigger_remix_injection(IDirect3DDevice9* dev);
+		void defer_phone_draw(IDirect3DDevice9* dev, D3DPRIMITIVETYPE type, INT base_vertex, UINT min_vertex, UINT num_vertices, UINT start_index, UINT prim_count);
+		void replay_deferred_phone_draws(); // after the injection; also called before EndScene in case nothing injected
 		HRESULT on_draw_primitive(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const UINT& StartVertex, const UINT& PrimitiveCount);
 		HRESULT on_draw_indexed_prim(IDirect3DDevice9* dev, const D3DPRIMITIVETYPE& PrimitiveType, const INT& BaseVertexIndex, const UINT& MinVertexIndex, const UINT& NumVertices, const UINT& startIndex, const UINT& primCount);
 

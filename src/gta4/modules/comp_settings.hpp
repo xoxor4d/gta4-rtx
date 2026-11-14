@@ -1275,6 +1275,15 @@ namespace gta4
 				2.5f
 			};
 
+			variable phone_rasterize = {
+				"phone_rasterize",
+				("Draws the on-screen phone like the HUD: rasterized with the game's own shaders after the ray traced frame,\n"
+				 "so it stays sharp (not upscaled, denoised or frame-generated). Off = path traced in front of the camera.\n"
+				 "EXPERIMENTAL: off by default. Only active while the phone is in the iFruit pose (see renderer.cpp)."),
+				"1.7.3",
+				false
+			};
+
 			// ----------------------------------
 			// general rendering related settings
 

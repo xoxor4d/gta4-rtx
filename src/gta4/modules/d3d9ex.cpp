@@ -387,6 +387,9 @@ namespace gta4
 			g_was_rendering_phone_last_frame_delay_reset_helper = false;
 		}
 
+		// rasterized phone (phone_rasterize): draw what was recorded this frame if nothing injected the frame yet
+		renderer::get()->replay_deferred_phone_draws();
+
 		HRESULT hr = D3D_OK;
 		{
 			GTA4_PERF_SCOPE(performance_section::Submit);
