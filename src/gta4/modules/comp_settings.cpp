@@ -275,6 +275,7 @@ namespace gta4
 				ASSIGN(emissive_alpha_allow_vertex_colors);
 				ASSIGN(phone_emissive_override);
 				ASSIGN(phone_emissive_scalar);
+				ASSIGN(phone_rasterize);
 
 				// general rendering related settings
 				ASSIGN(vehicle_dirt_enabled);

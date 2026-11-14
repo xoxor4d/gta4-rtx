@@ -32,6 +32,7 @@ namespace gta4
 	bool g_is_rendering_phone = false; // phone on screen (not true when rendering screen to RT)
 	bool g_was_rendering_phone_last_frame = false;
 	bool g_was_rendering_phone_last_frame_delay_reset_helper = false;
+	bool g_phone_overlay_take_draw = false; // phone_rasterize: the 3D phone draw is replaced by the 2D overlay (set by defer_phone_draw)
 
 	bool g_rendered_first_primitive = false;
 	bool g_applied_phone_hack = false;
@@ -1866,6 +1867,20 @@ namespace gta4
 			return S_OK;
 		}
 
+		// phone_rasterize: a screen-space 2D phone (PHONE_SCREEN image + frame) is drawn after the injection like the HUD,
+		// sharp at output resolution instead of upscaled / denoised / frame generated (see replay_deferred_phone_draws);
+		// the 3D phone is skipped while that overlay can draw it (see defer_phone_draw)
+		if (g_is_rendering_phone && gs->phone_rasterize.get_as<bool>() && !g_is_instance_rendering)
+		{
+			defer_phone_draw(dev, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+			if (g_phone_overlay_take_draw)
+			{
+				ctx.restore_all(dev);
+				ctx.reset_context();
+				return S_OK;
+			}
+		}
+
 		bool render_with_ff = false;
 		const auto& pidx = ctx.info.preset_index;
 
@@ -3273,6 +3288,284 @@ namespace gta4
 
 			m_triggered_remix_injection = true;
 		}
+
+		// the frame is injected: everything drawn from here on is rasterized - draw the recorded phone now
+		replay_deferred_phone_draws();
+	}
+
+	// ---------------------------------------------------------------------------------------------------------------
+	// rasterized on-screen phone (comp setting 'phone_rasterize'):
+	// late 3D draws are not rasterized by the runtime, so the phone is drawn as a screen-space overlay instead:
+	// the game's PHONE_SCREEN render target (the iFruit UI, 512 x 1024 via iFruitRT.asi) + a 2D phone frame
+	// (loaded from rtx_comp\textures\ifruit_frame.png) as pre-transformed quads after the injection, like the HUD - sharp, no
+	// denoiser / upscaler smear. The 3D phone is skipped while the overlay draws it; the overlay follows iFruit's pose
+	// (game globals) so the phone still rises / slides, and steps aside for any other pose (the game's camera view).
+
+	namespace
+	{
+		IDirect3DDevice9* g_deferred_phone_device = nullptr;
+		IDirect3DTexture9* g_phone_screen_tex = nullptr;   // the PHONE_SCREEN render target texture (AddRef'd)
+		IDirect3DTexture9* g_phone_frame_tex = nullptr;    // ifruit_frame.png
+		bool g_phone_frame_tried = false;
+		bool g_phone_overlay_frame = false;                // a phone draw was taken this frame
+		bool g_phone_overlay_full = false;                 // the game's own pose: draw at the full position
+		bool g_phone_overlay_hold = false;                 // an in-between pose for a frame: keep the last position
+		float g_phone_overlay_last_y = 3.0f;
+		std::uint64_t g_phone_overlay_last_ms = 0;
+		std::uint64_t g_phone_raise_since = 0;
+		bool g_replaying_phone_draws = false;
+
+		// GTAIV.exe 1.2.0.59 globals behind SET_MOBILE_PHONE_POSITION / _SCALE (file VA, relocated at run time)
+		float* phone_pos() { return reinterpret_cast<float*>(reinterpret_cast<std::uint8_t*>(GetModuleHandleA(nullptr)) + (0x19D3B40 - 0x400000)); }
+		float* phone_scale() { return reinterpret_cast<float*>(reinterpret_cast<std::uint8_t*>(GetModuleHandleA(nullptr)) + (0x18B6EEC - 0x400000)); }
+
+		// pose constants matching the iFruit phone script's full-view pose (the overlay only triggers in that pose) and the
+		// geometry of the frame image rtx_comp\textures\ifruit_frame.png
+		constexpr float POSE_X = 8.6f, POSE_Y = 3.0f, POSE_Z = -48.0f;
+		constexpr float FR_W = 676.0f, FR_H = 1431.0f, FR_PAD = 40.0f, FR_BODY_H = 1351.0f;
+		constexpr float FR_SCR_X = 62.0f, FR_SCR_Y = 62.0f, FR_SCR_W = 552.0f, FR_SCR_H = 1307.0f;
+		constexpr float SCREEN_V0 = 0.076f, SCREEN_V1 = 0.999f; // render-target rows the phone's display shows (genphone CROP)
+
+		// 0 = a pose the 3D phone must keep (the game's centred raise, e.g. its camera view), 1 = iFruit's pose (overlay
+		// follows its y), 2 = the game's own "out" pose (overlay at the full position), 3 = anything else (the game
+		// animating its phone in / out): hidden, never a smeared 3D phone
+		int phone_pose_kind()
+		{
+			__try
+			{
+				const float* p = phone_pos();
+				if (std::fabs(p[0] - POSE_X) < 0.05f && std::fabs(p[2] - POSE_Z) < 0.05f) return 1;
+				if (std::fabs(p[0] - 11.5f) < 0.05f && std::fabs(p[1] + 11.0f) < 0.05f && std::fabs(p[2] + 50.0f) < 0.05f) return 2;
+				if (std::fabs(p[0]) < 0.5f) return 0;
+				return 3;
+			}
+			__except (EXCEPTION_EXECUTE_HANDLER) { return 0; }
+		}
+
+		void read_phone_pose(float& y, float& scale)
+		{
+			__try { y = phone_pos()[1]; scale = *phone_scale(); }
+			__except (EXCEPTION_EXECUTE_HANDLER) {}
+		}
+
+		IDirect3DTexture9* find_phone_screen_tex(IDirect3DDevice9* dev)
+		{
+			for (DWORD s = 0; s < 8; s++)
+			{
+				IDirect3DBaseTexture9* bt = nullptr;
+				if (FAILED(dev->GetTexture(s, &bt)) || !bt) continue;
+				IDirect3DTexture9* t = nullptr;
+				if (bt->GetType() == D3DRTYPE_TEXTURE && SUCCEEDED(bt->QueryInterface(IID_IDirect3DTexture9, reinterpret_cast<void**>(&t))) && t)
+				{
+					D3DSURFACE_DESC d = {};
+					// PHONE_SCREEN: a render target of at least 512 px (the 256 px one on another stage is the PHOTO target)
+					if (SUCCEEDED(t->GetLevelDesc(0, &d)) && d.Width >= 512 && d.Height >= 512 && (d.Usage & D3DUSAGE_RENDERTARGET)) {
+						bt->Release();
+						return t; // AddRef'd by QueryInterface
+					}
+					t->Release();
+				}
+				bt->Release();
+			}
+			return nullptr;
+		}
+	}
+
+	void renderer::defer_phone_draw(IDirect3DDevice9* dev, [[maybe_unused]] D3DPRIMITIVETYPE type, [[maybe_unused]] INT base_vertex, [[maybe_unused]] UINT min_vertex, [[maybe_unused]] UINT num_vertices, [[maybe_unused]] UINT start_index, [[maybe_unused]] UINT prim_count)
+	{
+		g_deferred_phone_device = dev;
+		static int s_tex_logs = 0;
+		if (s_tex_logs < 4)
+		{
+			s_tex_logs++;
+			std::string info;
+			for (DWORD st = 0; st < 4; st++)
+			{
+				IDirect3DBaseTexture9* bt = nullptr;
+				if (FAILED(dev->GetTexture(st, &bt)) || !bt) continue;
+				IDirect3DTexture9* t2 = nullptr;
+				if (bt->GetType() == D3DRTYPE_TEXTURE && SUCCEEDED(bt->QueryInterface(IID_IDirect3DTexture9, reinterpret_cast<void**>(&t2))) && t2)
+				{
+					D3DSURFACE_DESC d = {};
+					t2->GetLevelDesc(0, &d);
+					info += std::format(" s{}:{}x{} usage {:x} fmt {:x}", st, d.Width, d.Height, d.Usage, static_cast<int>(d.Format));
+					t2->Release();
+				}
+				else info += std::format(" s{}:type {}", st, static_cast<int>(bt->GetType()));
+				bt->Release();
+			}
+			shared::common::log("PhoneRaster", std::format("phone draw {} prims, textures:{}", prim_count, info), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+		}
+		if (auto t = find_phone_screen_tex(dev); t)
+		{
+			if (t != g_phone_screen_tex)
+			{
+				if (g_phone_screen_tex) g_phone_screen_tex->Release();
+				g_phone_screen_tex = t;
+				shared::common::log("PhoneRaster", "found the PHONE_SCREEN texture", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			}
+			else t->Release();
+		}
+
+		// skip the 3D phone only when the overlay can draw it: screen texture known and the phone in iFruit's pose
+		int kind = g_phone_screen_tex ? phone_pose_kind() : 0;
+		const auto now = GetTickCount64();
+		// the centred raise pose counts only when it lasts (the game's camera view); one-frame blips while menus change
+		// would otherwise show the path traced 3D phone
+		if (kind == 0 && g_phone_screen_tex)
+		{
+			if (g_phone_raise_since == 0) g_phone_raise_since = now;
+			if (now - g_phone_raise_since < 500) kind = 3;
+		}
+		else g_phone_raise_since = 0;
+		g_phone_overlay_take_draw = kind != 0;
+		if (kind == 1 || kind == 2) { g_phone_overlay_frame = true; g_phone_overlay_full = kind == 2; g_phone_overlay_hold = false; }
+		else if (kind == 3 && now - g_phone_overlay_last_ms < 200) { g_phone_overlay_frame = true; g_phone_overlay_full = false; g_phone_overlay_hold = true; }
+	}
+
+	void renderer::replay_deferred_phone_draws()
+	{
+		if (g_replaying_phone_draws || !g_deferred_phone_device || !g_phone_screen_tex) {
+			return;
+		}
+
+		// one overlay per frame (this runs after the injection and again before EndScene)
+		static std::chrono::high_resolution_clock::time_point s_drawn_frame = {};
+		if (s_drawn_frame == shared::globals::last_frame_time) return;
+
+		// no phone pass this frame: keep the overlay at its last place for a moment (menus switching skip a frame)
+		bool held_frame = false;
+		if (!g_phone_overlay_frame)
+		{
+			if (g_phone_overlay_last_ms == 0 || GetTickCount64() - g_phone_overlay_last_ms > 150) return;
+			held_frame = true;
+		}
+
+		g_replaying_phone_draws = true;
+		g_phone_overlay_frame = false;
+		const auto dev = g_deferred_phone_device;
+
+		if (!m_triggered_remix_injection) {
+			manually_trigger_remix_injection(dev);
+		}
+
+		if (!g_phone_frame_tried)
+		{
+			g_phone_frame_tried = true;
+			if (FAILED(D3DXCreateTextureFromFileExA(dev, "rtx_comp\\textures\\ifruit_frame.png", D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 1, 0,
+				D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_FILTER_NONE, D3DX_FILTER_NONE, 0, nullptr, nullptr, &g_phone_frame_tex))) {
+				g_phone_frame_tex = nullptr;
+				shared::common::log("PhoneRaster", "failed to load rtx_comp\\textures\\ifruit_frame.png", shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+			}
+		}
+
+		float py = POSE_Y, sc = 324.0f;
+		read_phone_pose(py, sc);
+		if (g_phone_overlay_full) py = POSE_Y;
+		if (g_phone_overlay_hold || held_frame) { py = g_phone_overlay_last_y; }
+		else { g_phone_overlay_last_y = py; }
+		if (!held_frame) g_phone_overlay_last_ms = GetTickCount64();
+
+		IDirect3DSurface9* rt = nullptr;
+		D3DSURFACE_DESC rd = {};
+		if (SUCCEEDED(dev->GetRenderTarget(0, &rt)) && rt) { rt->GetDesc(&rd); rt->Release(); }
+
+		if (sc > 100.0f && rd.Width && rd.Height)
+		{
+			s_drawn_frame = shared::globals::last_frame_time;
+			IDirect3DStateBlock9* saved = nullptr;
+			dev->CreateStateBlock(D3DSBT_ALL, &saved);
+
+			const float W = static_cast<float>(rd.Width), H = static_cast<float>(rd.Height);
+			// the phone body is 62 % of the screen height, right side; iFruit's rise / slide offsets come from the pose
+			const float s = 0.62f * H / FR_BODY_H;
+			const float y_off = (POSE_Y - py) * (13.3f / 1080.0f) * H;
+			const float body_right = W - 0.075f * H, body_bottom = 0.975f * H + y_off;
+			const float img_x = body_right + FR_PAD * s - FR_W * s, img_y = body_bottom + FR_PAD * s - FR_H * s;
+
+			D3DVIEWPORT9 vp = { 0, 0, rd.Width, rd.Height, 0.0f, 1.0f };
+			dev->SetViewport(&vp);
+			dev->SetVertexShader(nullptr);
+			dev->SetPixelShader(nullptr);
+			dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+			dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+			dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+			dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+			dev->SetRenderState(D3DRS_LIGHTING, FALSE);
+			dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+			dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+			dev->SetRenderState(D3DRS_STENCILENABLE, FALSE);
+			dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+			dev->SetRenderState(D3DRS_COLORWRITEENABLE, 0x0F);
+			dev->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
+			dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+			dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+			dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
+			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+			dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+			dev->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+			dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+			dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+			dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+			dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+			dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+			dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, FALSE);
+
+			struct V { float x, y, z, rhw, u, v; };
+			auto quad = [&](float x, float y, float w, float h, float u0, float v0, float u1, float v1)
+				{
+					const V q[4] =
+					{
+						{ x - 0.5f,     y - 0.5f,     0.0f, 1.0f, u0, v0 },
+						{ x + w - 0.5f, y - 0.5f,     0.0f, 1.0f, u1, v0 },
+						{ x - 0.5f,     y + h - 0.5f, 0.0f, 1.0f, u0, v1 },
+						{ x + w - 0.5f, y + h - 0.5f, 0.0f, 1.0f, u1, v1 },
+					};
+					dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, q, sizeof(V));
+				};
+
+			// the screen (opaque), then the frame over it (rounded corners, edge, shadow)
+			dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+			dev->SetTexture(0, g_phone_screen_tex);
+			{	// the screen as a rounded rectangle (corner radius 74 px in the frame image): a square quad's corners showed outside the frame's curve
+				const float sx = img_x + FR_SCR_X * s, sy = img_y + FR_SCR_Y * s, sw = FR_SCR_W * s, sh = FR_SCR_H * s, r = 74.0f * s;
+				const float u0 = 0.001f, u1 = 0.999f, v0 = SCREEN_V0, v1 = SCREEN_V1;
+				V f[38]; int n = 0;
+				auto pt = [&](float x, float y) { f[n++] = { x - 0.5f, y - 0.5f, 0.0f, 1.0f, u0 + (u1 - u0) * (x - sx) / sw, v0 + (v1 - v0) * (y - sy) / sh }; };
+				pt(sx + sw * 0.5f, sy + sh * 0.5f);
+				const float ccx[4] = { sx + sw - r, sx + r, sx + r, sx + sw - r }, ccy[4] = { sy + r, sy + r, sy + sh - r, sy + sh - r };
+				for (int c = 0; c < 4; c++)
+					for (int k = 0; k <= 8; k++) { const float a = (c * 90.0f + k * 11.25f) * 3.14159265f / 180.0f; pt(ccx[c] + r * cosf(a), ccy[c] - r * sinf(a)); }
+				f[n++] = f[1];
+				dev->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, n - 2, f, sizeof(V));
+			}
+
+			if (g_phone_frame_tex)
+			{
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+				dev->SetTexture(0, g_phone_frame_tex);
+				quad(img_x, img_y, FR_W * s, FR_H * s, 0.0f, 0.0f, 1.0f, 1.0f);
+			}
+
+			static int s_logs = 0;
+			if (s_logs < 6) {
+				s_logs++;
+				shared::common::log("PhoneRaster", std::format("overlay drawn: target {}x{}, pose y {:.2f}, scale {:.0f}, frame tex {}", rd.Width, rd.Height, py, sc, g_phone_frame_tex != nullptr),
+					shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+			}
+
+			if (saved)
+			{
+				saved->Apply();
+				saved->Release();
+			}
+		}
+
+		g_replaying_phone_draws = false;
 	}
 
 
