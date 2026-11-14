@@ -715,13 +715,16 @@ namespace gta4
 
 			ImGui::Checkbox("Never Cull Statics", &im->m_dbg_never_cull_statics); TT("No distance/radii checks for custom anti culling code.");
 			ImGui::Checkbox("Extended Anticull Always TRUE", &im->m_dbg_extended_anticull_always_true); TT("Always return true when extended anticull is on.");
-			ImGui::Text("Offscreen Anticull Meshes: %d tracked, %d marked", im->m_dbg_anticull_offscreen_tracked, im->m_dbg_anticull_offscreen_marked);
+			
+			ImGui::SameLine();
+			ImGui::Text(" ---- %d tracked, %d marked", im->m_dbg_anticull_offscreen_tracked, im->m_dbg_anticull_offscreen_marked);
 			TT("Tracked: anti culling mesh instances found in the building pool.\nMarked: instances within category distance whose map cell got forced this frame (last phase).");
 
 			ImGui::Checkbox("Disable Scene Injection Trigger", &im->m_dbg_disable_scene_injection); TT("Disables the remix injection trigger at the end of the scene phase (behind the 3D markers) and in the pause menu. Remix then injects on the first game UI draw instead (radar background flicker, missing rooms behind api meshes).");
 
 			ImGui::Checkbox("Disable Phone Hack", &im->m_dbg_disable_phone_fixup); TT("Disables phone hack that clears the RT before drawing the first elem on the phone screen. Fixes smearing.");
 
+			
 			ImGui::Checkbox("Disable IgnoreBackedLighting Enforcement", &im->m_dbg_disable_ignore_baked_lighting_enforcement);
 			TT("CompMod forces the IgnoreBakedLighting category for almost every mesh. This disables that")
 
@@ -972,8 +975,6 @@ namespace gta4
 			ImGui::Spacing(0, 4);
 			ImGui::SliderInt("Tag Exp Hair Surfaces as Category ..", &im->m_dbg_tag_exp_hair_as_index, -1, 23, "%d", ImGuiSliderFlags_AlwaysClamp);
 
-
-
 			ImGui::TreePop();
 		}
 
@@ -1167,11 +1168,17 @@ namespace gta4
 			ImGui::DragFloat4("##Phone Proj Offset Row2", im->m_dbg_phone_projection_matrix_offset.m[2], 0.01f);
 			ImGui::DragFloat4("##Phone Proj Offset Row3", im->m_dbg_phone_projection_matrix_offset.m[3], 0.01f);
 
-			ImGui::Spacing(0, 8.0f);
+			ImGui::Spacing(0, 8);
 			ImGui::Separator();
 
 			ImGui::ColorEdit3("Phone Clear Color", &im->m_dbg_phone_clear_hack_color.x, ImGuiColorEditFlags_InputRGB);
 			TT("Color used for the clear hack used on phones");
+
+			ImGui::Spacing(0, 8);
+			if (ImGui::Button("Log Rasterized Phone Draws")) {
+				im->m_dbg_phone_log_draws = true;
+			} TT("Logs shaders, shader constants, textures and render states of the phone draws of the next frame. Needs 'phone_mode' 1 and the phone on screen.");
+
 
 			ImGui::TreePop();
 		}
@@ -1607,6 +1614,35 @@ namespace gta4
 		return result;
 	}
 
+	// items: zero separated list of the combo entries, the integer of the variable is the index of the selected entry
+	bool compsettings_combo_widget(const char* desc, comp_settings::variable& var, const char* items)
+	{
+		const bool colorize = var.get_temp_override_state() || var.get_dirty_state();
+		if (colorize) {
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.4f, 0.15f, 1.0f));
+		}
+
+		ImGui::BeginDisabled(var.get_temp_override_state());
+
+		const auto gs_var_ptr = var.get_as<int*>();
+		const bool result = ImGui::Combo(desc, gs_var_ptr, items);
+
+		if (result) {
+			var.set_dirty(false);
+		}
+
+		TT(var.get_tooltip_string().c_str());
+		compsettings_var_reset_logic(var);
+
+		if (colorize) {
+			ImGui::PopStyleColor();
+		}
+
+		ImGui::EndDisabled();
+
+		return result;
+	}
+
 	bool compsettings_float_widget(const char* desc, comp_settings::variable& var, const float& min = 0.0f, const float& max = 0.0f, const float& speed = 0.02f, const char* fmt = "%.2f")
 	{
 		const bool colorize = var.get_temp_override_state() || var.get_dirty_state();
@@ -1635,7 +1671,7 @@ namespace gta4
 		return result;
 	}
 
-	bool compsettings_vec_widget(const char* desc, comp_settings::variable& var, const int& size, const float& min = 0.0f, const float& max = 0.0f, const float& speed = 0.02f)
+	bool compsettings_vec_widget(const char* desc, comp_settings::variable& var, const int& size, const float& min = 0.0f, const float& max = 0.0f, const float& speed = 0.02f, const char* fmt = "%.2f")
 	{
 		const bool colorize = var.get_temp_override_state() || var.get_dirty_state();
 		if (colorize) {
@@ -1650,18 +1686,18 @@ namespace gta4
 		{
 		case 2:
 			assert(var.get_type() == comp_settings::var_type_vec2 && "Type mismatch: expected vec2");
-			result = ImGui::DragFloat2(desc, cs_var_ptr, speed, min, max, "%.2f", (min != 0.0f || max != 0.0f) ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
+			result = ImGui::DragFloat2(desc, cs_var_ptr, speed, min, max, fmt, (min != 0.0f || max != 0.0f) ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
 			break;
 
 		case 3:
 			assert(var.get_type() == comp_settings::var_type_vec3 && "Type mismatch: expected vec3");
-			result = ImGui::DragFloat3(desc, cs_var_ptr, speed, min, max, "%.2f", (min != 0.0f || max != 0.0f) ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
+			result = ImGui::DragFloat3(desc, cs_var_ptr, speed, min, max, fmt, (min != 0.0f || max != 0.0f) ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
 			break;
 
 		default:
 		case 4:
 			assert(var.get_type() == comp_settings::var_type_vec4 && "Type mismatch: expected vec4");
-			result = ImGui::DragFloat4(desc, cs_var_ptr, speed, min, max, "%.2f", (min != 0.0f || max != 0.0f) ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
+			result = ImGui::DragFloat4(desc, cs_var_ptr, speed, min, max, fmt, (min != 0.0f || max != 0.0f) ? ImGuiSliderFlags_AlwaysClamp : ImGuiSliderFlags_None);
 			break;
 		}
 
@@ -1740,8 +1776,39 @@ namespace gta4
 		ImGui::Widget_CategoryWithVerticalLabel("Effects", [&]()
 			{
 				ImGui::PushID("effects");
-				compsettings_float_widget("GTA_RMPTFX_Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
-				compsettings_bool_widget("GTA_RMPTFX_Litsprite Unlit", gs->gta_rmptfx_litsprite_unlit);
+				compsettings_float_widget("Litsprite Alpha Scalar", gs->gta_rmptfx_litsprite_alpha_scalar, 0.0f, 20.0f);
+				compsettings_bool_widget("Litsprite Unlit", gs->gta_rmptfx_litsprite_unlit);
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Phone", [&]()
+			{
+				ImGui::PushID("phone");
+				compsettings_combo_widget("Phone Mode", gs->phone_mode, "Path Traced\0Rasterized\0Rasterized 2D Overlay\0");
+				compsettings_bool_widget("Hide Weekday", gs->phone_hide_weekday);
+
+				const auto phone_mode = gs->phone_mode.get_as<int>();
+				ImGui::BeginDisabled(phone_mode != 0);
+				{
+					compsettings_bool_widget("Hide Covers over Screen", gs->phone_hide_covers);
+					compsettings_bool_widget("Phone Emissive Override", gs->phone_emissive_override);
+					ImGui::BeginDisabled(!gs->phone_emissive_override.get_as<bool>());
+					{
+						compsettings_float_widget("Phone Emissive Scalar", gs->phone_emissive_scalar, 0.0f, 20.0f);
+						ImGui::EndDisabled();
+					}
+					ImGui::EndDisabled();
+				}
+
+				ImGui::BeginDisabled(phone_mode != 2);
+				{
+					compsettings_vec_widget("Phone Overlay Slide", gs->phone_overlay_slide, 2, -100.0f, 100.0f, 0.0005f, "%.4f");
+					compsettings_float_widget("Phone Overlay Scale", gs->phone_overlay_scale, 0.1f, 3.0f, 0.005f, "%.3f");
+					compsettings_float_widget("Phone Overlay Screen Overlap", gs->phone_overlay_screen_overlap, -20.0f, 20.0f, 0.05f);
+					compsettings_vec_widget("Phone Overlay Screen UV", gs->phone_overlay_screen_uv, 4, -2.0f, 3.0f, 0.001f, "%.3f");
+					ImGui::EndDisabled();
+				}
 				ImGui::PopID();
 			});
 	}
@@ -1761,13 +1828,15 @@ namespace gta4
 				ImGui::EndDisabled();
 
 				compsettings_bool_widget("Peds", gs->api_peds_enabled);
+				const auto widget_width = ImGui::CalcItemWidth();
+				const auto xstart = ImGui::GetCursorPosX();
 				compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
 
-				ImGui::SameLine(0, 30);
-				const auto curr_x = ImGui::GetCursorPosX();
+				ImGui::SameLine(0, 32);
+				const auto xend = ImGui::GetCursorPosX();
 				ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
 				{
-					ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - ImGui::GetCursorPosX() - curr_x);
+					ImGui::SetNextItemWidth(widget_width - xend - xstart + ImGui::CalcTextSize("Wounds Opacity").x - ImGui::GetStyle().ItemSpacing.x);
 					compsettings_float_widget("Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
 					ImGui::EndDisabled();
 				}
@@ -1943,11 +2012,14 @@ namespace gta4
 			ImGui::PopStyleColor();
 			ImGui::PopStyleVar(1);
 
+			ImGui::Unindent(8);
 			ADD_CONTAINER_TAB("General  " ICON_FA_SLIDERS_H, rs_tab_general, "General rendering Settings");
-			ADD_CONTAINER_TAB("Remix API  " ICON_FA_MICROCHIP, rs_tab_remix_api, "What is drawn through the Remix API");
+			ADD_CONTAINER_TAB("API  " ICON_FA_MICROCHIP, rs_tab_remix_api, "What is drawn through the Remix API");
 			ADD_CONTAINER_TAB("Water  " ICON_FA_WATER, rs_tab_water, "Water related Settings");
 			ADD_CONTAINER_TAB("Vehicles  " ICON_FA_CAR, rs_tab_vehicles, "Vehicle related Settings");
-			ADD_CONTAINER_TAB("Foliage / Hair  " ICON_FA_LEAF, rs_tab_foliage_hair, "Foliage and Hair related Settings");
+			ADD_CONTAINER_TAB("Alpha  " ICON_FA_LEAF, rs_tab_foliage_hair, "Foliage and Hair related Settings");
+			ImGui::Indent(8);
+
 			ImGui::EndTabBar();
 		}
 		else
@@ -2204,17 +2276,6 @@ namespace gta4
 		compsettings_bool_widget("Allow Vertex Colors on Emissives", gs->emissive_allow_vertex_colors);
 		compsettings_bool_widget("Allow Vertex Colors on Emissive Alpha", gs->emissive_alpha_allow_vertex_colors);
 
-		ImGui::Spacing(0, inbetween_spacing);
-		ImGui::SeparatorText(" Phone ");
-		ImGui::Spacing(0, 4);
-
-		compsettings_bool_widget("Phone Emissive Override", gs->phone_emissive_override);
-		ImGui::BeginDisabled(!gs->phone_emissive_override.get_as<bool>());
-		{
-			compsettings_float_widget("Phone Emissive Scalar", gs->phone_emissive_scalar, 0.0f, 20.0f);
-			ImGui::EndDisabled();
-		}
-
 		ImGui::Spacing(0, 4);
 	}
 
@@ -2237,8 +2298,8 @@ namespace gta4
 			}
 		}
 
-		ImGui::SameLine(275, 0.0f);
-		if (ImGui::Button(ICON_FA_REDO "   Reload Weather Presets", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+		ImGui::SameLine(0, 32);
+		if (ImGui::Button(ICON_FA_REDO "   Reload Weather Presets", ImVec2(ImGui::GetContentRegionAvail().x - 8, 0))) {
 			remix_vars::parse_and_apply_weather_presets();
 		} TT("Parse and apply all conf files stored in 'rtx_comp/weather_presets/'");
 	}
@@ -2693,24 +2754,43 @@ namespace gta4
 		ImGui::Spacing(0, 6);
 
 		compsettings_bool_widget("Limit Game Quality Sliders", gs->limit_option_sliders);
-
-		ImGui::Spacing(0, 6);
 		remix_atmospheric_toggle();
 
-		ImGui::Spacing(0, 6);
-		compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
-		compsettings_bool_widget("Render Imposter Vehicles", gs->distant_cars_enabled);
-		compsettings_bool_widget("Static Geometry: LOD Cross Fade", gs->api_static_lod_fade);
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("API", [&]()
+			{
+				compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
+				compsettings_bool_widget("Render Imposter Vehicles", gs->distant_cars_enabled);
+				compsettings_bool_widget("Static Geometry: LOD Cross Fade", gs->api_static_lod_fade);
 
-		ImGui::Spacing(0, 6);
-		compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
-		ImGui::SameLine(275, 0);
-		ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
-		{
-			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("Wounds Opacity").x - 8.0f);
-			compsettings_float_widget("Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
-			ImGui::EndDisabled();
-		}
+				ImGui::Spacing(0, 6);
+				const auto widget_width = ImGui::CalcItemWidth();
+				const auto xstart = ImGui::GetCursorPosX();
+				compsettings_bool_widget("Ped Wounds", gs->api_peds_wounds_enabled);
+				
+				ImGui::SameLine(0, 32);
+				const auto xend = ImGui::GetCursorPosX();
+
+				ImGui::BeginDisabled(!gs->api_peds_wounds_enabled.get_as<bool>());
+				{
+					ImGui::SetNextItemWidth(widget_width - xend - xstart + ImGui::CalcTextSize("Wounds Opacity").x - ImGui::GetStyle().ItemSpacing.x);
+					compsettings_float_widget("Wounds Opacity", gs->api_peds_wounds_opacity, 0.0f, 4.0f, 0.01f);
+					ImGui::EndDisabled();
+				}
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		ImGui::Widget_CategoryWithVerticalLabel("Phone", [&]()
+			{
+				ImGui::PushID("phone");
+				compsettings_combo_widget("Phone Mode", gs->phone_mode, "Path Traced\0Rasterized\0Rasterized 2D Overlay\0");
+				ImGui::BeginDisabled(gs->phone_mode._int() != 2);
+				{
+					compsettings_float_widget("Phone Overlay Scale", gs->phone_overlay_scale, 0.1f, 3.0f, 0.005f, "%.3f");
+					ImGui::EndDisabled();
+				}
+				ImGui::PopID();
+			});
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" Version 1.5.X and lower ");

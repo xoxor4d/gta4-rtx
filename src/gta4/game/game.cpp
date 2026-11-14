@@ -125,7 +125,6 @@ namespace gta4::game
 	uint32_t retn_addr__on_instanced_render__post_setup_vs_ps_pass_stub = 0u;
 	uint32_t hk_addr__on_instanced_render__geometry_stub = 0u;
 	uint32_t retn_addr__on_instanced_render__geometry_stub = 0u;
-	uint32_t retn_addr__on_phone_phase_clear_stub = 0u;
 	uint32_t func_addr__on_sky_render_stub = 0u;
 	uint32_t retn_addr__on_sky_render_stub = 0u;
 
@@ -318,6 +317,9 @@ namespace gta4::game
 	uint32_t retn_addr__draw_phonescreen_bg_fix = 0u;
 	uint32_t fn_addr__draw_prim_wrapper = 0u; // for phone screen#
 	uint32_t retn_addr__draw_phonescreen_bg_fix2 = 0u;
+	uint32_t hk_addr__draw_phone_dc_execute = 0u;
+	uint32_t hk_addr__ctext_get_text = 0u;
+	grcRenderTargetPC** ppPhoneScreenRenderTarget = nullptr;
 
 	// --------------
 
@@ -633,10 +635,6 @@ namespace gta4::game
 			retn_addr__on_instanced_render__geometry_stub = offset + 5u;
 		} total_pattern_count++;
 
-
-		if (const auto offset = shared::utils::mem::find_pattern("6A ? 6A ? 51 8B C8 ? ? ? ? ? 6A ? 6A ? 6A ? E8 ? ? ? ? 50", 0, "retn_addr__on_phone_phase_clear_stub", use_pattern, 0x5E164B); offset) {
-			retn_addr__on_phone_phase_clear_stub = offset; found_pattern_count++;
-		} total_pattern_count++;
 
 
 		if (const auto offset = shared::utils::mem::find_pattern("55 8B EC 83 E4 ? A1 ? ? ? ? 81 EC ? ? ? ? C7 80", 0, "func_addr__on_sky_render_stub", use_pattern, 0xDBC170); offset) {
@@ -1062,6 +1060,15 @@ namespace gta4::game
 
 		PATTERN_OFFSET_SIMPLE(retn_addr__draw_phonescreen_bg_fix2, "83 C4 ? E8 ? ? ? ? E9 ? ? ? ? F3 0F 10 44 24", 0, 0x94A1BD);
 
+		// CDrawPhoneDC_NY::ExecuteCommand
+		PATTERN_OFFSET_SIMPLE(hk_addr__draw_phone_dc_execute, "56 8B F1 0F B7 4E 08 F3 0F 10 56 20 8B 0C 8D ? ? ? ? 8D 46 30 50 8D 56 10 E8", 0, 0x5D46F0);
+
+		// CText::getText
+		PATTERN_OFFSET_SIMPLE(hk_addr__ctext_get_text, "83 EC 44 A1 ? ? ? ? 33 C4 89 44 24 40 8B 44 24 48 56 8B F1 85 C0 75 ? E8", 0, 0x8C5BE0);
+
+		// CPhoneMgr::Init: render target "PHONE_SCREEN"
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(ppPhoneScreenRenderTarget, grcRenderTargetPC**, "E8 ? ? ? ? A3 ? ? ? ? 89 04 24 8D 04 24 50", 6, 0x5BF765);
+
 		// end GAME_ASM_OFFSETS
 #pragma endregion
 
@@ -1100,5 +1107,28 @@ namespace gta4::game
 		}
 
 		return reinterpret_cast<game::CRenderPhase_struct*>(*game::pCurrentRenderPhase);
+	}
+
+	/// rage::atStringHash, the hash the engine uses for names (text labels, shader parameters, textures, ...)
+	std::uint32_t rage_hash(const std::string_view str)
+	{
+		std::uint32_t h = 0u;
+		for (auto c : str)
+		{
+			if (c >= 'A' && c <= 'Z') {
+				c = static_cast<char>(c + 32);
+			} else if (c == '\\') {
+				c = '/';
+			}
+
+			h += static_cast<std::uint8_t>(c);
+			h += h << 10;
+			h ^= h >> 6;
+		}
+
+		h += h << 3;
+		h ^= h >> 11;
+		h += h << 15;
+		return h;
 	}
 }

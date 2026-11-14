@@ -1260,10 +1260,23 @@ namespace gta4
 				true
 			};
 
+			// ----------------------------------
+			// general rendering related settings
+
+			variable phone_mode = {
+				"phone_mode",
+				("How the on-screen phone is drawn:\n"
+				 "0 = path traced in front of the camera\n"
+				 "1 = rasterized by the game on top of the path traced frame (like the HUD)\n"
+				 "2 = rasterized 2D overlay: phone screen + frame texture 'rtx_comp/textures/ifruit_frame.png' (no phone mesh)"),
+				"1.7.4",
+				1
+			};
+
 			variable phone_emissive_override = {
 				"phone_emissive_override",
 				("Automatically tags phone related meshes as world-ui and adjusts the emissive scale.\n"
-				 "Emissive intensity can be tweaked via 'phone_emissive_scalar'"),
+				 "Emissive intensity can be tweaked via 'phone_emissive_scalar'. Needs 'phone_mode' 0"),
 				"1.3.0",
 				true
 			};
@@ -1275,8 +1288,53 @@ namespace gta4
 				2.5f
 			};
 
-			// ----------------------------------
-			// general rendering related settings
+			variable phone_hide_weekday = {
+				"phone_hide_weekday",
+				("Hides the day of the week in the status bar of the phone.\n"
+				 "The camera cutout of the frame texture of the 2D phone overlay ('phone_mode' 2) covers it."),
+				"1.7.4",
+				false
+			};
+
+			variable phone_hide_covers = {
+				"phone_hide_covers",
+				("Hides the translucent parts of a phone model that the game draws over its screen, like the clear plastic case of the TLAD phone. Needs 'phone_mode' 0"),
+				"1.7.4",
+				true
+			};
+
+			variable phone_overlay_slide = {
+				"phone_overlay_slide",
+				("The 2D phone overlay slides in and out with the height of the phone model the scripts animate.\n"
+				 "x: model height at which the overlay is fully raised\n"
+				 "y: distance the overlay moves per unit of model height (fraction of the screen height)\n"
+				 "Needs 'phone_mode' 2"),
+				"1.7.4",
+				-11.0f, 0.0123f
+			};
+
+			variable phone_overlay_scale = {
+				"phone_overlay_scale",
+				("Scales the 2D phone overlay (frame and screen). Needs 'phone_mode' 2"),
+				"1.7.4",
+				1.0f
+			};
+
+			variable phone_overlay_screen_overlap = {
+				"phone_overlay_screen_overlap",
+				("Texels of the frame texture the phone screen reaches below the edge of the frame on each side, closes gaps between both. Needs 'phone_mode' 2"),
+				"1.7.4",
+				4.0f
+			};
+
+			variable phone_overlay_screen_uv = {
+				"phone_overlay_screen_uv",
+				("Part of the phone screen render target the 2D phone overlay shows (u0, v0, u1, v1).\n"
+				 "Values outside of 0-1 show the phone UI smaller inside of the frame with black around it.\n"
+				 "Needs 'phone_mode' 2"),
+				"1.7.4",
+				0.001f, 0.001f, 0.999f, 0.999f
+			};
 
 			variable vehicle_dirt_enabled =
 			{

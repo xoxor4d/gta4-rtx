@@ -255,9 +255,6 @@ namespace gta4
 		static stats_s get_stats();
 		static void devgui();
 
-		/// RAGE string hash (rage::atStringHash), used for shader parameter names
-		static std::uint32_t rage_hash(std::string_view str);
-
 	private:
 		static bool try_draw_impl(IDirect3DDevice9* dev, drawcall_mod_context& ctx, D3DPRIMITIVETYPE type, UINT prim_count, const draw_pose_s* pose, std::uint64_t& out_state_key);
 	};

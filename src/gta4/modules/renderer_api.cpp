@@ -3979,28 +3979,6 @@ namespace gta4
 		}
 	}
 
-	std::uint32_t renderer_api::rage_hash(const std::string_view str)
-	{
-		std::uint32_t h = 0u;
-		for (auto c : str)
-		{
-			if (c >= 'A' && c <= 'Z') {
-				c = static_cast<char>(c + 32);
-			} else if (c == '\\') {
-				c = '/';
-			}
-
-			h += static_cast<std::uint8_t>(c);
-			h += h << 10;
-			h ^= h >> 6;
-		}
-
-		h += h << 3;
-		h ^= h >> 11;
-		h += h << 15;
-		return h;
-	}
-
 	bool renderer_api::is_runtime_supported()
 	{
 		const auto& api = shared::common::remix_api::get();
@@ -4474,7 +4452,7 @@ namespace gta4
 		std::uint64_t hash = fnv1a64(bytes.indices, index_bytes);
 		hash = fnv1a64(bytes.vertices, static_cast<std::size_t>(bytes.vertex_count) * bytes.stride, hash);
 		hash = fnv1a64(&bytes.stride, sizeof(bytes.stride), hash);
-		hash ^= static_cast<std::uint64_t>(rage_hash(material->colormap_name)) * 0x9E3779B97F4A7C15ull;
+		hash ^= static_cast<std::uint64_t>(game::rage_hash(material->colormap_name)) * 0x9E3779B97F4A7C15ull;
 		hash ^= (state_key + 0x9E3779B97F4A7C15ull) * 0xBF58476D1CE4E5B9ull;
 
 		const bool flip_winding = state.cull_mode == D3DCULL_CW;

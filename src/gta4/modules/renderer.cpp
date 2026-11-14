@@ -49,6 +49,7 @@ namespace gta4
 		LPDIRECT3DTEXTURE9 veh_light_ems_glass = nullptr;
 		LPDIRECT3DTEXTURE9 berry = nullptr;
 		LPDIRECT3DTEXTURE9 mirror = nullptr;
+		LPDIRECT3DTEXTURE9 phone_frame = nullptr;
 
 		void init_texture_addons(bool release)
 		{
@@ -60,6 +61,7 @@ namespace gta4
 				if (tex_addons::veh_light_ems_glass) tex_addons::veh_light_ems_glass->Release();
 				if (tex_addons::berry) tex_addons::berry->Release();
 				if (tex_addons::mirror) tex_addons::mirror->Release();
+				if (tex_addons::phone_frame) tex_addons::phone_frame->Release();
 				return;
 			}
 
@@ -79,7 +81,459 @@ namespace gta4
 			load_texture(dev, "rtx_comp\\textures\\veh_light_ems_glass.png", &tex_addons::veh_light_ems_glass);
 			load_texture(dev, "rtx_comp\\textures\\berry.png", &tex_addons::berry);
 			load_texture(dev, "rtx_comp\\textures\\mirror.png", &tex_addons::mirror);
+
+			// optional frame of the 2D phone overlay ('phone_mode' 2)
+			if (const char* path = "rtx_comp\\textures\\ifruit_frame.png"; std::filesystem::exists(path))
+			{
+				if (FAILED(D3DXCreateTextureFromFileExA(dev, path, D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT, 0, D3DFMT_A8R8G8B8,
+					D3DPOOL_MANAGED, D3DX_DEFAULT, D3DX_DEFAULT, 0, nullptr, nullptr, &tex_addons::phone_frame)))
+				{
+					shared::common::log("Renderer", std::format("Failed to load {}", path), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
+				}
+			}
+
 			tex_addons::initialized = true;
+		}
+	}
+
+	// On-screen phone. CDrawPhoneDC_NY is the draw command of the phone viewport's render phase and issues every draw of
+	// the phone model. The comp setting 'phone_mode' decides if these draws get path traced, are rasterized by the game
+	// after the remix injection or are replaced by a 2D overlay.
+	namespace phone
+	{
+		enum mode : int
+		{
+			path_traced = 0,
+			rasterized = 1,
+			overlay = 2,
+		};
+
+		DETOUR_TYPEDEF(draw_phone_dc_execute, void, __thiscall, game::CDrawPhoneDC_NY* dc);
+
+		bool rasterizing = false;
+
+		// the screen of the phone was drawn by the draw command that is being executed
+		bool screen_drawn = false;
+
+		// texture stage 1 states a draw of the rasterized phone changes
+		constexpr D3DTEXTURESTAGESTATETYPE STAGE1_STATES[] = { D3DTSS_COLOROP, D3DTSS_COLORARG1, D3DTSS_ALPHAOP, D3DTSS_ALPHAARG1, D3DTSS_ALPHAARG2 };
+		DWORD stage1_saved[std::size(STAGE1_STATES)] = {};
+		bool stage1_changed = false;
+
+		// layout of the frame texture 'rtx_comp/textures/ifruit_frame.png' in texels: the phone body sits inside a padding
+		// that holds its shadow, the screen is a rounded rectangle
+		namespace frame
+		{
+			constexpr float width = 676.0f;
+			constexpr float height = 1431.0f;
+			constexpr float padding = 40.0f;
+			constexpr float body_height = 1351.0f;
+			constexpr float screen_x = 62.0f;
+			constexpr float screen_y = 62.0f;
+			constexpr float screen_width = 552.0f;
+			constexpr float screen_height = 1307.0f;
+			constexpr float screen_corner_radius = 74.0f;
+		}
+
+		// placement of the 2D overlay in fractions of the screen height: height of the phone body and its distance to the
+		// right and bottom edge of the screen
+		constexpr float OVERLAY_BODY_HEIGHT = 0.62f;
+		constexpr float OVERLAY_MARGIN_RIGHT = 0.075f;
+		constexpr float OVERLAY_MARGIN_BOTTOM = 0.025f;
+
+		mode get_mode() {
+			return static_cast<mode>(std::clamp(comp_settings::get()->phone_mode.get_as<int>(), 0, 2));
+		}
+
+		/// Whether the draw of the path traced phone that is about to be issued is left out. The game draws the translucent
+		/// parts of a phone model after its screen, like the clear plastic case of the TLAD phone that covers screen and
+		/// keypad. Path traced they do not look good (comp setting 'phone_hide_covers')
+		bool is_hidden_cover_draw(IDirect3DDevice9* dev)
+		{
+			// the phone is drawn four more times at a quarter of its alpha to soften its edges
+			if (game::pShaderGlobalScalars && game::pShaderGlobalScalars[0] < 1.0f) {
+				return false;
+			}
+
+			if (screen_drawn) {
+				return comp_settings::get()->phone_hide_covers.get_as<bool>();
+			}
+
+			const auto screen = game::ppPhoneScreenRenderTarget ? *game::ppPhoneScreenRenderTarget : nullptr;
+			if (IDirect3DBaseTexture9* tex = nullptr; screen && SUCCEEDED(dev->GetTexture(0, &tex)) && tex)
+			{
+				screen_drawn = tex == screen->d3d_texture;
+				tex->Release();
+			}
+
+			return false;
+		}
+
+		/// Logs the device state of the phone draw that is about to be issued
+		void log_draw(IDirect3DDevice9* dev, const std::string_view& shader_name)
+		{
+			auto rs = [dev](const D3DRENDERSTATETYPE state)
+				{
+					DWORD value = 0;
+					dev->GetRenderState(state, &value);
+					return value;
+				};
+
+			D3DVIEWPORT9 vp = {};
+			dev->GetViewport(&vp);
+
+			D3DSURFACE_DESC rt_desc = {};
+			if (IDirect3DSurface9* rt = nullptr; SUCCEEDED(dev->GetRenderTarget(0, &rt)) && rt)
+			{
+				rt->GetDesc(&rt_desc);
+				rt->Release();
+			}
+
+			D3DSURFACE_DESC tex_desc = {};
+			if (IDirect3DBaseTexture9* base = nullptr; SUCCEEDED(dev->GetTexture(0, &base)) && base)
+			{
+				if (base->GetType() == D3DRTYPE_TEXTURE) {
+					static_cast<IDirect3DTexture9*>(base)->GetLevelDesc(0, &tex_desc);
+				}
+				base->Release();
+			}
+
+			shared::common::log("Phone", std::format("draw: shader {} | target {}x{} format {} | viewport {} {} {} {} | texture {}x{} format {} usage {:#x}",
+				shader_name, rt_desc.Width, rt_desc.Height, static_cast<int>(rt_desc.Format), vp.X, vp.Y, vp.Width, vp.Height,
+				tex_desc.Width, tex_desc.Height, static_cast<int>(tex_desc.Format), tex_desc.Usage));
+
+			shared::common::log("Phone", std::format("  z enable {} write {} func {} | blend {} src {} dest {} | alphatest {} ref {} func {} | colorwrite {:#x} | cull {} | alpha {:.2f}",
+				rs(D3DRS_ZENABLE), rs(D3DRS_ZWRITEENABLE), rs(D3DRS_ZFUNC), rs(D3DRS_ALPHABLENDENABLE), rs(D3DRS_SRCBLEND), rs(D3DRS_DESTBLEND),
+				rs(D3DRS_ALPHATESTENABLE), rs(D3DRS_ALPHAREF), rs(D3DRS_ALPHAFUNC), rs(D3DRS_COLORWRITEENABLE), rs(D3DRS_CULLMODE),
+				game::pShaderGlobalScalars ? game::pShaderGlobalScalars[0] : 1.0f));
+		}
+
+		/// Called for every draw of the rasterized phone before it is issued. The shaders the comp mod ships are made for
+		/// the path traced frame (the forward pixel shaders output the normal and rely on constants nothing sets), so the
+		/// draw is turned into an unlit fixed function draw of the texture at stage 0. The game lights the phone with a
+		/// constant ambient colour, which this comes close to.
+		void begin_rasterized_draw(IDirect3DDevice9* dev)
+		{
+			auto& ctx = renderer::dc_ctx;
+			const bool log = imgui::get()->m_dbg_phone_log_draws;
+
+			// shader and the textures of its pass (slot:name)
+			std::string shader_name;
+			if (log)
+			{
+				shader_name = ctx.info.shader_name;
+				for (std::uint32_t i = 0u; i < ctx.info.pass_texture_count; i++)
+				{
+					const auto& tex = ctx.info.pass_textures[i];
+					shader_name += std::format(" {}:{}", tex.slot, tex.ref && tex.ref->texture_name_no_ext ? tex.ref->texture_name_no_ext : "-");
+				}
+			}
+
+			ctx.restore_all(dev);
+			ctx.reset_context();
+
+			if (log) {
+				log_draw(dev, shader_name);
+			}
+
+			const auto viewport = game::pCurrentViewport;
+			if (!viewport || !viewport->wp) {
+				return;
+			}
+
+			ctx.save_vs(dev);
+			dev->SetVertexShader(nullptr);
+
+			ctx.save_ps(dev);
+			dev->SetPixelShader(nullptr);
+
+			ctx.save_view_transform(dev);
+			ctx.save_projection_transform(dev);
+			dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
+			dev->SetTransform(D3DTS_VIEW, &viewport->wp->view);
+			dev->SetTransform(D3DTS_PROJECTION, &viewport->wp->proj);
+
+			ctx.save_rs(dev, D3DRS_LIGHTING);
+			dev->SetRenderState(D3DRS_LIGHTING, FALSE);
+
+			ctx.save_rs(dev, D3DRS_FOGENABLE);
+			dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+
+			// the alpha the game fades the draw with (the phone is drawn four more times at a quarter to soften its edges)
+			const float alpha = game::pShaderGlobalScalars ? std::clamp(game::pShaderGlobalScalars[0], 0.0f, 1.0f) : 1.0f;
+
+			ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1.0f, 1.0f, 1.0f, alpha));
+
+			ctx.save_tss(dev, D3DTSS_COLOROP);
+			dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+
+			ctx.save_tss(dev, D3DTSS_COLORARG1);
+			dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+			// alpha like the game's shaders: texture * vertex colour * fade
+			ctx.save_tss(dev, D3DTSS_ALPHAOP);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+			ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+
+			ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+
+			for (std::size_t i = 0; i < std::size(STAGE1_STATES); i++) {
+				dev->GetTextureStageState(1, STAGE1_STATES[i], &stage1_saved[i]);
+			}
+
+			stage1_changed = true;
+			dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+			dev->SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
+			dev->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+			dev->SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+			dev->SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+		}
+
+		/// Called after a draw of the rasterized phone was issued: the game's cached device state is truthful again
+		void end_rasterized_draw(IDirect3DDevice9* dev)
+		{
+			auto& ctx = renderer::dc_ctx;
+			ctx.restore_all(dev);
+			ctx.reset_context();
+
+			if (stage1_changed)
+			{
+				for (std::size_t i = 0; i < std::size(STAGE1_STATES); i++) {
+					dev->SetTextureStageState(1, STAGE1_STATES[i], stage1_saved[i]);
+				}
+
+				stage1_changed = false;
+			}
+		}
+
+		/// Draws the phone screen render target and the frame texture on top of it as a screen space overlay at the right
+		/// edge of the screen. The overlay follows the height of the phone model so it slides in and out with it.
+		void draw_overlay(IDirect3DDevice9* dev, const game::CDrawPhoneDC_NY* dc)
+		{
+			static auto gs = comp_settings::get();
+
+			const auto screen = game::ppPhoneScreenRenderTarget ? *game::ppPhoneScreenRenderTarget : nullptr;
+			if (!screen || !screen->d3d_texture) {
+				return;
+			}
+
+			D3DSURFACE_DESC rt_desc = {};
+			if (IDirect3DSurface9* rt = nullptr; SUCCEEDED(dev->GetRenderTarget(0, &rt)) && rt)
+			{
+				rt->GetDesc(&rt_desc);
+				rt->Release();
+			}
+
+			if (!rt_desc.Width || !rt_desc.Height) {
+				return;
+			}
+
+			const auto uv = gs->phone_overlay_screen_uv.get_as<Vector4D>();
+			const auto slide = gs->phone_overlay_slide.get_as<Vector2D>();
+
+			const float rt_width = static_cast<float>(rt_desc.Width);
+			const float rt_height = static_cast<float>(rt_desc.Height);
+
+			// pixels per texel of the frame texture
+			const float scale = OVERLAY_BODY_HEIGHT * gs->phone_overlay_scale.get_as<float>() * rt_height / frame::body_height;
+
+			const float body_right = rt_width - OVERLAY_MARGIN_RIGHT * rt_height;
+			const float body_bottom = (1.0f - OVERLAY_MARGIN_BOTTOM) * rt_height + (slide.x - dc->pos.y) * slide.y * rt_height;
+			const float frame_x = body_right + (frame::padding - frame::width) * scale;
+			const float frame_y = body_bottom + (frame::padding - frame::height) * scale;
+
+			IDirect3DStateBlock9* state = nullptr;
+			dev->CreateStateBlock(D3DSBT_ALL, &state);
+
+			// the phase leaves its viewport (the lower right part of the screen) on the device
+			const D3DVIEWPORT9 vp = { 0, 0, rt_desc.Width, rt_desc.Height, 0.0f, 1.0f };
+			dev->SetViewport(&vp);
+
+			dev->SetVertexShader(nullptr);
+			dev->SetPixelShader(nullptr);
+			dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+
+			dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+			dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+			dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+			dev->SetRenderState(D3DRS_LIGHTING, FALSE);
+			dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+			dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+			dev->SetRenderState(D3DRS_STENCILENABLE, FALSE);
+			dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+			dev->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
+			dev->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+			dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+			dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+			dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+			dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+			dev->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
+			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+			dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+			dev->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+
+			dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+			dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+			dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
+			dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, FALSE);
+
+			struct CUSTOMVERTEX
+			{
+				float x, y, z, rhw;
+				float u, v;
+			};
+
+			// the screen: an opaque rounded rectangle as a triangle fan around its center. Texture coordinates outside of
+			// the render target are black, so a larger uv range shows the phone UI smaller inside of the frame
+			dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_BORDER);
+			dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_BORDER);
+			dev->SetSamplerState(0, D3DSAMP_BORDERCOLOR, D3DCOLOR_XRGB(0, 0, 0));
+			{
+				constexpr int CORNER_SEGMENTS = 16;
+				constexpr float DEG_TO_RAD = 3.14159265f / 180.0f;
+
+				// area of the frame the texture coordinates are laid out on
+				const float uv_x = frame_x + frame::screen_x * scale;
+				const float uv_y = frame_y + frame::screen_y * scale;
+				const float uv_w = frame::screen_width * scale;
+				const float uv_h = frame::screen_height * scale;
+
+				// the screen is drawn larger so that it reaches below the antialiased edge of the frame
+				const float overlap = tex_addons::phone_frame ? gs->phone_overlay_screen_overlap.get_as<float>() * scale : 0.0f;
+				const float x = uv_x - overlap;
+				const float y = uv_y - overlap;
+				const float w = uv_w + overlap * 2.0f;
+				const float h = uv_h + overlap * 2.0f;
+				const float radius = frame::screen_corner_radius * scale + overlap;
+
+				CUSTOMVERTEX vertices[2 + 4 * (CORNER_SEGMENTS + 1)];
+				int count = 0;
+
+				auto add_vertex = [&](const float vx, const float vy)
+					{
+						vertices[count++] = { vx - 0.5f, vy - 0.5f, 0.0f, 1.0f, uv.x + (uv.z - uv.x) * (vx - uv_x) / uv_w, uv.y + (uv.w - uv.y) * (vy - uv_y) / uv_h };
+					};
+
+				add_vertex(x + w * 0.5f, y + h * 0.5f);
+
+				// centers of the corner arcs: top right, top left, bottom left, bottom right
+				const float arc_x[4] = { x + w - radius, x + radius, x + radius, x + w - radius };
+				const float arc_y[4] = { y + radius, y + radius, y + h - radius, y + h - radius };
+
+				for (int corner = 0; corner < 4; corner++)
+				{
+					for (int segment = 0; segment <= CORNER_SEGMENTS; segment++)
+					{
+						const float angle = (static_cast<float>(corner) * 90.0f + static_cast<float>(segment) * (90.0f / CORNER_SEGMENTS)) * DEG_TO_RAD;
+						add_vertex(arc_x[corner] + radius * std::cos(angle), arc_y[corner] - radius * std::sin(angle));
+					}
+				}
+
+				vertices[count++] = vertices[1];
+
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+				dev->SetTexture(0, screen->d3d_texture);
+				dev->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, count - 2, vertices, sizeof(CUSTOMVERTEX));
+			}
+
+			// the frame on top of the screen brings the edge of the phone and its shadow
+			if (tex_addons::phone_frame)
+			{
+				dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+				dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+
+				const float w = frame::width * scale;
+				const float h = frame::height * scale;
+
+				const CUSTOMVERTEX vertices[] =
+				{
+					{ frame_x - 0.5f,     frame_y - 0.5f,     0.0f, 1.0f, 0.0f, 0.0f }, // tl
+					{ frame_x + w - 0.5f, frame_y - 0.5f,     0.0f, 1.0f, 1.0f, 0.0f }, // tr
+					{ frame_x - 0.5f,     frame_y + h - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f }, // bl
+					{ frame_x + w - 0.5f, frame_y + h - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f }  // br
+				};
+
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+				dev->SetTexture(0, tex_addons::phone_frame);
+				dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(CUSTOMVERTEX));
+			}
+
+			if (state)
+			{
+				state->Apply();
+				state->Release();
+			}
+		}
+
+		DETOUR_TYPEDEF(ctext_get_text, wchar_t*, __thiscall, void* text, const char* label);
+
+		/// Detour of CText::getText, the lookup of the text the scripts draw: with the comp setting 'phone_hide_weekday'
+		/// the labels of the weekday in the status bar of the phone resolve to an empty text while the phone is up
+		wchar_t* __fastcall ctext_get_text_hk(void* text, [[maybe_unused]] void* fastcall, const char* label)
+		{
+			if (label && game::m_bMobilePhoneActive && *game::m_bMobilePhoneActive && comp_settings::get()->phone_hide_weekday.get_as<bool>())
+			{
+				switch (game::rage_hash(label))
+				{
+				case 0x936E8587: // SUN
+				case 0xA1472138: // MON
+				case 0x79F2528F: // TUE
+				case 0x90957FD5: // WED
+				case 0x5C9317D1: // THUR
+				case 0x6A41B32E: // FRI
+				case 0x27042CB4: // SAT
+				{
+					static wchar_t empty[2] = {};
+					return empty;
+				}
+
+				default:
+					break;
+				}
+			}
+
+			return ctext_get_text_og(text, label);
+		}
+
+		/// Detour of CDrawPhoneDC_NY::ExecuteCommand (render thread)
+		void __fastcall draw_phone_dc_execute_hk(game::CDrawPhoneDC_NY* dc, [[maybe_unused]] void* fastcall)
+		{
+			g_was_rendering_phone_last_frame = true;
+			g_was_rendering_phone_last_frame_delay_reset_helper = false; // reset helper if phone was drawn this frame
+
+			const auto phone_mode = get_mode();
+			if (phone_mode == mode::path_traced)
+			{
+				g_is_rendering_phone = true;
+				screen_drawn = false;
+				draw_phone_dc_execute_og(dc);
+				g_is_rendering_phone = false;
+				return;
+			}
+
+			// everything drawn after the injection is rasterized on top of the path traced frame
+			const auto dev = shared::globals::d3d_device;
+			renderer::get()->manually_trigger_remix_injection(dev);
+
+			// the game centers the phone model for its camera view, which the overlay has no layout for: the model is drawn then
+			if (phone_mode == mode::overlay && std::fabs(dc->pos.x) >= 0.5f)
+			{
+				draw_overlay(dev, dc);
+				return;
+			}
+
+			rasterizing = true;
+			draw_phone_dc_execute_og(dc);
+			rasterizing = false;
+
+			imgui::get()->m_dbg_phone_log_draws = false;
 		}
 	}
 
@@ -1540,6 +1994,14 @@ namespace gta4
 			return dev->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 		}
 
+		if (phone::rasterizing)
+		{
+			phone::begin_rasterized_draw(dev);
+			const auto hr = dev->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+			phone::end_rasterized_draw(dev);
+			return hr;
+		}
+
 		static auto im = imgui::get();
 		static auto gs = comp_settings::get();
 
@@ -1847,6 +2309,14 @@ namespace gta4
 	{
 		if (!is_initialized() || shared::globals::imgui_is_rendering) {
 			return dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+		}
+
+		if (phone::rasterizing)
+		{
+			phone::begin_rasterized_draw(dev);
+			const auto hr = dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+			phone::end_rasterized_draw(dev);
+			return hr;
 		}
 
 		GTA4_PERF_SCOPE(performance_section::DrawIndexedPrim);
@@ -2443,6 +2913,10 @@ namespace gta4
 			{
 				ctx.restore_vs(dev);
 				render_with_ff = false;
+
+				if (phone::is_hidden_cover_draw(dev)) {
+					ctx.modifiers.do_not_render = true;
+				}
 
 				if (viewport && viewport->wp)
 				{
@@ -3329,16 +3803,6 @@ namespace gta4
 		}
 	}
 
-	__declspec (naked) void on_phone_phase_clear_stub()
-	{
-		static float custom_z_marker = 0.1337f;
-		__asm
-		{
-			movss   xmm0, dword ptr[custom_z_marker];
-			jmp		game::retn_addr__on_phone_phase_clear_stub;
-		}
-	}
-
 	// ---
 
 	void post_render_sky()
@@ -3605,15 +4069,15 @@ namespace gta4
 	// Render thread draw command queued by scene_render_3d_markers_hk. Runs after the last 3D draw of the scene phase
 	// (postfx, then the 3D mission markers) and before the game's 2D drawing (HUD, radar, scripted text): issues the quad
 	// that makes remix inject (manually_trigger_remix_injection).
-	// The phone model is drawn later and has to stay raytraced. With the phone up only the api geometry is flushed, so the
-	// world is part of the frame no matter which 2D draw makes remix inject.
+	// A path traced phone model is drawn later and has to stay raytraced. With that phone up only the api geometry is flushed,
+	// so the world is part of the frame no matter which 2D draw makes remix inject.
 	void scene_end_inject_dc()
 	{
 		if (!game::is_in_game || imgui::get()->m_dbg_disable_scene_injection) {
 			return;
 		}
 
-		if (*game::m_bMobilePhoneActive)
+		if (*game::m_bMobilePhoneActive && phone::get_mode() == phone::mode::path_traced)
 		{
 			renderer_api::on_before_injection();
 			return;
@@ -3884,10 +4348,11 @@ namespace gta4
 		shared::utils::hook(game::hk_addr__on_instanced_render__post_setup_vs_ps_pass_stub, on_instanced_render__post_setup_vs_ps_pass_stub, HOOK_JUMP).install()->quick();
 		shared::utils::hook(game::hk_addr__on_instanced_render__geometry_stub, on_instanced_render__geometry_stub, HOOK_JUMP).install()->quick(); // 0x69ED83
 
-		// detecting phone rendering is tricky - modify Z argument of 'clear' drawlist-command to 1.337
-		// check all clears in 'd3d9ex::D3D9Device::Clear' for modified Z arg -> assume phone rendering
-		// until next clear is called (phone gets rendered to another rendertarget)
-		shared::utils::hook(game::retn_addr__on_phone_phase_clear_stub - 5u, on_phone_phase_clear_stub, HOOK_JUMP).install()->quick(); // 0x5E1646
+		// detect phone rendering - CDrawPhoneDC_NY::ExecuteCommand issues the draws of the on-screen phone
+		shared::utils::hook::detour(game::hk_addr__draw_phone_dc_execute, &phone::draw_phone_dc_execute_hk, DETOUR_CAST(phone::draw_phone_dc_execute_og)); // 0x5D46F0
+
+		// text lookup of the scripts - hides the weekday in the status bar of the phone
+		shared::utils::hook::detour(game::hk_addr__ctext_get_text, &phone::ctext_get_text_hk, DETOUR_CAST(phone::ctext_get_text_og)); // 0x8C5BE0
 
 		// detect sky rendering
 		shared::utils::hook(game::retn_addr__on_sky_render_stub - 5u, on_sky_render_stub, HOOK_JUMP).install()->quick(); // C107C9

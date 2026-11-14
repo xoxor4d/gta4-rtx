@@ -793,6 +793,31 @@ namespace gta4::game
 		char pad_0x0024[0x2C]; //0x0024
 	}; //Size=0x0050
 
+	struct grcRenderTargetPC
+	{
+		char pad_0x0000[0x34]; //0x0000
+		IDirect3DTexture9* d3d_texture; //0x0034
+		IDirect3DSurface9* d3d_surface; //0x0038
+		std::uint16_t width; //0x003C
+		std::uint16_t height; //0x003E
+	};
+	STATIC_ASSERT_OFFSET(grcRenderTargetPC, d3d_texture, 0x34);
+
+	struct CDrawPhoneDC_NY
+	{
+		void* vtbl; //0x0000
+		char pad_0x0004[0x4]; //0x0004
+		std::uint16_t model_index; //0x0008
+		char pad_0x000A[0x6]; //0x000A
+		Vector pos; //0x0010
+		char pad_0x001C[0x4]; //0x001C
+		float scale; //0x0020
+		char pad_0x0024[0xC]; //0x0024
+		Vector angles; //0x0030
+	};
+	STATIC_ASSERT_OFFSET(CDrawPhoneDC_NY, scale, 0x20);
+	STATIC_ASSERT_OFFSET(CDrawPhoneDC_NY, angles, 0x30);
+
 	struct grcTextureReference_vtbl
 	{
 		void* unk1;
