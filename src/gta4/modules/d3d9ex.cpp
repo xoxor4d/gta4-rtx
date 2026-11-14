@@ -405,13 +405,6 @@ namespace gta4
 	HRESULT d3d9ex::D3D9Device::Clear(DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
 	{
 		PROFILE_ZONE();
-		g_is_rendering_phone = shared::utils::float_equal(Z, 0.1337f);
-
-		if (g_is_rendering_phone) 
-		{
-			g_was_rendering_phone_last_frame = true;
-			g_was_rendering_phone_last_frame_delay_reset_helper = false; // reset helper if phone was drawn this frame
-		}
 
 		/*if (imgui::is_initialized())
 		{

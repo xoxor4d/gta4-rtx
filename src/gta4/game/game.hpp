@@ -153,7 +153,6 @@ namespace gta4::game
 	extern uint32_t retn_addr__on_instanced_render__post_setup_vs_ps_pass_stub;
 	extern uint32_t hk_addr__on_instanced_render__geometry_stub;
 	extern uint32_t retn_addr__on_instanced_render__geometry_stub;
-	extern uint32_t retn_addr__on_phone_phase_clear_stub;
 	extern uint32_t func_addr__on_sky_render_stub;
 	extern uint32_t retn_addr__on_sky_render_stub;
 
@@ -351,6 +350,9 @@ namespace gta4::game
 	extern uint32_t retn_addr__draw_phonescreen_bg_fix;
 	extern uint32_t fn_addr__draw_prim_wrapper;
 	extern uint32_t retn_addr__draw_phonescreen_bg_fix2;
+	extern uint32_t hk_addr__draw_phone_dc_execute;
+	extern uint32_t hk_addr__ctext_get_text;
+	extern grcRenderTargetPC** ppPhoneScreenRenderTarget;
 
 	// ---
 
@@ -358,4 +360,5 @@ namespace gta4::game
 
 	extern grmShaderInfo_Parameter* getGlobalShaderInfoParam(const char* name);
 	extern CRenderPhase_struct* get_current_renderphase();
+	extern std::uint32_t rage_hash(std::string_view str);
 }

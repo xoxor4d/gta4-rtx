@@ -273,10 +273,18 @@ namespace gta4
 				ASSIGN(emissive_alpha_blend_hack_scale);
 				ASSIGN(emissive_allow_vertex_colors);
 				ASSIGN(emissive_alpha_allow_vertex_colors);
-				ASSIGN(phone_emissive_override);
-				ASSIGN(phone_emissive_scalar);
 
 				// general rendering related settings
+				ASSIGN(phone_mode);
+				ASSIGN(phone_emissive_override);
+				ASSIGN(phone_emissive_scalar);
+				ASSIGN(phone_hide_weekday);
+				ASSIGN(phone_hide_covers);
+				ASSIGN(phone_overlay_slide);
+				ASSIGN(phone_overlay_scale);
+				ASSIGN(phone_overlay_screen_overlap);
+				ASSIGN(phone_overlay_screen_uv);
+
 				ASSIGN(vehicle_dirt_enabled);
 				ASSIGN(vehicle_dirt_custom_color_enabled);
 				ASSIGN(vehicle_dirt_custom_color);
