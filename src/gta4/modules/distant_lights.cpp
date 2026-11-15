@@ -19,8 +19,10 @@ namespace gta4
 
 		constexpr std::uint32_t SPRITE_STRIDE = 4u;      // float4 positions
 		constexpr std::uint32_t CAR_RECORD_FLOATS = 20u; // three rotation rows, position, colour (float4 each)
+		constexpr std::uint32_t CAR_RECORD_POSITION = 12u;
+		constexpr std::uint32_t CAR_RECORD_COLOR = 16u;
+		constexpr std::uint32_t CAR_RECORD_FADE = 19u;   // the game's distance fade: 0 up to 250 units, 1 from 325 units on
 		constexpr int CAR_MODELS = 3;                    // day: string type % 3 picks the model, night: model 0
-		constexpr float FADE_STEPS = 8.0f;
 
 		// api material of a game texture; the handle is the hash, so two hashes alternate and the replaced one lives
 		// until the last mesh using it is destroyed
@@ -662,8 +664,7 @@ namespace gta4
 		}
 
 		// the colour of every car rides in the texture factor (the instanced shader multiplies it in), the model's vertex
-		// colours stay out of it. No alpha at all: the game's distance fade would make the opaque day cars disappear, so it
-		// scales the brightness of the night headlights instead
+		// colours stay out of it. No alpha at all: the game's distance fade is dithered by the runtime instead
 		auto blend = renderer_api::capture_blend(dev);
 		blend.textureColorOperation = TEXTURE_OP_SELECT_ARG1;
 		blend.textureColorArg1Source = TEXTURE_ARG_TEXTURE;
@@ -684,7 +685,6 @@ namespace gta4
 		if (c.night && !c.green) {
 			set_emissive_scale(overrides, gs->api_distant_cars_emissive_scale.get_as<float>());
 		}
-		blend.pNext = &overrides;
 
 		remixapi_InstanceInfo instance = {};
 		instance.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO;
@@ -696,9 +696,16 @@ namespace gta4
 		const auto& bridge = shared::common::remix_api::get().m_bridge;
 		renderer_api::submit_camera();
 
+		const bool fade = gs->api_distant_cars_fade.get_as<bool>();
+
 		for (int i = 0; i < c.count; i++)
 		{
 			const float* rec = c.records + static_cast<std::size_t>(i) * CAR_RECORD_FLOATS;
+
+			const auto opacity = fade ? static_cast<std::uint8_t>(std::lround(std::clamp(rec[CAR_RECORD_FADE], 0.0f, 1.0f) * 255.0f)) : std::uint8_t{ 255u };
+			if (!opacity) {
+				continue;
+			}
 
 			// rows are the basis vectors (row vector convention), the api transform wants them as columns
 			for (auto r = 0; r < 3; r++)
@@ -706,18 +713,16 @@ namespace gta4
 				for (auto col = 0; col < 3; col++) {
 					instance.transform.matrix[r][col] = rec[col * 4 + r];
 				}
-				instance.transform.matrix[r][3] = rec[12 + r];
+				instance.transform.matrix[r][3] = rec[CAR_RECORD_POSITION + r];
 			}
 
-			// the texture factor is part of the material hash the runtime matches instances with between frames (motion
-			// vectors), so the night fade is quantized: a car only re-matches as a new instance when it crosses a step
-			const float fade = c.night ? std::round(std::clamp(rec[19], 0.0f, 1.0f) * FADE_STEPS) / FADE_STEPS : 1.0f;
-			const float rgb[3] = { rec[16] * fade, rec[17] * fade, rec[18] * fade };
-			blend.tFactor = pack_color(rgb, 1.0f);
+			auto instance_overrides =renderer_api::with_lod_fade(overrides, opacity);
+			blend.pNext = &instance_overrides;
+			blend.tFactor = pack_color(rec + CAR_RECORD_COLOR, 1.0f);
 			bridge.DrawInstance(&instance);
+			c.instances++;
 		}
 
-		c.instances += static_cast<std::uint32_t>(c.count);
 		c.drawn = true;
 		return true;
 	}

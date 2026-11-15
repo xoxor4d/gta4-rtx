@@ -1870,6 +1870,7 @@ namespace gta4
 				compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
 
 				ImGui::BeginDisabled(!gs->api_distant_cars_enabled.get_as<bool>());
+				compsettings_bool_widget("Fake Distant Cars: Distance Fade", gs->api_distant_cars_fade);
 				compsettings_float_widget("Headlight Emissive Scale", gs->api_distant_cars_emissive_scale, 0.0f, 50.0f, 0.01f);
 				ImGui::EndDisabled();
 				ImGui::PopID();
@@ -2765,7 +2766,8 @@ namespace gta4
 		ImGui::Widget_CategoryWithVerticalLabel("API", [&]()
 			{
 				compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
-				compsettings_bool_widget("Render Imposter Vehicles", gs->api_distant_cars_enabled);
+				compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
+				compsettings_bool_widget("Fake Distant Cars: Distance Fade", gs->api_distant_cars_fade);
 				compsettings_bool_widget("Static Geometry: LOD Cross Fade", gs->api_static_lod_fade);
 
 				ImGui::Spacing(0, 6);

@@ -327,6 +327,7 @@ namespace gta4
 				ASSIGN(distant_lights_enabled);
 				ASSIGN(api_distant_lights_enabled);
 				ASSIGN(api_distant_cars_enabled);
+				ASSIGN(api_distant_cars_fade);
 				ASSIGN(api_distant_lights_emissive_scale);
 				ASSIGN(api_distant_cars_emissive_scale);
 				ASSIGN(api_distant_lights_size_scale);

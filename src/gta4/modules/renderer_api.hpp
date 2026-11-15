@@ -247,6 +247,10 @@ namespace gta4
 		/// blend ext from the live alpha / blend / texture stage state of the device (what the D3D9 draw would get)
 		static remixapi_InstanceInfoBlendEXT capture_blend(IDirect3DDevice9* dev, bool* out_double_sided = nullptr);
 
+		/// overrides that make the runtime dither an instance by an opacity (rtx.lodFade.*): 0 draws nothing, 255 leaves the
+		/// overrides as they are
+		static remixapi_InstanceInfoD3DOverridesEXT with_lod_fade(const remixapi_InstanceInfoD3DOverridesEXT& overrides, std::uint8_t opacity);
+
 		/// rigid api mesh from the geometry bound for the current indexed draw (stream 0, indices, vertex declaration)
 		/// @return nullptr when the buffers can not be read or the vertex format is not usable (out_reason says why)
 		static remixapi_MeshHandle create_mesh_from_bound_draw(IDirect3DDevice9* dev, INT base_vertex, UINT min_index, UINT num_vertices, UINT start_index, UINT prim_count,

@@ -1663,6 +1663,16 @@ namespace gta4
 				true
 			};
 
+			variable api_distant_cars_fade =
+			{
+				"api_distant_cars_fade",
+				("The game fades the fake distant cars in over distance (hidden up to 250 units, fully visible from 325 units on):\n"
+				 "the runtime dithers the cars by that fade (rtx.lodFade.*).\n"
+				 "Off draws every car the game emits (from 150 units on) without a fade."),
+				"1.7.4",
+				true
+			};
+
 			variable api_distant_lights_emissive_scale =
 			{
 				"api_distant_lights_emissive_scale",

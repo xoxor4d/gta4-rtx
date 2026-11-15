@@ -4625,6 +4625,10 @@ namespace gta4
 		cache::submit_camera_once();
 	}
 
+	remixapi_InstanceInfoD3DOverridesEXT renderer_api::with_lod_fade(const remixapi_InstanceInfoD3DOverridesEXT& overrides, const std::uint8_t opacity) {
+		return convert::with_lod_fade(overrides, opacity);
+	}
+
 	remixapi_InstanceInfoBlendEXT renderer_api::capture_blend(IDirect3DDevice9* dev, bool* out_double_sided)
 	{
 		const auto state = convert::capture_draw_state(dev);
