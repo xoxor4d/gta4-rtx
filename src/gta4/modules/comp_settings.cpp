@@ -186,6 +186,9 @@ namespace gta4
 				ASSIGN(api_peds_wounds_opacity);
 				ASSIGN(api_peds_skip_pass_setup);
 				ASSIGN(api_vehicles_enabled);
+				ASSIGN(api_vehicle_lights_enabled);
+				ASSIGN(api_vehicle_lights_emissive_scale);
+				ASSIGN(api_vehicle_lights_decal);
 				ASSIGN(remix_override_rtxdi_samplecount);
 				ASSIGN(remix_var_queue_frame_timeout);
 				ASSIGN(unpin_main_thread);
@@ -265,7 +268,6 @@ namespace gta4
 				
 				// emissive related settings
 				ASSIGN(vehicle_lights_emissive_scalar);
-				ASSIGN(vehicle_lights_dual_render_proxy_texture);
 				ASSIGN(emissive_night_surfaces_emissive_scalar);
 				ASSIGN(emissive_surfaces_emissive_scalar);
 				ASSIGN(emissive_strong_surfaces_emissive_scalar);

@@ -626,6 +626,7 @@ namespace gta4
 			int vs_damage_sampler = -1;
 			int vs_wheel_transform_register = -1; // matWheelTransform of the tyre shader
 			int vs_tyre_deform_register = -1;     // tyreDeformSwitchOn (flat tyre)
+			int vs_dimmer_set_register = -1;      // dimmerSet of gta_vehicle_lightsemissive (brightness per light)
 
 			// DrawIndexedPrimitive range of the current draw (the runtime's geometry hash of the D3D9 draw depends on it)
 			INT draw_base_vertex = 0;
@@ -690,6 +691,7 @@ namespace gta4
 				vs_damage_sampler = -1;
 				vs_wheel_transform_register = -1;
 				vs_tyre_deform_register = -1;
+				vs_dimmer_set_register = -1;
 				draw_base_vertex = 0;
 				draw_start_index = 0u;
 			}

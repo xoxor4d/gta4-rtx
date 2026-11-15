@@ -1842,6 +1842,13 @@ namespace gta4
 				}
 				
 				compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
+
+				ImGui::BeginDisabled(!gs->api_vehicles_enabled.get_as<bool>());
+				{
+					compsettings_bool_widget("Vehicle Lights", gs->api_vehicle_lights_enabled);
+					compsettings_float_widget("Vehicle Lights Emissive Scale", gs->api_vehicle_lights_emissive_scale, 0.0f, 100.0f, 0.005f, "%.3f");
+					ImGui::EndDisabled();
+				}
 				ImGui::PopID();
 			});
 
@@ -2255,8 +2262,6 @@ namespace gta4
 		ImGui::Spacing(0, 4);
 
 		compsettings_float_widget("Vehicle Light Emissive Scalar", gs->vehicle_lights_emissive_scalar, 0.0f, 0.0f, 0.005f, "%.3f");
-
-		compsettings_bool_widget("Render Surfs a Second Time with Proxy Texture", gs->vehicle_lights_dual_render_proxy_texture);
 
 		ImGui::Spacing(0, inbetween_spacing);
 		ImGui::SeparatorText(" World ");
@@ -2978,6 +2983,12 @@ namespace gta4
 		compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
 		ImGui::SameLine(half_width_x);
 		compsettings_bool_widget("Peds", gs->api_peds_enabled);
+
+		ImGui::BeginDisabled(!gs->api_vehicles_enabled.get_as<bool>());
+		{
+			compsettings_bool_widget("Vehicle Lights", gs->api_vehicle_lights_enabled);
+			ImGui::EndDisabled();
+		}
 
 		// no need to have imposter vehicles / distant light sprites in here
 

@@ -629,9 +629,34 @@ namespace gta4
 			variable api_vehicles_enabled = {
 				"api_vehicles_enabled",
 				("Render vehicles through the Remix API (needs 'api_static_enabled'). Their bones come from every draw, damage is\n"
-				 "applied on the CPU like the vertex shader does (a mesh per damage state). Tyres and light proxies keep the vertex shader path."),
+				 "applied on the CPU like the vertex shader does (a mesh per damage state)."),
 				"1.7.0",
 				true
+			};
+
+			variable api_vehicle_lights_enabled = {
+				"api_vehicle_lights_enabled",
+				("Render the emissive surfaces of vehicle lights through the Remix API (needs 'api_vehicles_enabled'). Every light of a\n"
+				 "light mesh becomes its own additive instance that is only drawn while the game has that light switched on.\n"
+				 "Off keeps vehicle lights on the vertex shader path."),
+				"1.7.0",
+				true
+			};
+
+			variable api_vehicle_lights_emissive_scale = {
+				"api_vehicle_lights_emissive_scale",
+				("Scales the emissive strength of vehicle lights drawn through the Remix API\n"
+				 "(< gta4 emissiveMultiplier >  *  < vehicle_lights_emissive_scalar >  *  < this scalar >)"),
+				"1.7.0",
+				1.0f
+			};
+
+			variable api_vehicle_lights_decal = {
+				"api_vehicle_lights_decal",
+				("Tag the emissive surfaces of vehicle lights drawn through the Remix API as decals.\n"
+				 "They sit exactly on the unlit light mesh; enable if they flicker against it."),
+				"1.7.0",
+				false
 			};
 
 			variable remix_override_rtxdi_samplecount = {
@@ -1189,15 +1214,6 @@ namespace gta4
 				"(< gta4 emissiveMultiplier shader constant >  *  < this scalar >  *  < remix material setting >  *  < global remix emissive setting >)"),
 				"1.3.0",
 				13.0f
-			};
-
-			variable vehicle_lights_dual_render_proxy_texture =
-			{
-				"vehicle_lights_dual_render_proxy_texture",
-				("This renders surfaces using the 'gta_vehicle_lightsemissive' shader a second time using a proxy texture (veh_light_ems_glass.png).\n"
-				"The remix-mod of the compatibility mod makes that surface translucent."),
-				"1.3.0",
-				false
 			};
 
 			variable emissive_night_surfaces_emissive_scalar =

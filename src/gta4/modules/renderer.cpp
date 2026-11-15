@@ -1388,6 +1388,9 @@ namespace gta4
 							else if (entry_hash == 0xA8A03862 /*matWheelTransform*/) {
 								ctx.info.vs_wheel_transform_register = static_cast<int>(register_num);
 							}
+							else if (g_is_rendering_vehicle && entry_hash == 0x5ACBE867 /*dimmerSet*/) {
+								ctx.info.vs_dimmer_set_register = static_cast<int>(register_num);
+							}
 
 							game_device->SetVertexShaderConstantF(register_num, constant_data_struct->constants[dataPoolIndex].float_arr, float_count * game::pShaderConstFloatCountMap[type]);
 						}
@@ -1586,14 +1589,6 @@ namespace gta4
 
 										//renderer::set_remix_modifier(shared::globals::d3d_device, RemixModifier::RemoveVertexColorKeepAlpha);
 										//set_remix_modifier(shared::globals::d3d_device, ctx, RemixModifier::EnableVertexColor); // required when 'isVertexColorBakedLighting' is turned on
-
-										/*if (gs->vehicle_lights_dual_render_proxy_texture.get_as<bool>())
-										{
-											ctx.modifiers.dual_render_with_specified_texture = true;
-											ctx.modifiers.dual_render_texture = tex_addons::veh_light_ems_glass;
-											ctx.modifiers.dual_render_reset_remix_modifiers = true;
-											ctx.modifiers.dual_render_mode_blend_diffuse = true;
-										}*/
 									}
 								}
 							}
@@ -3593,12 +3588,15 @@ namespace gta4
 				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE); 
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);  
 
-				//dev->SetTransform(D3DTS_WORLD, &shared::globals::IDENTITY); 
-				D3DXMATRIX mat = *game::pCurrentWorldTransform;
-				mat.m[0][0] = 0.999f;
-				mat.m[1][1] = 0.999f;
-				mat.m[2][2] = 0.999f;
-				dev->SetTransform(D3DTS_WORLD, &mat);
+				// the api path places its emissive instances with the pose of the base draw
+				if (!api_vehicle_draw)
+				{
+					D3DXMATRIX mat = *game::pCurrentWorldTransform;
+					mat.m[0][0] = 0.999f;
+					mat.m[1][1] = 0.999f;
+					mat.m[2][2] = 0.999f;
+					dev->SetTransform(D3DTS_WORLD, &mat);
+				}
 
 				ctx.save_rs(dev, D3DRS_BLENDOP);
 				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
@@ -3644,62 +3642,6 @@ namespace gta4
 				dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
 			}
-
-			// re-drawing proxy but remix makes it emissive ...
-			if (ctx.modifiers.dual_render_mode_emissive_offset)
-			{
-				if (gs->vehicle_lights_dual_render_proxy_texture.get_as<bool>())
-				{
-					//dev->SetTransform(D3DTS_WORLD, game::pCurrentWorldTransform);
-
-					D3DXMATRIX mat = *game::pCurrentWorldTransform;
-					mat.m[0][0] *= 1.01f;
-					mat.m[1][1] *= 1.01f;
-					mat.m[2][2] *= 1.01f;
-
-					dev->SetTransform(D3DTS_WORLD, &mat);
-
-					//ctx.save_texture(dev, 0);
-					//dev->SetTexture(0, tex_addons::veh_light_ems_glass); 
-
-					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE); 
-
-					ctx.save_rs(dev, D3DRS_BLENDOP);
-					dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
-
-					ctx.save_rs(dev, D3DRS_SRCBLEND);
-					dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-
-					ctx.save_rs(dev, D3DRS_DESTBLEND);
-					dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-
-					ctx.save_tss(dev, D3DTSS_COLOROP);
-					dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-
-					ctx.save_tss(dev, D3DTSS_COLORARG1);
-					dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-
-					ctx.save_tss(dev, D3DTSS_COLORARG2);
-					dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_CURRENT);
-
-					ctx.save_tss(dev, D3DTSS_ALPHAOP);
-					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-
-					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-
-					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_CURRENT); 
-
-					renderer::set_remix_texture_categories(dev, InstanceCategories::IgnoreOpacityMicromap | InstanceCategories::Terrain | InstanceCategories::IgnoreBakedLighting);
-					renderer::set_remix_emissive_intensity(dev, 0); 
-
-					// re-draw surface
-					dev->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
-				}
-			}
-			
 
 			if (ctx.modifiers.dual_render_texture) {
 				ctx.restore_texture(dev, 0);

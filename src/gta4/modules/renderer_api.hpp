@@ -73,6 +73,7 @@ namespace gta4
 			bool skinned = false;
 			bool vehicle = false;  // records keyed by texture too (liveries), overlay passes allowed
 			bool overlay = false;  // dirt / livery pass of a vehicle draw
+			int light_id = -1;     // emissive pass of a vehicle light draw: the light (dimmerSet index) the instance holds, -1 = none
 
 			IDirect3DTexture9* damage_texture = nullptr; // deformation applied in the vertex shader (switchOn)
 			std::uint64_t damage_hash = 0u;
@@ -178,9 +179,12 @@ namespace gta4
 			std::uint32_t vehicle_damaged_last_frame = 0u;   // base passes with a damage mesh
 			std::uint32_t vehicle_tyres_last_frame = 0u;
 			std::uint32_t vehicle_flat_tyres_last_frame = 0u;     // deformed on the CPU, a mesh per frame
+			std::uint32_t vehicle_lights_last_frame = 0u;         // emissive instances of lit lights
+			std::uint32_t vehicle_lights_unlit_last_frame = 0u;   // light draws without a lit light (nothing submitted)
+			std::uint32_t vehicle_lights_pending_last_frame = 0u; // lit lights without a mesh yet (create budget)
 
 			std::uint32_t vehicle_skips_context_last_frame = 0u;  // mirror, phone, instanced (not tyres)
-			std::uint32_t vehicle_skips_overlay_last_frame = 0u;  // overlay modes the api path does not mirror (lights)
+			std::uint32_t vehicle_skips_overlay_last_frame = 0u;  // overlay modes the api path does not mirror, lights while they are off
 			std::uint32_t vehicle_skips_target_last_frame = 0u;
 			std::uint32_t vehicle_skips_rejected_last_frame = 0u;
 
@@ -211,8 +215,8 @@ namespace gta4
 		/// @return true if the draw was submitted through the api (the D3D9 draw must be skipped)
 		static bool try_draw(IDirect3DDevice9* dev, drawcall_mod_context& ctx, D3DPRIMITIVETYPE type, UINT prim_count);
 
-		/// Called right before every D3D9 draw of a vehicle geometry: the base pass, then (overlay) the dirt / livery passes.
-		/// Overlay passes only reuse the pose of a base pass the api path took.
+		/// Called right before every D3D9 draw of a vehicle geometry: the base pass, then (overlay) the dirt / livery passes
+		/// or the emissive pass of a light draw. Overlay passes only reuse the pose of a base pass the api path took.
 		/// @return true if the draw was submitted through the api (the D3D9 draw must be skipped)
 		static bool try_draw_vehicle(IDirect3DDevice9* dev, drawcall_mod_context& ctx, D3DPRIMITIVETYPE type, UINT prim_count, bool overlay);
 
@@ -261,5 +265,6 @@ namespace gta4
 
 	private:
 		static bool try_draw_impl(IDirect3DDevice9* dev, drawcall_mod_context& ctx, D3DPRIMITIVETYPE type, UINT prim_count, const draw_pose_s* pose, std::uint64_t& out_state_key);
+		static bool try_draw_vehicle_lights(IDirect3DDevice9* dev, drawcall_mod_context& ctx, D3DPRIMITIVETYPE type, UINT prim_count);
 	};
 }

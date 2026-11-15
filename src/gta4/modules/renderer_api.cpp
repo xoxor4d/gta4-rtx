@@ -783,8 +783,8 @@ namespace gta4
 		}
 
 		// -----
-		// vehicle draws: the damage deformation of the vertex shader (damage texture, bound radius), 
-		// flat tyres and the poses of the rigidly skinned parts
+		// vehicle draws: the damage deformation of the vertex shader (damage texture, bound radius),
+		// flat tyres, the poses of the rigidly skinned parts and the emissive instances of the lights
 		
 		namespace vehicles
 		{
@@ -796,6 +796,9 @@ namespace gta4
 				damaged,
 				tyres,
 				flat_tyres,
+				lights,
+				lights_unlit,
+				lights_pending,
 				skips_context,
 				skips_overlay,
 				skips_target,
@@ -811,8 +814,59 @@ namespace gta4
 			}
 
 			bool g_debug_tyres_on_d3d9 = false;
+			bool g_debug_lights_on_d3d9 = false;
+			float g_debug_light_offset = 0.0f; // light instances pushed off the unlit mesh along their normals
 
 			renderer_api::draw_pose_s g_vehicle_pose;
+
+			// gta_vehicle_lightsemissive: the vertex alpha of a light mesh is the index of its light in dimmerSet[15], the vertex
+			// shader scales the vertex color by that light's brightness and the pixel shader adds texture x color x emissiveMultiplier
+			constexpr std::uint32_t LIGHT_COUNT = 15u;
+			constexpr float LIGHT_DIMMER_STEPS = 32.0f; // the emissive scale is part of the runtime's material identity
+
+			// the brightness of a light is one of two values of visualSettings.dat (car.*.emissive.on / .off, 9 - 12 and 0.05 - 0.1):
+			// a switched off light still glows a little in the game. Here it is off below the threshold and fully on from 1
+			constexpr float LIGHT_ON_THRESHOLD = 0.5f;
+
+			// lights with emitting vertices per geometry (bit = light id)
+			std::unordered_map<const void*, std::uint16_t> g_light_ids;
+
+			bool lights_enabled()
+			{
+				static const auto gs = comp_settings::get();
+				return gs->api_vehicle_lights_enabled.get_as<bool>() && !g_debug_lights_on_d3d9;
+			}
+
+			/// reduces the built mesh (g_vertices / g_indices) to the emitting triangles of one light; the vertex shader writes an alpha of 1
+			/// @return triangles kept
+			std::uint32_t keep_light_triangles(const int light_id)
+			{
+				const auto id_of = [](const std::uint32_t color) { return static_cast<int>(color >> 24); };
+
+				std::size_t kept = 0u;
+				for (std::size_t t = 0u; t + 2u < g_indices.size(); t += 3u)
+				{
+					const auto c0 = g_vertices[g_indices[t]].color, c1 = g_vertices[g_indices[t + 1u]].color, c2 = g_vertices[g_indices[t + 2u]].color;
+					if (id_of(c0) == light_id && id_of(c1) == light_id && id_of(c2) == light_id && ((c0 | c1 | c2) & 0x00FFFFFFu))
+					{
+						g_indices[kept++] = g_indices[t];
+						g_indices[kept++] = g_indices[t + 1u];
+						g_indices[kept++] = g_indices[t + 2u];
+					}
+				}
+
+				g_indices.resize(kept);
+
+				for (auto& v : g_vertices)
+				{
+					v.color |= 0xFF000000u;
+					for (auto k = 0; k < 3; k++) {
+						v.position[k] += v.normal[k] * g_debug_light_offset;
+					}
+				}
+
+				return static_cast<std::uint32_t>(kept / 3u);
+			}
 
 			// the 128x128 R32F damage texture of a vehicle, every texel packs three bytes (x low, z high) into a float
 			struct damage_map_s
@@ -1717,6 +1771,49 @@ namespace gta4
 				}
 
 				return renderer_api::reject_reason::none;
+			}
+		}
+
+		namespace vehicles
+		{
+			/// the lights of a light geometry that have emitting vertices (bit = light id), read once per geometry
+			std::uint16_t light_ids_of(IDirect3DDevice9* dev, const game::grmGeometryQB* geom)
+			{
+				std::unique_lock lock(g_mutex);
+				if (const auto it = g_light_ids.find(geom); it != g_light_ids.end()) {
+					return it->second;
+				}
+
+				geometry::geometry_bytes_s bytes;
+				if (!geometry::read_geometry_bytes(dev, geom, bytes)) {
+					return 0u;
+				}
+
+				const D3DVERTEXELEMENT9* color = nullptr;
+				for (const auto* e = bytes.elements; e->Stream != 0xFF && !color; e++)
+				{
+					if (e->Stream == 0u && e->Usage == D3DDECLUSAGE_COLOR && e->UsageIndex == 0u) {
+						color = e;
+					}
+				}
+
+				std::uint16_t ids = 0u;
+				float v[4]; std::uint32_t n;
+
+				for (auto i = 0u; color && i < bytes.vertex_count; i++)
+				{
+					const auto* src = bytes.vertices + static_cast<std::size_t>(i) * bytes.stride + color->Offset;
+					if (geometry::decode_element(src, color->Type, v, n) && n >= 4u && v[0] + v[1] + v[2] > 0.0f)
+					{
+						const auto id = static_cast<std::uint32_t>(std::clamp(v[3], 0.0f, 1.0f) * 255.0f + 0.5f);
+						if (id < LIGHT_COUNT) {
+							ids |= static_cast<std::uint16_t>(1u << id);
+						}
+					}
+				}
+
+				g_light_ids.emplace(geom, ids);
+				return ids;
 			}
 		}
 
@@ -3600,6 +3697,7 @@ namespace gta4
 						g_records.erase(it);
 					}
 					g_pass_sets.erase(geom);
+					vehicles::g_light_ids.erase(geom);
 				}
 
 				grmGeometryQB_dtor_og(geom);
@@ -4163,9 +4261,15 @@ namespace gta4
 			return false;
 		}
 
+		const bool light_draw = ctx.modifiers.dual_render && ctx.modifiers.dual_render_mode_emissive_offset;
+
 		std::uint64_t record_key = 0u;
 		if (overlay)
 		{
+			if (light_draw) {
+				return try_draw_vehicle_lights(dev, ctx, type, prim_count);
+			}
+
 			vehicles::g_vehicle_pose.overlay = true;
 			const bool owned = try_draw_impl(dev, ctx, type, prim_count, &vehicles::g_vehicle_pose, record_key);
 			vehicles::count_vehicle_stat(owned ? vehicles::vehicle_stat::overlays : vehicles::vehicle_stat::skips_rejected);
@@ -4191,8 +4295,8 @@ namespace gta4
 			return false;
 		}
 
-		// light proxies offset the world matrix or blend additively on top, only dirt and livery passes are mirrored
-		if (ctx.modifiers.dual_render && (ctx.modifiers.dual_render_mode_blend_add || ctx.modifiers.dual_render_mode_blend_diffuse || ctx.modifiers.dual_render_mode_emissive_offset))
+		// of the overlays only the dirt and livery passes and the emissive pass of the lights are mirrored
+		if (ctx.modifiers.dual_render && (ctx.modifiers.dual_render_mode_blend_add || ctx.modifiers.dual_render_mode_blend_diffuse || (light_draw && !vehicles::lights_enabled())))
 		{
 			vehicles::count_vehicle_stat(vehicles::vehicle_stat::skips_overlay);
 			return false;
@@ -4217,7 +4321,23 @@ namespace gta4
 			vehicles::g_vehicle_pose.flat_hash = hash_words(vehicles::g_vehicle_pose.tyre_constants, sizeof(vehicles::g_vehicle_pose.tyre_constants));
 		}
 
-		if (!pose_read || !try_draw_impl(dev, ctx, type, prim_count, &vehicles::g_vehicle_pose, record_key))
+		// the unlit light mesh: its emission comes with the instances of the emissive pass, the scale would only
+		// split its material by brightness
+		const auto draw_modifier = ctx.modifiers.remix_modifier;
+		const auto draw_emissive_scale = ctx.info.remix_temp_float01;
+
+		if (light_draw)
+		{
+			ctx.modifiers.remix_modifier &= ~RemixModifier::EmissiveScalar;
+			ctx.info.remix_temp_float01 = 0.0f;
+		}
+
+		const bool owned = pose_read && try_draw_impl(dev, ctx, type, prim_count, &vehicles::g_vehicle_pose, record_key);
+
+		ctx.modifiers.remix_modifier = draw_modifier;
+		ctx.info.remix_temp_float01 = draw_emissive_scale;
+
+		if (!owned)
 		{
 			vehicles::count_vehicle_stat(vehicles::vehicle_stat::skips_rejected);
 			return false;
@@ -4227,6 +4347,74 @@ namespace gta4
 		
 		if (vehicles::g_vehicle_pose.damage_hash) {
 			vehicles::count_vehicle_stat(vehicles::vehicle_stat::damaged);
+		}
+
+		return true;
+	}
+
+	/// the emissive pass of a light draw whose unlit mesh went through the api: one additive instance per lit light of the
+	/// geometry the game has switched on. The pass is taken even when nothing is lit.
+	bool renderer_api::try_draw_vehicle_lights(IDirect3DDevice9* dev, drawcall_mod_context& ctx, const D3DPRIMITIVETYPE type, const UINT prim_count)
+	{
+		static const auto gs = comp_settings::get();
+		const auto geom = current_geometry();
+
+		float dimmers[vehicles::LIGHT_COUNT][4] = {};
+		const auto reg = ctx.info.vs_dimmer_set_register >= 0 ? ctx.info.vs_dimmer_set_register : 208;
+
+		if (!geom || FAILED(dev->GetVertexShaderConstantF(static_cast<UINT>(reg), &dimmers[0][0], vehicles::LIGHT_COUNT))) {
+			return false;
+		}
+
+		const float intensity = ctx.info.remix_temp_float01 * gs->api_vehicle_lights_emissive_scale.get_as<float>();
+		const auto ids = intensity > 0.0f ? vehicles::light_ids_of(dev, geom) : std::uint16_t(0u);
+
+		const auto draw_categories = ctx.modifiers.remix_instance_categories;
+		const auto draw_modifier = ctx.modifiers.remix_modifier;
+		const auto draw_emissive_scale = ctx.info.remix_temp_float01;
+		const auto draw_hash_override = ctx.info.remix_hash_override;
+
+		// the vertex colors are the emission mask of the light, the texture hash of the D3D9 pass only kept its material apart
+		ctx.modifiers.remix_instance_categories &= ~InstanceCategories::IgnoreBakedLighting;
+		ctx.modifiers.remix_modifier |= RemixModifier::EmissiveScalar;
+		ctx.info.remix_hash_override = 0u;
+
+		if (gs->api_vehicle_lights_decal.get_as<bool>()) {
+			ctx.modifiers.remix_instance_categories |= InstanceCategories::DecalStatic;
+		}
+
+		auto& pose = vehicles::g_vehicle_pose;
+		std::uint32_t lit = 0u;
+
+		for (auto id = 0u; id < vehicles::LIGHT_COUNT; id++)
+		{
+			if (!(ids & (1u << id))) {
+				continue;
+			}
+
+			if (!(dimmers[id][0] >= vehicles::LIGHT_ON_THRESHOLD)) {
+				continue;
+			}
+
+			const float dimmer = std::round(std::min(dimmers[id][0], 1.0f) * vehicles::LIGHT_DIMMER_STEPS) / vehicles::LIGHT_DIMMER_STEPS;
+
+			pose.light_id = static_cast<int>(id);
+			ctx.info.remix_temp_float01 = intensity * dimmer;
+
+			std::uint64_t record_key = 0u;
+			const bool owned = try_draw_impl(dev, ctx, type, prim_count, &pose, record_key);
+			vehicles::count_vehicle_stat(owned ? vehicles::vehicle_stat::lights : vehicles::vehicle_stat::lights_pending);
+			lit++;
+		}
+
+		pose.light_id = -1;
+		ctx.modifiers.remix_instance_categories = draw_categories;
+		ctx.modifiers.remix_modifier = draw_modifier;
+		ctx.info.remix_temp_float01 = draw_emissive_scale;
+		ctx.info.remix_hash_override = draw_hash_override;
+
+		if (!lit) {
+			vehicles::count_vehicle_stat(vehicles::vehicle_stat::lights_unlit);
 		}
 
 		return true;
@@ -4272,13 +4460,17 @@ namespace gta4
 			color_texture->Release();
 		}
 
-		const auto record_key = state_key ^ (reinterpret_cast<std::uintptr_t>(color_texture) * 0x9FB21C651E98DF25ull);
+		// the emissive pass of a light draw has a record and a mesh per light
+		const bool light = pose && pose->light_id >= 0;
+		const auto light_key = light ? static_cast<std::uint64_t>(pose->light_id + 1) * 0xC2B2AE3D27D4EB4Full : 0u;
+
+		const auto record_key = state_key ^ (reinterpret_cast<std::uintptr_t>(color_texture) * 0x9FB21C651E98DF25ull) ^ light_key;
 		out_state_key = record_key;
 
 		const auto transform = pose ? pose->transform : convert::to_transform(*game::pCurrentWorldTransform);
 		const auto bones = pose && pose->skinned ? pose->bones : nullptr;
 		const bool beam = static_cast<std::uint32_t>(ctx.modifiers.remix_instance_categories) & static_cast<std::uint32_t>(InstanceCategories::Beam);
-		const bool drop_vertex_colors = convert::wants_vertex_colors_dropped(ctx) && !beam;
+		const bool drop_vertex_colors = convert::wants_vertex_colors_dropped(ctx) && !beam && !light;
 		const bool count_uv_fallback = pose && pose->overlay;
 		const bool hidden = convert::is_ignored_draw(ctx);
 
@@ -4470,6 +4662,13 @@ namespace gta4
 			hash ^= material_key * 0xE7037ED1A0B428DBull;
 		}
 
+		if (light)
+		{
+			std::uint32_t offset_bits;
+			std::memcpy(&offset_bits, &vehicles::g_debug_light_offset, sizeof(offset_bits));
+			hash ^= light_key ^ (static_cast<std::uint64_t>(offset_bits) * 0x165667B19E3779F9ull);
+		}
+
 		// ped models share component meshes and texture names, the texture itself tells them apart
 		if (pose && !pose->vehicle)
 		{
@@ -4509,6 +4708,16 @@ namespace gta4
 				return false;
 			}
 
+			// nothing of this light emits: owned without a mesh
+			if (light && !vehicles::keep_light_triangles(pose->light_id))
+			{
+				rec.owned = true;
+				rec.hidden = true;
+				textures::set_record_texture_locked(rec, color_texture);
+				rec.last_frame = g_frame;
+				return true;
+			}
+
 			PROFILE_ZONE_VALUE(g_vertices.size());
 
 			remixapi_MeshInfoSurfaceTriangles triangles =
@@ -4533,7 +4742,9 @@ namespace gta4
 			geometry::asset_hash_parts_s parts;
 			std::uint64_t replacement_hash = 0u;
 
-			if (g_send_d3d9_hashes) {
+			if (light) {
+				parts.failure = "part of a light draw";
+			} else if (g_send_d3d9_hashes) {
 				replacement_hash = geometry::d3d9_asset_hash(bytes, ctx.info.draw_base_vertex, ctx.info.draw_start_index, prim_count, parts);
 			} else {
 				parts.failure = "D3D9 geometry hashes disabled";
@@ -5107,6 +5318,9 @@ namespace gta4
 		s.vehicle_tyres_last_frame = vstat(vehicles::vehicle_stat::tyres);
 		s.vehicle_skips_context_last_frame = vstat(vehicles::vehicle_stat::skips_context);
 		s.vehicle_flat_tyres_last_frame = vstat(vehicles::vehicle_stat::flat_tyres);
+		s.vehicle_lights_last_frame = vstat(vehicles::vehicle_stat::lights);
+		s.vehicle_lights_unlit_last_frame = vstat(vehicles::vehicle_stat::lights_unlit);
+		s.vehicle_lights_pending_last_frame = vstat(vehicles::vehicle_stat::lights_pending);
 		s.vehicle_skips_overlay_last_frame = vstat(vehicles::vehicle_stat::skips_overlay);
 		s.vehicle_skips_target_last_frame = vstat(vehicles::vehicle_stat::skips_target);
 		s.vehicle_skips_rejected_last_frame = vstat(vehicles::vehicle_stat::skips_rejected);
@@ -5176,6 +5390,12 @@ namespace gta4
 		ImGui::SeparatorText("Vehicles");
 		ImGui::Checkbox("Draw through the Remix API (bones per draw, damage on the CPU)", gs->api_vehicles_enabled.get_as<bool*>());
 		ImGui::Checkbox("Debug: tyres stay on D3D9", &vehicles::g_debug_tyres_on_d3d9);
+		ImGui::Checkbox("Lights: emissive surfaces through the Remix API (an instance per lit light)", gs->api_vehicle_lights_enabled.get_as<bool*>());
+		ImGui::Checkbox("Lights: tag the emissive instances as decals", gs->api_vehicle_lights_decal.get_as<bool*>());
+		ImGui::Checkbox("Debug: lights stay on D3D9", &vehicles::g_debug_lights_on_d3d9);
+
+		ImGui::SetNextItemWidth(320.0f);
+		ImGui::SliderFloat("Debug: light instances offset along their normals (rebuilds them)", &vehicles::g_debug_light_offset, 0.0f, 0.02f, "%.4f");
 		ImGui::PopID();
 
 		// ---
@@ -5343,8 +5563,11 @@ namespace gta4
 			ImGui::Text("Api :: base passes: %u (damaged: %u) ---- tyres: %u (flat: %u) ---- dirt/livery passes: %u (UV0 for a missing set: %u)",
 				s.vehicle_instances_last_frame, s.vehicle_damaged_last_frame, s.vehicle_tyres_last_frame + s.vehicle_flat_tyres_last_frame,
 				s.vehicle_flat_tyres_last_frame, s.vehicle_overlays_last_frame, s.vehicle_overlay_uv_fallbacks_last_frame);
+
+			ImGui::Text("Api :: lit light instances: %u (waiting for a mesh: %u) ---- light draws with nothing lit: %u",
+				s.vehicle_lights_last_frame, s.vehicle_lights_pending_last_frame, s.vehicle_lights_unlit_last_frame);
 			
-			ImGui::Text("Kept on D3D9: mirror/phone/instanced: %u ---- light proxies: %u ---- other render target: %u ---- rejected: %u",
+			ImGui::Text("Kept on D3D9: mirror/phone/instanced: %u ---- lights (api lights off): %u ---- other render target: %u ---- rejected: %u",
 				s.vehicle_skips_context_last_frame, s.vehicle_skips_overlay_last_frame, s.vehicle_skips_target_last_frame, s.vehicle_skips_rejected_last_frame);
 			
 			ImGui::Spacing(0, 4);
