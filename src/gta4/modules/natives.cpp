@@ -1,6 +1,7 @@
 ﻿#include "std_include.hpp"
 #include "natives.hpp"
 
+#include "comp_settings.hpp"
 #include "discord.hpp"
 #include "imgui.hpp"
 #include "free_camera.hpp"
@@ -17,6 +18,17 @@ namespace gta4
 
 		const auto im = imgui::get();
 		const auto n = natives::get();
+
+		// CApp::Init (0x59D3A1) pins this thread to logical processor 0
+		if (static bool unpinned = false; unpinned != comp_settings::get()->unpin_main_thread.get_as<bool>())
+		{
+			unpinned = !unpinned;
+
+			DWORD_PTR process_mask = 0u, system_mask = 0u;
+			if (GetProcessAffinityMask(GetCurrentProcess(), &process_mask, &system_mask) && process_mask) {
+				SetThreadAffinityMask(GetCurrentThread(), unpinned || !(process_mask & 1u) ? process_mask : 1u);
+			}
+		}
 
 		if (natives::on_game_frame_callback) {
 			natives::on_game_frame_callback();

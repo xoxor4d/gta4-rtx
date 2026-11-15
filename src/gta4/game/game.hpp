@@ -215,6 +215,10 @@ namespace gta4::game
 	extern uint32_t import_addr__SetRect;
 	extern uint32_t import_addr__CreateWindowExA;
 
+	extern uint32_t hk_addr__sysIpcWaitSemaphore;
+	extern uint32_t hk_addr__sysIpcWaitSemaphoreTimed;
+	extern uint32_t hk_addr__sysIpcSleep;
+
 	extern uint32_t hk_addr__postfx_process_postprocess_call;
 	extern uint32_t hk_addr__scene_render_3d_markers;
 	extern uint32_t func_addr__c3dmarkers_render_3d_markers;

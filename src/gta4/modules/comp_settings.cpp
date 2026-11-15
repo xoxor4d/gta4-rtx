@@ -188,6 +188,7 @@ namespace gta4
 				ASSIGN(api_vehicles_enabled);
 				ASSIGN(remix_override_rtxdi_samplecount);
 				ASSIGN(remix_var_queue_frame_timeout);
+				ASSIGN(unpin_main_thread);
 				
 				// culling related settings
 				ASSIGN(nocull_dist_near_static);

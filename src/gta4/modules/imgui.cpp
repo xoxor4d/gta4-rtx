@@ -2741,6 +2741,12 @@ namespace gta4
 		compsettings_int_widget("RemixVar Set FrameTimeout", gs->remix_var_queue_frame_timeout, 0, 60);
 
 		ImGui::Spacing(0, 4);
+		ImGui::SeparatorText(" Game ");
+		ImGui::Spacing(0, 4);
+
+		compsettings_bool_widget("Unpin Main Thread from Processor 0", gs->unpin_main_thread);
+
+		ImGui::Spacing(0, 4);
 	}
 
 	void wip_general_container()

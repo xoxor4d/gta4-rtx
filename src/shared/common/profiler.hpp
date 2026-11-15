@@ -37,6 +37,9 @@
 /// message on the timeline, TEXT has to be a string literal
 #define PROFILE_MESSAGE(TEXT)					TracyMessageL(TEXT)
 
+/// message on the timeline, TEXT is copied and does not need a terminator
+#define PROFILE_MESSAGE_TEXT(TEXT, SIZE)		TracyMessage(TEXT, SIZE)
+
 /// declares mutex VAR of TYPE whose locks and contention show up in the trace
 #define PROFILE_LOCKABLE(TYPE, VAR)				TracyLockable(TYPE, VAR)
 
@@ -53,6 +56,7 @@
 #define PROFILE_ZONE_VALUE(VALUE)				((void)0)
 #define PROFILE_PLOT(NAME, VALUE)				((void)0)
 #define PROFILE_MESSAGE(TEXT)					((void)0)
+#define PROFILE_MESSAGE_TEXT(TEXT, SIZE)		((void)(TEXT), (void)(SIZE))
 #define PROFILE_LOCKABLE(TYPE, VAR)				TYPE VAR
 #define PROFILE_SHARED_LOCKABLE(TYPE, VAR)		TYPE VAR
 #endif

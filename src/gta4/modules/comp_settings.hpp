@@ -650,6 +650,15 @@ namespace gta4
 				4
 			};
 
+			variable unpin_main_thread = {
+				"unpin_main_thread",
+				("The game pins its main thread to logical processor 0, where it waits whenever another busy thread of the same\n"
+				 "priority runs there (frame spikes). Enabling this lets the main thread use every processor of the process.\n"
+				 "Can be toggled at runtime."),
+				"1.7.3",
+				false
+			};
+
 
 			// ----------------------------------
 			// culling related settings

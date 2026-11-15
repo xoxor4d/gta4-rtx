@@ -186,6 +186,10 @@ namespace gta4::game
 	uint32_t import_addr__SetRect = 0u;
 	uint32_t import_addr__CreateWindowExA = 0u;
 
+	uint32_t hk_addr__sysIpcWaitSemaphore = 0u;
+	uint32_t hk_addr__sysIpcWaitSemaphoreTimed = 0u;
+	uint32_t hk_addr__sysIpcSleep = 0u;
+
 	uint32_t hk_addr__postfx_process_postprocess_call = 0u;
 	uint32_t hk_addr__scene_render_3d_markers = 0u;
 	uint32_t func_addr__c3dmarkers_render_3d_markers = 0u;
@@ -752,6 +756,11 @@ namespace gta4::game
 		if (const auto offset = shared::utils::mem::find_pattern("FF 15 ? ? ? ? 8B F0 6A", 2, "import_addr__CreateWindowExA", use_pattern, 0x420E5B); offset) {
 			import_addr__CreateWindowExA = *(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
+
+		// the game's wrappers of WaitForSingleObject (infinite / with timeout) and Sleep
+		PATTERN_OFFSET_SIMPLE(hk_addr__sysIpcWaitSemaphore, "8B 44 24 04 85 C0 75 03 32 C0 C3 6A FF 50 FF 15", 0, 0x403CB0);
+		PATTERN_OFFSET_SIMPLE(hk_addr__sysIpcWaitSemaphoreTimed, "8B 44 24 04 85 C0 75 03 32 C0 C3 FF 74 24 08 50 FF 15", 0, 0x403CD0);
+		PATTERN_OFFSET_SIMPLE(hk_addr__sysIpcSleep, "FF 25 ? ? ? ? CC CC CC CC CC CC CC CC CC CC FF 74 24 04 FF 15 ? ? ? ? C3", 16, 0x403EE0); // 0x403EF0
 
 
 		if (const auto offset = shared::utils::mem::find_pattern("A2 ? ? ? ? E8 ? ? ? ? 8B CE E8 ? ? ? ? 8B CE", 12, "hk_addr__postfx_process_postprocess_call", use_pattern, 0x92F547); offset) {

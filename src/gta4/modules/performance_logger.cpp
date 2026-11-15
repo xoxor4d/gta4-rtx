@@ -345,12 +345,124 @@ namespace gta4
 		return max + 0.5f;
 	}
 
+	// -----
+	// profiling builds: a wait of the game (rage::sysIpc wrappers) that takes LONG_WAIT_MS or longer leaves a message with
+	// its caller on the timeline of the waiting thread
+
+	namespace
+	{
+		constexpr double LONG_WAIT_MS = 10.0;
+		constexpr double SLEEP_LOOP_GAP_MS = 0.5;
+
+		double now_ms()
+		{
+			static const double ms_per_tick = []
+			{
+				LARGE_INTEGER qpf = {};
+				QueryPerformanceFrequency(&qpf);
+				return 1000.0 / static_cast<double>(qpf.QuadPart);
+			}();
+
+			LARGE_INTEGER counter = {};
+			QueryPerformanceCounter(&counter);
+			return static_cast<double>(counter.QuadPart) * ms_per_tick;
+		}
+
+		/// addresses for the game's preferred base 0x400000
+		std::uint32_t to_static_addr(const void* addr) {
+			return reinterpret_cast<std::uint32_t>(addr) - EXE_BASE + 0x400000u;
+		}
+
+		void report_long_wait(const char* what, const double ms, const void* caller, const std::uint32_t arg)
+		{
+			void* frames[6] = {};
+			const auto count = CaptureStackBackTrace(2, static_cast<DWORD>(std::size(frames)), frames, nullptr);
+
+			char text[192];
+			auto len = snprintf(text, sizeof(text), "long wait: %s %.1f ms (0x%X) caller 0x%X stack", what, ms, arg, to_static_addr(caller));
+			for (auto i = 0u; i < count && len < static_cast<int>(sizeof(text)); i++) {
+				len += snprintf(text + len, sizeof(text) - len, " 0x%X", to_static_addr(frames[i]));
+			}
+
+			PROFILE_MESSAGE_TEXT(text, static_cast<std::size_t>(std::min(len, static_cast<int>(sizeof(text)) - 1)));
+		}
+
+		using sysIpcWaitSemaphore_t = bool(__cdecl*)(HANDLE);
+		sysIpcWaitSemaphore_t sysIpcWaitSemaphore_og = nullptr;
+
+		bool __cdecl sysIpcWaitSemaphore_hk(const HANDLE handle)
+		{
+			const auto start = now_ms();
+			const auto result = sysIpcWaitSemaphore_og(handle);
+
+			if (const auto elapsed = now_ms() - start; elapsed >= LONG_WAIT_MS) {
+				report_long_wait("sysIpcWaitSemaphore", elapsed, _ReturnAddress(), reinterpret_cast<std::uint32_t>(handle));
+			}
+
+			return result;
+		}
+
+		using sysIpcWaitSemaphoreTimed_t = bool(__cdecl*)(HANDLE, DWORD);
+		sysIpcWaitSemaphoreTimed_t sysIpcWaitSemaphoreTimed_og = nullptr;
+
+		bool __cdecl sysIpcWaitSemaphoreTimed_hk(const HANDLE handle, const DWORD timeout_ms)
+		{
+			const auto start = now_ms();
+			const auto result = sysIpcWaitSemaphoreTimed_og(handle, timeout_ms);
+
+			if (const auto elapsed = now_ms() - start; elapsed >= LONG_WAIT_MS) {
+				report_long_wait("sysIpcWaitSemaphoreTimed", elapsed, _ReturnAddress(), reinterpret_cast<std::uint32_t>(handle));
+			}
+
+			return result;
+		}
+
+		using sysIpcSleep_t = void(__cdecl*)(DWORD);
+		sysIpcSleep_t sysIpcSleep_og = nullptr;
+
+		/// short sleeps of one polling loop are reported as one wait once the loop ends, arg = number of sleeps
+		void __cdecl sysIpcSleep_hk(const DWORD ms)
+		{
+			struct sleep_loop_s
+			{
+				const void* caller = nullptr;
+				double start = 0.0;
+				double end = 0.0;
+				std::uint32_t count = 0u;
+			};
+
+			thread_local sleep_loop_s loop;
+			const auto caller = _ReturnAddress();
+			const auto start = now_ms();
+
+			if (loop.caller != caller || start - loop.end > SLEEP_LOOP_GAP_MS)
+			{
+				if (loop.caller && loop.end - loop.start >= LONG_WAIT_MS) {
+					report_long_wait("sysIpcSleep loop", loop.end - loop.start, loop.caller, loop.count);
+				}
+
+				loop = { .caller = caller, .start = start };
+			}
+
+			sysIpcSleep_og(ms);
+			loop.end = now_ms();
+			loop.count++;
+		}
+	}
+
 	performance_logger::performance_logger()
 	{
 		p_this = this;
 
 		// -----
 		QueryPerformanceFrequency(&m_qpf);
+
+		if constexpr (shared::common::profiler::enabled)
+		{
+			shared::utils::hook::detour(game::hk_addr__sysIpcWaitSemaphore, &sysIpcWaitSemaphore_hk, DETOUR_CAST(sysIpcWaitSemaphore_og)); // 0x403CB0
+			shared::utils::hook::detour(game::hk_addr__sysIpcWaitSemaphoreTimed, &sysIpcWaitSemaphoreTimed_hk, DETOUR_CAST(sysIpcWaitSemaphoreTimed_og)); // 0x403CD0
+			shared::utils::hook::detour(game::hk_addr__sysIpcSleep, &sysIpcSleep_hk, DETOUR_CAST(sysIpcSleep_og)); // 0x403EF0
+		}
 
 		m_initialized = true;
 		shared::common::log("PerfLogger", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
