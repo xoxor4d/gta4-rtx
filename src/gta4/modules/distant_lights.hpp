@@ -4,9 +4,9 @@
 namespace gta4
 {
 	/// The game's "vehicle imposters" (-disableimposters): distant street light / aircraft sprites and fake cars along the
-	/// road light strings (headlight models at night, car models by day), optionally drawn through the Remix API:
-	/// - sprites: every flush of the game's sprite buffer is collected into one api mesh per frame
-	/// - cars: the instanced model becomes a cached api mesh, every car record one api instance (colour as texture factor)
+	/// road light strings (headlight models at night, car models by day), drawn through the Remix API:
+	/// - sprites (optional, D3D9 otherwise): every flush of the game's sprite buffer is collected into one api mesh per frame
+	/// - cars (api only): the instanced model becomes a cached api mesh, every car record one api instance (colour as texture factor)
 	class distant_lights final : public shared::common::loader::component_module
 	{
 	public:
@@ -27,9 +27,8 @@ namespace gta4
 
 			bool cars_rendered = false;
 			bool cars_night = false;
-			bool cars_api = false;
 			std::uint32_t car_records = 0u;
-			std::uint32_t car_flushes = 0u;     // game flushes = instanced D3D9 draws on the D3D9 path
+			std::uint32_t car_flushes = 0u;
 			std::uint32_t car_warmups = 0u;     // flushes left on D3D9 so the runtime uploads a new texture
 			std::uint32_t car_instances = 0u;   // api instances drawn
 			std::uint32_t car_meshes = 0u;      // cached api meshes

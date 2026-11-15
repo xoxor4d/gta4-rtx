@@ -1867,7 +1867,6 @@ namespace gta4
 				ImGui::EndDisabled();
 
 				ImGui::Spacing(0, 8);
-				compsettings_bool_widget("Render Fake Distant Cars", gs->distant_cars_enabled);
 				compsettings_bool_widget("Fake Distant Cars", gs->api_distant_cars_enabled);
 
 				ImGui::BeginDisabled(!gs->api_distant_cars_enabled.get_as<bool>());
@@ -2766,7 +2765,7 @@ namespace gta4
 		ImGui::Widget_CategoryWithVerticalLabel("API", [&]()
 			{
 				compsettings_bool_widget("Render Distant Light Sprites", gs->distant_lights_enabled);
-				compsettings_bool_widget("Render Imposter Vehicles", gs->distant_cars_enabled);
+				compsettings_bool_widget("Render Imposter Vehicles", gs->api_distant_cars_enabled);
 				compsettings_bool_widget("Static Geometry: LOD Cross Fade", gs->api_static_lod_fade);
 
 				ImGui::Spacing(0, 6);

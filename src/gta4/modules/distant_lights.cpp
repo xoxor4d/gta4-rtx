@@ -67,7 +67,6 @@ namespace gta4
 		{
 			bool rendering = false;  // inside the game's night / day car render
 			bool night = false;
-			bool api = false;
 			bool in_flush = false;   // inside the game's flush
 			bool capturing = false;  // inside a flush the api path takes
 			bool drawn = false;      // the first D3D9 draw of the flush was replaced, further passes are dropped
@@ -512,7 +511,7 @@ namespace gta4
 			auto& c = g_cars;
 			auto& st = g_stats;
 
-			if (!gs->distant_cars_enabled.get_as<bool>())
+			if (!gs->api_distant_cars_enabled.get_as<bool>() || !renderer_api::is_runtime_supported())
 			{
 				st.cars_rendered = false;
 				destroy_cars();
@@ -527,7 +526,6 @@ namespace gta4
 
 			c.rendering = true;
 			c.night = night;
-			c.api = gs->api_distant_cars_enabled.get_as<bool>() && renderer_api::is_runtime_supported();
 			c.render_serial++;
 			c.flushes = 0u;
 			c.warmups = 0u;
@@ -541,13 +539,8 @@ namespace gta4
 			c.in_flush = false;
 			c.capturing = false;
 
-			if (!c.api) {
-				destroy_cars();
-			}
-
 			st.cars_rendered = true;
 			st.cars_night = night;
-			st.cars_api = c.api;
 			st.car_records = c.records_total;
 			st.car_flushes = c.flushes;
 			st.car_warmups = c.warmups;
@@ -585,7 +578,7 @@ namespace gta4
 			c.records_total += static_cast<std::uint32_t>(*count);
 
 			c.in_flush = true;
-			c.capturing = c.api && model >= 0 && model < CAR_MODELS;
+			c.capturing = model >= 0 && model < CAR_MODELS;
 			c.drawn = false;
 			c.records = records;
 			c.count = *count;
@@ -773,12 +766,12 @@ namespace gta4
 			game::weather_change_value ? std::clamp(*game::weather_change_value, 0.0f, 1.0f) : 1.0f);
 
 		if (!s.cars_rendered) {
-			ImGui::TextUnformatted("Cars: not rendered (disabled or -disableimposters)");
+			ImGui::TextUnformatted("Cars: not rendered (disabled, Remix API not available or -disableimposters)");
 		}
 		else
 		{
-			ImGui::Text("Cars (%s): %u records in %u game flushes (%u texture warm ups) -> %s, %u api instances, %u cached meshes",
-				s.cars_night ? "night headlights" : "day models", s.car_records, s.car_flushes, s.car_warmups, s.cars_api ? "Remix API" : "D3D9", s.car_instances, s.car_meshes);
+			ImGui::Text("Cars (%s): %u records in %u game flushes (%u texture warm ups) -> Remix API, %u api instances, %u cached meshes",
+				s.cars_night ? "night headlights" : "day models", s.car_records, s.car_flushes, s.car_warmups, s.car_instances, s.car_meshes);
 
 			if (s.car_reject != renderer_api::reject_reason::none) {
 				ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Cars stayed on D3D9: %s", renderer_api::reject_reason_name(s.car_reject));

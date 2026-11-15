@@ -325,7 +325,6 @@ namespace gta4
 				ASSIGN(api_water_enabled);
 				ASSIGN(api_water_cull_pieces);
 				ASSIGN(distant_lights_enabled);
-				ASSIGN(distant_cars_enabled);
 				ASSIGN(api_distant_lights_enabled);
 				ASSIGN(api_distant_cars_enabled);
 				ASSIGN(api_distant_lights_emissive_scale);

@@ -1644,15 +1644,6 @@ namespace gta4
 				true
 			};
 
-			variable distant_cars_enabled =
-			{
-				"distant_cars_enabled",
-				("Render the fake distant cars along the road light strings: headlight models at night, car models by day (vehicle imposters).\n"
-				 "Off skips the game's render like the commandline argument 'disableimposters' does for this part."),
-				"1.7.0",
-				true
-			};
-
 			variable api_distant_lights_enabled =
 			{
 				"api_distant_lights_enabled",
@@ -1665,8 +1656,9 @@ namespace gta4
 			variable api_distant_cars_enabled =
 			{
 				"api_distant_cars_enabled",
-				("Draw the fake distant cars through the Remix API (one instance per car) instead of the game's hardware instanced D3D9 draw.\n"
-				 "Can be toggled at runtime to compare both paths."),
+				("Render the fake distant cars along the road light strings through the Remix API (one instance per car):\n"
+				 "headlight models at night, car models by day (vehicle imposters).\n"
+				 "Off skips the game's render like the commandline argument 'disableimposters' does for this part."),
 				"1.7.0",
 				true
 			};
