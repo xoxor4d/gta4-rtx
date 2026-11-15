@@ -244,6 +244,20 @@ namespace gta4::game
 	extern std::uint8_t* pWaterListBuffers;  // [2] of 0x10C4 bytes
 	extern uint32_t func_addr__CWater_GetRenderLists; // list buffer CWater::Render reads
 
+	// interactive water (water_dynamics.cpp)
+	extern uint32_t func_addr__CWater_UpdateDynamicWater; // steps the 100 x 100 wave grid around the camera (cdecl, params)
+	extern float* pWaterDynamicHeights;     // [100][100] heights the buoyancy reads, x-major, toroidal: (X / 2 + 100000) % 100
+	extern float* pWaterDynamicVelocities;  // [100][100]
+	extern int* pWaterDynamicBaseX;         // world x of the first cell, 2 unit steps
+	extern int* pWaterDynamicBaseY;
+	extern void** pVehiclePool;             // CPools::ms_pVehiclePool: { objects, flags (0x80 = free), count, item size }
+	extern void** pPedPool;                 // CPools::ms_pPedPool
+	extern void** pObjectPool;              // CPools::ms_pObjectPool
+	extern uint32_t func_addr__CExplosion_AddExplosion; // every explosion (grenades, rockets, cars, script): cdecl, 19 args
+	extern float* pWeatherWind;             // CWeather::Wind, 0 calm - 1 storm
+	extern uint32_t func_addr__CWater_TestLineAgainstWater;  // where a line meets the water: bool cdecl (start, end, hit). every bullet, and the heli downwash fx
+	extern uint32_t retn_addr__heli_downwash_water_test;     // its call from the heli downwash fx
+
 	// "vehicle imposters" (-disableimposters): distant street light / aircraft sprites and instanced fake cars, render thread
 	extern uint32_t func_addr__CDistantLights_Render;               // (float night_fade): street light + aircraft sprites
 	extern uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer; // flushes the sprite buffer through grcBegin / grcEnd (also used by CScrollBars)

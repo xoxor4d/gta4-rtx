@@ -1583,6 +1583,73 @@ namespace gta4
 				100.0f
 			};
 
+			variable water_wind_waves =
+			{
+				"water_wind_waves",
+				("Waves driven by the game's wind: calm water on still days, a choppy harbour in a storm (fetch limited wind sea and swell)."),
+				"1.7.4",
+				true
+			};
+
+			variable water_wind_wave_scale =
+			{
+				"water_wind_wave_scale",
+				("Height multiplier of the wind waves."),
+				"1.7.4",
+				1.0f
+			};
+
+			variable water_wind_wave_near_scale =
+			{
+				"water_wind_wave_near_scale",
+				("Strength of the short wind waves on the detailed water around the camera."),
+				"1.7.4",
+				0.7f
+			};
+
+			variable water_wind_wave_far_scale =
+			{
+				"water_wind_wave_far_scale",
+				("Strength of the long wind waves on the distant water."),
+				"1.7.4",
+				1.0f
+			};
+
+			variable water_interactive =
+			{
+				"water_interactive",
+				("Interactive water: boats leave wakes, swimming, wading and jumping in make ripples, explosions send out waves and\n"
+				 "helicopters push the water down. Boats and bodies float on the simulated surface."),
+				"1.7.4",
+				true
+			};
+
+			variable water_interactive_strength =
+			{
+				"water_interactive_strength",
+				("Strength of everything that disturbs the interactive water."),
+				"1.7.4",
+				1.0f
+			};
+
+			variable water_detail_mesh_radius =
+			{
+				"water_detail_mesh_radius",
+				("Remix API water: half size of the area around the camera that is tessellated with 0.5 unit cells (ripples, short waves).\n"
+				 "Rounded to 16 units, 0 turns it off."),
+				"1.7.4",
+				48.0f
+			};
+
+			variable water_near_tessellation_scale =
+			{
+				"water_near_tessellation_scale",
+				("Remix API water: density of the fine mesh around the camera. 1 = 0.5 unit cells, 0.5 = 1 unit cells (a quarter of the vertices), below 0.375 the fine mesh is off.\n"
+				 "The fine mesh is only built while wind waves or interactive water are on."),
+				"1.7.4",
+				1.0f
+			};
+
 			variable water_vertex_normal_scale =
 			{
 				"water_vertex_normal_scale",

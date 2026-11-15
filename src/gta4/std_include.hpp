@@ -56,6 +56,12 @@ constexpr auto COMP_MOD_PRE_RELEASE_NUM = 0;
 #include "bridge_remix_api.h"
 
 #pragma warning(push)
+#pragma warning(disable: 4127)
+#define POCKETFFT_NO_MULTITHREADING
+#include "pocketfft_hdronly.hpp"
+#pragma warning(pop)
+
+#pragma warning(push)
 #pragma warning(disable: 6011)
 #pragma warning(disable: 28182)
 #define IMGUI_DEFINE_MATH_OPERATORS

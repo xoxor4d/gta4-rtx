@@ -7,6 +7,7 @@
 #include "free_camera.hpp"
 #include "remix_vars.hpp"
 #include "timecycle.hpp"
+#include "water_dynamics.hpp"
 
 namespace gta4
 {
@@ -38,6 +39,7 @@ namespace gta4
 		game_pause::on_game_frame();
 		free_camera::on_game_frame();
 		timecycle::capture_on_game_frame();
+		water_dynamics::update();
 
 		// TODO: hack to fix issues with SSS-fixing commit (that makes head mesh invisible)
 		// + latest remix versions also make player char invisible

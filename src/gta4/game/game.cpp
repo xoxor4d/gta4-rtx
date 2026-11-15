@@ -214,6 +214,18 @@ namespace gta4::game
 	int* pWaterListBufferIndex = nullptr;
 	std::uint8_t* pWaterListBuffers = nullptr;
 	uint32_t func_addr__CWater_GetRenderLists = 0u;
+	uint32_t func_addr__CWater_UpdateDynamicWater = 0u;
+	float* pWaterDynamicHeights = nullptr;
+	float* pWaterDynamicVelocities = nullptr;
+	int* pWaterDynamicBaseX = nullptr;
+	int* pWaterDynamicBaseY = nullptr;
+	void** pVehiclePool = nullptr;
+	void** pPedPool = nullptr;
+	void** pObjectPool = nullptr;
+	uint32_t func_addr__CExplosion_AddExplosion = 0u;
+	float* pWeatherWind = nullptr;
+	uint32_t func_addr__CWater_TestLineAgainstWater = 0u;
+	uint32_t retn_addr__heli_downwash_water_test = 0u;
 
 	uint32_t func_addr__CDistantLights_Render = 0u;
 	uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer = 0u;
@@ -802,6 +814,26 @@ namespace gta4::game
 			func_addr__CWater_GetRenderLists = offset;
 			pWaterListBufferIndex = (int*)*(DWORD*)(offset + 2);
 			pWaterListBuffers = (std::uint8_t*)(*(DWORD*)(offset + 13) - 0x10C4u);
+			found_pattern_count++;
+		} total_pattern_count++;
+
+		// interactive water
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_UpdateDynamicWater, "55 8B EC 83 E4 F0 83 EC 38 8B 45 08 56 F3 0F 10 40 04 F3 0F 2C 00 57 8B 3D ? ? ? ? 83 E8 64 99 2B C2 83 E0 FE A3", 0, 0xADBA40);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDynamicBaseX, int*, "55 8B EC 83 E4 F0 83 EC 38 8B 45 08 56 F3 0F 10 40 04 F3 0F 2C 00 57 8B 3D ? ? ? ? 83 E8 64 99 2B C2 83 E0 FE A3", 25, 0xADBA40);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWaterDynamicBaseY, int*, "8B 35 ? ? ? ? 89 74 24 14 89 0D ? ? ? ? 89 15", 2, 0xADBA98);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pVehiclePool, void**, "8B 0D ? ? ? ? E8 ? ? ? ? 8B 40 20 F3 0F 10 40 30 F3 0F 10 48 34", 2, 0xBCA504); // GET_CAR_COORDINATES
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pPedPool, void**, "8B 0D ? ? ? ? E8 ? ? ? ? F6 80 6C 02 00 00 04 74 0F", 2, 0xBA6744); // GET_CHAR_COORDINATES
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pObjectPool, void**, "8B 0D ? ? ? ? E8 ? ? ? ? 8B 48 20 85 C9 74 05 8D 41 30 EB 03 83 C0 10", 2, 0xA04664); // GET_OBJECT_COORDINATES
+		PATTERN_OFFSET_SIMPLE(func_addr__CExplosion_AddExplosion, "55 8B EC 83 E4 F0 81 EC 98 00 00 00 56 BE ? ? ? ? 57 89 74 24 18 8B 36", 0, 0xA66DA0);
+		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWeatherWind, float*, "F3 0F 10 05 ? ? ? ? 0F 2F C3 F3 0F 11 0D ? ? ? ? 72 08", 15, 0xA2EEE5);
+		PATTERN_OFFSET_SIMPLE(func_addr__CWater_TestLineAgainstWater, "55 8B EC 83 E4 F0 83 EC 38 56 8B 75 0C 57 8B 7D 08 F3 0F 10 66 08 F3 0F 10 7F 08", 0, 0xADAF60);
+		PATTERN_OFFSET_SIMPLE(retn_addr__heli_downwash_water_test, "E8 ? ? ? ? 8B 0D ? ? ? ? 83 C4 0C 84 C0 74 ? 0F 28 44 24", 5, 0xC53211);
+
+		// zeroes the dynamic water grid (heights, velocities)
+		if (const auto offset = shared::utils::mem::find_pattern("57 33 C0 B9 10 27 00 00 BF ? ? ? ? F3 AB B9 10 27 00 00 BF ? ? ? ? F3 AB 5F C3", 0, "pWaterDynamicHeights", use_pattern, 0xAD4E80); offset)
+		{
+			pWaterDynamicHeights = (float*)*(DWORD*)(offset + 9);
+			pWaterDynamicVelocities = (float*)*(DWORD*)(offset + 21);
 			found_pattern_count++;
 		} total_pattern_count++;
 

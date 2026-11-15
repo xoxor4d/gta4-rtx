@@ -1924,6 +1924,16 @@ namespace gta4
 				compsettings_float_widget("Far Wave Speed", gs->water_far_wave_speed, 0.0f, 4.0f, 0.01f);
 				compsettings_float_widget("Far Wave Direction", gs->water_far_wave_direction, -180.0f, 180.0f, 0.5f, "%.1f");
 				compsettings_float_widget("Far Wave Edge Fade", gs->water_far_wave_fade, 0.0f, 600.0f, 0.5f, "%.1f");
+
+				ImGui::Spacing(0, 6);
+				compsettings_bool_widget("Wind Waves", gs->water_wind_waves);
+				compsettings_float_widget("Wind Wave Height", gs->water_wind_wave_scale, 0.0f, 4.0f, 0.01f);
+				compsettings_float_widget("Wind Waves Near", gs->water_wind_wave_near_scale, 0.0f, 4.0f, 0.01f);
+				compsettings_float_widget("Wind Waves Far", gs->water_wind_wave_far_scale, 0.0f, 4.0f, 0.01f);
+
+				ImGui::Spacing(0, 6);
+				compsettings_bool_widget("Interactive Water", gs->water_interactive);
+				compsettings_float_widget("Interactive Strength", gs->water_interactive_strength, 0.0f, 4.0f, 0.01f);
 				ImGui::PopID();
 			});
 
@@ -1942,6 +1952,8 @@ namespace gta4
 				ImGui::Spacing(0, 6);
 				ImGui::BeginDisabled(!api_water);
 				compsettings_bool_widget("Cull Water Outside The View", gs->api_water_cull_pieces);
+				compsettings_float_widget("Fine Mesh Radius", gs->water_detail_mesh_radius, 0.0f, 128.0f, 1.0f, "%.0f");
+				compsettings_float_widget("Near Tessellation", gs->water_near_tessellation_scale, 0.0f, 1.0f, 0.01f);
 				ImGui::EndDisabled();
 				compsettings_float_widget("Water Block Distance Scale", gs->water_block_distance_scale, 0.1f, 10.0f, 0.01f);
 
@@ -3012,6 +3024,7 @@ namespace gta4
 					&gs->water_lod, &gs->water_detail_radius, &gs->water_lod_radius_4, &gs->water_lod_radius_8, &gs->water_block_distance_scale,
 					&gs->water_sim_edge_fade, &gs->water_vertex_normal_scale, &gs->water_far_waves, &gs->water_far_wave_scale, &gs->water_far_wave_length,
 					&gs->water_far_wave_speed, &gs->water_far_wave_direction, &gs->water_far_wave_fade, &gs->api_water_cull_pieces,
+					&gs->water_detail_mesh_radius, &gs->water_near_tessellation_scale,
 				};
 
 				for (const auto v : vars) {
@@ -3034,8 +3047,10 @@ namespace gta4
 						gs->water_block_distance_scale.set_var(1.0f, true);
 						gs->water_sim_edge_fade.set_var(30.0f, true);
 						gs->water_far_waves.set_var(false, true);
+						gs->water_detail_mesh_radius.set_var(32.0f, true);
+						gs->water_near_tessellation_scale.set_var(0.5f, true);
 					});
-			} TT("Tessellated radius 150, block distance scale 1, simulation edge fade 30, no procedural far waves.");
+			} TT("Tessellated radius 150, block distance scale 1, simulation edge fade 30, no procedural far waves, fine mesh of 1 unit cells out to 32.");
 
 			ImGui::SameLine();
 			if (ImGui::Button("Standard", ImVec2(button_4way_width, 0))) {
@@ -3060,9 +3075,10 @@ namespace gta4
 						gs->water_detail_radius.set_var(600.0f, true);
 						gs->water_far_wave_fade.set_var(350.0f, true);
 						gs->water_far_wave_scale.set_var(0.3f, true);
-						gs->water_lod_radius_4.set_var(64.0f, true);
+						gs->water_lod_radius_4.set_var(80.0f, true);
+						gs->water_detail_mesh_radius.set_var(64.0f, true);
 					});
-			} TT("Defaults with a tessellated radius of 600, a far wave edge fade of 350, far wave strength 0.3 and 4 unit cells from 64.");
+			} TT("Defaults with a tessellated radius of 600, a far wave edge fade of 350, far wave strength 0.3, fine mesh out to 64 and 4 unit cells from 80.");
 
 			ImGui::EndDisabled();
 		}

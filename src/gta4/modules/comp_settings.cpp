@@ -318,6 +318,14 @@ namespace gta4
 				ASSIGN(water_far_wave_speed);
 				ASSIGN(water_far_wave_direction);
 				ASSIGN(water_far_wave_fade);
+				ASSIGN(water_wind_waves);
+				ASSIGN(water_wind_wave_scale);
+				ASSIGN(water_wind_wave_near_scale);
+				ASSIGN(water_wind_wave_far_scale);
+				ASSIGN(water_interactive);
+				ASSIGN(water_interactive_strength);
+				ASSIGN(water_detail_mesh_radius);
+				ASSIGN(water_near_tessellation_scale);
 				ASSIGN(water_vertex_normal_scale);
 				ASSIGN(water_lod);
 				ASSIGN(water_lod_radius_4);

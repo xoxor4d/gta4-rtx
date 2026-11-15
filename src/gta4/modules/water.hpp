@@ -8,6 +8,7 @@ namespace gta4
 	/// - procedural waves that continue the simulation and fade out towards the edge of the tessellated area
 	/// - a longer reach of the water block scan (500 x 500 unit blocks in front of the camera)
 	/// - optionally the whole water surface as one Remix API mesh per frame instead of the fixed function draw
+	///   with the wind sea and interactive waves of water_dynamics, 0.5 unit cells around the camera
 	/// - a render reads the water list buffer scanned with its camera (the game swaps them mid render, water cuts out while turning)
 	class water final : public shared::common::loader::component_module
 	{
@@ -36,6 +37,7 @@ namespace gta4
 			std::uint32_t api_triangles = 0u;
 			std::uint32_t api_detail_pieces = 0u;
 			std::uint32_t api_flat_rectangles = 0u;
+			std::uint32_t api_fine_vertices = 0u; // vertices of the 0.5 unit zone around the camera
 		};
 
 		/// render thread, right before CWater::Render draws

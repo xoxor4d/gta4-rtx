@@ -58,8 +58,9 @@ namespace gta4
 				return m_nArgCount;
 			}
 
-			template<typename T>
-			T GetResult(int idx)
+			/// natives that hand back vectors write them to the context's temporary data: copied out to the caller's pointers
+			/// (what the script vm does after every native)
+			void CopyVectorResults()
 			{
 				while (m_nDataCount > 0)
 				{
@@ -70,6 +71,12 @@ namespace gta4
 					pVec3->y = pVec4->y;
 					pVec3->z = pVec4->z;
 				}
+			}
+
+			template<typename T>
+			T GetResult(int idx)
+			{
+				CopyVectorResults();
 				auto returnValues = (intptr_t*)m_pReturn;
 				return *reinterpret_cast<T*>(&returnValues[idx]);
 			}
@@ -185,6 +192,8 @@ namespace gta4
 					} else {
 						m_IndexTable[Index](&cxt);
 					}
+
+					cxt.CopyVectorResults();
 				}
 
 				if constexpr (!std::is_void_v<R>) {
