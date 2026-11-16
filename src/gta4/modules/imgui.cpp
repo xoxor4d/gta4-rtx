@@ -10,15 +10,18 @@
 #include "comp_settings.hpp"
 #include "imgui_internal.h"
 #include "map_settings.hpp"
+#include "map_settings_toml.hpp"
 #include "natives.hpp"
 #include "remix_lights.hpp"
 #include "remix_vars.hpp"
 #include "renderer.hpp"
+#include "scene_view.hpp"
 #include "timecycle.hpp"
 #include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
-#include "shared/common/toml_ext.hpp"
+#include "shared/imgui/editor_host.hpp"
 #include "shared/imgui/imgui_helper.hpp"
+#include "shared/imgui/world_draw.hpp"
 #include "shared/imgui/font_awesome_solid_900.hpp"
 #include "shared/imgui/font_defines.hpp"
 #include "shared/imgui/font_opensans.hpp"
@@ -1236,8 +1239,8 @@ namespace gta4
 			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonYellow", &im->ImGuiCol_ButtonYellow.x, coloredit_flags);
 			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("ButtonRed", &im->ImGuiCol_ButtonRed.x, coloredit_flags);
 
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("FadeContainerBg Start", &im->ImGuiCol_VerticalFadeContainerBackgroundStart.x, coloredit_flags);
-			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("FadeContainerBg End", &im->ImGuiCol_VerticalFadeContainerBackgroundEnd.x, coloredit_flags);
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("FadeContainerBg Start", &shared::imgui::widget_style.vertical_fade_container_bg_start.x, coloredit_flags);
+			SET_CHILD_WIDGET_WIDTH_MAN(140.0f); ImGui::ColorEdit4("FadeContainerBg End", &shared::imgui::widget_style.vertical_fade_container_bg_end.x, coloredit_flags);
 			ImGui::TreePop();
 		}
 
@@ -3325,10 +3328,10 @@ namespace gta4
 			ImGui::BeginGroup();
 			ImGui::Style_ColorButtonPush(freecam_active ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
 			if (ImGui::Button("FreeCam Mode", ImVec2(freecam_button_width, freecam_button_height))) {
-				set_freecam(im->m_freecam_type, !freecam_active);
+				set_freecam(cs->freecam_type._int(), !freecam_active);
 			}
 
-			if (im->m_freecam_type == 0)
+			if (cs->freecam_type._int() == 0)
 			{
 				TT(	"Enable the FreeCam - The player stays put, works in vehicles and cutscenes\n"
 					"Hold the right mouse button to look around and move:\n"
@@ -3349,21 +3352,21 @@ namespace gta4
 			ImGui::Style_ColorButtonPop();
 
 			ImGui::SetNextItemWidth(freecam_button_width);
-			if (int type = im->m_freecam_type; ImGui::Combo("##freecam_type", &type, "FreeCam\0Noclip (Traditional)\0"))
+			if (int type = cs->freecam_type._int(); ImGui::Combo("##freecam_type", &type, "FreeCam\0Noclip (Traditional)\0"))
 			{
 				// an active camera switches over
 				if (freecam_active) {
 					set_freecam(type, true);
 				}
 
-				im->m_freecam_type = type;
+				cs->freecam_type.set_var(type);
 			}
 			TT("FreeCam: a camera detached from the player\nNoclip: moves the player through the world");
 			ImGui::EndGroup();
 
 			ImGui::SameLine();
 			ImGui::BeginGroup();
-			if (im->m_freecam_type == 0)
+			if (cs->freecam_type._int() == 0)
 			{
 				float speed = free_camera::get_speed();
 				SET_CHILD_WIDGET_WIDTH_MAN(100.0f);
@@ -3676,7 +3679,7 @@ namespace gta4
 		if (ImGui::Button("Copy All Markers to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
 		{
 			ImGui::LogToClipboard();
-			ImGui::LogText("%s", shared::common::toml_ext::build_map_marker_array(markers).c_str());
+			ImGui::LogText("%s", map_settings_toml::build_map_marker_array(markers).c_str());
 			ImGui::LogFinish();
 		} ImGui::PopFont();
 
@@ -3822,12 +3825,20 @@ namespace gta4
 			}
 			else if (selection) 
 			{
+				shared::imgui::world::view_s scene;
 				ImVec2 viewport_pos = {};
-				shared::imgui::world_to_screen(selection->origin, viewport_pos);
+				bool in_front = false;
 
-				ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-				ImGui::GetBackgroundDrawList()->AddText(viewport_pos, ImGui::GetColorU32(ImGuiCol_Text), "[ImGui] Selected Marker");
-				ImGui::PopFont();
+				if (scene_view::get(scene)) {
+					shared::imgui::world::project(scene, selection->origin, viewport_pos, &in_front);
+				}
+
+				if (in_front)
+				{
+					ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
+					ImGui::GetBackgroundDrawList()->AddText(viewport_pos, ImGui::GetColorU32(ImGuiCol_Text), "[ImGui] Selected Marker");
+					ImGui::PopFont();
+				}
 			}
 
 			// remove entry
@@ -4941,7 +4952,7 @@ namespace gta4
 		if (ImGui::Button("Copy LOD_FADE_EXCLUDE to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 		{
 			ImGui::LogToClipboard();
-			ImGui::LogText("%s", shared::common::toml_ext::build_lod_fade_exclude_array(excluded).c_str());
+			ImGui::LogText("%s", map_settings_toml::build_lod_fade_exclude_array(excluded).c_str());
 			ImGui::LogFinish();
 		} ImGui::PopFont();
 
@@ -5022,7 +5033,7 @@ namespace gta4
 		if (ImGui::Button("Copy ANTICULL to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
 		{
 			ImGui::LogToClipboard();
-			ImGui::LogText("%s", shared::common::toml_ext::build_anticull_array(ac).c_str());
+			ImGui::LogText("%s", map_settings_toml::build_anticull_array(ac).c_str());
 			ImGui::LogFinish();
 		} ImGui::PopFont();
 
@@ -5255,65 +5266,6 @@ namespace gta4
 		}
 	}
 
-	bool w2s(const Vector& world_pos, ImVec2& screen_coords, bool allow_offscreen = false)
-	{
-		if (const auto vpscene = game::pViewports; vpscene && vpscene->sceneviewport)
-		{
-			if (shared::globals::d3d_device)
-			{
-				D3DVIEWPORT9 vp;
-				shared::globals::d3d_device->GetViewport(&vp);
-
-				const auto wp = world_pos.ToD3DXVector();
-
-				D3DXVECTOR3 clip_space;
-				D3DXVec3Project( &clip_space, &wp, &vp, &vpscene->sceneviewport->proj,  &vpscene->sceneviewport->view, nullptr );
-
-				if (clip_space.z < 0.0f || clip_space.z > 1.0f) {
-					return false; // behind camera or too far
-				}
-
-				screen_coords.x = clip_space.x;
-				screen_coords.y = clip_space.y;
-
-				if (!allow_offscreen)
-				{
-					// cull off-screen points
-					if (screen_coords.x < 0 || screen_coords.x > vp.Width || screen_coords.y < 0 || screen_coords.y > vp.Height) {
-						return false;
-					}
-				}
-
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	void w2s_draw_sphere(const Vector& world_pos, const Vector& cam_right, float radius, ImU32 color)
-	{
-		ImVec2 screen_pos;
-		if (!w2s(world_pos, screen_pos)) {
-			return;
-		}
-
-		// Project a point offset by radius along +X to determine on-screen radius
-		//Vector offset_pos = world_pos + Vector(radius, 0.f, 0.f);
-		Vector offset_pos = world_pos + cam_right * radius;
-
-		ImVec2 screen_edge;
-		if (!w2s(offset_pos, screen_edge, true)) {
-			return;
-		}
-
-		const float dx = screen_edge.x - screen_pos.x;
-		const float dy = screen_edge.y - screen_pos.y;
-		const float screen_radius = std::sqrt(dx * dx + dy * dy);
-
-		ImGui::GetBackgroundDrawList()->AddCircle(screen_pos, screen_radius, color, 32, 1.0f);
-	}
-
 	ImU32 get_color_for_hash(uint32_t hash)
 	{
 		hash ^= hash >> 17;
@@ -5332,83 +5284,8 @@ namespace gta4
 		return IM_COL32(r, g, b, a);
 	};
 
-	struct inspector_view_s
-	{
-		D3DXMATRIX view;
-		D3DXMATRIX proj;
-		D3DXMATRIX view_proj;
-		D3DVIEWPORT9 vp;
-	};
-
-	bool inspector_get_view(inspector_view_s& out)
-	{
-		const auto vpscene = game::pViewports;
-		if (!vpscene || !vpscene->sceneviewport || !shared::globals::d3d_device) {
-			return false;
-		}
-
-		shared::globals::d3d_device->GetViewport(&out.vp);
-		out.view = vpscene->sceneviewport->view;
-		out.proj = vpscene->sceneviewport->proj;
-		D3DXMatrixMultiply(&out.view_proj, &out.view, &out.proj);
-		return true;
-	}
-
-	// clips the segment against the camera plane, imgui clips against the screen
-	bool inspector_project_segment(const inspector_view_s& v, const D3DXVECTOR3& a, const D3DXVECTOR3& b, ImVec2& out_a, ImVec2& out_b)
-	{
-		constexpr float MIN_W = 0.05f;
-
-		D3DXVECTOR4 ca, cb;
-		D3DXVec3Transform(&ca, &a, &v.view_proj);
-		D3DXVec3Transform(&cb, &b, &v.view_proj);
-
-		if (ca.w < MIN_W && cb.w < MIN_W) {
-			return false;
-		}
-
-		if (ca.w < MIN_W) {
-			ca += (cb - ca) * ((MIN_W - ca.w) / (cb.w - ca.w));
-		}
-		else if (cb.w < MIN_W) {
-			cb += (ca - cb) * ((MIN_W - cb.w) / (ca.w - cb.w));
-		}
-
-		const auto to_screen = [&v](const D3DXVECTOR4& c)
-			{
-				return ImVec2(static_cast<float>(v.vp.X) + (c.x / c.w * 0.5f + 0.5f) * static_cast<float>(v.vp.Width),
-							  static_cast<float>(v.vp.Y) + (0.5f - c.y / c.w * 0.5f) * static_cast<float>(v.vp.Height));
-			};
-
-		out_a = to_screen(ca);
-		out_b = to_screen(cb);
-		return true;
-	}
-
-	void inspector_draw_box(const inspector_view_s& v, const inspector_s::instance_s& inst, const ImU32 color, const float thickness)
-	{
-		D3DXVECTOR3 corners[8];
-		for (auto i = 0; i < 8; ++i)
-		{
-			const D3DXVECTOR3 local(
-				(i & 1) ? inst.local_maxs.x : inst.local_mins.x,
-				(i & 2) ? inst.local_maxs.y : inst.local_mins.y,
-				(i & 4) ? inst.local_maxs.z : inst.local_mins.z);
-
-			D3DXVec3TransformCoord(&corners[i], &local, &inst.world);
-		}
-
-		const auto dl = ImGui::GetBackgroundDrawList();
-		for (auto i = 0; i < 8; ++i)
-		{
-			for (const auto axis : { 1, 2, 4 })
-			{
-				ImVec2 a, b;
-				if (!(i & axis) && inspector_project_segment(v, corners[i], corners[i | axis], a, b)) {
-					dl->AddLine(a, b, color, thickness);
-				}
-			}
-		}
+	void inspector_draw_box(const shared::imgui::world::view_s& v, const inspector_s::instance_s& inst, const ImU32 color, const float thickness) {
+		shared::imgui::world::draw_box(v, inst.world, inst.local_mins, inst.local_maxs, color, thickness);
 	}
 
 	// ray vs the oriented model box, inside = ray starts within the box
@@ -5463,14 +5340,14 @@ namespace gta4
 	}
 
 	// meshes under the mouse, nearest first. Boxes the camera is inside come last
-	std::vector<const void*> inspector_hits(const inspector_s& ins, const inspector_view_s& v)
+	std::vector<const void*> inspector_hits(const inspector_s& ins, const shared::imgui::world::view_s& v)
 	{
 		const auto mouse = ImGui::GetIO().MousePos;
 		const D3DXVECTOR3 screen_near(mouse.x, mouse.y, 0.0f), screen_mid(mouse.x, mouse.y, 0.5f);
 
 		D3DXVECTOR3 origin, mid, dir;
-		D3DXVec3Unproject(&origin, &screen_near, &v.vp, &v.proj, &v.view, nullptr);
-		D3DXVec3Unproject(&mid, &screen_mid, &v.vp, &v.proj, &v.view, nullptr);
+		D3DXVec3Unproject(&origin, &screen_near, &v.viewport, &v.proj, &v.view, nullptr);
+		D3DXVec3Unproject(&mid, &screen_mid, &v.viewport, &v.proj, &v.view, nullptr);
 		dir = mid - origin;
 		D3DXVec3Normalize(&dir, &dir);
 
@@ -5508,7 +5385,7 @@ namespace gta4
 	}
 
 	// selects the mesh under the mouse, clicking the same spot again cycles through all hits
-	void inspector_pick(inspector_s& ins, const inspector_view_s& v)
+	void inspector_pick(inspector_s& ins, const shared::imgui::world::view_s& v)
 	{
 		static ImVec2 last_click = { -1000.0f, -1000.0f };
 		static std::vector<const void*> last_hits;
@@ -5532,8 +5409,8 @@ namespace gta4
 	// returns true when a mesh got right clicked, ins.context holds it
 	bool inspector_draw_overlay(inspector_s& ins, const bool allow_pick)
 	{
-		inspector_view_s v;
-		if (!inspector_get_view(v)) {
+		shared::imgui::world::view_s v;
+		if (!scene_view::get(v)) {
 			return false;
 		}
 
@@ -5583,7 +5460,7 @@ namespace gta4
 			for (const auto& inst : ins.instances)
 			{
 				ImVec2 pos;
-				if (inspector_passes_filter(ins, inst) && w2s(inst.center, pos)) {
+				if (inspector_passes_filter(ins, inst) && shared::imgui::world::project(v, inst.center, pos)) {
 					labels.push_back({ &inst, pos, inst.entity == ins.selected ? 2 : inst.entity == ins.hovered ? 1 : 0 });
 				}
 			}
@@ -5647,10 +5524,7 @@ namespace gta4
 		}
 
 		// holding the right mouse button moves the game camera, so only a short click without movement opens the menu
-		const auto& io = ImGui::GetIO();
-		if (   ImGui::IsMouseReleased(ImGuiMouseButton_Right)
-			&& io.MouseDownDurationPrev[ImGuiMouseButton_Right] < 0.3f
-			&& io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] < 36.0f)
+		if (shared::imgui::world::is_short_right_click())
 		{
 			const auto hits = inspector_hits(ins, v);
 			const auto selected = std::ranges::find(hits, ins.selected);
@@ -5696,7 +5570,10 @@ namespace gta4
 	void imgui::draw_debug()
 	{
 		const auto im = imgui::get();
-		
+
+		shared::imgui::world::view_s scene;
+		const bool has_scene = scene_view::get(scene);
+
 		if (m_dbg_visualize_decal_renderstates)
 		{
 			const auto vp = game::pViewports;
@@ -5711,7 +5588,7 @@ namespace gta4
 				{
 					if (fabs(cam_org.DistToSqr(l.pos) < draw_dist * draw_dist))
 					{
-						if (w2s(l.pos, viewport_pos))
+						if (has_scene && shared::imgui::world::project(scene, l.pos, viewport_pos))
 						{
 							std::ostringstream oss;
 							oss << "[ALPHABLEND] " << (l.rs_alpha_blending ? "true" : "false") << "\n"
@@ -5747,7 +5624,7 @@ namespace gta4
 				{
 					if (fabs(cam_org.DistToSqr(l.pos) < draw_dist * draw_dist))
 					{
-						if (w2s(l.pos, viewport_pos))
+						if (has_scene && shared::imgui::world::project(scene, l.pos, viewport_pos))
 						{
 							std::ostringstream oss;
 							oss << "[ENABLED] " << (l.stencil_enable ? "true" : "false") << "\n"
@@ -5805,7 +5682,7 @@ namespace gta4
 					{
 						if (fabs(cam_org.DistToSqr(m.pos) < im->m_dbg_visualize_model_hashes_distance * im->m_dbg_visualize_model_hashes_distance))
 						{
-							if (w2s(m.pos, viewport_pos))
+							if (has_scene && shared::imgui::world::project(scene, m.pos, viewport_pos))
 							{
 								const ImU32 color = get_color_for_hash(m.hash);
 								bool vis_hash = true;
@@ -5814,12 +5691,6 @@ namespace gta4
 								{
 									if (const game::CBaseModelInfo* basemodel = game::g_modelPointers[m.model_reference]; basemodel)
 									{
-										Vector cam_right(
-											vp->sceneviewport->cameraInv.m[0][0],
-											vp->sceneviewport->cameraInv.m[0][1],
-											vp->sceneviewport->cameraInv.m[0][2]
-										);
-
 										const auto& min = im->m_dbg_visualize_model_hashes_min_radius;
 										const auto& max = im->m_dbg_visualize_model_hashes_max_radius;
 
@@ -5832,7 +5703,7 @@ namespace gta4
 											vis_hash = false;
 										}
 										else {
-											w2s_draw_sphere(m.pos, cam_right, basemodel->m_fRadius, color);
+											shared::imgui::world::draw_sphere_outline(scene, m.pos, basemodel->m_fRadius, color);
 										}
 									}
 								}
@@ -6272,7 +6143,7 @@ namespace gta4
 						shared::globals::imgui_allow_input_bypass_timeout--;
 					}
 
-					if (shared::globals::imgui_menu_open || light_editor::is_open())
+					if (shared::globals::imgui_menu_open || shared::imgui::editor_host::any_open())
 					{
 						io.MouseDrawCursor = true;
 
@@ -6280,16 +6151,18 @@ namespace gta4
 							im->devgui();
 						}
 
-						if (light_editor::is_open())
+						if (shared::imgui::editor_host::any_open())
 						{
-							light_editor::draw();
+							shared::imgui::editor_host::draw();
 							im->m_im_window_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
 						}
 
 						// ---
-						// enable game input via right mouse button logic (the light editor only hands it over if asked to)
+						// enable game input via right mouse button logic (an editor only hands it over if asked to)
 
-						const bool rmb_input_allowed = light_editor::is_open() ? light_editor::allows_game_input_on_rmb() : shared::globals::imgui_menu_open && !free_camera::is_active();
+						const bool rmb_input_allowed = shared::imgui::editor_host::any_open()
+							? shared::imgui::editor_host::allows_game_input_on_rmb()
+							: shared::globals::imgui_menu_open && !free_camera::is_active();
 						if (rmb_input_allowed && !im->m_im_window_hovered && io.MouseDown[1])
 						{
 							// reset stuck rmb if timeout is active 
@@ -6447,8 +6320,8 @@ namespace gta4
 		ImGuiCol_ContainerBackground = ImVec4(0.17f, 0.17f, 0.17f, 0.875f);
 		ImGuiCol_ContainerBorder = ImVec4(0.477f, 0.39f, 0.25f, 0.90f);
 
-		ImGuiCol_VerticalFadeContainerBackgroundStart = ImVec4(0.0f, 0.0f, 0.0f, 0.65f);
-		ImGuiCol_VerticalFadeContainerBackgroundEnd = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+		shared::imgui::widget_style.vertical_fade_container_bg_start = ImVec4(0.0f, 0.0f, 0.0f, 0.65f);
+		shared::imgui::widget_style.vertical_fade_container_bg_end = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	void init_fonts()
@@ -6505,6 +6378,7 @@ namespace gta4
 		//io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 
 		style_xo();
+		light_editor::register_editor();
 
 		ImGui_ImplWin32_Init(shared::globals::main_window);
 		g_game_wndproc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(shared::globals::main_window, GWLP_WNDPROC, LONG_PTR(wnd_proc_hk)));

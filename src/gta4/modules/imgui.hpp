@@ -28,9 +28,6 @@ namespace gta4
 		ImVec4 ImGuiCol_ContainerBackground = ImVec4(0.220f, 0.220f, 0.220f, 0.875f);
 		ImVec4 ImGuiCol_ContainerBorder = ImVec4(0.099f, 0.099f, 0.099f, 0.901f);
 
-		ImVec4 ImGuiCol_VerticalFadeContainerBackgroundStart = ImVec4(0.0f, 0.0f, 0.0f, 0.65f);
-		ImVec4 ImGuiCol_VerticalFadeContainerBackgroundEnd = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-
 		bool m_do_not_pause_on_lost_focus = false;
 		bool m_do_not_pause_on_lost_focus_changed = false;
 		bool m_pause_game = false;
@@ -39,7 +36,6 @@ namespace gta4
 		bool m_screenshot_mode = false;
 		bool m_screenshot_mode_hide_player = true;
 		bool m_freecam_mode = false; // noclip: the player is moved around
-		int m_freecam_type = 0; // what the FreeCam button of the utilities tab starts: 0 = free camera, 1 = noclip
 		float m_freecam_fwd_speed = 0.5f;
 		float m_freecam_rt_speed = 0.2f;
 		float m_freecam_up_speed = 0.2f;

@@ -684,6 +684,14 @@ namespace gta4
 				false
 			};
 
+			variable freecam_type = {
+				"freecam_type",
+				("What the FreeCam button of the utilities starts: 0 = free camera (detached from the player), 1 = noclip (moves the player).\n"
+				 "Remembers the last selection."),
+				"1.7.3",
+				0
+			};
+
 
 			// ----------------------------------
 			// culling related settings

@@ -392,6 +392,46 @@ namespace shared::utils
 		return true;
 	}
 
+	/// writes a temporary file next to the target and renames it, so a failed write never leaves a half written target.
+	/// Missing directories are created
+	write_file_result write_file_atomic(const std::filesystem::path& target, const std::string_view text)
+	{
+		namespace fs = std::filesystem;
+
+		fs::path temp = target;
+		temp += ".tmp";
+
+		std::error_code ec;
+		fs::create_directories(target.parent_path(), ec);
+
+		{
+			std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+			if (!out.is_open()) {
+				return write_file_result::write_failed;
+			}
+
+			out << text;
+		}
+
+		fs::rename(temp, target, ec);
+		if (ec)
+		{
+			fs::remove(temp, ec);
+			return write_file_result::replace_failed;
+		}
+
+		return write_file_result::ok;
+	}
+
+	/// a file name without extension out of letters, digits, '_', '-' and '.'
+	bool is_valid_file_stem(const std::string_view stem)
+	{
+		return !stem.empty() && std::ranges::all_of(stem, [](const char c)
+			{
+				return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-' || c == '.';
+			});
+	}
+
 	//fnv1a
 	uint32_t data_hash32(const void* data, const size_t size)
 	{

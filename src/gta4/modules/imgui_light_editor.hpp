@@ -21,4 +21,7 @@ namespace gta4::light_editor
 
 	/// draws all editor windows and the world overlay, once per frame while the editor is open
 	void draw();
+
+	/// adds the editor to the editor host, which draws it and asks it about the input
+	void register_editor();
 }

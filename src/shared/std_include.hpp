@@ -22,6 +22,7 @@
 #include <iostream>
 #include <xmmintrin.h>
 #include <intrin.h>
+#include <ranges>
 
 #pragma warning(push)
 #pragma warning(disable: 26495)

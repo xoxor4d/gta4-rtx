@@ -2,7 +2,6 @@
 #include "imgui_light_editor.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <format>
 #include <optional>
 
@@ -11,13 +10,18 @@
 #include "game_lights.hpp"
 #include "imgui.hpp"
 #include "map_settings.hpp"
+#include "map_settings_toml.hpp"
 #include "remix_lights.hpp"
+#include "scene_view.hpp"
 #include "imgui_internal.h"
 #include "misc/cpp/imgui_stdlib.h"
-#include "ImGuizmo.h"
-#include "shared/common/toml_ext.hpp"
+#include "shared/common/editor_history.hpp"
+#include "shared/imgui/editor_host.hpp"
+#include "shared/imgui/editor_widgets.hpp"
+#include "shared/imgui/gizmo.hpp"
 #include "shared/imgui/imgui_helper.hpp"
 #include "shared/imgui/font_defines.hpp"
+#include "shared/imgui/world_draw.hpp"
 
 #define TT(TXT) ImGui::SetItemTooltipBlur((TXT));
 
@@ -30,10 +34,19 @@ namespace gta4::light_editor
 		using lights_file_s = map_settings::lights_toml_info_s;
 		using category_s = map_settings::light_override_category_info_s;
 
+		namespace world = shared::imgui::world;
+		namespace gizmo = shared::imgui::gizmo;
+		using shared::imgui::editor::tool_button;
+		using shared::imgui::editor::tool_separator;
+		using shared::imgui::editor::icon_button;
+		using shared::imgui::editor::property_row;
+		using shared::imgui::editor::COL_BUTTON_ACTIVE;
+		using shared::imgui::editor::COL_BUTTON_UNSAVED;
+
 		constexpr const char* LIGHT_TWEAKS_DIR = "rtx_comp\\light_tweaks";
 		constexpr int MAIN_LIGHT = -1; // attached index of the light that owns the hash
 		constexpr int NO_CATEGORY = -1;
-		constexpr std::size_t UNDO_LIMIT = 64u;
+		constexpr const char* RESET_TOOLTIP = "Back to the game's value";
 		constexpr float SCREEN_PADDING = 16.0f; // default distance of the toolbar and the list to the screen edges and to each other
 
 		// cone cosines of a light that becomes a spotlight by override, the game has no values for it
@@ -46,10 +59,6 @@ namespace gta4::light_editor
 		constexpr ImU32 COL_OVERRIDE_OTHER_FILE = IM_COL32(200, 140, 255, 255);
 		constexpr ImU32 COL_IGNORED = IM_COL32(226, 75, 74, 255);
 		constexpr ImU32 COL_PLAIN = IM_COL32(255, 255, 255, 150);
-		const ImVec4 COL_BUTTON_ACTIVE = ImVec4(0.22f, 0.5f, 0.26f, 1.0f);
-		const ImVec4 COL_BUTTON_UNSAVED = ImVec4(0.72f, 0.5f, 0.26f, 1.0f);
-		const ImVec4 COL_TEXT_GAME_VALUE = ImVec4(0.56f, 0.56f, 0.56f, 1.0f); // #8F8F8F, a property without override
-		const ImVec4 COL_TEXT_OVERRIDDEN = ImVec4(1.0f, 0.69f, 0.19f, 1.0f); // #FFB031
 
 		// a translated light of this frame
 		struct scene_light_s
@@ -116,6 +125,9 @@ namespace gta4::light_editor
 			bool selected_def_valid = false;
 			bool selected_instanced = false;
 
+			world::view_s view;
+			bool view_valid = false;
+
 			float gizmo_matrix[16] = {};
 			bool step_held = false;
 
@@ -123,18 +135,14 @@ namespace gta4::light_editor
 			ImGuiTextFilter filter;
 			std::optional<override_s> clipboard;
 
-			std::vector<snapshot_s> undo;
-			std::vector<snapshot_s> redo;
-			snapshot_s frame_snapshot;
-			bool in_edit = false;
+			shared::common::editor_history<snapshot_s> history;
 
 			snapshot_s saved; // the files as they are on disk, for discard
 			bool saved_valid = false;
 
 			std::string name_buffer;
 			std::string comment_buffer;
-			std::string status;
-			double status_until = 0.0;
+			shared::imgui::editor::status_toast_s status;
 		};
 
 		state_s g;
@@ -232,10 +240,8 @@ namespace gta4::light_editor
 			return {};
 		}
 
-		void set_status(std::string text)
-		{
-			g.status = std::move(text);
-			g.status_until = ImGui::GetTime() + 3.0;
+		void set_status(std::string text) {
+			g.status.set(std::move(text));
 		}
 
 		snapshot_s take_snapshot() {
@@ -245,40 +251,35 @@ namespace gta4::light_editor
 		/// call after every change: the first change of an interaction puts the state before it on the undo stack
 		void commit(const std::string& file)
 		{
-			if (!g.in_edit)
-			{
-				g.undo.emplace_back(g.frame_snapshot);
-				if (g.undo.size() > UNDO_LIMIT) {
-					g.undo.erase(g.undo.begin());
-				}
-
-				g.redo.clear();
-				g.in_edit = true;
-			}
-
+			g.history.commit();
 			g.dirty_files.insert(file);
 			map_settings::rebuild_light_overrides_from_toml_info();
 		}
 
-		void restore_snapshot(std::vector<snapshot_s>& from, std::vector<snapshot_s>& to)
+		void apply_snapshot(snapshot_s&& snapshot)
 		{
-			if (from.empty()) {
-				return;
-			}
-
-			to.emplace_back(take_snapshot());
-			settings().light_overrides_toml_info = std::move(from.back().overrides);
-			settings().lights_toml_info = std::move(from.back().lights);
-			from.pop_back();
+			settings().light_overrides_toml_info = std::move(snapshot.overrides);
+			settings().lights_toml_info = std::move(snapshot.lights);
 
 			for (const auto& file : sorted_files()) {
 				g.dirty_files.insert(file);
 			}
 
 			map_settings::rebuild_light_overrides_from_toml_info();
-			g.frame_snapshot = take_snapshot();
-			g.in_edit = false;
-			ensure_active_file();
+		}
+
+		void undo()
+		{
+			if (g.history.undo(take_snapshot, apply_snapshot)) {
+				ensure_active_file();
+			}
+		}
+
+		void redo()
+		{
+			if (g.history.redo(take_snapshot, apply_snapshot)) {
+				ensure_active_file();
+			}
 		}
 
 		/// an override that holds the game's values, nothing is overridden until a value gets edited
@@ -570,11 +571,11 @@ namespace gta4::light_editor
 				}
 
 				text += indent + "{ hash = " + std::format("0x{:X}", hash);
-				if (const auto props = shared::common::toml_ext::build_override_properties(ov); !props.empty()) {
+				if (const auto props = map_settings_toml::build_override_properties(ov); !props.empty()) {
 					text += ", " + props;
 				}
 
-				text += shared::common::toml_ext::build_attached_lights_array(ov.attached_lights, indent);
+				text += map_settings_toml::build_attached_lights_array(ov.attached_lights, indent);
 				text += " },\n";
 				first = false;
 			}
@@ -708,33 +709,20 @@ namespace gta4::light_editor
 
 		bool save_file(const std::string& file)
 		{
-			namespace fs = std::filesystem;
+			const auto target = std::filesystem::path(shared::globals::root_path) / LIGHT_TWEAKS_DIR / file;
 
-			const fs::path dir = fs::path(shared::globals::root_path) / LIGHT_TWEAKS_DIR;
-			const fs::path target = dir / file;
-			fs::path temp = target;
-			temp += ".tmp";
-
-			std::error_code ec;
-			fs::create_directories(dir, ec);
-
+			switch (shared::utils::write_file_atomic(target, build_file(file)))
 			{
-				std::ofstream out(temp, std::ios::binary | std::ios::trunc);
-				if (!out.is_open())
-				{
+				case shared::utils::write_file_result::write_failed:
 					set_status("Could not write " + file);
 					return false;
-				}
 
-				out << build_file(file);
-			}
+				case shared::utils::write_file_result::replace_failed:
+					set_status("Could not replace " + file);
+					return false;
 
-			fs::rename(temp, target, ec);
-			if (ec)
-			{
-				fs::remove(temp, ec);
-				set_status("Could not replace " + file);
-				return false;
+				default:
+					break;
 			}
 
 			g.dirty_files.erase(file);
@@ -801,46 +789,14 @@ namespace gta4::light_editor
 
 #pragma region SCENE
 
-		const float* view_matrix() {
-			return &game::pViewports->sceneviewport->view.m[0][0];
-		}
-
-		const float* projection_matrix() {
-			return &game::pViewports->sceneviewport->proj.m[0][0];
-		}
-
-		bool has_viewport() {
-			return game::pViewports && game::pViewports->sceneviewport && shared::globals::d3d_device;
-		}
-
-		/// false if the point is behind the camera or outside of the screen, screen is valid if it is in front
-		bool project(const Vector& world, ImVec2& screen, bool* in_front = nullptr)
-		{
-			D3DVIEWPORT9 vp;
-			shared::globals::d3d_device->GetViewport(&vp);
-
-			const auto wp = world.ToD3DXVector();
-			D3DXVECTOR3 projected;
-			D3DXVec3Project(&projected, &wp, &vp, &game::pViewports->sceneviewport->proj, &game::pViewports->sceneviewport->view, nullptr);
-
-			const bool front = projected.z >= 0.0f && projected.z <= 1.0f;
-			if (in_front) {
-				*in_front = front;
-			}
-
-			screen = ImVec2(projected.x, projected.y);
-			return front && screen.x >= 0.0f && screen.y >= 0.0f && screen.x <= static_cast<float>(vp.Width) && screen.y <= static_cast<float>(vp.Height);
-		}
-
 		void collect_scene_lights()
 		{
 			g.lights.clear();
-			if (!has_viewport()) {
+			if (!g.view_valid) {
 				return;
 			}
 
 			const auto& overrides = settings().light_overrides;
-			const Vector cam_org = &game::pViewports->sceneviewport->cameraInv.m[3][0];
 			std::unordered_set<std::uint64_t> seen;
 
 			for (const auto& [key, light] : remix_lights::get()->get_active_lights())
@@ -870,12 +826,12 @@ namespace gta4::light_editor
 					sl.pos = remix_lights::get_light_position(light.m_def, it != overrides.end() ? &it->second : nullptr);
 				}
 
-				sl.distance = cam_org.DistTo(sl.pos);
+				sl.distance = g.view.cam_pos.DistTo(sl.pos);
 				if (sl.distance > g.view_distance && sl.hash != g.selected.hash) {
 					continue;
 				}
 
-				sl.on_screen = project(sl.pos, sl.screen, &sl.in_front);
+				sl.on_screen = world::project(g.view, sl.pos, sl.screen, &sl.in_front);
 				g.lights.emplace_back(sl);
 			}
 
@@ -984,48 +940,6 @@ namespace gta4::light_editor
 			float radius = 0.05f; // cylinder tube
 		};
 
-		/// closed outline through world space points, skipped if a point is behind the camera
-		bool draw_world_loop(const Vector* points, int count, const ImU32 color)
-		{
-			constexpr int max_points = 32;
-			ImVec2 screen[max_points];
-			count = std::min(count, max_points);
-
-			for (auto i = 0; i < count; i++)
-			{
-				bool front = false;
-				project(points[i], screen[i], &front);
-				if (!front) {
-					return false;
-				}
-			}
-
-			ImGui::GetBackgroundDrawList()->AddPolyline(screen, count, color, ImDrawFlags_Closed, 1.5f);
-			return true;
-		}
-
-		void draw_world_line(const Vector& from, const Vector& to, const ImU32 color)
-		{
-			ImVec2 a, b;
-			bool front_a = false, front_b = false;
-			project(from, a, &front_a);
-			project(to, b, &front_b);
-
-			if (front_a && front_b) {
-				ImGui::GetBackgroundDrawList()->AddLine(a, b, color, 1.5f);
-			}
-		}
-
-		/// ring around 'center' in the plane of two axes
-		void make_ring(const Vector& center, const Vector& axis_a, const Vector& axis_b, const float radius_a, const float radius_b, Vector* points, const int count)
-		{
-			for (auto i = 0; i < count; i++)
-			{
-				const float a = 6.2831853f * static_cast<float>(i) / static_cast<float>(count);
-				points[i] = center + axis_a * (cosf(a) * radius_a) + axis_b * (sinf(a) * radius_b);
-			}
-		}
-
 		void draw_light_shape(const light_shape_s& shape, const ImU32 color)
 		{
 			constexpr int segments = 32;
@@ -1039,11 +953,11 @@ namespace gta4::light_editor
 					constexpr float length = 2.5f;
 					const float ring_radius = length * tanf(std::min(angle, 1.45f));
 
-					make_ring(shape.pos + shape.z_axis * length, shape.x_axis, shape.y_axis, ring_radius, ring_radius, ring, segments);
-					if (draw_world_loop(ring, segments, color))
+					world::make_ring(shape.pos + shape.z_axis * length, shape.x_axis, shape.y_axis, ring_radius, ring_radius, ring, segments);
+					if (world::draw_loop(g.view, ring, segments, color))
 					{
 						for (auto i = 0; i < segments; i += segments / 4) {
-							draw_world_line(shape.pos, ring[i], color);
+							world::draw_line(g.view, shape.pos, ring[i], color);
 						}
 					}
 					break;
@@ -1055,24 +969,24 @@ namespace gta4::light_editor
 					const Vector half_y = shape.y_axis * (shape.size_y * 0.5f);
 					const Vector corners[4] = { shape.pos - half_x - half_y, shape.pos + half_x - half_y, shape.pos + half_x + half_y, shape.pos - half_x + half_y };
 
-					draw_world_loop(corners, 4, color);
-					draw_world_line(corners[0], corners[2], IM_COL32(255, 210, 60, 90));
-					draw_world_line(corners[1], corners[3], IM_COL32(255, 210, 60, 90));
+					world::draw_loop(g.view, corners, 4, color);
+					world::draw_line(g.view, corners[0], corners[2], IM_COL32(255, 210, 60, 90));
+					world::draw_line(g.view, corners[1], corners[3], IM_COL32(255, 210, 60, 90));
 
 					// the side that emits
-					draw_world_line(shape.pos, shape.pos + shape.z_axis * std::max(std::max(shape.size_x, shape.size_y) * 0.5f, 0.3f), color);
+					world::draw_line(g.view, shape.pos, shape.pos + shape.z_axis * std::max(std::max(shape.size_x, shape.size_y) * 0.5f, 0.3f), color);
 					break;
 				}
 
 				case map_settings::LIGHT_TYPE_DISK:
 				{
-					make_ring(shape.pos, shape.x_axis, shape.y_axis, shape.size_x, shape.size_y, ring, segments);
-					draw_world_loop(ring, segments, color);
-					draw_world_line(shape.pos - shape.x_axis * shape.size_x, shape.pos + shape.x_axis * shape.size_x, IM_COL32(255, 210, 60, 90));
-					draw_world_line(shape.pos - shape.y_axis * shape.size_y, shape.pos + shape.y_axis * shape.size_y, IM_COL32(255, 210, 60, 90));
+					world::make_ring(shape.pos, shape.x_axis, shape.y_axis, shape.size_x, shape.size_y, ring, segments);
+					world::draw_loop(g.view, ring, segments, color);
+					world::draw_line(g.view, shape.pos - shape.x_axis * shape.size_x, shape.pos + shape.x_axis * shape.size_x, IM_COL32(255, 210, 60, 90));
+					world::draw_line(g.view, shape.pos - shape.y_axis * shape.size_y, shape.pos + shape.y_axis * shape.size_y, IM_COL32(255, 210, 60, 90));
 
 					// the side that emits
-					draw_world_line(shape.pos, shape.pos + shape.z_axis * std::max(std::max(shape.size_x, shape.size_y), 0.3f), color);
+					world::draw_line(g.view, shape.pos, shape.pos + shape.z_axis * std::max(std::max(shape.size_x, shape.size_y), 0.3f), color);
 					break;
 				}
 
@@ -1081,67 +995,33 @@ namespace gta4::light_editor
 					const Vector half = shape.z_axis * (shape.length * 0.5f);
 					Vector ring_b[segments];
 
-					make_ring(shape.pos - half, shape.x_axis, shape.y_axis, shape.radius, shape.radius, ring, segments);
-					make_ring(shape.pos + half, shape.x_axis, shape.y_axis, shape.radius, shape.radius, ring_b, segments);
-					draw_world_loop(ring, segments, color);
-					draw_world_loop(ring_b, segments, color);
+					world::make_ring(shape.pos - half, shape.x_axis, shape.y_axis, shape.radius, shape.radius, ring, segments);
+					world::make_ring(shape.pos + half, shape.x_axis, shape.y_axis, shape.radius, shape.radius, ring_b, segments);
+					world::draw_loop(g.view, ring, segments, color);
+					world::draw_loop(g.view, ring_b, segments, color);
 
 					for (auto i = 0; i < segments; i += segments / 4) {
-						draw_world_line(ring[i], ring_b[i], color);
+						world::draw_line(g.view, ring[i], ring_b[i], color);
 					}
 
-					draw_world_line(shape.pos - half, shape.pos + half, IM_COL32(255, 210, 60, 90));
+					world::draw_line(g.view, shape.pos - half, shape.pos + half, IM_COL32(255, 210, 60, 90));
 					break;
 				}
 
 				default:
 				{
 					// sphere light: the size of the remix light as a ring facing the camera
-					const auto& cam = game::pViewports->sceneviewport->cameraInv;
-					const Vector right(cam.m[0][0], cam.m[0][1], cam.m[0][2]), up(cam.m[1][0], cam.m[1][1], cam.m[1][2]);
-
-					make_ring(shape.pos, right, up, shape.sphere_radius, shape.sphere_radius, ring, segments);
-					draw_world_loop(ring, segments, color);
+					world::make_ring(shape.pos, g.view.cam_right, g.view.cam_up, shape.sphere_radius, shape.sphere_radius, ring, segments);
+					world::draw_loop(g.view, ring, segments, color);
 					break;
 				}
 			}
 		}
 
-		void setup_gizmo_style()
-		{
-			static bool done = false;
-			if (done) {
-				return;
-			}
-
-			done = true;
-			auto& style = ImGuizmo::GetStyle();
-			style.TranslationLineThickness = 5.0f;
-			style.TranslationLineArrowSize = 8.0f;
-			style.RotationLineThickness = 4.0f;
-			style.RotationOuterLineThickness = 3.0f;
-			style.HatchedAxisLineThickness = 0.0f;
-			style.CenterCircleSize = 5.0f;
-
-			style.Colors[ImGuizmo::DIRECTION_X] = ImVec4(1.00f, 0.47f, 0.47f, 1.0f);
-			style.Colors[ImGuizmo::DIRECTION_Y] = ImVec4(0.52f, 0.92f, 0.47f, 1.0f);
-			style.Colors[ImGuizmo::DIRECTION_Z] = ImVec4(0.47f, 0.67f, 1.00f, 1.0f);
-			style.Colors[ImGuizmo::PLANE_X] = ImVec4(1.00f, 0.47f, 0.47f, 0.75f);
-			style.Colors[ImGuizmo::PLANE_Y] = ImVec4(0.52f, 0.92f, 0.47f, 0.75f);
-			style.Colors[ImGuizmo::PLANE_Z] = ImVec4(0.47f, 0.67f, 1.00f, 0.75f);
-			style.Colors[ImGuizmo::SELECTION] = ImVec4(1.00f, 0.85f, 0.30f, 1.0f);
-			style.Colors[ImGuizmo::INACTIVE] = ImVec4(0.65f, 0.65f, 0.65f, 0.85f);
-			style.Colors[ImGuizmo::ROTATION_USING_BORDER] = ImVec4(1.00f, 0.85f, 0.30f, 1.0f);
-			style.Colors[ImGuizmo::ROTATION_USING_FILL] = ImVec4(1.00f, 0.85f, 0.30f, 0.35f);
-
-			// an axis that points away from the camera stays where it is instead of flipping to the other side
-			ImGuizmo::AllowAxisFlip(false);
-		}
-
 		void draw_gizmo()
 		{
 			const auto ov = editable_override(g.selected);
-			if (!ov || !has_viewport()) {
+			if (!ov || !g.view_valid) {
 				return;
 			}
 
@@ -1173,25 +1053,18 @@ namespace gta4::light_editor
 				return;
 			}
 
-			if (!ImGuizmo::IsUsing())
-			{
-				float* m = g.gizmo_matrix;
-				m[0] = shape.x_axis.x;	m[1] = shape.x_axis.y;	m[2] = shape.x_axis.z;		m[3] = 0.0f;
-				m[4] = shape.y_axis.x;	m[5] = shape.y_axis.y;	m[6] = shape.y_axis.z;		m[7] = 0.0f;
-				m[8] = shape.z_axis.x;	m[9] = shape.z_axis.y;	m[10] = shape.z_axis.z;		m[11] = 0.0f;
-				m[12] = pos.x;			m[13] = pos.y;			m[14] = pos.z;				m[15] = 1.0f;
+			if (!gizmo::is_using()) {
+				gizmo::matrix_from_axes(shape.x_axis, shape.y_axis, shape.z_axis, pos, g.gizmo_matrix);
 			}
 
-			const auto& io = ImGui::GetIO();
-			ImGuizmo::SetOrthographic(false);
-			ImGuizmo::SetRect(0.0f, 0.0f, io.DisplaySize.x, io.DisplaySize.y);
-
-			if (ImGuizmo::Manipulate(view_matrix(), projection_matrix(), rotate ? ImGuizmo::ROTATE : ImGuizmo::TRANSLATE,
-				g.local_space ? ImGuizmo::LOCAL : ImGuizmo::WORLD, g.gizmo_matrix))
+			if (gizmo::manipulate(g.view, rotate ? gizmo::operation::rotate : gizmo::operation::translate, g.local_space, g.gizmo_matrix))
 			{
+				Vector new_x, new_y, new_z, new_pos;
+				gizmo::axes_from_matrix(g.gizmo_matrix, new_x, new_y, new_z, new_pos);
+
 				if (rotate)
 				{
-					Vector new_dir(g.gizmo_matrix[8], g.gizmo_matrix[9], g.gizmo_matrix[10]);
+					Vector new_dir = new_z;
 					new_dir.Normalize();
 					ov->dir = new_dir;
 					ov->_use_dir = true;
@@ -1202,14 +1075,13 @@ namespace gta4::light_editor
 						Vector base_x, base_y, base_z;
 						remix_lights::get_light_axes(new_dir, 0.0f, base_x, base_y, base_z);
 
-						const Vector new_x(g.gizmo_matrix[0], g.gizmo_matrix[1], g.gizmo_matrix[2]);
 						ov->roll = static_cast<float>(RAD2DEG(atan2f(new_x.Dot(base_y), new_x.Dot(base_x))));
 						ov->_use_roll = true;
 					}
 				}
 				else
 				{
-					ov->pos = Vector(g.gizmo_matrix[12], g.gizmo_matrix[13], g.gizmo_matrix[14]);
+					ov->pos = new_pos;
 					ov->_use_pos = true;
 				}
 
@@ -1228,18 +1100,10 @@ namespace gta4::light_editor
 			return settings().light_overrides_toml_info[owner].categories[category].category_name;
 		}
 
-		void draw_text_shadowed(ImDrawList* draw, const ImVec2& pos, const ImU32 color, const char* text, const float scale = 1.0f)
-		{
-			const float size = ImGui::GetFontSize() * scale;
-			draw->AddText(ImGui::GetFont(), size, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 230), text);
-			draw->AddText(ImGui::GetFont(), size, pos, color, text);
-		}
-
 		void draw_world_overlay()
 		{
 			const auto& io = ImGui::GetIO();
 			const auto draw = ImGui::GetBackgroundDrawList();
-			const ImVec2 center(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
 			constexpr float edge_inset = 34.0f;
 
 			struct marker_s
@@ -1265,40 +1129,20 @@ namespace gta4::light_editor
 						continue;
 					}
 
-					ImVec2 d(light.screen.x - center.x, light.screen.y - center.y);
-					if (!light.in_front) {
-						d = ImVec2(-d.x, -d.y); // the projection mirrors points behind the camera
-					}
-
-					const float len = sqrtf(d.x * d.x + d.y * d.y);
-					d = len > 0.001f ? ImVec2(d.x / len, d.y / len) : ImVec2(0.0f, 1.0f);
-
-					const float tx = fabsf(d.x) > 0.0001f ? (center.x - edge_inset) / fabsf(d.x) : FLT_MAX;
-					const float ty = fabsf(d.y) > 0.0001f ? (center.y - edge_inset) / fabsf(d.y) : FLT_MAX;
-					const float t = std::min(tx, ty);
-
-					m.pos = ImVec2(center.x + d.x * t, center.y + d.y * t);
-					m.dir = d;
+					world::edge_arrow(light.screen, light.in_front, edge_inset, m.pos, m.dir);
 				}
 
 				markers.emplace_back(std::move(m));
 			}
 
 			// picking
-			const bool can_pick = !io.WantCaptureMouse && !io.MouseDown[ImGuiMouseButton_Right] && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();
+			const bool can_pick = !io.WantCaptureMouse && !io.MouseDown[ImGuiMouseButton_Right] && !gizmo::is_over() && !gizmo::is_using();
 			const marker_s* nearest = nullptr;
 
 			if (can_pick && g.show_markers)
 			{
-				float nearest_dist_sqr = 16.0f * 16.0f;
-				for (const auto& m : markers)
-				{
-					const float dx = m.pos.x - io.MousePos.x, dy = m.pos.y - io.MousePos.y;
-					if (const float d = dx * dx + dy * dy; d < nearest_dist_sqr)
-					{
-						nearest_dist_sqr = d;
-						nearest = &m;
-					}
+				if (const int index = world::nearest_point(markers, io.MousePos, 16.0f, [](const marker_s& marker) { return marker.pos; }); index >= 0) {
+					nearest = &markers[index];
 				}
 			}
 
@@ -1342,10 +1186,10 @@ namespace gta4::light_editor
 						{
 							const ImVec2 badge_pos(m.pos.x + radius + 3.0f, m.pos.y - radius - ImGui::GetFontSize() * 0.62f - 3.0f);
 							if (light.ignored) {
-								draw_text_shadowed(draw, badge_pos, COL_IGNORED, ICON_FA_EYE_SLASH, 0.62f);
+								world::draw_text_shadowed(draw, badge_pos, COL_IGNORED, ICON_FA_EYE_SLASH, 0.62f);
 							}
 							else if (!m.owner.empty()) {
-								draw_text_shadowed(draw, badge_pos, m.owner == g.active_file ? COL_OVERRIDE : COL_OVERRIDE_OTHER_FILE, ICON_FA_SLIDERS_H, 0.62f);
+								world::draw_text_shadowed(draw, badge_pos, m.owner == g.active_file ? COL_OVERRIDE : COL_OVERRIDE_OTHER_FILE, ICON_FA_SLIDERS_H, 0.62f);
 							}
 						}
 					}
@@ -1353,14 +1197,7 @@ namespace gta4::light_editor
 					{
 						// arrow at the screen edge pointing towards the light
 						radius = selected || hovered ? 12.0f : 9.0f;
-						const ImVec2 side(-m.dir.y, m.dir.x);
-						const ImVec2 tip(m.pos.x + m.dir.x * radius, m.pos.y + m.dir.y * radius);
-						const ImVec2 left(m.pos.x - m.dir.x * radius * 0.6f + side.x * radius * 0.75f, m.pos.y - m.dir.y * radius * 0.6f + side.y * radius * 0.75f);
-						const ImVec2 right(m.pos.x - m.dir.x * radius * 0.6f - side.x * radius * 0.75f, m.pos.y - m.dir.y * radius * 0.6f - side.y * radius * 0.75f);
-
-						draw->AddTriangleFilled(tip, left, right, fill);
-						draw->AddTriangle(tip, left, right, IM_COL32(0, 0, 0, 200), 3.5f);
-						draw->AddTriangle(tip, left, right, ring_color, 1.5f);
+						world::draw_edge_arrow(draw, m.pos, m.dir, radius, fill, ring_color);
 					}
 
 					if (g.show_labels || selected || hovered)
@@ -1401,7 +1238,7 @@ namespace gta4::light_editor
 
 						for (auto i = 0; i < count; i++)
 						{
-							draw_text_shadowed(draw, ImVec2(text_pos.x, text_pos.y + static_cast<float>(i) * ImGui::GetFontSize()),
+							world::draw_text_shadowed(draw, ImVec2(text_pos.x, text_pos.y + static_cast<float>(i) * ImGui::GetFontSize()),
 								i ? IM_COL32(200, 200, 200, 255) : selected ? COL_SELECTED : hovered ? COL_HOVERED : IM_COL32(235, 235, 235, 255), lines[i].c_str());
 						}
 					}
@@ -1415,8 +1252,7 @@ namespace gta4::light_editor
 				}
 
 				// a held right button can hand the input to the game, so a short click opens the menu on release
-				if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && io.MouseDownDurationPrev[ImGuiMouseButton_Right] < 0.3f
-					&& io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] < 36.0f)
+				if (world::is_short_right_click())
 				{
 					g.context = { nearest->light->hash, nearest->light->attached_index };
 					g.open_context_menu = true;
@@ -1427,22 +1263,6 @@ namespace gta4::light_editor
 #pragma endregion
 
 #pragma region WINDOWS
-
-		bool tool_button(const char* label, const char* tooltip, const bool active = false, const ImVec4& active_color = COL_BUTTON_ACTIVE)
-		{
-			ImGui::Style_ColorButtonPush(active ? active_color : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-			const bool pressed = ImGui::Button(label, ImVec2(0.0f, ImGui::GetFrameHeight() + 6.0f));
-			ImGui::Style_ColorButtonPop();
-			TT(tooltip);
-			ImGui::SameLine(0.0f, 4.0f);
-			return pressed;
-		}
-
-		void tool_separator()
-		{
-			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-			ImGui::SameLine(0.0f, 6.0f);
-		}
 
 		void category_menu_items(const std::string& file, const std::uint64_t hash)
 		{
@@ -1704,10 +1524,7 @@ namespace gta4::light_editor
 				file.resize(file.size() - 5u);
 			}
 
-			const bool valid_chars = !file.empty() && std::ranges::all_of(file, [](const char c)
-				{
-					return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-' || c == '.';
-				});
+			const bool valid_chars = shared::utils::is_valid_file_stem(file);
 
 			file += ".toml";
 			const bool exists = file_exists(file);
@@ -1743,7 +1560,7 @@ namespace gta4::light_editor
 		{
 			g.open = false;
 			free_camera::set_active(false);
-			shared::globals::imgui_editor_open = false;
+			shared::imgui::editor_host::sync_open_state();
 			imgui::get()->m_dbg_visualize_api_light_hashes = false;
 		}
 
@@ -1841,13 +1658,13 @@ namespace gta4::light_editor
 			}
 
 			if (ImGui::MenuItem(ICON_FA_CLIPBOARD "  Copy overrides of all files")) {
-				copy_to_clipboard(shared::common::toml_ext::build_lightweak_mixed_array(settings().light_overrides_toml_info), "all overrides");
+				copy_to_clipboard(map_settings_toml::build_lightweak_mixed_array(settings().light_overrides_toml_info), "all overrides");
 			}
 
 			if (ImGui::MenuItem(ICON_FA_CLIPBOARD "  Copy ignore / allow lists of all files"))
 			{
-				copy_to_clipboard(shared::common::toml_ext::build_ignore_lights_array_from_toml_info(settings().lights_toml_info) + "\n\n"
-					+ shared::common::toml_ext::build_allow_lights_array_from_toml_info(settings().lights_toml_info), "ignore / allow lists");
+				copy_to_clipboard(map_settings_toml::build_ignore_lights_array_from_toml_info(settings().lights_toml_info) + "\n\n"
+					+ map_settings_toml::build_allow_lights_array_from_toml_info(settings().lights_toml_info), "ignore / allow lists");
 			}
 
 			if (!g.active_file.empty())
@@ -1981,16 +1798,16 @@ namespace gta4::light_editor
 				tool_separator();
 
 				// history
-				ImGui::BeginDisabled(g.undo.empty());
+				ImGui::BeginDisabled(!g.history.can_undo());
 				if (tool_button(ICON_FA_UNDO "##undo", "Undo (Ctrl+Z)")) {
-					restore_snapshot(g.undo, g.redo);
+					undo();
 				}
 				ImGui::EndDisabled();
 				ImGui::SameLine(0.0f, 4.0f);
 
-				ImGui::BeginDisabled(g.redo.empty());
+				ImGui::BeginDisabled(!g.history.can_redo());
 				if (tool_button(ICON_FA_REDO "##redo", "Redo (Ctrl+Y)")) {
-					restore_snapshot(g.redo, g.undo);
+					redo();
 				}
 				ImGui::EndDisabled();
 				ImGui::SameLine(0.0f, 4.0f);
@@ -2085,11 +1902,7 @@ namespace gta4::light_editor
 				}
 
 				// messages go below the toolbar, so it keeps its size
-				if (ImGui::GetTime() < g.status_until)
-				{
-					const ImVec2 pos(ImGui::GetWindowPos().x + ImGui::GetStyle().WindowPadding.x, ImGui::GetWindowPos().y + ImGui::GetWindowHeight() + 4.0f);
-					draw_text_shadowed(ImGui::GetForegroundDrawList(), pos, IM_COL32(235, 235, 235, 255), g.status.c_str());
-				}
+				g.status.draw(ImVec2(ImGui::GetWindowPos().x + ImGui::GetStyle().WindowPadding.x, ImGui::GetWindowPos().y + ImGui::GetWindowHeight() + 4.0f));
 
 				draw_file_menu();
 				draw_context_menu();
@@ -2158,9 +1971,7 @@ namespace gta4::light_editor
 			{
 				g.hovered = row.id;
 
-				const auto& io = ImGui::GetIO();
-				if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && io.MouseDownDurationPrev[ImGuiMouseButton_Right] < 0.3f
-					&& io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Right] < 36.0f)
+				if (world::is_short_right_click())
 				{
 					g.context = { row.id.hash, MAIN_LIGHT };
 					g.open_context_menu = true;
@@ -2404,60 +2215,6 @@ namespace gta4::light_editor
 			ImGui::End();
 		}
 
-		/// square button with a small icon, as high as a frame
-		bool icon_button(const char* label)
-		{
-			const float size = ImGui::GetFrameHeight();
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
-			ImGui::SetWindowFontScale(0.72f);
-			const bool pressed = ImGui::Button(label, ImVec2(size, size));
-			ImGui::SetWindowFontScale(1.0f);
-			ImGui::PopStyleVar();
-			return pressed;
-		}
-
-		/// one row of the properties table: label, widget, reset to the game's value
-		template <typename widget_fn>
-		bool property_row(const char* label, bool& use, const bool disabled, widget_fn&& widget)
-		{
-			bool changed = false;
-
-			const bool was_used = use;
-			ImGui::PushStyleColor(ImGuiCol_Text, was_used ? COL_TEXT_OVERRIDDEN : COL_TEXT_GAME_VALUE);
-
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::AlignTextToFramePadding();
-			ImGui::TextUnformatted(label);
-
-			ImGui::TableNextColumn();
-			ImGui::PushID(label);
-			ImGui::BeginDisabled(disabled);
-			ImGui::SetNextItemWidth(-FLT_MIN);
-
-			if (widget())
-			{
-				use = true;
-				changed = true;
-			}
-
-			ImGui::PopStyleColor();
-
-			ImGui::TableNextColumn();
-			if (was_used)
-			{
-				if (icon_button(ICON_FA_UNDO))
-				{
-					use = false;
-					changed = true;
-				} TT("Back to the game's value");
-			}
-
-			ImGui::EndDisabled();
-			ImGui::PopID();
-			return changed;
-		}
-
 		float cone_degrees(const float cosine) {
 			return static_cast<float>(RAD2DEG(acosf(std::clamp(cosine, -1.0f, 1.0f))));
 		}
@@ -2690,7 +2447,7 @@ namespace gta4::light_editor
 							const bool cylinder = type == map_settings::LIGHT_TYPE_CYLINDER;
 
 							// the game only has spheres and spots, the other shapes exist as overrides
-							changed |= property_row("Type", ov->_use_light_type, false, [&]
+							changed |= property_row("Type", ov->_use_light_type, false, RESET_TOOLTIP, [&]
 								{
 									int value = type;
 									if (ImGui::Combo("##v", &value, "Sphere\0Spot\0Rect\0Disk\0Cylinder\0"))
@@ -2701,7 +2458,7 @@ namespace gta4::light_editor
 									return false;
 								});
 
-							changed |= property_row("Color", ov->_use_color, false, [&]
+							changed |= property_row("Color", ov->_use_color, false, RESET_TOOLTIP, [&]
 								{
 									Vector value = ov->_use_color ? ov->color : Vector(def.mColor);
 									if (ImGui::ColorEdit3("##v", &value.x, ImGuiColorEditFlags_Float))
@@ -2714,7 +2471,7 @@ namespace gta4::light_editor
 
 							const auto float_row = [&](const char* label, bool& use, float& value, const float game_value, const float speed, const float min, const float max)
 								{
-									changed |= property_row(label, use, false, [&]
+									changed |= property_row(label, use, false, RESET_TOOLTIP, [&]
 										{
 											float v = use ? value : game_value;
 											if (ImGui::DragFloat("##v", &v, speed, min, max, "%.2f", ImGuiSliderFlags_AlwaysClamp))
@@ -2736,7 +2493,7 @@ namespace gta4::light_editor
 							}
 							else if (area)
 							{
-								changed |= property_row(type == map_settings::LIGHT_TYPE_RECT ? "Size" : "Radii", ov->_use_size, false, [&]
+								changed |= property_row(type == map_settings::LIGHT_TYPE_RECT ? "Size" : "Radii", ov->_use_size, false, RESET_TOOLTIP, [&]
 									{
 										float value[2] = { ov->size_x, ov->size_y };
 										if (ImGui::DragFloat2("##v", value, 0.01f, 0.001f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp))
@@ -2780,7 +2537,7 @@ namespace gta4::light_editor
 								const auto cone_row = [&](const char* label, bool& use, float& value, const float game_value, const float default_value, const float max_degrees)
 									{
 										const bool was_used = use;
-										const bool row_changed = property_row(label, use, false, [&]
+										const bool row_changed = property_row(label, use, false, RESET_TOOLTIP, [&]
 											{
 												float degrees = effective_degrees(use, value, game_value);
 												if (ImGui::DragFloat("##v", &degrees, 0.1f, 0.0f, std::max(max_degrees, 0.01f), "%.1f deg", ImGuiSliderFlags_AlwaysClamp))
@@ -2816,7 +2573,7 @@ namespace gta4::light_editor
 									}
 								}
 
-								changed |= property_row("Direction", ov->_use_dir, false, [&]
+								changed |= property_row("Direction", ov->_use_dir, false, RESET_TOOLTIP, [&]
 									{
 										Vector value = ov->_use_dir ? ov->dir : def.mDirection;
 										if (ImGui::DragFloat3("##v", &value.x, 0.01f, -1.0f, 1.0f, "%.2f"))
@@ -2833,7 +2590,7 @@ namespace gta4::light_editor
 							}
 
 							const bool position_locked = g.selected_instanced && g.selected.attached_index == MAIN_LIGHT;
-							changed |= property_row("Position", ov->_use_pos, position_locked, [&]
+							changed |= property_row("Position", ov->_use_pos, position_locked, RESET_TOOLTIP, [&]
 								{
 									Vector value = ov->_use_pos ? ov->pos : def.mPosition;
 									if (ImGui::DragFloat3("##v", &value.x, 0.025f, 0.0f, 0.0f, "%.2f"))
@@ -2901,10 +2658,10 @@ namespace gta4::light_editor
 			if (io.KeyCtrl)
 			{
 				if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
-					restore_snapshot(g.undo, g.redo);
+					undo();
 				}
 				else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
-					restore_snapshot(g.redo, g.undo);
+					redo();
 				}
 				else if (ImGui::IsKeyPressed(ImGuiKey_S, false)) {
 					save_active_file();
@@ -2949,7 +2706,7 @@ namespace gta4::light_editor
 		}
 
 		g.open = true;
-		shared::globals::imgui_editor_open = true;
+		shared::imgui::editor_host::sync_open_state();
 		shared::globals::imgui_menu_open = false;
 		ensure_active_file();
 		free_camera::set_active(true);
@@ -2970,9 +2727,7 @@ namespace gta4::light_editor
 	void on_map_settings_reloaded()
 	{
 		g.dirty_files.clear();
-		g.undo.clear();
-		g.redo.clear();
-		g.in_edit = false;
+		g.history.clear();
 		g.saved_valid = false;
 		g.active_file.clear();
 	}
@@ -2986,9 +2741,10 @@ namespace gta4::light_editor
 		// ignored lights stay translated (without intensity), every light updates each frame and no light is culled
 		imgui::get()->m_dbg_visualize_api_light_hashes = true;
 
+		g.view_valid = scene_view::get(g.view);
 		ensure_active_file();
-		setup_gizmo_style();
-		ImGuizmo::BeginFrame();
+		gizmo::setup_style();
+		gizmo::begin_frame();
 
 		if (!g.saved_valid && g.dirty_files.empty())
 		{
@@ -2996,13 +2752,7 @@ namespace gta4::light_editor
 			g.saved_valid = true;
 		}
 
-		if (!ImGui::IsAnyItemActive() && !ImGuizmo::IsUsing()) {
-			g.in_edit = false;
-		}
-
-		if (!g.in_edit) {
-			g.frame_snapshot = take_snapshot();
-		}
+		g.history.begin_frame(ImGui::IsAnyItemActive() || gizmo::is_using(), take_snapshot);
 
 		g.hovered_drawn = g.hovered;
 		g.hovered = {};
@@ -3014,5 +2764,9 @@ namespace gta4::light_editor
 		draw_toolbar();
 		draw_list_window();
 		draw_properties_window();
+	}
+
+	void register_editor() {
+		shared::imgui::editor_host::register_editor({ "Light Editor", is_open, draw, allows_game_input_on_rmb });
 	}
 }

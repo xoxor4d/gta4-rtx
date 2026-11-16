@@ -4,20 +4,10 @@
 #include "imgui_internal.h"
 #include "imgui_helper.hpp"
 
-#include "gta4/modules/imgui.hpp"
-#include "gta4/modules/natives.hpp"
 #include "shared/globals.hpp"
 
 namespace shared::imgui
 {
-	bool world_to_screen(const Vector& world_position, ImVec2& screen_position_out)
-	{
-		int32_t vp_id = 0u;
-		gta4::natives::GetGameViewportId(&vp_id);
-
-		return gta4::natives::GetViewportPositionOfCoord(world_position.x, world_position.y, world_position.z, vp_id, &screen_position_out.x, &screen_position_out.y);
-	}
-
 	void get_and_add_integers_to_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len, const bool clear_buf)
 	{
 		std::vector<int> temp_vec;
@@ -616,43 +606,6 @@ namespace ImGui
 		return false;
 	}
 
-	void Draw3DCircle(ImDrawList* draw_list, const Vector& world_pos, const Vector& normal, const float radius, const bool filled, const ImColor& color, const float& thickness, int num_points)
-	{
-		num_points = std::clamp(num_points, 7, 200);
-		static ImVec2 points[200];
-
-		float step = 6.2831f / (float)num_points;
-		float theta = 0.f;
-
-		// Create a vector that's not parallel to the normal
-		Vector temp = (std::abs(normal.x) > 0.9f) ? Vector(0, 1, 0) : Vector(1, 0, 0);
-
-		// Right vector is perpendicular to the normal and temp vector
-		Vector right = normal.Cross(temp);
-		right.Normalize();
-
-		// Up vector is perpendicular to both normal and right vectors
-		Vector up = right.Cross(normal);
-		up.Normalize();
-
-		for (auto i = 0u; i < (std::uint32_t)num_points; i++, theta += step) 
-		{
-			//Vector world_space = { world_pos.x + radius * cos(theta), world_pos.y, world_pos.z - radius * sin(theta) };
-			Vector world_space = world_pos + (right * cos(theta) + up * sin(theta)) * radius;
-			Vector screen_space;
-			//common::imgui::world2screen(world_space, screen_space); // TODO
-
-			points[i].x = screen_space.x;
-			points[i].y = screen_space.y;
-		}
-
-		if (filled) {
-			draw_list->AddConvexPolyFilled(points, num_points, color);
-		} else {
-			draw_list->AddPolyline(points, num_points, color, true, thickness);
-		}
-	}
-
 	void TableHeaderDropshadow(const float height, const float max_alpha, const float neg_y_offset, const float custom_width)
 	{
 		const float dshadow_height = height;
@@ -1118,7 +1071,7 @@ namespace ImGui
 
 	float Widget_CategoryWithVerticalLabel(const char* category_text, const std::function<void()>& callback, const ImVec4* text_color, const ImVec4* line_color)
 	{
-		const auto im = gta4::imgui::get();
+		const auto& fade = shared::imgui::widget_style;
 
 		const ImVec4 default_text_color = GetStyleColorVec4(ImGuiCol_Text);
 		const ImVec4 default_line_color = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
@@ -1218,8 +1171,8 @@ namespace ImGui
 			const ImVec2 left_gradient_pmin = ImVec2(left_gradient_start_x, start_pos.y);
 			const ImVec2 left_gradient_pmax = ImVec2(left_gradient_end_x, start_pos.y + content_height);
 			
-			const auto col_left = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundEnd));   // Transparent on the left
-			const auto col_right = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundStart)); // Semi-transparent at the line
+			const auto col_left = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_end);   // Transparent on the left
+			const auto col_right = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_start); // Semi-transparent at the line
 			draw_list->AddRectFilledMultiColor(left_gradient_pmin, left_gradient_pmax, col_left, col_right, col_right, col_left);
 		}
 		
@@ -1232,8 +1185,8 @@ namespace ImGui
 			const ImVec2 gradient_pmin = ImVec2(gradient_start_x, start_pos.y);
 			const ImVec2 gradient_pmax = ImVec2(gradient_end_x, start_pos.y + content_height);
 			
-			const auto col_left = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundStart));  // Semi-transparent at the line
-			const auto col_right = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundEnd));  // Transparent on the right
+			const auto col_left = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_start);  // Semi-transparent at the line
+			const auto col_right = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_end);  // Transparent on the right
 			draw_list->AddRectFilledMultiColor(gradient_pmin, gradient_pmax, col_left, col_right, col_right, col_left);
 		}
 		

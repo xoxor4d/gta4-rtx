@@ -1,10 +1,18 @@
 #pragma once
 #include <array>
+#include "imgui.h"
 #include "font_defines.hpp"
 
 namespace shared::imgui
 {
-	bool world_to_screen(const Vector& world_position, ImVec2& screen_position_out);
+	struct widget_style_s
+	{
+		ImVec4 vertical_fade_container_bg_start = ImVec4(0.0f, 0.0f, 0.0f, 0.65f);
+		ImVec4 vertical_fade_container_bg_end = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+	};
+
+	// colors of the helper widgets, set by the game module
+	inline widget_style_s widget_style;
 
 	void get_and_add_integers_to_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len = 0u, bool clear_buf = false);
 	void get_and_remove_integers_from_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len = 0u, bool clear_buf = false);
@@ -106,7 +114,6 @@ namespace ImGui
 
 	bool TextUnformatted_ClippedByColumnTooltip(const char* str);
 
-	void Draw3DCircle(ImDrawList* draw_list, const Vector& world_pos, const Vector& normal, float radius, bool filled, const ImColor& color, const float& thickness, int num_points = 200);
 	void TableHeaderDropshadow(float height = 12.0f, float max_alpha = 0.6f, float neg_y_offset = 0.0f, float custom_width = 0.0f);
 
 	bool Widget_PrettyDragVec3(const char* ID, float* vec_in, bool show_label = false, float label_size = 80.0f, float speed = 0.25f, float min = -FLT_MAX, float max = FLT_MAX,
