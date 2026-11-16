@@ -165,6 +165,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [Rapidjson](https://github.com/Tencent/rapidjson)
 - [DiscordRPC](https://github.com/discord/discord-rpc)
 - [Tracy](https://github.com/wolfpld/tracy)
+- [pocketfft](https://github.com/mreineck/pocketfft)
 - [FusionFix](https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix)
 - [FusionShaders](https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders)
 - [Rage-Shader-Editor](https://github.com/ImpossibleEchoes/rage-shader-editor-cpp)
@@ -183,6 +184,7 @@ with [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/rel
 - [CR (Remix Plus)](https://github.com/sambow23)
 - [TheGreatHMMMM (Remix Plus - HDR implementation)](https://github.com/TheGreatHMMMM)
 - [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)
+- [Deezy (Dynamic Water - Rasterized Phone Contributions)](https://github.com/itsdeeezy)
 - All 🍓 Testers
 
 <div align="center" markdown="1"> 

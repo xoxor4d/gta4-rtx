@@ -291,6 +291,7 @@ namespace gta4
 		CENTER_URL("Rapidjson", "https://github.com/Tencent/rapidjson");
 		CENTER_URL("DiscordRPC", "https://github.com/discord/discord-rpc");
 		CENTER_URL("Tracy", "https://github.com/wolfpld/tracy");
+		CENTER_URL("Pocketfft", "https://github.com/mreineck/pocketfft");
 
 		CENTER_URL("FusionFix", "https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix");
 		CENTER_URL("FusionShaders", "https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders");
@@ -311,6 +312,7 @@ namespace gta4
 		CENTER_URL("CR (Remix Plus)", "https://github.com/sambow23");
 		CENTER_URL("TheGreatHMMMM (Remix Plus - HDR Impl.)", "https://github.com/TheGreatHMMMM");
 		CENTER_URL("Gokuwashere (Remix Plus)", "https://github.com/BrunchyChineapple");
+		CENTER_URL("Deezy (Dynamic Water - Rasterized Phone Contributions)", "https://github.com/itsdeeezy");
 
 		ImGui::Spacing(0.0f, 24.0f);
 		ImGui::CenterText("And of course, all my fellow Ko-Fi and Patreon supporters");

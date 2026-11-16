@@ -6,6 +6,8 @@ on:
 jobs:
   create-release:
     name: Create Release
+    # releases are only built from the official repository
+    if: github.repository == 'xoxor4d/gta4-rtx'
     runs-on: windows-2022
     permissions:
       contents: write

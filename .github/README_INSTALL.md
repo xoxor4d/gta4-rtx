@@ -26,12 +26,6 @@
 
 <br>
 
-> [!IMPORTANT]
-> If you want to use DLSS 5 (NR), you'll need to source and place `nvngx_dlssnr.dll` into the `.trex` folder on your own.  
-> You can then use the NR settings found within the Post-Processing tab (Alt+X - Advanced Menu) 
-
-<br>
-
 > [!TIP]
 > You can re-run the installer at any time and choose to only check for **remix-base-mod** or **AutoPBR** updates.  
 > If you've used the `GIT` installation method, it will do delta updates and pull the latest changes. 
@@ -88,6 +82,7 @@ You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen
 - [miniz](https://github.com/richgel999/miniz)
 - [Rapidjson](https://github.com/Tencent/rapidjson)
 - [DiscordRPC](https://github.com/discord/discord-rpc)
+- [pocketfft](https://github.com/mreineck/pocketfft)
 - [FusionFix](https://github.com/ThirteenAG/GTAIV.EFLC.FusionFix)
 - [FusionShaders](https://github.com/Parallellines0451/GTAIV.EFLC.FusionShaders)
 - [Rage-Shader-Editor](https://github.com/ImpossibleEchoes/rage-shader-editor-cpp)
@@ -106,6 +101,7 @@ You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen
 - [CR (Remix Plus)](https://github.com/sambow23)
 - [TheGreatHMMMM (Remix Plus)](https://github.com/TheGreatHMMMM)
 - [Gokuwashere (Remix Plus)](https://github.com/BrunchyChineapple)
+- [Deezy (Dynamic Water - Rasterized Phone Contributions)](https://github.com/itsdeeezy)
 - All 🍓 Testers
 
 <br>
@@ -115,8 +111,8 @@ You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen
 > - Press `Alt + X` to open the Remix menu  
 > - Press `F4` to open the Compatibility Mod menu
 
-### Toggling the Sky System
-- Press `F4` and toggle `Use Remix Atmosphere System`
+### Help
+- Press `F4` go open the `Help` section for links to helpful guides
 
 <br>
 <br>
@@ -127,10 +123,3 @@ You may also want to use `GTAIV.EFLC.FusionFix.cfg` from either `mode_fullscreen
 
 > The release includes a custom remix runtime build that contains a few necessary changes. Info about the changes can be found here:  
 > https://github.com/xoxor4d/gta4-rtx/wiki#remix-runtime-changes-and-differences-in-usage
-
----
-
-> [!Important]
-> Installer False-Positive: If you get a false positive on the installer, download and use the Installer that shipped with  
-[1.3.2](https://github.com/xoxor4d/gta4-rtx/releases/download/v1.3.2/GTAIV-Remix-CompMod-Installer.exe) or the one shipped with [1.4.0](https://github.com/xoxor4d/gta4-rtx/releases/download/v1.4.0/GTAIV-Remix-CompMod-Installer.exe)
-

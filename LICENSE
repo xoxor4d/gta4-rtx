@@ -1,0 +1,56 @@
+GTA IV RTX Remix Compatibility Mod - License
+
+Copyright (c) xoxor4d (https://github.com/xoxor4d). All rights reserved.
+
+"The mod" means the source code, assets and other files in this repository and any builds made from them,
+except for the third party parts named in section 5.
+
+
+1. What you may do
+
+   a) View, clone and fork the repository. Forks are allowed on GitHub so that changes can be contributed back.
+   b) Build the mod and modify it for your own personal use.
+   c) Make changes in order to submit them as pull requests to the official repository
+      (https://github.com/xoxor4d/gta4-rtx).
+   d) Use the official releases to play the game.
+   e) Share screenshots and videos made with the mod, including with builds you modified for yourself.
+
+
+2. What you may not do without written permission
+
+   a) Distribute the mod, modified versions of it, or builds of either. This includes bundling them with other
+      mods, mod packs or installers, and offering them for download anywhere other than the official repository.
+   b) Copy the code, or substantial parts of it, into other projects.
+   c) Sell the mod or any part of it, or put it behind a paywall.
+   d) Remove or change this license or the copyright notices.
+
+   Ask for permission through the GitHub profile named above.
+
+
+3. Contributions
+
+   By submitting a pull request you license your contribution to the copyright holder under these same terms,
+   and you allow the copyright holder to relicense it in the future. You confirm that you have the right to
+   submit it.
+
+
+4. Termination
+
+   Your rights under this license end if you do not follow it.
+
+
+5. Third party parts
+
+   This license covers the mod only. Third party software in the "deps" folder, and any other file that carries
+   its own license, stays under that license. Their texts are collected in assets/THIRD_PARTY_LICENSES.txt, which
+   is shipped with every release.
+
+   The mod is not affiliated with or endorsed by Rockstar Games, Take-Two Interactive or NVIDIA.
+
+
+6. No warranty
+
+   THE MOD IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+   WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+   CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE MOD OR ITS USE.
