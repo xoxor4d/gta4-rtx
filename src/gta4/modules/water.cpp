@@ -1728,8 +1728,14 @@ namespace gta4
 		ImGui::SameLine(value_x + ImGui::CalcTextSize("000.00 ms").x + 24.0f);
 		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.02f, 0.02f, 0.02f, 0.5f));
 		ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+		// a disabled plot shows no value tooltip, at full alpha it looks the same
+		ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f);
+		ImGui::BeginDisabled();
 		ImGui::PlotLines("##water_sim_time", sim_history.values, imgui::debug_plot::history_size, sim_history.offset, nullptr, 0.0f, plot_max,
 			ImVec2(ImGui::GetContentRegionAvail().x, plot_height));
+		ImGui::EndDisabled();
+		ImGui::PopStyleVar();
 		ImGui::PopStyleColor(2);
 
 		char scale_top[32] = {};

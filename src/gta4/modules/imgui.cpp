@@ -47,13 +47,30 @@ constexpr float SEPARATOR_SPACING = 12.0f;
 #define ADD_CONTAINER_TAB(NAME, FUNC, TOOLTIP) \
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0)));			\
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x + 12.0f, 8));	\
-	if (ImGui::BeginTabItem(NAME)) {																		\
+	if (ImGui::BeginTabItem(NAME, nullptr, imgui::get()->jump_container_tab_flags(NAME))) {					\
 		ImGui::PopStyleVar(1); TT(TOOLTIP); SPACING_INDENT_BEGIN(8); FUNC(); SPACING_INDENT_END(8); ImGui::EndTabItem();	\
 	}																										\
-	else { ImGui::PopStyleVar(1); TT(TOOLTIP); } ImGui::PopStyleColor(); 
+	else { ImGui::PopStyleVar(1); TT(TOOLTIP); } ImGui::PopStyleColor();
 
 namespace gta4
 {
+	/// Widget_ContainerWithCollapsingTitle that imgui::jump_to can open and scroll to.
+	float container_with_title(const char* name, const float height, const std::function<void()>& callback, const bool default_open = true,
+		const char* icon = nullptr, const ImVec4* bg_col = nullptr, const ImVec4* border_col = nullptr)
+	{
+		const auto im = imgui::get();
+
+		if (im->jump_enter_container(name))
+		{
+			ImGui::SetNextItemOpen(true);
+			ImGui::SetScrollY(ImGui::GetCursorPosY());
+		}
+
+		const float new_height = ImGui::Widget_ContainerWithCollapsingTitle(name, height, callback, default_open, icon, bg_col, border_col);
+		im->jump_leave_container();
+		return new_height;
+	}
+
 	WNDPROC g_game_wndproc = nullptr;
 	
 	LRESULT __stdcall wnd_proc_hk(HWND window, UINT message_type, WPARAM wparam, LPARAM lparam)
@@ -1257,21 +1274,21 @@ namespace gta4
 
 		{
 			static float cont_cull_height = 0.0f;
-			cont_cull_height = ImGui::Widget_ContainerWithCollapsingTitle("Shaders", cont_cull_height, 
+			cont_cull_height = container_with_title("Shaders", cont_cull_height, 
 				dev_shader_container, false, ICON_FA_ELLIPSIS_H, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 //#if DEBUG
 		{
 			static float cont_debug_height = 0.0f;
-			cont_debug_height = ImGui::Widget_ContainerWithCollapsingTitle("DEBUG Section", cont_debug_height, 
+			cont_debug_height = container_with_title("DEBUG Section", cont_debug_height, 
 				dev_debug_container, false, ICON_FA_TERMINAL, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 //#endif
 
 		{
 			static float cont_other_height = 0.0f;
-			cont_other_height = ImGui::Widget_ContainerWithCollapsingTitle("Other Settings", cont_other_height,
+			cont_other_height = container_with_title("Other Settings", cont_other_height,
 				dev_other_container, true, ICON_FA_MEMORY, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 	}
@@ -3037,8 +3054,12 @@ namespace gta4
 		const auto& gs = comp_settings::get();
 
 		ImGui::Spacing(0, 4);
-		ImGui::TextUnformatted(	"Simulated waves and presets for the tessellated water area (needs water drawn through the Remix API).\n"
-								"More advanced settings can be found inside the CompSettings tab (Rendering > Water).");
+		ImGui::TextUnformatted("Simulated waves and presets for the tessellated water area.");
+		ImGui::TextUnformatted("Advanced settings can be found");
+		ImGui::SameLine(0, 6);
+		if (ImGui::SmallButton("Here##water_settings")) {
+			imgui::get()->jump_to("Comp Settings", "Rendering Related Settings", "Water");
+		} TT("Opens Comp Settings > Rendering Related Settings > Water");
 		ImGui::Spacing(0, SEPARATOR_SPACING);
 
 		const auto half_width_x = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x * 0.5f;
@@ -3202,35 +3223,35 @@ namespace gta4
 		// help
 		{
 			static float cont_wip_help_height = 0.0f;
-			cont_wip_help_height = ImGui::Widget_ContainerWithCollapsingTitle("Help", cont_wip_help_height, wip_help_container,
+			cont_wip_help_height = container_with_title("Help", cont_wip_help_height, wip_help_container,
 				false, ICON_FA_MUG_HOT, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// remix api
 		{
 			static float cont_wip_api_height = 0.0f;
-			cont_wip_api_height = ImGui::Widget_ContainerWithCollapsingTitle("Remix API Drawing", cont_wip_api_height, wip_api_container,
+			cont_wip_api_height = container_with_title("Remix API Drawing", cont_wip_api_height, wip_api_container,
 				false, ICON_FA_MICROCHIP, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// water
 		{
 			static float cont_wip_water_height = 0.0f;
-			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Water", cont_wip_water_height, wip_water_container,
+			cont_wip_water_height = container_with_title("Water", cont_wip_water_height, wip_water_container,
 				false, ICON_FA_WATER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// wetness
 		{
 			static float cont_wip_water_height = 0.0f;
-			cont_wip_water_height = ImGui::Widget_ContainerWithCollapsingTitle("Global Wetness", cont_wip_water_height, wip_wetness_container,
+			cont_wip_water_height = container_with_title("Global Wetness", cont_wip_water_height, wip_wetness_container,
 				false, ICON_FA_TOILET_PAPER, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// general settingsd
 		{
 			static float cont_wip_comp_settings_height = 0.0f;
-			cont_wip_comp_settings_height = ImGui::Widget_ContainerWithCollapsingTitle("Settings", cont_wip_comp_settings_height, wip_general_container,
+			cont_wip_comp_settings_height = container_with_title("Settings", cont_wip_comp_settings_height, wip_general_container,
 				true, ICON_FA_CAMERA, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
@@ -3467,14 +3488,14 @@ namespace gta4
 		// utilities
 		{
 			static float cont_quick_utilities_height = 0.0f;
-			cont_quick_utilities_height = ImGui::Widget_ContainerWithCollapsingTitle("Utilities", cont_quick_utilities_height, quicksettings_util_container,
+			cont_quick_utilities_height = container_with_title("Utilities", cont_quick_utilities_height, quicksettings_util_container,
 				true, ICON_FA_TERMINAL, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// clock / weather
 		{
 			static float cont_quick_clock_weather_height = 0.0f;
-			cont_quick_clock_weather_height = ImGui::Widget_ContainerWithCollapsingTitle("Clock / Weather", cont_quick_clock_weather_height, quicksettings_clock_weather_container,
+			cont_quick_clock_weather_height = container_with_title("Clock / Weather", cont_quick_clock_weather_height, quicksettings_clock_weather_container,
 				true, ICON_FA_CLOCK, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
@@ -3487,56 +3508,56 @@ namespace gta4
 		// quick commands
 		{
 			static float cont_quickcmd_height = 0.0f;
-			cont_quickcmd_height = ImGui::Widget_ContainerWithCollapsingTitle("Quick Commands", cont_quickcmd_height, 
+			cont_quickcmd_height = container_with_title("Quick Commands", cont_quickcmd_height, 
 				cont_compsettings_quick_cmd, true, ICON_FA_TERMINAL, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// setting presets
 		{
 			static float cont_setting_presets_height = 0.0f;
-			cont_setting_presets_height = ImGui::Widget_ContainerWithCollapsingTitle("Setting Presets", cont_setting_presets_height, 
+			cont_setting_presets_height = container_with_title("Setting Presets", cont_setting_presets_height, 
 				compsetting_presets_container, false, ICON_FA_DOLLY_FLATBED, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// rendering related
 		{
 			static float cont_cs_renderer_height = 0.0f;
-			cont_cs_renderer_height = ImGui::Widget_ContainerWithCollapsingTitle("Rendering Related Settings", cont_cs_renderer_height, 
+			cont_cs_renderer_height = container_with_title("Rendering Related Settings", cont_cs_renderer_height, 
 				compsettings_rendering_container, false, ICON_FA_CAMERA, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// culling related
 		{
 			static float cont_cs_renderer_height = 0.0f;
-			cont_cs_renderer_height = ImGui::Widget_ContainerWithCollapsingTitle("Culling Settings", cont_cs_renderer_height,
+			cont_cs_renderer_height = container_with_title("Culling Settings", cont_cs_renderer_height,
 				compsettings_culling_container, false, ICON_FA_TV, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// light related
 		{
 			static float cont_cs_light_height = 0.0f;
-			cont_cs_light_height = ImGui::Widget_ContainerWithCollapsingTitle("Light Related Settings", cont_cs_light_height, 
+			cont_cs_light_height = container_with_title("Light Related Settings", cont_cs_light_height, 
 				compsettings_light_container, false, ICON_FA_LIGHTBULB, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// emissive related
 		{
 			static float cont_cs_emissive_height = 0.0f;
-			cont_cs_emissive_height = ImGui::Widget_ContainerWithCollapsingTitle("Emissive Related Settings", cont_cs_emissive_height, 
+			cont_cs_emissive_height = container_with_title("Emissive Related Settings", cont_cs_emissive_height, 
 				compsettings_emissive_container, false, ICON_FA_RSS, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// timecycle related
 		{
 			static float cont_cs_timecycle_height = 0.0f;
-			cont_cs_timecycle_height = ImGui::Widget_ContainerWithCollapsingTitle("Timecycle Related Settings", cont_cs_timecycle_height, 
+			cont_cs_timecycle_height = container_with_title("Timecycle Related Settings", cont_cs_timecycle_height, 
 				compsettings_timecycle_container, false, ICON_FA_CLOCK, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 
 		// other
 		{
 			static float cont_cs_other_height = 0.0f;
-			cont_cs_other_height = ImGui::Widget_ContainerWithCollapsingTitle("Other Settings", cont_cs_other_height,
+			cont_cs_other_height = container_with_title("Other Settings", cont_cs_other_height,
 				compsettings_other_container, false, ICON_FA_RANDOM, &im->ImGuiCol_ContainerBackground, &im->ImGuiCol_ContainerBorder);
 		}
 	}
@@ -5227,7 +5248,7 @@ namespace gta4
 		// general settings
 		{
 			static float cont_general_height = 0.0f;
-			cont_general_height = ImGui::Widget_ContainerWithCollapsingTitle("General Settings", cont_general_height, cont_mapsettings_general,
+			cont_general_height = container_with_title("General Settings", cont_general_height, cont_mapsettings_general,
 				false, ICON_FA_ELLIPSIS_H, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
@@ -5239,21 +5260,21 @@ namespace gta4
 		// marker manipulation
 		{
 			static float cont_marker_manip_height = 0.0f;
-			cont_marker_manip_height = ImGui::Widget_ContainerWithCollapsingTitle("Marker Manipulation", cont_marker_manip_height, cont_mapsettings_marker_manipulation,
+			cont_marker_manip_height = container_with_title("Marker Manipulation", cont_marker_manip_height, cont_mapsettings_marker_manipulation,
 				false, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// game light tweaks
 		{
 			static float cont_ignore_lights_height = 0.0f;
-			cont_ignore_lights_height = ImGui::Widget_ContainerWithCollapsingTitle("Game Light Tweaks", cont_ignore_lights_height, cont_mapsettings_light_tweaks,
+			cont_ignore_lights_height = container_with_title("Game Light Tweaks", cont_ignore_lights_height, cont_mapsettings_light_tweaks,
 				false, ICON_FA_LIGHTBULB, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// anticull meshes
 		{
 			static float cont_anticull_height = 0.0f;
-			cont_anticull_height = ImGui::Widget_ContainerWithCollapsingTitle("Anti Cull / Mesh Inspector / LOD Fade", cont_anticull_height, cont_mapsettings_anticull_meshes,
+			cont_anticull_height = container_with_title("Anti Cull / Mesh Inspector / LOD Fade", cont_anticull_height, cont_mapsettings_anticull_meshes,
 				false, ICON_FA_EYE, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 	}
@@ -5862,6 +5883,50 @@ namespace gta4
 		}
 	}
 
+	bool menu_label_matches(const char* label, const char* target)
+	{
+		if (!target) {
+			return false;
+		}
+
+		const auto length = std::strlen(target);
+		return std::strncmp(label, target, length) == 0 && (label[length] == '\0' || label[length] == ' ');
+	}
+
+	void imgui::jump_to(const char* tab, const char* container, const char* container_tab)
+	{
+		// every level needs a frame to show up before the next one can be reached
+		constexpr int JUMP_FRAMES = 6;
+
+		m_jump.tab = tab;
+		m_jump.container = container;
+		m_jump.container_tab = container_tab;
+		m_jump.frames_left = JUMP_FRAMES;
+		m_jump.inside_tab = false;
+		m_jump.inside_container = false;
+	}
+
+	ImGuiTabItemFlags imgui::jump_tab_flags(const char* label) const
+	{
+		const bool wanted = m_jump.frames_left > 0 && menu_label_matches(label, m_jump.tab);
+		return wanted ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+	}
+
+	ImGuiTabItemFlags imgui::jump_container_tab_flags(const char* label) const
+	{
+		const bool wanted = m_jump.frames_left > 0 && m_jump.inside_container && menu_label_matches(label, m_jump.container_tab);
+		return wanted ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+	}
+
+	bool imgui::jump_enter_container(const char* name)
+	{
+		m_jump.inside_container = m_jump.frames_left > 0 && m_jump.inside_tab && menu_label_matches(name, m_jump.container);
+		return m_jump.inside_container;
+	}
+
+	void imgui::jump_leave_container() {
+		m_jump.inside_container = false;
+	}
 
 	void imgui::devgui()
 	{
@@ -5880,6 +5945,10 @@ namespace gta4
 			ImGui::ShowDemoWindow(&im_demo_menu);
 		}
 
+		if (m_jump.frames_left > 0) {
+			m_jump.frames_left--;
+		}
+
 		// resets after one frame
 		m_dbg_debug_single_frame_timecycle_remix_vars = false;
 		m_dbg_debug_single_frame_emissive_intensity_vars = false;
@@ -5887,8 +5956,9 @@ namespace gta4
 #define ADD_TAB(NAME, FUNC) \
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0)));			\
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x + 12.0f, 8));	\
-	if (ImGui::BeginTabItem(NAME)) {																		\
+	if (ImGui::BeginTabItem(NAME, nullptr, jump_tab_flags(NAME))) {											\
 		ImGui::PopStyleVar(1);																				\
+		m_jump.inside_tab = menu_label_matches(NAME, m_jump.tab);											\
 		if (ImGui::BeginChild("##child_" NAME, ImVec2(0, ImGui::GetContentRegionAvail().y - 20), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_AlwaysVerticalScrollbar )) {	\
 			FUNC(); ImGui::EndChild();																		\
 		} else {																							\
