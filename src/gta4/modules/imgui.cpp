@@ -3022,35 +3022,6 @@ namespace gta4
 		//ImGui::PopFont();
 	}
 
-	void wip_api_container()
-	{
-		const auto& gs = comp_settings::get();
-
-		const auto half_width_x = ImGui::GetContentRegionAvail().x * 0.5f;
-
-		ImGui::Spacing(0, 4);
-		ImGui::TextUnformatted("Draw meshes via the RemixApi instead of D3D9.");
-		ImGui::Spacing(0, SEPARATOR_SPACING);
-
-		compsettings_bool_widget("Static Geometry", gs->api_static_enabled);
-		ImGui::SameLine(half_width_x);
-		compsettings_bool_widget("Water", gs->api_water_enabled);
-
-		compsettings_bool_widget("Vehicles", gs->api_vehicles_enabled);
-		ImGui::SameLine(half_width_x);
-		compsettings_bool_widget("Peds", gs->api_peds_enabled);
-
-		ImGui::BeginDisabled(!gs->api_vehicles_enabled.get_as<bool>());
-		{
-			compsettings_bool_widget("Vehicle Lights", gs->api_vehicle_lights_enabled);
-			ImGui::EndDisabled();
-		}
-
-		// no need to have imposter vehicles / distant light sprites in here
-
-		ImGui::Spacing(0, 4);
-	}
-
 	void wip_water_container()
 	{
 		const auto& gs = comp_settings::get();
@@ -3059,16 +3030,17 @@ namespace gta4
 		ImGui::TextUnformatted("Simulated waves and presets for the tessellated water area.");
 		ImGui::TextUnformatted("Advanced settings can be found");
 		ImGui::SameLine(0, 6);
+
 		if (ImGui::SmallButton("Here##water_settings")) {
 			imgui::get()->jump_to("Comp Settings", "Rendering Related Settings", "Water");
 		} TT("Opens Comp Settings > Rendering Related Settings > Water");
+
 		ImGui::Spacing(0, SEPARATOR_SPACING);
-
-		const auto half_width_x = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x * 0.5f;
-
 		ImGui::BeginDisabled(!gs->api_water_enabled.get_as<bool>());
 		{
+			const auto half_width_x = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x * 0.5f;
 			bool changed = compsettings_bool_widget("Wind Waves", gs->water_wind_waves);
+
 			ImGui::SameLine(half_width_x);
 			changed |= compsettings_bool_widget("Interactive Water", gs->water_interactive);
 
@@ -3172,7 +3144,16 @@ namespace gta4
 		const auto& im = imgui::get();
 
 		ImGui::Spacing(0, 4);
-		ImGui::TextUnformatted("More In-Depth Options can be found within the Advanced Remix Menu (Alt+X):\n> Game Setup - Step2: Parameter Tuning - Global Wetness.");
+		ImGui::TextUnformatted("Advanced settings can be found");
+		ImGui::SameLine(0, 6);
+
+		if (ImGui::SmallButton("Here##wetness_settings")) {
+			imgui::get()->jump_to("Comp Settings", "Timecycle Related Settings", "Weather");
+		} TT("Opens Comp Settings > Timecycle Related Settings > Weather");
+
+		ImGui::SameLine(0, 6);
+		ImGui::TextUnformatted("and within the Advanced Remix Menu (Alt+X):");
+		ImGui::TextUnformatted("> Game Setup - Step2: Parameter Tuning - Global Wetness.");
 		ImGui::Spacing(0, SEPARATOR_SPACING);
 
 		const auto button_3way_width = (ImGui::GetContentRegionAvail().x * 0.33f) - (ImGui::GetStyle().ItemSpacing.x);
@@ -3227,13 +3208,6 @@ namespace gta4
 			static float cont_wip_help_height = 0.0f;
 			cont_wip_help_height = container_with_title("Help", cont_wip_help_height, wip_help_container,
 				false, ICON_FA_MUG_HOT, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
-		}
-
-		// remix api
-		{
-			static float cont_wip_api_height = 0.0f;
-			cont_wip_api_height = container_with_title("Remix API Drawing", cont_wip_api_height, wip_api_container,
-				false, ICON_FA_MICROCHIP, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
 		// water
