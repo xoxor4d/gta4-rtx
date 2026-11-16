@@ -121,7 +121,7 @@ namespace gta4
 
 
 	// ---
-	// anti culling mesh inspector (mapsettings ui)
+	// anti culling mesh inspector (mesh inspector editor)
 	// the snapshot runs on the game thread before the scene traversal, so it sees the finished culling state of the previous frame
 
 	namespace anticull_inspector
