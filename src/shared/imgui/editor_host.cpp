@@ -21,16 +21,20 @@ namespace shared::imgui::editor_host
 		}
 	}
 
-	bool any_open()
+	bool any_open() {
+		return open_editor_name() != nullptr;
+	}
+
+	const char* open_editor_name()
 	{
 		for (const auto& editor : editors())
 		{
 			if (editor.is_open()) {
-				return true;
+				return editor.name ? editor.name : "";
 			}
 		}
 
-		return false;
+		return nullptr;
 	}
 
 	void sync_open_state() {

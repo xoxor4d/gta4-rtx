@@ -137,6 +137,19 @@ namespace gta4::free_camera
 		g.speed = std::clamp(speed, controller::SPEED_MIN, controller::SPEED_MAX);
 	}
 
+	void focus(const Vector& target, const float distance)
+	{
+		std::lock_guard lock(g_mtx);
+		if (!g.active || !g.initialized) {
+			return;
+		}
+
+		const Vector forward = controller::forward_of(g);
+		g.pos.x = target.x - forward.x * distance;
+		g.pos.y = target.y - forward.y * distance;
+		g.pos.z = target.z - forward.z * distance;
+	}
+
 	bool is_looking() {
 		return g_look.looking;
 	}

@@ -46,6 +46,44 @@ namespace shared::imgui::editor
 		return changed;
 	}
 
+	/// menu button that opens or closes an editor, disabled while another editor is open. True if it was pressed
+	bool launcher_button(const char* label, bool is_open, const ImVec2& size, const char* tooltip);
+
+	/// handle at the start of a toolbar, the next item goes on the same line
+	void toolbar_grip();
+
+	/// toolbar button of fixed width that shows a file name, a name that does not fit slides while the button is hovered
+	bool file_button(const char* id, const std::string& label, const char* tooltip);
+
+	/// keeps the current window on screen, for windows that follow their content
+	void keep_window_on_screen();
+
+	enum class file_menu_action : std::uint8_t
+	{
+		none,
+		new_file,
+		save_active,
+		save_all,
+		discard,
+	};
+
+	/// items of a file menu: choice of the active file, new file, save, save all and discard. 'discard_file' receives the file to discard
+	file_menu_action file_menu_items(const std::vector<std::string>& files, std::string& active_file, const std::set<std::string>& dirty_files, std::string& discard_file);
+
+	/// modal that asks for the name of a new toml file, opens when 'open' is set.
+	/// True once a name that is valid and not in 'existing_files' got confirmed, 'file' receives it with its extension
+	bool new_file_popup(const char* title, const char* note, bool& open, std::string& name_buffer, const std::vector<std::string>& existing_files, std::string& file);
+
+	enum class close_action : std::uint8_t
+	{
+		none,
+		save_all_and_close,
+		close_without_saving,
+	};
+
+	/// modal that lists the files with unsaved changes before an editor closes, opens when 'open' is set
+	close_action unsaved_changes_popup(const char* title, bool& open, const std::set<std::string>& dirty_files, const char* close_without_saving_tooltip);
+
 	// a message that shows for a few seconds
 	struct status_toast_s
 	{

@@ -99,9 +99,7 @@ namespace gta4
 			// parse 'MARKER' table from markers folder
 			shared::common::log("MapSettings", "Parsing toml files inside 'rtx_comp/markers/' folder ...", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 			{
-				std::unordered_set<std::uint32_t> processed_marker_indices;
-				
-				auto process_marker_entry = [&processed_marker_indices](const toml::value& entry)
+				auto process_marker_entry = [](const toml::value& entry, const std::string& file_name)
 					{
 						std::uint32_t temp_marker_index = 0u;
 						if (entry.contains("marker_num")) {
@@ -116,11 +114,6 @@ namespace gta4
 						if (temp_marker_index >= 9000u && temp_marker_index < 9100)
 						{
 							shared::common::log("MapSettings", "Marker indices 9000-9099 are reserved and can not be used. Skipping marker with num: " + std::to_string(temp_marker_index), shared::common::LOG_TYPE::LOG_TYPE_WARN, false);
-							return;
-						}
-
-						// Priority: skip if this marker index was already processed
-						if (processed_marker_indices.contains(temp_marker_index)) {
 							return;
 						}
 
@@ -224,16 +217,15 @@ namespace gta4
 										.from_hour = temp_from_hour,
 										.to_hour = temp_to_hour,
 										.comment = std::move(temp_comment),
+										.file = file_name,
 										.internal__frames_until_next_vis_check = static_cast<uint32_t>(temp_marker_index % remix_markers::DISTANCE_CHECK_FRAME_INTERVAL),
 									});
-
-								processed_marker_indices.insert(temp_marker_index);
 							}
 							else { TOML_ERROR("[!] [MARKER] #position", entry.at("position"), "expected a 3D vector but got => %d ", entry.at("position").as_array().size()); }
 						}
 					};
 
-				// Process all marker files in alphabetical order
+				// Process all marker files in alphabetical order (earlier files have higher priority)
 				const auto marker_files = shared::utils::get_sorted_files("rtx_comp\\markers", ".toml");
 				for (const auto& file_path : marker_files)
 				{
@@ -242,13 +234,17 @@ namespace gta4
 						toml::basic_value<toml::type_config> marker_config = toml::parse(file_path, toml::spec::v(1, 1, 0));
 						shared::common::log("MapSettings", std::format("> MARKER '{}' ...", file_path), shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
 
+						// a file that fails to parse stays unknown, so nothing can save over it
+						const auto file_name = std::filesystem::path(file_path).filename().string();
+						m_map_settings.marker_files.insert(file_name);
+
 						if (marker_config.contains("MARKER"))
 						{
 							if (const auto marker = marker_config.at("MARKER");
 								!marker.is_empty() && !marker.as_array().empty())
 							{
 								for (const auto& entry : marker.as_array()) {
-									process_marker_entry(entry);
+									process_marker_entry(entry, file_name);
 								}
 							}
 						}
@@ -263,6 +259,8 @@ namespace gta4
 						shared::common::log("MapSettings", std::format("Syntax error in marker file '{}': {}", file_path, err.what()), shared::common::LOG_TYPE::LOG_TYPE_ERROR, true);
 					}
 				}
+
+				resolve_marker_priority();
 			} // end 'MARKER'
 
 
@@ -920,6 +918,26 @@ namespace gta4
 					m_map_settings.allow_lights.insert(hash);
 				}
 			}
+		}
+	}
+
+	/// A marker number can be used several times within a file. Across files only the markers of the
+	/// highest priority file that uses the number spawn, the other files' markers with it are flagged as overridden
+	void map_settings::resolve_marker_priority()
+	{
+		auto& markers = m_map_settings.map_markers;
+		std::unordered_map<std::uint32_t, const std::string*> owners;
+
+		for (const auto& m : markers)
+		{
+			const auto [it, inserted] = owners.try_emplace(m.index, &m.file);
+			if (!inserted && m.file < *it->second) {
+				it->second = &m.file;
+			}
+		}
+
+		for (auto& m : markers) {
+			m.internal__is_overridden = m.file != *owners.at(m.index);
 		}
 	}
 

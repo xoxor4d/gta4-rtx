@@ -6,6 +6,7 @@
 #include "game_lights.hpp"
 #include "free_camera.hpp"
 #include "imgui_light_editor.hpp"
+#include "imgui_marker_editor.hpp"
 
 #include "comp_settings.hpp"
 #include "imgui_internal.h"
@@ -20,6 +21,7 @@
 #include "shared/common/flags.hpp"
 #include "shared/common/remix_api.hpp"
 #include "shared/imgui/editor_host.hpp"
+#include "shared/imgui/editor_widgets.hpp"
 #include "shared/imgui/imgui_helper.hpp"
 #include "shared/imgui/world_draw.hpp"
 #include "shared/imgui/font_awesome_solid_900.hpp"
@@ -3566,7 +3568,9 @@ namespace gta4
 			shared::imgui::draw_background_blur();
 			const auto half_width = ImGui::GetContentRegionMax().x * 0.5f;
 			const auto line1_str = "You'll loose all unsaved changes if you continue!";
-			const auto line2_str = light_editor::has_unsaved_changes() ? "The light editor has unsaved changes. Save them in its toolbar first.  " : "Use the copy to clipboard buttons and manually update  ";
+			const auto line2_str = light_editor::has_unsaved_changes() ? "The light editor has unsaved changes. Save them in its toolbar first.  "
+				: marker_editor::has_unsaved_changes() ? "The marker editor has unsaved changes. Save them in its toolbar first.  "
+				: "Use the copy to clipboard buttons and manually update  ";
 			const auto line3_str = "the map_settings.toml file if you've made changes.";
 
 			ImGui::Spacing();
@@ -3588,6 +3592,7 @@ namespace gta4
 				result = true;
 				map_settings::load_settings();
 				light_editor::on_map_settings_reloaded();
+				marker_editor::on_map_settings_reloaded();
 				ImGui::CloseCurrentPopup();
 			}
 
@@ -3671,357 +3676,47 @@ namespace gta4
 		//ImGui::SeparatorTextLarge(" Debug Views / Info ", true);
 	}
 
-	void cont_mapsettings_marker_manipulation()
+	void cont_mapsettings_markers()
 	{
-		auto& markers = map_settings::get_map_settings().map_markers;
-		ImGui::Spacing(0, 4);
-		ImGui::PushFont(shared::imgui::font::BOLD);
-		if (ImGui::Button("Copy All Markers to Clipboard   " ICON_FA_SAVE, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0)))
-		{
-			ImGui::LogToClipboard();
-			ImGui::LogText("%s", map_settings_toml::build_map_marker_array(markers).c_str());
-			ImGui::LogFinish();
-		} ImGui::PopFont();
+		auto spawning = 0u;
+		auto hidden = 0u;
+		auto conditional = 0u;
+		auto overridden = 0u;
 
-		ImGui::SameLine();
+		for (const auto& m : map_settings::get_map_settings().map_markers)
+		{
+			if (m.internal__is_overridden)
+			{
+				overridden++;
+				continue;
+			}
+
+			spawning++;
+			hidden += m.internal__is_hidden ? 1u : 0u;
+			conditional += m.weather_type != game::WEATHER_NONE || (m.from_hour >= 0 && m.to_hour >= 0) ? 1u : 0u;
+		}
+
+		ImGui::Spacing(0, 4);
 		reload_mapsettings_button_with_popup("MapMarker");
-		//ImGui::Spacing(0, 4);
+		ImGui::Spacing(0, 8.0f);
 
-		constexpr auto in_buflen = 1024u;
-		static char in_area_buf[in_buflen], in_nleaf_buf[in_buflen];
-		static map_settings::marker_settings_s* selection = nullptr;
-
-		//
-		// MARKER TABLE
-
-		ImGui::TableHeaderDropshadow();
-		if (ImGui::BeginTable("MarkerTable", 10,
-			ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_ContextMenuInBody |
-			ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_ScrollY, ImVec2(0, 380)))
+		const bool editor_open = marker_editor::is_open();
+		if (shared::imgui::editor::launcher_button(editor_open ? ICON_FA_MAP_MARKER_ALT "  Close Marker Editor" : ICON_FA_MAP_MARKER_ALT "  Open Marker Editor", editor_open,
+			ImVec2(ImGui::GetContentRegionAvail().x, 48.0f),
+			"Free floating editor for the map markers.\n"
+			"It stays open when this menu is closed (F4) and saves to 'rtx_comp/markers/'."))
 		{
-			ImGui::TableSetupScrollFreeze(0, 1); // make top row always visible
-			ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoHide, 12.0f);
-			ImGui::TableSetupColumn("Num", ImGuiTableColumnFlags_NoResize, 24.0f);
-			ImGui::TableSetupColumn("Vis", ImGuiTableColumnFlags_NoResize, 24.0f);
-			ImGui::TableSetupColumn("Comment", ImGuiTableColumnFlags_WidthStretch, 200.0f);
-			ImGui::TableSetupColumn("Pos", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 200.0f);
-			ImGui::TableSetupColumn("Rot", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 180.0f);
-			ImGui::TableSetupColumn("Scale", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 130.0f);
-			ImGui::TableSetupColumn("CullDist", ImGuiTableColumnFlags_NoResize, 60.0f);
-			ImGui::TableSetupColumn("SpawnOn", ImGuiTableColumnFlags_NoResize, 12.0f);
-			ImGui::TableSetupColumn("##Delete", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoReorder | ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoClip, 16.0f);
-			ImGui::TableHeadersRow();
+			marker_editor::toggle();
+		}
 
-			bool selection_matches_any_entry = false;
-			map_settings::marker_settings_s* marked_for_deletion = nullptr;
+		ImGui::Spacing(0, 8.0f);
+		ImGui::Text("Markers: %u   Currently hidden: %u   With spawn conditions: %u", spawning, hidden, conditional);
 
-			for (auto i = 0u; i < markers.size(); i++)
-			{
-				auto& m = markers[i];
-
-				// default selection
-				if (!selection) {
-					selection = &m;
-				}
-
-				ImGui::TableNextRow();
-
-				// save Y offset
-				const auto save_row_min_y_pos = ImGui::GetCursorScreenPos().y - ImGui::GetStyle().FramePadding.y + ImGui::GetStyle().CellPadding.y;
-
-				// handle row background color for selected entry
-				const bool is_selected = selection && selection == &m;
-				if (is_selected) {
-					ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_TableRowBgAlt));
-				}
-
-				// -
-				ImGui::TableNextColumn();
-				if (!is_selected) // only selectable if not selected
-				{
-					ImGui::Style_InvisibleSelectorPush(); // never show selection - we use tablebg
-					if (ImGui::Selectable(shared::utils::va("%d", i), false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap, ImVec2(0, 22 + ImGui::GetStyle().CellPadding.y * 1.0f))) {
-						selection = &m;
-					}
-					ImGui::Style_InvisibleSelectorPop();
-
-					if (ImGui::IsItemHovered()) {
-						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.6f)));
-					}
-				}
-				else {
-					ImGui::Text("%d", i); // if selected
-				}
-
-				if (selection && selection == &m) {
-					selection_matches_any_entry = true; // check that the selection ptr is up to date
-				}
-
-				// - marker num
-				ImGui::TableNextColumn();
-				ImGui::Text("%d", m.index);
-
-				// - is visible
-				ImGui::TableNextColumn();
-				ImGui::Text(m.internal__is_hidden ? ICON_FA_EYE_SLASH : ICON_FA_EYE);
-
-				// - comment
-				ImGui::TableNextColumn();
-				ImGui::TextWrapped(m.comment.c_str());
-
-				const auto row_max_y_pos = ImGui::GetItemRectMax().y;
-
-				// - pos
-				ImGui::TableNextColumn(); ImGui::Spacing();
-				ImGui::Text("%.2f, %.2f, %.2f", m.origin.x, m.origin.y, m.origin.z);
-
-				// - rot
-				ImGui::TableNextColumn(); ImGui::Spacing();
-				ImGui::Text("%.2f, %.2f, %.2f", m.rotation.x, m.rotation.y, m.rotation.z);
-
-				// - scale
-				ImGui::TableNextColumn(); ImGui::Spacing();
-				ImGui::Text("%.2f, %.2f, %.2f", m.scale.x, m.scale.y, m.scale.z);
-
-				// - cull dist
-				ImGui::TableNextColumn();
-				ImGui::Text("%.0f", m.cull_distance);
-
-				// - spawn on
-				ImGui::TableNextColumn();
-				ImGui::Text("%s", (m.weather_type != game::WEATHER_NONE || m.from_hour > 0 || m.to_hour > 0) ? "X" : "");
-
-				// delete Button
-				ImGui::TableNextColumn();
-				{
-					ImGui::Style_DeleteButtonPush();
-					ImGui::PushID((int)i);
-
-					const auto btn_size = ImVec2(16, is_selected ? (row_max_y_pos - save_row_min_y_pos) : 25.0f);
-					if (ImGui::Button("x##Marker", btn_size)) {
-						marked_for_deletion = &m;
-					}
-
-					ImGui::Style_DeleteButtonPop();
-					ImGui::PopID();
-				}
-
-			} // end for loop
-
-			if (!selection_matches_any_entry)
-			{
-				for (auto& m : markers)
-				{
-					if (selection && selection == &m)
-					{
-						selection_matches_any_entry = true;
-						break;
-					}
-				}
-
-				if (!selection_matches_any_entry) {
-					selection = nullptr;
-				}
-			}
-			else if (selection) 
-			{
-				shared::imgui::world::view_s scene;
-				ImVec2 viewport_pos = {};
-				bool in_front = false;
-
-				if (scene_view::get(scene)) {
-					shared::imgui::world::project(scene, selection->origin, viewport_pos, &in_front);
-				}
-
-				if (in_front)
-				{
-					ImGui::PushFont(shared::imgui::font::BOLD_LARGE);
-					ImGui::GetBackgroundDrawList()->AddText(viewport_pos, ImGui::GetColorU32(ImGuiCol_Text), "[ImGui] Selected Marker");
-					ImGui::PopFont();
-				}
-			}
-
-			// remove entry
-			if (marked_for_deletion)
-			{
-				for (auto it = markers.begin(); it != markers.end(); ++it)
-				{
-					if (&*it == marked_for_deletion)
-					{
-						markers.erase(it);
-						selection = nullptr;
-						break;
-					}
-				}
-			}
-			ImGui::EndTable();
+		if (overridden) {
+			ImGui::TextDisabled("%u more do not spawn, a file with a higher priority uses their number", overridden);
 		}
 
 		ImGui::Spacing(0, 4);
-
-		ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonGreen, true);
-		if (ImGui::Button("++ Marker"))
-		{
-			std::uint32_t free_marker = 0u;
-			for (auto i = 0u; i < markers.size(); i++)
-			{
-				if (markers[i].index == free_marker)
-				{
-					free_marker++;
-					i = 0u; // restart loop
-				}
-			}
-
-			Vector player_pos;
-			player_pos = game::FindPlayerCentreOfWorld(&player_pos);
-
-			markers.emplace_back(map_settings::marker_settings_s {
-					free_marker, player_pos - Vector(0, 0, 0.5f)
-				});
-
-			selection = &markers.back();
-		}
-		ImGui::Style_ColorButtonPop();
-
-		if (selection)
-		{
-			ImGui::SameLine();
-			ImGui::Style_ColorButtonPush(imgui::get()->ImGuiCol_ButtonYellow, true);
-			if (ImGui::Button("Duplicate Current Marker"))
-			{
-				markers.emplace_back(map_settings::marker_settings_s{
-					.index = selection->index,
-					.origin = selection->origin,
-					.rotation = selection->rotation,
-					.scale = selection->scale,
-					.cull_distance = selection->cull_distance,
-					.weather_type = selection->weather_type,
-					.weather_transition_value = selection->weather_transition_value,
-					.from_hour = selection->from_hour,
-					.to_hour = selection->to_hour,
-					.comment = selection->comment,
-					});
-
-				selection = &markers.back();
-			}
-			ImGui::Style_ColorButtonPop();
-		}
-
-		ImGui::SameLine();
-		ImGui::BeginDisabled(!selection);
-		{
-			if (ImGui::Button("TP to Marker")) 
-			{
-				const auto n = natives::get();
-				natives::Ped ped;
-
-				n->GetPlayerChar(n->ConvertIntToPlayerindex(n->GetPlayerId()), &ped);
-				n->SetCharCoordinatesNoOffset(ped, selection->origin.x, selection->origin.y, selection->origin.z);
-			}
-
-			ImGui::SameLine();
-
-			Vector player_pos;
-			player_pos = game::FindPlayerCentreOfWorld(&player_pos);
-
-			if (ImGui::Button("TP Marker to Player", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-			{
-				selection->origin = player_pos;
-				selection->origin.z -= 0.5f;
-			}
-			ImGui::EndDisabled();
-		}
-
-		ImGui::Spacing();
-		ImGui::Spacing();
-
-		ImGui::SeparatorText("Modify Marker");
-
-		ImGui::Spacing();
-		ImGui::Spacing();
-
-		if (selection)
-		{
-			int temp_num = (int)selection->index;
-
-			SET_CHILD_WIDGET_WIDTH;
-			if (ImGui::DragInt("Number", &temp_num, 0.1f, 0, 50000, "%d", ImGuiSliderFlags_AlwaysClamp))
-			{
-				if (temp_num < 0) {
-					temp_num = 0;
-				}
-				
-				selection->index = (std::uint32_t)temp_num;
-			}
-
-			SET_CHILD_WIDGET_WIDTH;
-			ImGui::DragFloat("Cull Distance", &selection->cull_distance, 0.05f, 0.0f, FLT_MAX, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-
-			ImGui::Spacing();
-
-			//ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
-			ImGui::Widget_PrettyDragVec3("Origin", &selection->origin.x, true, 80.0f, 0.01f,
-				-FLT_MAX, FLT_MAX, "X", "Y", "Z");
-			//ImGui::PopStyleVar();
-
-			// RAD2DEG -> DEG2RAD 
-			Vector temp_rot = { RAD2DEG(selection->rotation.x), RAD2DEG(selection->rotation.y), RAD2DEG(selection->rotation.z) };
-
-			ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
-			if (ImGui::Widget_PrettyDragVec3("Rotation", &temp_rot.x, true, 80.0f, 0.05f,
-				-360.0f, 360.0f, "Rx", "Ry", "Rz"))
-			{
-				selection->rotation = { DEG2RAD(temp_rot.x), DEG2RAD(temp_rot.y), DEG2RAD(temp_rot.z) };
-			} ImGui::PopStyleVar();
-
-			{
-				ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.6f, 0.5f));
-				ImGui::Widget_PrettyDragVec3("Scale", &selection->scale.x, true, 80.0f, 0.01f,
-					-FLT_MAX, FLT_MAX, "Sx", "Sy", "Sz");
-				ImGui::PopStyleVar();
-			}
-
-			ImGui::Spacing(0, SEPARATOR_SPACING);
-			ImGui::SeparatorText("  Spawn On:   ");
-			ImGui::Spacing(0, 6);
-
-			SET_CHILD_WIDGET_WIDTH;
-			int curr_weather_selection = selection->weather_type;
-			if (ImGui::Combo("On Weather", &curr_weather_selection, game::eWeatherTypeStr, 9)) 
-			{
-				selection->weather_type = (game::eWeatherType)curr_weather_selection;
-
-				if (curr_weather_selection == game::eWeatherType::WEATHER_NONE) {
-					selection->internal__is_hidden = false;
-				}
-			}
-
-			ImGui::BeginDisabled(selection->weather_type == game::WEATHER_NONE);
-			{
-				SET_CHILD_WIDGET_WIDTH;
-				ImGui::SliderFloat("Weather Transition Value", &selection->weather_transition_value, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-				ImGui::EndDisabled();
-			}
-
-			SET_CHILD_WIDGET_WIDTH;
-			int temp_hours[2] = { selection->from_hour, selection->to_hour };
-
-			if (temp_hours[1] < 0) {
-				temp_hours[1] = selection->from_hour + 1 <= 24 ? selection->from_hour + 1 : selection->from_hour - 1;
-			}
-
-			if (ImGui::SliderInt2("Between Hours", temp_hours, -1, 24, "%d", ImGuiSliderFlags_AlwaysClamp))
-			{
-				selection->from_hour = temp_hours[0];
-				selection->to_hour = temp_hours[1];
-			}
-
-			SET_CHILD_WIDGET_WIDTH;
-			ImGui::InputText("Comment", &selection->comment);
-
-		} // selection
-
-		ImGui::Spacing();
 	}
 
 	void cont_mapsettings_light_tweaks()
@@ -4038,13 +3733,13 @@ namespace gta4
 		const auto editor_button_width = ImGui::GetContentRegionAvail().x - pause_button_width - ImGui::GetStyle().ItemSpacing.x;
 
 		const bool editor_open = light_editor::is_open();
-		ImGui::Style_ColorButtonPush(editor_open ? ImVec4(0.22f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-		if (ImGui::Button(editor_open ? ICON_FA_LIGHTBULB "  Close Light Editor" : ICON_FA_LIGHTBULB "  Open Light Editor", ImVec2(editor_button_width, button_height))) {
+		if (shared::imgui::editor::launcher_button(editor_open ? ICON_FA_LIGHTBULB "  Close Light Editor" : ICON_FA_LIGHTBULB "  Open Light Editor", editor_open,
+			ImVec2(editor_button_width, button_height),
+			"Free floating editor for light overrides and ignored / allowed lights.\n"
+			"It stays open when this menu is closed (F4) and saves to 'rtx_comp/light_tweaks/'."))
+		{
 			light_editor::toggle();
 		}
-		ImGui::Style_ColorButtonPop();
-		TT(	"Free floating editor for light overrides and ignored / allowed lights.\n"
-			"It stays open when this menu is closed (F4) and saves to 'rtx_comp/light_tweaks/'.");
 
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!game::is_in_game || !game::ms_bUserPause);
@@ -5241,13 +4936,14 @@ namespace gta4
 
 		ImGui::Spacing(0, 6.0f);
 		ImGui::SeparatorText("The following settings do NOT auto-save.");
-		ImGui::TextDisabled("Export to clipboard and override the settings manually!");
+		ImGui::TextDisabled("Markers and light tweaks are saved in their editors.");
+		ImGui::TextDisabled("Anti cull and lod fade: export to clipboard and override the settings manually!");
 		ImGui::Spacing(0, 6.0f);
 
-		// marker manipulation
+		// map markers
 		{
-			static float cont_marker_manip_height = 0.0f;
-			cont_marker_manip_height = container_with_title("Marker Manipulation", cont_marker_manip_height, cont_mapsettings_marker_manipulation,
+			static float cont_markers_height = 0.0f;
+			cont_markers_height = container_with_title("Map Markers", cont_markers_height, cont_mapsettings_markers,
 				false, ICON_FA_DICE_D6, &ImGuiCol_ContainerBackground, &ImGuiCol_ContainerBorder);
 		}
 
@@ -6379,6 +6075,7 @@ namespace gta4
 
 		style_xo();
 		light_editor::register_editor();
+		marker_editor::register_editor();
 
 		ImGui_ImplWin32_Init(shared::globals::main_window);
 		g_game_wndproc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(shared::globals::main_window, GWLP_WNDPROC, LONG_PTR(wnd_proc_hk)));

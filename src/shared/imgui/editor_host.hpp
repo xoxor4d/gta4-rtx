@@ -15,6 +15,9 @@ namespace shared::imgui::editor_host
 
 	bool any_open();
 
+	/// name of the open editor, nullptr if none is open. An editor does not open while another one is
+	const char* open_editor_name();
+
 	/// updates globals::imgui_editor_open, an editor calls this whenever it opens or closes
 	void sync_open_state();
 

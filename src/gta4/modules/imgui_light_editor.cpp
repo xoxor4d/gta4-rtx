@@ -9,6 +9,7 @@
 #include "free_camera.hpp"
 #include "game_lights.hpp"
 #include "imgui.hpp"
+#include "imgui_editor_common.hpp"
 #include "map_settings.hpp"
 #include "map_settings_toml.hpp"
 #include "remix_lights.hpp"
@@ -1495,65 +1496,15 @@ namespace gta4::light_editor
 
 		void draw_new_file_popup()
 		{
-			if (g.open_new_file_popup)
-			{
-				ImGui::OpenPopup("New light tweak file");
-				g.open_new_file_popup = false;
-				g.name_buffer.clear();
-			}
-
-			if (!ImGui::BeginPopupModal("New light tweak file", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
-				return;
-			}
-
-			shared::imgui::draw_background_blur();
-			ImGui::TextUnformatted("Files are applied in alphabetical order, earlier names have higher priority.");
-			ImGui::Spacing(0, 4);
-
-			ImGui::SetNextItemWidth(320.0f);
-			if (ImGui::IsWindowAppearing()) {
-				ImGui::SetKeyboardFocusHere();
-			}
-
-			const bool enter = ImGui::InputTextWithHint("##file", "file name", &g.name_buffer, ImGuiInputTextFlags_EnterReturnsTrue);
-			ImGui::SameLine();
-			ImGui::TextDisabled(".toml");
-
-			std::string file = g.name_buffer;
-			if (file.ends_with(".toml")) {
-				file.resize(file.size() - 5u);
-			}
-
-			const bool valid_chars = shared::utils::is_valid_file_stem(file);
-
-			file += ".toml";
-			const bool exists = file_exists(file);
-
-			if (!g.name_buffer.empty() && !valid_chars) {
-				ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.4f, 1.0f), "Use letters, digits, '_', '-' and '.' only");
-			}
-			else if (exists) {
-				ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.4f, 1.0f), "A file with that name exists");
-			}
-
-			ImGui::Spacing(0, 4);
-			ImGui::BeginDisabled(!valid_chars || exists);
-			if (ImGui::Button("Create", ImVec2(156.0f, 0.0f)) || (enter && valid_chars && !exists))
+			std::string file;
+			if (shared::imgui::editor::new_file_popup("New light tweak file", "Files are applied in alphabetical order, earlier names have higher priority.",
+				g.open_new_file_popup, g.name_buffer, sorted_files(), file))
 			{
 				settings().light_overrides_toml_info[file];
 				settings().lights_toml_info[file];
 				g.active_file = file;
 				g.dirty_files.insert(file);
-				ImGui::CloseCurrentPopup();
 			}
-			ImGui::EndDisabled();
-
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ImGui::Button("Cancel", ImVec2(156.0f, 0.0f))) {
-				ImGui::CloseCurrentPopup();
-			}
-
-			ImGui::EndPopup();
 		}
 
 		void close_editor()
@@ -1566,43 +1517,21 @@ namespace gta4::light_editor
 
 		void draw_close_popup()
 		{
-			if (g.open_close_popup)
+			switch (shared::imgui::editor::unsaved_changes_popup("Unsaved light tweaks", g.open_close_popup, g.dirty_files,
+				"The changes stay active until the map settings are reloaded and can still be saved when the editor is opened again."))
 			{
-				ImGui::OpenPopup("Unsaved light tweaks");
-				g.open_close_popup = false;
+				case shared::imgui::editor::close_action::save_all_and_close:
+					save_all_files();
+					close_editor();
+					break;
+
+				case shared::imgui::editor::close_action::close_without_saving:
+					close_editor();
+					break;
+
+				default:
+					break;
 			}
-
-			if (!ImGui::BeginPopupModal("Unsaved light tweaks", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
-				return;
-			}
-
-			shared::imgui::draw_background_blur();
-			ImGui::TextUnformatted("These files have changes that are not saved:");
-			for (const auto& file : g.dirty_files) {
-				ImGui::BulletText("%s", file.c_str());
-			}
-
-			ImGui::Spacing(0, 6);
-			if (ImGui::Button("Save all and close", ImVec2(160.0f, 0.0f)))
-			{
-				save_all_files();
-				close_editor();
-				ImGui::CloseCurrentPopup();
-			}
-
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ImGui::Button("Close without saving", ImVec2(160.0f, 0.0f)))
-			{
-				close_editor();
-				ImGui::CloseCurrentPopup();
-			} TT("The changes stay active until the map settings are reloaded and can still be saved when the editor is opened again.");
-
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f))) {
-				ImGui::CloseCurrentPopup();
-			}
-
-			ImGui::EndPopup();
 		}
 
 		void draw_file_menu()
@@ -1612,43 +1541,28 @@ namespace gta4::light_editor
 			}
 
 			shared::imgui::draw_window_blur();
-			ImGui::TextDisabled("Active file (highest priority first)");
 
-			for (const auto& file : sorted_files())
+			std::string file_to_discard;
+			switch (shared::imgui::editor::file_menu_items(sorted_files(), g.active_file, g.dirty_files, file_to_discard))
 			{
-				const auto label = g.dirty_files.contains(file) ? file + "  *" : file;
-				if (ImGui::MenuItem(label.c_str(), nullptr, file == g.active_file)) {
-					g.active_file = file;
-				}
-			}
+				case shared::imgui::editor::file_menu_action::new_file:
+					g.open_new_file_popup = true;
+					break;
 
-			if (ImGui::MenuItem(ICON_FA_FILE "  New file ...")) {
-				g.open_new_file_popup = true;
-			}
+				case shared::imgui::editor::file_menu_action::save_active:
+					save_active_file();
+					break;
 
-			ImGui::Separator();
+				case shared::imgui::editor::file_menu_action::save_all:
+					save_all_files();
+					break;
 
-			if (ImGui::MenuItem(ICON_FA_SAVE "  Save active file", "Ctrl+S", false, !g.active_file.empty())) {
-				save_active_file();
-			}
+				case shared::imgui::editor::file_menu_action::discard:
+					discard_file(file_to_discard);
+					break;
 
-			if (ImGui::MenuItem(ICON_FA_SAVE "  Save all changed files", nullptr, false, !g.dirty_files.empty())) {
-				save_all_files();
-			}
-
-			if (ImGui::BeginMenu(ICON_FA_UNDO "  Discard changes", !g.dirty_files.empty()))
-			{
-				shared::imgui::draw_window_blur();
-				const auto dirty = g.dirty_files;
-
-				for (const auto& file : dirty)
-				{
-					if (ImGui::MenuItem(file.c_str())) {
-						discard_file(file);
-					}
-				}
-
-				ImGui::EndMenu();
+				default:
+					break;
 			}
 
 			ImGui::Separator();
@@ -1690,7 +1604,6 @@ namespace gta4::light_editor
 
 		void draw_toolbar()
 		{
-			const auto im = imgui::get();
 			const auto& io = ImGui::GetIO();
 
 			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - SCREEN_PADDING, SCREEN_PADDING), ImGuiCond_FirstUseEver, ImVec2(1.0f, 0.0f));
@@ -1699,76 +1612,16 @@ namespace gta4::light_editor
 			if (ImGui::Begin("##light_editor_toolbar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing))
 			{
 				shared::imgui::draw_window_blur();
+				shared::imgui::editor::toolbar_grip();
 
-				{
-					const ImVec2 grip_size = ImGui::CalcTextSize(ICON_FA_GRIP_VERTICAL);
-					const float button_height = ImGui::GetFrameHeight() + 6.0f;
-					const ImVec2 grip_pos = ImGui::GetCursorScreenPos();
-
-					ImGui::Dummy(ImVec2(grip_size.x, button_height));
-					TT("Drag to move the toolbar");
-					ImGui::GetWindowDrawList()->AddText(ImVec2(grip_pos.x, grip_pos.y + (button_height - grip_size.y) * 0.5f), ImGui::GetColorU32(ImGuiCol_TextDisabled), ICON_FA_GRIP_VERTICAL);
-					ImGui::SameLine(0.0f, 8.0f);
-				}
-
-				// game
-				ImGui::BeginDisabled(!game::is_in_game || !game::ms_bUserPause);
-				if (tool_button(im->m_pause_game ? ICON_FA_PLAY "##pause" : ICON_FA_PAUSE "##pause", "Pause the game like the pause menu does, cutscenes included. The scene and its lights keep rendering.", im->m_pause_game))
-				{
-					im->m_pause_game = !im->m_pause_game;
-					if (!im->m_pause_game && !(game::CMenuManager__m_MenuActive && *game::CMenuManager__m_MenuActive)) {
-						*game::ms_bUserPause = 0u;
-					}
-				}
-
-				ImGui::BeginDisabled(!im->m_pause_game);
-				tool_button(ICON_FA_STEP_FORWARD "##step", "Click to advance a single frame, hold to let the game run until released");
-				ImGui::SameLine(0.0f, 0.0f);
-
-				// the button above is the last item (tool_button ends with SameLine)
-				const bool step_held = ImGui::IsItemActive();
-				if (step_held || g.step_held) {
-					im->m_pause_step_held = step_held;
-				}
-				g.step_held = step_held;
-
-				ImGui::EndDisabled();
-				ImGui::EndDisabled();
-				ImGui::SameLine(0.0f, 4.0f);
+				editor_common::pause_buttons(g.step_held, "Pause the game like the pause menu does, cutscenes included. The scene and its lights keep rendering.");
 				tool_separator();
 
-				// camera / input
-				const bool freecam = free_camera::is_active();
-				if (tool_button(ICON_FA_VIDEO "##freecam",
-					"Free camera, the player stays put\n"
-					"Hold the right mouse button to look around and move:\n"
-					"WASD: Forward & Strafing\n"
-					"Q/E:  Down & Up\n"
-					"Shift/Space: Speedup & Slowdown\n"
-					"Mouse wheel: Speed", freecam))
-				{
-					free_camera::set_active(!freecam);
-				}
-
-				ImGui::BeginDisabled(freecam);
-				if (tool_button(ICON_FA_GAMEPAD "##rmb_input", "Hold the right mouse button over the world to hand mouse and keyboard to the game", g.rmb_game_input && !freecam)) {
-					g.rmb_game_input = !g.rmb_game_input;
-				}
-				ImGui::EndDisabled();
-
-				if (freecam && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_ForTooltip))
-				{
-					ImGui::SetTooltip("%s",
-						"Hold the right mouse button over the world to hand mouse and keyboard to the game\n"
-						"Not available while the free camera is on: it uses the right mouse button itself. Turn the free camera off first.");
-				}
-
-				ImGui::SameLine(0.0f, 4.0f);
-
+				editor_common::camera_buttons(g.rmb_game_input);
 				tool_separator();
 
 				// gizmo
-				if (tool_button(ICON_FA_ARROWS_ALT "##translate", "Move the selected light (T)", !g.rotate_mode)) {
+				if (tool_button(ICON_FA_ARROWS_ALT "##translate", "Move the selected light (W)", !g.rotate_mode)) {
 					g.rotate_mode = false;
 				}
 
@@ -1823,46 +1676,10 @@ namespace gta4::light_editor
 				ImGui::EndDisabled();
 				ImGui::SameLine(0.0f, 4.0f);
 
-				// fixed width, a name that does not fit slides while the button is hovered
+				if (shared::imgui::editor::file_button("##file", std::format("{}{}", g.active_file.empty() ? "No file" : g.active_file, active_dirty ? "  *" : ""),
+					"Active file, new file, save all, discard and clipboard export. '*' marks unsaved changes."))
 				{
-					constexpr float file_button_width = 180.0f;
-					const auto file_label = std::format("{}{}", g.active_file.empty() ? "No file" : g.active_file, active_dirty ? "  *" : "");
-					const ImVec2 button_pos = ImGui::GetCursorScreenPos();
-					const float button_height = ImGui::GetFrameHeight() + 6.0f;
-
-					ImGui::Style_ColorButtonPush(ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-					if (ImGui::Button("##file", ImVec2(file_button_width, button_height))) {
-						ImGui::OpenPopup("##le_file_menu");
-					}
-					ImGui::Style_ColorButtonPop();
-
-					const bool hovered = ImGui::IsItemHovered();
-					ImGui::SetItemTooltipBlur("%s\nActive file, new file, save all, discard and clipboard export. '*' marks unsaved changes.", file_label.c_str());
-
-					const float pad = ImGui::GetStyle().FramePadding.x + 2.0f;
-					const ImVec2 caret_size = ImGui::CalcTextSize(ICON_FA_CARET_DOWN);
-					const ImVec2 text_size = ImGui::CalcTextSize(file_label.c_str());
-					const float caret_x = button_pos.x + file_button_width - pad - caret_size.x;
-					const float text_min_x = button_pos.x + pad;
-					const float text_max_x = caret_x - 6.0f;
-					const float text_y = button_pos.y + (button_height - text_size.y) * 0.5f;
-
-					float slide = 0.0f;
-					if (const float overflow = text_size.x - (text_max_x - text_min_x); hovered && overflow > 0.0f)
-					{
-						// back and forth with a short rest at both ends
-						const float rest = 20.0f;
-						const float phase = fmodf(static_cast<float>(ImGui::GetTime()) * 45.0f, 2.0f * (overflow + rest));
-						slide = std::clamp(phase < overflow + rest ? phase - rest * 0.5f : 2.0f * (overflow + rest) - phase - rest * 0.5f, 0.0f, overflow);
-					}
-
-					const auto draw = ImGui::GetWindowDrawList();
-					draw->PushClipRect(ImVec2(text_min_x, button_pos.y), ImVec2(text_max_x, button_pos.y + button_height), true);
-					draw->AddText(ImVec2(text_min_x - slide, text_y), ImGui::GetColorU32(ImGuiCol_Text), file_label.c_str());
-					draw->PopClipRect();
-					draw->AddText(ImVec2(caret_x, button_pos.y + (button_height - caret_size.y) * 0.5f), ImGui::GetColorU32(ImGuiCol_Text), ICON_FA_CARET_DOWN);
-
-					ImGui::SameLine(0.0f, 4.0f);
+					ImGui::OpenPopup("##le_file_menu");
 				}
 
 				tool_separator();
@@ -1886,11 +1703,7 @@ namespace gta4::light_editor
 					ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, 8.0f);
 					ImGui::SetWindowFontScale(0.82f);
 
-					float speed = free_camera::get_speed();
-					ImGui::SetNextItemWidth(width);
-					if (ImGui::SliderFloat("##camera_speed", &speed, 0.25f, 400.0f, "Camera speed  %.1f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
-						free_camera::set_speed(speed);
-					} TT("Speed of the free camera, also changed with the mouse wheel while the right mouse button is held");
+					editor_common::camera_speed_slider(width);
 
 					ImGui::SameLine(0.0f, spacing);
 					ImGui::SetNextItemWidth(width);
@@ -2260,16 +2073,7 @@ namespace gta4::light_editor
 			if (ImGui::Begin(title.c_str(), &keep_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
 			{
 				// the window follows its content, so it is pushed back whenever a part of it would leave the screen
-				{
-					const ImVec2 display = ImGui::GetIO().DisplaySize;
-					const ImVec2 size = ImGui::GetWindowSize();
-					const ImVec2 current = ImGui::GetWindowPos();
-					const ImVec2 clamped(std::clamp(current.x, 0.0f, std::max(display.x - size.x, 0.0f)), std::clamp(current.y, 0.0f, std::max(display.y - size.y, 0.0f)));
-
-					if (clamped.x != current.x || clamped.y != current.y) {
-						ImGui::SetWindowPos(clamped);
-					}
-				}
+				shared::imgui::editor::keep_window_on_screen();
 
 				shared::imgui::draw_window_blur();
 
@@ -2670,7 +2474,7 @@ namespace gta4::light_editor
 				return;
 			}
 
-			if (ImGui::IsKeyPressed(ImGuiKey_T, false)) {
+			if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
 				g.rotate_mode = false;
 			}
 			else if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
@@ -2702,6 +2506,10 @@ namespace gta4::light_editor
 				close_editor();
 			}
 
+			return;
+		}
+
+		if (shared::imgui::editor_host::any_open()) {
 			return;
 		}
 

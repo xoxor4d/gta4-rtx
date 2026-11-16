@@ -29,6 +29,28 @@ namespace gta4::map_settings_toml
 				toml_str += ", cull_distance = " + format_float(m.cull_distance);
 			}
 
+			const bool on_weather = m.weather_type < game::WEATHER_NONE;
+			const bool between_hours = m.from_hour >= 0 && m.to_hour >= 0;
+
+			if (on_weather || between_hours)
+			{
+				std::string spawn_on;
+				if (on_weather)
+				{
+					// 'WEATHER_RAIN' -> 'RAIN'
+					spawn_on += "weather = \"" + std::string(game::eWeatherTypeStr[m.weather_type]).substr(8u) + "\"";
+					spawn_on += ", weather_transition_value = " + format_float(m.weather_transition_value);
+				}
+
+				if (between_hours)
+				{
+					spawn_on += on_weather ? ", " : "";
+					spawn_on += "between_hours = [" + std::to_string(m.from_hour) + ", " + std::to_string(m.to_hour) + "]";
+				}
+
+				toml_str += ", spawn_on = { " + spawn_on + " }";
+			}
+
 			toml_str += " },\n";
 		}
 
