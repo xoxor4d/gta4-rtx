@@ -245,18 +245,19 @@ namespace gta4::game
 	extern uint32_t func_addr__CWater_GetRenderLists; // list buffer CWater::Render reads
 
 	// interactive water (water_dynamics.cpp)
-	extern uint32_t func_addr__CWater_UpdateDynamicWater; // steps the 100 x 100 wave grid around the camera (cdecl, params)
+	extern uint32_t func_addr__CWater_UpdateDynamicWater; // steps the 100 x 100 wave grid around the local player, runs as a task on a worker thread
 	extern float* pWaterDynamicHeights;     // [100][100] heights the buoyancy reads, x-major, toroidal: (X / 2 + 100000) % 100
-	extern float* pWaterDynamicVelocities;  // [100][100]
-	extern int* pWaterDynamicBaseX;         // world x of the first cell, 2 unit steps
+	extern float* pWaterDynamicVelocities;  // [100][100] vertical speed of each cell
+	extern int* pWaterDynamicBaseX;         // world x of the first cell (even), the grid covers 200 x 200 units
 	extern int* pWaterDynamicBaseY;
 	extern void** pVehiclePool;             // CPools::ms_pVehiclePool: { objects, flags (0x80 = free), count, item size }
 	extern void** pPedPool;                 // CPools::ms_pPedPool
 	extern void** pObjectPool;              // CPools::ms_pObjectPool
-	extern uint32_t func_addr__CExplosion_AddExplosion; // every explosion (grenades, rockets, cars, script): cdecl, 19 args
-	extern float* pWeatherWind;             // CWeather::Wind, 0 calm - 1 storm
-	extern uint32_t func_addr__CWater_TestLineAgainstWater;  // where a line meets the water: bool cdecl (start, end, hit). every bullet, and the heli downwash fx
-	extern uint32_t retn_addr__heli_downwash_water_test;     // its call from the heli downwash fx
+	extern uint32_t func_addr__CExplosion_AddExplosion; // CExplosionManager::AddExplosion, every explosion (grenades, rockets, cars, script)
+	extern float* pWeatherWind;             // CWeather::Wind, 0 calm - 1 storm (up to doubled while the player is 50 - 200 units up)
+	extern uint32_t func_addr__CWater_TestLineAgainstWater;  // where a line meets the flat water: bool cdecl (start, end, hit)
+	extern uint32_t hk_addr__weapon_fire_fx_water_test;      // its call in CWeapon::DoWeaponFireFx (instant hit bullets)
+	extern uint32_t hk_addr__bullet_update_water_test;       // its call in CBulletInfo::Update (bullets in flight)
 
 	// "vehicle imposters" (-disableimposters): distant street light / aircraft sprites and instanced fake cars, render thread
 	extern uint32_t func_addr__CDistantLights_Render;               // (float night_fade): street light + aircraft sprites

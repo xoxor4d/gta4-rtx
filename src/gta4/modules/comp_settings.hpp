@@ -1546,9 +1546,18 @@ namespace gta4
 			variable water_far_wave_scale =
 			{
 				"water_far_wave_scale",
-				("Strength of the procedural waves relative to the measured strength of the game's waves."),
+				("Strength of the procedural waves relative to the measured strength of the game's waves.\n"
+				 "Used while wind waves and interactive water are off, 'water_far_wave_height' otherwise."),
 				"1.7.0",
 				0.4f
+			};
+
+			variable water_far_wave_height =
+			{
+				"water_far_wave_height",
+				("Height of the procedural waves (RMS, in units) while wind waves or interactive water are on. Not affected by the game's wind."),
+				"1.7.4",
+				0.05f
 			};
 
 			variable water_far_wave_length =
@@ -1586,7 +1595,8 @@ namespace gta4
 			variable water_wind_waves =
 			{
 				"water_wind_waves",
-				("Waves driven by the game's wind: calm water on still days, a choppy harbour in a storm (fetch limited wind sea and swell)."),
+				("Waves driven by the game's wind: calm water on still days, a choppy harbour in a storm.\n"
+				 "Replaces the game's own waves while it is on."),
 				"1.7.4",
 				true
 			};
@@ -1594,32 +1604,73 @@ namespace gta4
 			variable water_wind_wave_scale =
 			{
 				"water_wind_wave_scale",
-				("Height multiplier of the wind waves."),
+				("Height multiplier of all wind waves."),
 				"1.7.4",
 				1.0f
 			};
 
-			variable water_wind_wave_near_scale =
+			variable water_wind_wave_long_scale =
 			{
-				"water_wind_wave_near_scale",
-				("Strength of the short wind waves on the detailed water around the camera."),
+				"water_wind_wave_long_scale",
+				("Height multiplier of the long wind waves (16 units and longer). Shown on all tessellated water, boats ride them."),
+				"1.7.4",
+				2.0f
+			};
+
+			variable water_wind_wave_short_scale =
+			{
+				"water_wind_wave_short_scale",
+				("Height multiplier of the short wind waves (below 16 units). Waves below 4 units need the fine mesh around the camera."),
 				"1.7.4",
 				0.7f
 			};
 
-			variable water_wind_wave_far_scale =
+			variable water_wind_swell_base =
 			{
-				"water_wind_wave_far_scale",
-				("Strength of the long wind waves on the distant water."),
+				"water_wind_swell_base",
+				("Height multiplier of the swell that is there without wind (~0.1 units): slow waves of 40 - 130 units."),
+				"1.7.4",
+				2.0f
+			};
+
+			variable water_wind_swell_scale =
+			{
+				"water_wind_swell_scale",
+				("Height multiplier of the swell the wind adds: slow waves of 40 - 130 units, up to ~0.8 units high in a storm."),
 				"1.7.4",
 				1.0f
+			};
+
+			variable water_wind_wave_direction =
+			{
+				"water_wind_wave_direction",
+				("Direction the wind waves travel in (degrees). The game's wind always blows at 45."),
+				"1.7.4",
+				45.0f
+			};
+
+			variable water_inland_level =
+			{
+				"water_inland_level",
+				("Water above this height counts as inland water (ponds, pools, fountains). The sea and the rivers are at 0."),
+				"1.7.4",
+				0.5f
+			};
+
+			variable water_inland_wave_scale =
+			{
+				"water_inland_wave_scale",
+				("Height multiplier of the wind waves on inland water."),
+				"1.7.4",
+				0.2f
 			};
 
 			variable water_interactive =
 			{
 				"water_interactive",
 				("Interactive water: boats leave wakes, swimming, wading and jumping in make ripples, explosions send out waves and\n"
-				 "helicopters push the water down. Boats and bodies float on the simulated surface."),
+				 "helicopters push the water down. Boats and bodies float on the simulated surface.\n"
+				 "Replaces the game's own waves while it is on (calm water unless wind waves are on)."),
 				"1.7.4",
 				true
 			};
@@ -1632,22 +1683,60 @@ namespace gta4
 				1.0f
 			};
 
-			variable water_detail_mesh_radius =
+			variable water_interactive_ped_scale =
 			{
-				"water_detail_mesh_radius",
-				("Remix API water: half size of the area around the camera that is tessellated with 0.5 unit cells (ripples, short waves).\n"
-				 "Rounded to 16 units, 0 turns it off."),
+				"water_interactive_ped_scale",
+				("Interactive water: how much peds (the player included) disturb the water."),
 				"1.7.4",
-				48.0f
+				0.5f
 			};
 
-			variable water_near_tessellation_scale =
+			variable water_interactive_vehicle_scale =
 			{
-				"water_near_tessellation_scale",
-				("Remix API water: density of the fine mesh around the camera. 1 = 0.5 unit cells, 0.5 = 1 unit cells (a quarter of the vertices), below 0.375 the fine mesh is off.\n"
-				 "The fine mesh is only built while wind waves or interactive water are on."),
+				"water_interactive_vehicle_scale",
+				("Interactive water: how much cars and bikes disturb the water."),
+				"1.7.4",
+				2.0f
+			};
+
+			variable water_interactive_boat_scale =
+			{
+				"water_interactive_boat_scale",
+				("Interactive water: how much boats disturb the water."),
+				"1.7.4",
+				2.0f
+			};
+
+			variable water_interactive_heli_scale =
+			{
+				"water_interactive_heli_scale",
+				("Interactive water: how much helicopters disturb the water (rotor wash and a helicopter in the water)."),
 				"1.7.4",
 				1.0f
+			};
+
+			variable water_interactive_object_scale =
+			{
+				"water_interactive_object_scale",
+				("Interactive water: how much objects disturb the water."),
+				"1.7.4",
+				0.5f
+			};
+
+			variable water_interactive_object_min_mass =
+			{
+				"water_interactive_object_min_mass",
+				("Interactive water: objects lighter than this (kg) are carried by the water but do not disturb it (floating debris, litter)."),
+				"1.7.4",
+				10.0f
+			};
+
+			variable water_interactive_impact_scale =
+			{
+				"water_interactive_impact_scale",
+				("Interactive water: how much bullets and explosions disturb the water."),
+				"1.7.4",
+				1.2f
 			};
 
 			variable water_vertex_normal_scale =
@@ -1661,25 +1750,59 @@ namespace gta4
 			variable water_lod =
 			{
 				"water_lod",
-				("Coarser tessellation further away from the camera (2 units close by, then 4 and 8 units)."),
+				("Coarser tessellation further away from the camera: cells of 2 units close by, then 4 and 8 units."),
 				"1.7.0",
 				true
+			};
+
+			variable water_lod_fine_cells =
+			{
+				"water_lod_fine_cells",
+				("Remix API water: smallest cells of the water mesh around the camera. 0 = 2 units, 1 = 1 unit, 2 = 0.5 units.\n"
+				 "Cells below 2 units are only built while wind waves or interactive water are on."),
+				"1.7.4",
+				1
+			};
+
+			variable water_lod_radius_1 =
+			{
+				"water_lod_radius_1",
+				("Distance from the camera where the cells change from 0.5 to 1 unit (rounded to 16)."),
+				"1.7.4",
+				32.0f
+			};
+
+			variable water_lod_radius_2 =
+			{
+				"water_lod_radius_2",
+				("Distance from the camera where the cells change from 1 to 2 units (rounded to 16, at most 128).\n"
+				 "The simulation thread bakes this area every update, its cost grows with the square of the distance."),
+				"1.7.4",
+				44.0f
 			};
 
 			variable water_lod_radius_4 =
 			{
 				"water_lod_radius_4",
-				("Distance from the camera where the tessellation changes from 2 to 4 units."),
-				"1.7.0",
-				16.0f
+				("Distance from the camera where the cells change from 2 to 4 units. At least 16 beyond the previous change."),
+				"1.7.4",
+				64.0f
 			};
 
 			variable water_lod_radius_8 =
 			{
 				"water_lod_radius_8",
-				("Distance from the camera where the tessellation changes from 4 to 8 units."),
-				"1.7.0",
-				64.0f
+				("Distance from the camera where the cells change from 4 to 8 units. At least 16 beyond the previous change."),
+				"1.7.4",
+				100.0f
+			};
+
+			variable water_lod_blend =
+			{
+				"water_lod_blend",
+				("Width of the transition between two cell sizes: the waves the coarser cells can not show fade out over this distance."),
+				"1.7.4",
+				24.0f
 			};
 
 			variable water_block_distance_scale =
@@ -1695,8 +1818,8 @@ namespace gta4
 				"water_disable_seabed_plane",
 				("This setting prevents marker 1000 from drawing. Older versions of the mod placed a large plane under the sea to terminate rays\n"
 				 "which was needed for absorption to kick in. This is no longer needed."),
-				"1.7.0",
-				true
+				"1.7.4",
+				false
 			};
 
 			variable api_water_enabled =

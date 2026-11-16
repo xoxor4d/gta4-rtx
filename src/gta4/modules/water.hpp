@@ -59,7 +59,12 @@ namespace gta4
 		static material_s& material();
 
 		static stats_s get_stats();
+
+		/// all counters of the mesh and the simulation as a table (comp settings tab)
 		static void devgui_stats();
+
+		/// tessellated radius, triangle count and the simulation time with its trend (wip tab)
+		static void devgui_overview();
 
 		/// block scan and list buffer counters (dev tab)
 		static void devgui_debug();

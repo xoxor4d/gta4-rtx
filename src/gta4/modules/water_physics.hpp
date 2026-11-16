@@ -35,18 +35,35 @@ namespace gta4::water_physics
 		return std::clamp(v, 0.0f, 1.0f);
 	}
 
-	/// read only view of a height grid
+	// read only view of a height grid
 	struct grid_view_s
 	{
 		int n = 0;
 		float dx = 1.0f;
-		int ox = 0, oy = 0;     // world cell index of cell [0][0] (non periodic grids)
+		int ox = 0; // world cell index of cell [0][0] (grids that are not periodic)
+		int oy = 0;
 		bool periodic = false;  // tiles over the world (ocean)
 		const float* h = nullptr;
 
-		bool valid() const { return h && n > 0; }
+		bool valid() const {
+			return h && n > 0;
+		}
 
-		/// catmull-rom sample with its gradient (bilinear on the coarse grids shows faceted crests)
+		/// Distance (world units) to the border of the area sample() covers, below 0 outside of it or without data.
+		float edge_distance(const float x, const float y) const
+		{
+			if (!valid()) {
+				return -1.0f;
+			}
+
+			const float fx = x / dx - static_cast<float>(ox);
+			const float fy = y / dx - static_cast<float>(oy);
+			const float inner = std::min(fx, fy) - 1.0f;
+			const float outer = static_cast<float>(n - 2) - std::max(fx, fy);
+			return std::min(inner, outer) * dx;
+		}
+
+		/// Catmull-Rom sample with its gradient. Falls back to the bilinear sample at the border of a grid that is not periodic.
 		void sample_cubic(const float x, const float y, float& out_h, float& out_dx, float& out_dy) const
 		{
 			out_h = out_dx = out_dy = 0.0f;
@@ -68,10 +85,14 @@ namespace gta4::water_physics
 			const auto weights = [](const float t, float w[4], float dw[4])
 				{
 					const float t2 = t * t, t3 = t2 * t;
-					w[0] = 0.5f * (-t3 + 2.0f * t2 - t);           dw[0] = 0.5f * (-3.0f * t2 + 4.0f * t - 1.0f);
-					w[1] = 0.5f * (3.0f * t3 - 5.0f * t2 + 2.0f);  dw[1] = 0.5f * (9.0f * t2 - 10.0f * t);
-					w[2] = 0.5f * (-3.0f * t3 + 4.0f * t2 + t);    dw[2] = 0.5f * (-9.0f * t2 + 8.0f * t + 1.0f);
-					w[3] = 0.5f * (t3 - t2);                       dw[3] = 0.5f * (3.0f * t2 - 2.0f * t);
+					w[0] = 0.5f * (-t3 + 2.0f * t2 - t);
+					dw[0] = 0.5f * (-3.0f * t2 + 4.0f * t - 1.0f);
+					w[1] = 0.5f * (3.0f * t3 - 5.0f * t2 + 2.0f);
+					dw[1] = 0.5f * (9.0f * t2 - 10.0f * t);
+					w[2] = 0.5f * (-3.0f * t3 + 4.0f * t2 + t);
+					dw[2] = 0.5f * (-9.0f * t2 + 8.0f * t + 1.0f);
+					w[3] = 0.5f * (t3 - t2);
+					dw[3] = 0.5f * (3.0f * t2 - 2.0f * t);
 				};
 
 			float wx[4], dwx[4], wy[4], dwy[4];
@@ -102,7 +123,7 @@ namespace gta4::water_physics
 			out_dy = gy / dx;
 		}
 
-		/// bilinear sample with its gradient, 0 outside of non periodic grids
+		/// Bilinear sample with its gradient, 0 outside of a grid that is not periodic.
 		void sample(const float x, const float y, float& out_h, float& out_dx, float& out_dy) const
 		{
 			out_h = out_dx = out_dy = 0.0f;
@@ -121,8 +142,10 @@ namespace gta4::water_physics
 			if (periodic)
 			{
 				// n is a power of two
-				i &= n - 1; j &= n - 1;
-				i1 = (i + 1) & (n - 1); j1 = (j + 1) & (n - 1);
+				i &= n - 1;
+				j &= n - 1;
+				i1 = (i + 1) & (n - 1);
+				j1 = (j + 1) & (n - 1);
 			}
 			else
 			{
@@ -130,7 +153,8 @@ namespace gta4::water_physics
 					return;
 				}
 
-				i1 = i + 1; j1 = j + 1;
+				i1 = i + 1;
+				j1 = j + 1;
 			}
 
 			const float a = h[static_cast<size_t>(j) * n + i], b = h[static_cast<size_t>(j) * n + i1];
@@ -150,14 +174,15 @@ namespace gta4::water_physics
 		pocketfft::c2c(shape, stride, stride, axes, forward, z.data(), z.data(), scale, 1);
 	}
 
-	/// camera centred wave field (eWave)
+	// camera centred wave field (eWave)
 	struct ewave_s
 	{
 		int n = 0;
 		float dx = 1.0f;
 		float dt = 1.0f / 60.0f;
 		int sponge = 16;
-		int ox = 0, oy = 0;
+		int ox = 0;
+		int oy = 0;
 		bool placed = false;
 
 		std::vector<float> h, phi, tmp, sponge_w;
@@ -166,14 +191,23 @@ namespace gta4::water_physics
 		std::vector<int> mirror;
 		float energy = 0.0f;
 
-		/// nu: effective kinematic viscosity (m^2/s), half_life: extra decay of every wave (s, 0 = none)
+		/// @param nu			effective kinematic viscosity (m^2/s)
+		/// @param half_life	extra decay of every wave (s), 0 for none
 		void init(const int cells, const float cell_size, const float step, const int sponge_cells, const float nu, const float half_life)
 		{
-			n = cells; dx = cell_size; dt = step; sponge = sponge_cells;
+			n = cells;
+			dx = cell_size;
+			dt = step;
+			sponge = sponge_cells;
 			const size_t count = static_cast<size_t>(n) * n;
-			h.assign(count, 0.0f); phi.assign(count, 0.0f); tmp.assign(count, 0.0f);
-			z.assign(count, cf()); zs.assign(count, cf());
-			c_tab.assign(count, 1.0f); a_tab.assign(count, 0.0f); b_tab.assign(count, 0.0f);
+			h.assign(count, 0.0f);
+			phi.assign(count, 0.0f);
+			tmp.assign(count, 0.0f);
+			z.assign(count, cf());
+			zs.assign(count, cf());
+			c_tab.assign(count, 1.0f);
+			a_tab.assign(count, 0.0f);
+			b_tab.assign(count, 0.0f);
 			mirror.assign(count, 0);
 
 			const float dk = TWO_PI / (static_cast<float>(n) * dx);
@@ -224,8 +258,13 @@ namespace gta4::water_physics
 			energy = 0.0f;
 		}
 
-		float world_x0() const { return static_cast<float>(ox) * dx; }
-		float world_y0() const { return static_cast<float>(oy) * dx; }
+		float world_x0() const {
+			return static_cast<float>(ox) * dx;
+		}
+
+		float world_y0() const {
+			return static_cast<float>(oy) * dx;
+		}
 
 		void shift(std::vector<float>& a, const int sx, const int sy)
 		{
@@ -243,7 +282,7 @@ namespace gta4::water_physics
 			a.swap(tmp);
 		}
 
-		/// keeps the grid centred on (cx, cy): moves by whole cells, new cells start calm
+		/// Keeps the grid centred on (cx, cy): moves by whole cells, new cells start calm.
 		void recenter(const float cx, const float cy)
 		{
 			const int nox = static_cast<int>(std::floor(cx / dx)) - n / 2;
@@ -251,7 +290,9 @@ namespace gta4::water_physics
 
 			if (!placed)
 			{
-				ox = nox; oy = noy; placed = true;
+				ox = nox;
+				oy = noy;
+				placed = true;
 				clear();
 				return;
 			}
@@ -262,7 +303,8 @@ namespace gta4::water_physics
 				return;
 			}
 
-			ox = nox; oy = noy;
+			ox = nox;
+			oy = noy;
 			if (std::abs(sx) >= n || std::abs(sy) >= n)
 			{
 				clear();
@@ -273,7 +315,7 @@ namespace gta4::water_physics
 			shift(phi, sx, sy);
 		}
 
-		/// visits the cells of a gaussian footprint (radius in m): fn(index, weight)
+		/// Calls fn(index, weight) for the cells of a gaussian footprint (radius in m).
 		template <typename Fn>
 		void footprint(const float x, const float y, const float radius, Fn&& fn)
 		{
@@ -300,19 +342,25 @@ namespace gta4::water_physics
 			}
 		}
 
-		/// surface pressure for one step, as the depth of water it holds down (p / rho = g * depth)
+		/// Surface pressure for one step, given as the depth of water it holds down (p / rho = g * depth).
 		void press(const float x, const float y, const float radius, const float depth)
 		{
 			const float k = G * depth * dt;
-			footprint(x, y, radius, [&](const size_t idx, const float w) { phi[idx] -= k * w; });
+			footprint(x, y, radius, [&](const size_t idx, const float w)
+				{
+					phi[idx] -= k * w;
+				});
 		}
 
-		/// impulse: the surface is struck down at speed (m/s) over a patch of this radius
+		/// Impulse: the surface is struck down at speed (m/s) over a patch of this radius.
 		void strike(const float x, const float y, const float radius, const float speed)
 		{
 			// a patch of radius R moving at w has phi ~ -w R (dh/dt = |k| phi, |k| ~ 1 / R)
 			const float k = -speed * std::max(radius, dx) * 0.8f;
-			footprint(x, y, radius, [&](const size_t idx, const float w) { phi[idx] += k * w; });
+			footprint(x, y, radius, [&](const size_t idx, const float w)
+				{
+					phi[idx] += k * w;
+				});
 		}
 
 		void step()
@@ -360,10 +408,12 @@ namespace gta4::water_physics
 			energy = static_cast<float>(e);
 		}
 
-		float rms() const { return std::sqrt(energy / static_cast<float>(std::max(n * n, 1))); }
+		float rms() const {
+			return std::sqrt(energy / static_cast<float>(std::max(n * n, 1)));
+		}
 	};
 
-	/// periodic wind sea tile (FFT ocean)
+	// periodic wind sea tile (FFT ocean)
 	struct ocean_s
 	{
 		static constexpr int N = 256;
@@ -385,18 +435,33 @@ namespace gta4::water_physics
 		std::vector<float> fine;                   // band limit of the 0.5 unit mesh per mode: the response of a 1-2-1 filter
 		                                           // along both axes, cos^2(kx dx / 2) cos^2(ky dx / 2) (0 at two cells)
 		float choppiness = 0.4f;                   // tessendorf lambda, 1 folds the surface over (high values pinch the crests)
-		float wind_speed = -1.0f, wind_dir = 0.0f, scale = 1.0f;
+		float wind_speed = -1.0f;
+		float wind_dir = 0.0f;
+		float scale = 1.0f;
+		float swell_base = 1.0f;
+		float swell_scale = 1.0f;
 		float hs = 0.0f;                           // significant wave height (m)
 		bool calm = true;
 
 		void init()
 		{
 			const size_t count = static_cast<size_t>(N) * N;
-			xi.resize(count); h0.assign(count, cf()); h0m.assign(count, cf()); z.assign(count, cf()); zc.assign(count, cf());
-			omega.assign(count, 0.0f); band.assign(count, 0);
-			long_h.assign(count, 0.0f); mid_h.assign(count, 0.0f); short_h.assign(count, 0.0f);
-			zd.assign(count, cf()); disp_x.assign(count, 0.0f); disp_y.assign(count, 0.0f);
-			kxn.assign(count, 0.0f); kyn.assign(count, 0.0f); fine.assign(count, 1.0f);
+			xi.resize(count);
+			h0.assign(count, cf());
+			h0m.assign(count, cf());
+			z.assign(count, cf());
+			zc.assign(count, cf());
+			omega.assign(count, 0.0f);
+			band.assign(count, 0);
+			long_h.assign(count, 0.0f);
+			mid_h.assign(count, 0.0f);
+			short_h.assign(count, 0.0f);
+			zd.assign(count, cf());
+			disp_x.assign(count, 0.0f);
+			disp_y.assign(count, 0.0f);
+			kxn.assign(count, 0.0f);
+			kyn.assign(count, 0.0f);
+			fine.assign(count, 1.0f);
 
 			// fixed phases: a wind change only rescales the modes
 			std::mt19937 rng(0x5EA5EAu);
@@ -432,10 +497,16 @@ namespace gta4::water_physics
 			return ((N - j) % N) * N + (N - i) % N;
 		}
 
-		/// JONSWAP for wind speed u (m/s at 10 m) over a fetch (m), waves heading along dir (radians)
-		void build(const float u, const float fetch, const float dir, const float height_scale)
+		/// JONSWAP spectrum for wind speed u (m/s at 10 m) over a fetch (m), waves heading along dir (radians), plus the swell.
+		/// @param swell_base_scale	scales the swell that is there without wind
+		/// @param swell_wind_scale	scales the swell the wind adds
+		void build(const float u, const float fetch, const float dir, const float height_scale, const float swell_base_scale, const float swell_wind_scale)
 		{
-			wind_speed = u; wind_dir = dir; scale = height_scale;
+			wind_speed = u;
+			wind_dir = dir;
+			scale = height_scale;
+			swell_base = swell_base_scale;
+			swell_scale = swell_wind_scale;
 			const float alpha = 0.076f * std::pow(u * u / (fetch * G), 0.22f);
 			const float wp = 22.0f * std::cbrt(G * G / (u * fetch));
 			constexpr float GAMMA = 3.3f;
@@ -480,10 +551,10 @@ namespace gta4::water_physics
 				}
 			}
 
-			// swell from the open sea: 40 - 130 m wavelength, narrow in direction, ~0.1 m on calm days up to ~0.8 m in storms
+			// swell from the open sea: 40 - 130 m wavelength, narrow in direction, ~0.1 m on calm days and up to ~0.8 m more in storms
 			{
 				const float wind01 = std::clamp((u - 2.0f) / 16.0f, 0.0f, 1.2f);
-				const float hs_swell = (0.08f + 0.7f * wind01 * wind01) * height_scale;
+				const float hs_swell = (0.08f * swell_base_scale + 0.7f * wind01 * wind01 * swell_wind_scale) * height_scale;
 				const float k_peak = TWO_PI / 80.0f;
 				const float sdir = dir + 0.35f;
 
@@ -536,7 +607,7 @@ namespace gta4::water_physics
 			calm = hs < 0.003f;
 		}
 
-		/// the sea at time t (s): exact phases, then the inverse FFTs
+		/// The sea at time t (s): exact phases, then the inverse FFTs.
 		void evaluate(const double t)
 		{
 			const size_t count = static_cast<size_t>(N) * N;
@@ -553,7 +624,7 @@ namespace gta4::water_physics
 			synthesize();
 		}
 
-		/// advances by dt with one complex multiply per mode, exact phases every 600 steps against float drift
+		/// Advances by dt with one complex multiply per mode. Exact phases every 600 steps against float drift.
 		void advance(const float dt, const int steps = 1)
 		{
 			if (phase.empty() || (since_resync += steps) > 600)
@@ -587,7 +658,7 @@ namespace gta4::water_physics
 			synthesize();
 		}
 
-		/// three inverse FFTs: long + i mid, short, choppy displacement
+		/// Three inverse FFTs: long + i mid, short, choppy displacement.
 		void synthesize()
 		{
 			if (calm)
@@ -607,11 +678,16 @@ namespace gta4::water_physics
 				const cf hk = h0[idx] * e + h0m[idx] * std::conj(e);
 				zc[idx] = cf();
 
-				switch (band[idx])
+				if (band[idx] == 0) {
+					z[idx] = hk;
+				}
+				else if (band[idx] == 1) {
+					z[idx] = cf(0.0f, 1.0f) * hk;
+				}
+				else
 				{
-				case 0: z[idx] = hk; break;
-				case 1: z[idx] = cf(0.0f, 1.0f) * hk; break;
-				default: z[idx] = cf(); zc[idx] = hk * fine[idx]; break;
+					z[idx] = cf();
+					zc[idx] = hk * fine[idx];
 				}
 
 				// D(k) = -i k / |k| h(k), the long band is too gentle to matter: dx + i dy in one transform
@@ -643,7 +719,7 @@ namespace gta4::water_physics
 
 	// ---- rigid bodies ------------------------------------------------------------------------------------------------
 
-	/// a rigid body touching the water: its oriented bounding box now and one game frame ago
+	// a rigid body touching the water: its oriented bounding box now and one game frame ago
 	struct rigid_body_s
 	{
 		float axis[3][3] = {};       // unit axes of the box (world): right, forward, up
@@ -682,8 +758,14 @@ namespace gta4::water_physics
 	{
 		// the lattice lies in the two most horizontal axes
 		int w = 2;
-		if (std::abs(b.axis[0][2]) > std::abs(b.axis[w][2])) { w = 0; }
-		if (std::abs(b.axis[1][2]) > std::abs(b.axis[w][2])) { w = 1; }
+		if (std::abs(b.axis[0][2]) > std::abs(b.axis[w][2])) {
+			w = 0;
+		}
+
+		if (std::abs(b.axis[1][2]) > std::abs(b.axis[w][2])) {
+			w = 1;
+		}
+
 		const int i = (w + 1) % 3, j = (w + 2) % 3;
 
 		const int ni = std::clamp(static_cast<int>(std::lround(2.0f * b.half[i] / cell_size)), 1, 16);
@@ -716,7 +798,11 @@ namespace gta4::water_physics
 				return z1 > z0;
 			};
 
-		struct wet_s { float x, y, draft, along, vh; };
+		struct wet_s
+		{
+			float x, y, draft, along, vh;
+		};
+
 		wet_s wet[256];
 		int count = 0, total = 0;
 		float vx_sum = 0.0f, vy_sum = 0.0f;
@@ -771,12 +857,15 @@ namespace gta4::water_physics
 						plow = std::min(plow + form, phigh);
 						const float px = b.prev_centre[0] + b.prev_axis[i][0] * s + b.prev_axis[j][0] * t;
 						const float py = b.prev_centre[1] + b.prev_axis[i][1] * s + b.prev_axis[j][1] * t;
-						vx = (x - px) / b.dt; vy = (y - py) / b.dt; vz = (low - plow) / b.dt;
+						vx = (x - px) / b.dt;
+						vy = (y - py) / b.dt;
+						vz = (low - plow) / b.dt;
 						prev_draft = b.water - plow;
 
 						// teleported
 						if (std::abs(vx) > 90.0f || std::abs(vy) > 90.0f || std::abs(vz) > 90.0f) {
-							vx = vy = vz = 0.0f; prev_draft = draft;
+							vx = vy = vz = 0.0f;
+							prev_draft = draft;
 						}
 					}
 				}
@@ -797,7 +886,8 @@ namespace gta4::water_physics
 				if (count < 256)
 				{
 					wet[count++] = { x, y, held, 0.0f, std::sqrt(vx * vx + vy * vy) };
-					vx_sum += vx; vy_sum += vy;
+					vx_sum += vx;
+					vy_sum += vy;
 				}
 			}
 		}
@@ -814,7 +904,8 @@ namespace gta4::water_physics
 		for (int p = 0; p < count; p++)
 		{
 			wet[p].along = wet[p].x * dirx + wet[p].y * diry;
-			lo = std::min(lo, wet[p].along); hi = std::max(hi, wet[p].along);
+			lo = std::min(lo, wet[p].along);
+			hi = std::max(hi, wet[p].along);
 		}
 
 		const float wetted_length = std::max(hi - lo, cell_size);

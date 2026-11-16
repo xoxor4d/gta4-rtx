@@ -225,7 +225,8 @@ namespace gta4::game
 	uint32_t func_addr__CExplosion_AddExplosion = 0u;
 	float* pWeatherWind = nullptr;
 	uint32_t func_addr__CWater_TestLineAgainstWater = 0u;
-	uint32_t retn_addr__heli_downwash_water_test = 0u;
+	uint32_t hk_addr__weapon_fire_fx_water_test = 0u;
+	uint32_t hk_addr__bullet_update_water_test = 0u;
 
 	uint32_t func_addr__CDistantLights_Render = 0u;
 	uint32_t func_addr__CDistantLights_RenderOutSpriteBuffer = 0u;
@@ -827,7 +828,8 @@ namespace gta4::game
 		PATTERN_OFFSET_SIMPLE(func_addr__CExplosion_AddExplosion, "55 8B EC 83 E4 F0 81 EC 98 00 00 00 56 BE ? ? ? ? 57 89 74 24 18 8B 36", 0, 0xA66DA0);
 		PATTERN_OFFSET_DWORD_PTR_CAST_TYPE(pWeatherWind, float*, "F3 0F 10 05 ? ? ? ? 0F 2F C3 F3 0F 11 0D ? ? ? ? 72 08", 15, 0xA2EEE5);
 		PATTERN_OFFSET_SIMPLE(func_addr__CWater_TestLineAgainstWater, "55 8B EC 83 E4 F0 83 EC 38 56 8B 75 0C 57 8B 7D 08 F3 0F 10 66 08 F3 0F 10 7F 08", 0, 0xADAF60);
-		PATTERN_OFFSET_SIMPLE(retn_addr__heli_downwash_water_test, "E8 ? ? ? ? 8B 0D ? ? ? ? 83 C4 0C 84 C0 74 ? 0F 28 44 24", 5, 0xC53211);
+		PATTERN_OFFSET_SIMPLE(hk_addr__weapon_fire_fx_water_test, "8D 44 24 48 50 E8 ? ? ? ? 83 C4 0C 84 C0 0F 84 ? ? ? ? 8B 45 0C F3 0F 10 5C 24 20", 5, 0xB5D8F7);
+		PATTERN_OFFSET_SIMPLE(hk_addr__bullet_update_water_test, "8D 47 0C 50 E8 ? ? ? ? 83 C4 0C 84 C0 0F 84 ? ? ? ? F3 0F 10 57 FC", 4, 0xD9C136);
 
 		// zeroes the dynamic water grid (heights, velocities)
 		if (const auto offset = shared::utils::mem::find_pattern("57 33 C0 B9 10 27 00 00 BF ? ? ? ? F3 AB B9 10 27 00 00 BF ? ? ? ? F3 AB 5F C3", 0, "pWaterDynamicHeights", use_pattern, 0xAD4E80); offset)

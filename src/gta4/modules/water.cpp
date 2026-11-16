@@ -21,6 +21,7 @@ namespace gta4
 
 		constexpr int MAX_POLYS_PER_SIDE = 10; // row buffers of the high detail primitive
 		constexpr int LOD_SNAP = 16;
+		constexpr int MAX_FINE_RADIUS = 128; // the simulation thread bakes the detail of this area on every update
 		constexpr float GRAVITY = 9.81f;
 
 		constexpr std::uint32_t RENDER_PHASE_FAR_DISTANCE = 0x374;
@@ -50,8 +51,6 @@ namespace gta4
 		constexpr float WAVE_ANGLE_OFFSET[WAVE_COUNT] = { 0.0f, 28.0f, -33.0f, 61.0f, -74.0f };
 		constexpr float WAVE_PHASE[WAVE_COUNT] = { 0.0f, 1.7f, 4.1f, 2.6f, 5.3f };
 
-		constexpr int FINE_DIV_PER_UNIT = 2; // fine mesh: 0.5 unit cells
-
 		// render thread: settings and camera of the current water render
 		struct params_s
 		{
@@ -69,16 +68,23 @@ namespace gta4
 			float normal_scale = 1.0f;
 
 			bool wind = false;          // wind sea of water_dynamics
-			float wind_far = 1.0f;      // wind waves on the lattice
-			bool dyn = false;           // interactive wave fields
+			float long_scale = 1.0f;    // water_wind_wave_long_scale
+			float short_scale = 1.0f;   // water_wind_wave_short_scale
+			float inland_level = 0.5f;  // water above it is inland water
+			float inland_scale = 1.0f;  // wind waves on inland water
+			bool wakes = false;         // interactive wave fields
 			float phys_to_game = 1.0f;  // true slopes to the game's normal convention (normal_scale undone)
-			int fine_radius = 0;        // 0.5 unit mesh around lod_center (api path), 0 = off
-			int fine_div = 2;           // fine mesh cells per unit (2 or 1, water_near_tessellation_scale)
 
 			bool lod = false;
 			int lod_center_x = 0;
 			int lod_center_y = 0;
-			int lod_radius[2] = {};
+			int lod_radius[2] = {};     // cells of 2 units inside [0], of 4 units inside [1], of 8 units beyond
+			float lod_fade[2] = {};     // width of the fade towards the border of each
+			bool game_waves = true;     // the game's own wave simulation is drawn (water_dynamics does not replace it)
+
+			// api path: cells of 0.5 units inside [0], of 1 unit inside [1] around lod_center. 0 = none
+			int fine_radius[2] = {};
+			float fine_fade[2] = {};    // width of the fade towards the border of each
 		};
 
 		params_s g_params;
@@ -208,16 +214,16 @@ namespace gta4
 		// the api path reads both as user choices
 		void sync_overrides()
 		{
-			static const auto gs = comp_settings::get();
-			const bool forced = !gs->api_water_enabled.get_as<bool>() || !renderer_api::is_runtime_supported();
+			static const auto cs = comp_settings::get();
+			const bool forced = !cs->api_water_enabled._bool() || !renderer_api::is_runtime_supported();
 			const char* reason = "Forced while water is drawn through the fixed function path";
 
-			gs->override_water_texture_hash.set_temp_override_state(forced, reason);
-			gs->water_detail_radius.set_temp_override_state(forced, reason);
+			cs->override_water_texture_hash.set_temp_override_state(forced, reason);
+			cs->water_detail_radius.set_temp_override_state(forced, reason);
 			if (forced)
 			{
-				gs->override_water_texture_hash.set_var(true, true);
-				gs->water_detail_radius.set_var(static_cast<float>(GAME_DETAIL_RADIUS), true);
+				cs->override_water_texture_hash.set_var(true, true);
+				cs->water_detail_radius.set_var(static_cast<float>(GAME_DETAIL_RADIUS), true);
 			}
 		}
 
@@ -279,11 +285,11 @@ namespace gta4
 			g_sim_rms = g_sim_rms > 0.0f ? g_sim_rms + (rms - g_sim_rms) * 0.05f : rms;
 		}
 
-		void build_waves(const decltype(comp_settings::get()) gs)
+		void build_waves(const decltype(comp_settings::get()) cs)
 		{
-			const float base_length = std::max(gs->water_far_wave_length.get_as<float>(), 0.5f);
-			const float speed = gs->water_far_wave_speed.get_as<float>();
-			const float direction = gs->water_far_wave_direction.get_as<float>();
+			const float base_length = std::max(cs->water_far_wave_length._float(), 0.5f);
+			const float speed = cs->water_far_wave_speed._float();
+			const float direction = cs->water_far_wave_direction._float();
 
 			float rms_unit = 0.0f;
 			for (int i = 0; i < WAVE_COUNT; i++) {
@@ -292,7 +298,11 @@ namespace gta4
 			}
 			rms_unit = std::sqrt(rms_unit);
 
-			g_far_wave_rms = g_sim_rms * std::max(gs->water_far_wave_scale.get_as<float>(), 0.0f);
+			// relative to the game's waves while they are drawn, a fixed height while water_dynamics replaces them
+			g_far_wave_rms = g_params.game_waves
+				? g_sim_rms * std::max(cs->water_far_wave_scale._float(), 0.0f)
+				: std::max(cs->water_far_wave_height._float(), 0.0f);
+
 			const float amplitude_scale = rms_unit > 0.0f ? g_far_wave_rms / rms_unit : 0.0f;
 
 			for (int i = 0; i < WAVE_COUNT; i++)
@@ -311,15 +321,15 @@ namespace gta4
 		}
 
 		int lod_cheb_distance(int x, int y);
-		int lod_ring(int cheb);
-		int lod_step(int ring);
 
 		struct wave3_s
 		{
-			float h = 0.0f, dx = 0.0f, dy = 0.0f; // height (m) and true slopes
+			float h = 0.0f;  // height (m)
+			float dx = 0.0f; // true slopes
+			float dy = 0.0f;
 		};
 
-		void add(wave3_s& d, const water_physics::grid_view_s& v, const float x, const float y, const float weight = 1.0f)
+		void add(wave3_s& d, const water_physics::grid_view_s& v, const float x, const float y, const float weight)
 		{
 			if (!v.valid() || weight <= 0.0f) {
 				return;
@@ -327,74 +337,91 @@ namespace gta4
 
 			float h, gx, gy;
 			v.sample_cubic(x, y, h, gx, gy);
-			d.h += h * weight; d.dx += gx * weight; d.dy += gy * weight;
+			d.h += h * weight;
+			d.dx += gx * weight;
+			d.dy += gy * weight;
 		}
 
-		/// the wake field as a lattice of this step can show it: 3 x 3 tent filter over the cell (1-2-1),
-		/// crests shorter than ~2 cells would alias into spikes. the fine mesh shows the full detail near the camera
-		void add_wake_filtered(wave3_s& d, const float x, const float y, const float step)
+		// What is left at a point of the waves only finer cells can show: 1 well inside a ring, 0 from its outer border on.
+		// A function of the position alone, so pieces of both rings agree on the vertices they share
+		struct lod_fade_s
 		{
-			// filtered by the simulation thread for each lattice step
-			const auto& f = water_dynamics::frame();
-			add(d, f.wake_lattice[step <= 2.0f ? 0 : step <= 4.0f ? 1 : 2], x, y);
-		}
+			float cells_2 = 1.0f; // of what needs cells of 2 units
+			float cells_4 = 1.0f; // of what needs cells of 4 units or less
+		};
 
-		/// share of the 4 - 16 m band a lattice of this step shows (16 m and longer everywhere, < 4 m only on the fine mesh)
-		float mid_band_weight(const float step) {
-			return step <= 2.0f ? 1.0f : step <= 4.0f ? 0.4f : 0.0f;
-		}
-
-		/// share of the wind sea left here: shoaling near shores (> 1), broken down in the shallows (-> 0), 1 elsewhere
-		float shore_factor(const float x, const float y)
+		lod_fade_s lod_fade_at(const int x, const int y)
 		{
-			const auto& f = water_dynamics::frame();
-			if (!f.shore.valid()) {
-				return 1.0f;
+			if (!g_params.lod) {
+				return {};
 			}
 
-			// stored as 1 - factor, 0 outside of the map
-			float g, a, b;
-			f.shore.sample(x, y, g, a, b);
-			return 1.0f - g;
+			const auto cheb = static_cast<float>(lod_cheb_distance(x, y));
+			return
+			{
+				smoothstep_to(g_params.lod_fade[0], static_cast<float>(g_params.lod_radius[0]) - cheb),
+				smoothstep_to(g_params.lod_fade[1], static_cast<float>(g_params.lod_radius[1]) - cheb)
+			};
 		}
 
-		/// the wind sea at a lattice point, short_part: the part the fine mesh refines
-		void wind_lattice(const int x, const int y, const float step, wave3_s& all, wave3_s& short_part)
+		/// Height multiplier of the wind waves on water at level z: inland water (ponds, pools) gets water_inland_wave_scale.
+		float wind_gain_at_level(const float z) {
+			return z > g_params.inland_level ? g_params.inland_scale : 1.0f;
+		}
+
+		/// Wakes and blast waves as the cells at this point can show them. The simulation thread filters the wake field for
+		/// cells of 2, 4 and 8 units, crests shorter than ~2 cells would alias into spikes.
+		void add_wake(wave3_s& d, const int x, const int y, const lod_fade_s& fade)
 		{
-			const auto& nodes = water_dynamics::frame().ocean_nodes;
-			if (!nodes.valid()) {
+			const auto& f = water_dynamics::frame();
+			const auto fx = static_cast<float>(x);
+			const auto fy = static_cast<float>(y);
+			add(d, f.wake_lattice[0], fx, fy, fade.cells_2);
+			add(d, f.wake_lattice[1], fx, fy, fade.cells_4 - fade.cells_2);
+			add(d, f.wake_lattice[2], fx, fy, 1.0f - fade.cells_4);
+		}
+
+		/// The wind sea at a whole unit point.
+		/// Waves of 16 units and longer are shown everywhere, those of 4 - 16 units fully by cells of 2 units, at 0.4 by
+		/// cells of 4 units and not by cells of 8 units. Waves below 4 units are only on the cells below 2 units.
+		/// @param wind_gain	see wind_gain_at_level
+		/// @param all			gets the wind sea added
+		/// @param short_part	gets the 4 - 16 unit part of it added, which the cells below 2 units replace with their own
+		void wind_lattice(const int x, const int y, const lod_fade_s& fade, const float wind_gain, wave3_s& all, wave3_s& short_part)
+		{
+			const auto& f = water_dynamics::frame();
+			if (!f.ocean_nodes.valid()) {
 				return;
 			}
 
-			// read straight from the whole unit nodes baked by the simulation thread
-			const float s = shore_factor(static_cast<float>(x), static_cast<float>(y)) * g_params.wind_far;
-			const float wm = mid_band_weight(step) * s;
-			const float* l = water_dynamics::ocean_nodes_s::at(nodes.long_band, x, y);
-			const float* m = water_dynamics::ocean_nodes_s::at(nodes.mid_band, x, y);
-			all.h += l[0] * s + m[0] * wm;
-			all.dx += l[1] * s + m[1] * wm;
-			all.dy += l[2] * s + m[2] * wm;
-			short_part.h += m[0] * wm;
-			short_part.dx += m[1] * wm;
-			short_part.dy += m[2] * wm;
+			const float share = water_dynamics::shore_wave_share(f.shore, f.shore_far, static_cast<float>(x), static_cast<float>(y)) * wind_gain;
+			const float long_weight = share * g_params.long_scale;
+			const float mid_weight = share * g_params.short_scale * (0.6f * fade.cells_2 + 0.4f * fade.cells_4);
+			const float* l = water_dynamics::ocean_nodes_s::at(f.ocean_nodes.long_band, x, y);
+			const float* m = water_dynamics::ocean_nodes_s::at(f.ocean_nodes.mid_band, x, y);
+
+			all.h += l[0] * long_weight + m[0] * mid_weight;
+			all.dx += l[1] * long_weight + m[1] * mid_weight;
+			all.dy += l[2] * long_weight + m[2] * mid_weight;
+			short_part.h += m[0] * mid_weight;
+			short_part.dx += m[1] * mid_weight;
+			short_part.dy += m[2] * mid_weight;
 		}
 
-		float lattice_step_at(const int x, const int y) {
-			return static_cast<float>(g_params.lod ? lod_step(lod_ring(lod_cheb_distance(x, y))) : 2);
-		}
-
-		/// the part of a lattice point's height the fine mesh replaces: wake and short wind waves as the lattice shows them
-		wave3_s lattice_detail(const int x, const int y)
+		/// The part of a whole unit point's height the cells below 2 units replace with their own detail.
+		wave3_s lattice_detail(const int x, const int y, const float wind_gain)
 		{
+			const auto fade = lod_fade_at(x, y);
 			wave3_s d;
-			if (g_params.dyn) {
-				add_wake_filtered(d, static_cast<float>(x), static_cast<float>(y), lattice_step_at(x, y));
+
+			if (g_params.wakes) {
+				add_wake(d, x, y, fade);
 			}
 
 			if (g_params.wind)
 			{
-				wave3_s all;
-				wind_lattice(x, y, lattice_step_at(x, y), all, d);
+				wave3_s unused_all;
+				wind_lattice(x, y, fade, wind_gain, unused_all, d);
 			}
 
 			return d;
@@ -432,18 +459,12 @@ namespace gta4
 				*color = (*color & 0xFF00FFFFu) | (foam << 16);
 			}
 
-			// the grid holds our own heights (buoyancy), drawing it would add them twice
-			if (water_dynamics::coupling_active()) {
+			// the grid holds the heights of water_dynamics (for buoyancy), drawing it would add them twice
+			if (!g_params.game_waves) {
 				return {};
 			}
 
-			// the game's boat and splash impulses make tall faceted peaks on top of our wake:
-			// soft clamped to ~3x the usual rms (z' = A tanh(z / A), slopes scaled by the derivative)
-			const float A = std::max(3.0f * g_sim_rms, 0.08f);
-			const float t = std::tanh(z / A);
-			const float zc = A * t;
-			const float dk = 1.0f - t * t;
-			return { zc * k, n[0] / n[2] * k * dk, n[1] / n[2] * k * dk };
+			return { z * k, n[0] / n[2] * k, n[1] / n[2] * k };
 		}
 
 		sample_s sample_far_waves(const int x, const int y)
@@ -461,14 +482,18 @@ namespace gta4
 			return s;
 		}
 
-		sample_s sample_combined(const int x, const int y, DWORD* color)
+		/// @param wind_gain	see wind_gain_at_level
+		sample_s sample_combined(const int x, const int y, DWORD* color, const float wind_gain)
 		{
 			float sim_weight = 0.0f;
 			sample_s s = sample_sim(x, y, color, sim_weight);
 
 			if (g_params.far_waves && sim_weight < 1.0f)
 			{
-				const float weight = (1.0f - sim_weight) * smoothstep_to(g_params.far_wave_fade, static_cast<float>(window_edge_distance(x, y)));
+				// with a fixed height they are scaled down on inland water like the wind waves
+				const float weight = (1.0f - sim_weight) * smoothstep_to(g_params.far_wave_fade, static_cast<float>(window_edge_distance(x, y)))
+					* (g_params.game_waves ? 1.0f : wind_gain);
+
 				if (weight > 0.0f)
 				{
 					const auto farwave = sample_far_waves(x, y);
@@ -478,28 +503,33 @@ namespace gta4
 				}
 			}
 
-			// wind sea on all tessellated water, fading out towards the window edge like the far waves
-			if (g_params.wind)
+			if (g_params.wind || g_params.wakes)
 			{
-				const float edge = smoothstep_to(g_params.far_wave_fade, static_cast<float>(window_edge_distance(x, y)));
-				if (edge > 0.0f)
-				{
-					wave3_s all, unused;
-					wind_lattice(x, y, lattice_step_at(x, y), all, unused);
-					s.h += all.h * edge;
-					s.gx -= all.dx * edge * g_params.phys_to_game;
-					s.gy -= all.dy * edge * g_params.phys_to_game;
-				}
-			}
+				const auto fade = lod_fade_at(x, y);
 
-			// wakes and blast waves, the ripples are too short for these cells (fine mesh only)
-			if (g_params.dyn)
-			{
-				wave3_s w;
-				add_wake_filtered(w, static_cast<float>(x), static_cast<float>(y), lattice_step_at(x, y));
-				s.h += w.h;
-				s.gx -= w.dx * g_params.phys_to_game;
-				s.gy -= w.dy * g_params.phys_to_game;
+				// wind sea on all tessellated water, fading out towards the window edge like the far waves
+				if (g_params.wind)
+				{
+					const float edge = smoothstep_to(g_params.far_wave_fade, static_cast<float>(window_edge_distance(x, y)));
+					if (edge > 0.0f)
+					{
+						wave3_s all, unused_short;
+						wind_lattice(x, y, fade, wind_gain, all, unused_short);
+						s.h += all.h * edge;
+						s.gx -= all.dx * edge * g_params.phys_to_game;
+						s.gy -= all.dy * edge * g_params.phys_to_game;
+					}
+				}
+
+				// wakes and blast waves, the ripples are too short for these cells
+				if (g_params.wakes)
+				{
+					wave3_s w;
+					add_wake(w, x, y, fade);
+					s.h += w.h;
+					s.gx -= w.dx * g_params.phys_to_game;
+					s.gy -= w.dy * g_params.phys_to_game;
+				}
 			}
 
 			return s;
@@ -545,11 +575,11 @@ namespace gta4
 			return 2 << ring;
 		}
 
-		float ring_surface_height(int x, int y, int ring, float wave_height);
+		float ring_surface_height(int x, int y, int ring, float wave_height, float wind_gain);
 
 		// height of a point on the ring's lattice: the waves, towards the outer border blended into the next ring's surface,
 		// on the border it matches it exactly
-		float ring_lattice_height(const int x, const int y, const int ring, const float wave_height)
+		float ring_lattice_height(const int x, const int y, const int ring, const float wave_height, const float wind_gain)
 		{
 			float h = wave_height;
 
@@ -559,7 +589,7 @@ namespace gta4
 				const float t = 1.0f - smoothstep_to(static_cast<float>(2 * next_step), static_cast<float>(g_params.lod_radius[ring] - lod_cheb_distance(x, y)));
 
 				if (t > 0.0f) {
-					h += (ring_surface_height(x, y, ring + 1, wave_height) - h) * t;
+					h += (ring_surface_height(x, y, ring + 1, wave_height, wind_gain) - h) * t;
 				}
 			}
 
@@ -567,26 +597,26 @@ namespace gta4
 		}
 
 		// the surface of a ring: its lattice heights, linear over the lattice triangles in between
-		float ring_surface_height(const int x, const int y, const int ring, const float wave_height)
+		float ring_surface_height(const int x, const int y, const int ring, const float wave_height, const float wind_gain)
 		{
 			const int step = lod_step(ring);
 
 			if (x % step == 0 && y % step == 0) {
-				return ring_lattice_height(x, y, ring, wave_height);
+				return ring_lattice_height(x, y, ring, wave_height, wind_gain);
 			}
 
-			return lattice_interpolate(x, y, step, [ring](const int lx, const int ly) {
-				return ring_lattice_height(lx, ly, ring, sample_combined(lx, ly, nullptr).h);
+			return lattice_interpolate(x, y, step, [ring, wind_gain](const int lx, const int ly) {
+				return ring_lattice_height(lx, ly, ring, sample_combined(lx, ly, nullptr, wind_gain).h, wind_gain);
 			});
 		}
 
-		float vertex_height(const int x, const int y, const float fine_height)
+		float vertex_height(const int x, const int y, const float fine_height, const float wind_gain)
 		{
 			if (!g_params.lod) {
 				return fine_height;
 			}
 
-			return ring_surface_height(x, y, lod_ring(lod_cheb_distance(x, y)), fine_height);
+			return ring_surface_height(x, y, lod_ring(lod_cheb_distance(x, y)), fine_height, wind_gain);
 		}
 
 		int __cdecl CWater_CalculateWavesForCoordinate_hk(int x, int y, int unused1, int unused2, float* z, float* normal, DWORD* color)
@@ -595,8 +625,10 @@ namespace gta4
 				return CWater_CalculateWavesForCoordinate_og(x, y, unused1, unused2, z, normal, color);
 			}
 
-			const auto s = sample_combined(x, y, color);
-			*z += vertex_height(x, y, s.h);
+			// z comes in as the level of the calm water at this point
+			const float wind_gain = wind_gain_at_level(*z);
+			const auto s = sample_combined(x, y, color, wind_gain);
+			*z += vertex_height(x, y, s.h, wind_gain);
 
 			const float gx = s.gx * g_params.normal_scale;
 			const float gy = s.gy * g_params.normal_scale;
@@ -618,9 +650,9 @@ namespace gta4
 			// the waterline on beaches follows the sand instead of the polygon edge
 			if (const auto& b = water_dynamics::frame().beach; b.valid())
 			{
-				float s, s1, s2;
-				b.sample(x, y, s, s1, s2);
-				v.position[2] -= std::max(s, 0.0f);
+				float sink, unused_dx, unused_dy;
+				b.sample(x, y, sink, unused_dx, unused_dy);
+				v.position[2] -= std::max(sink, 0.0f);
 			}
 
 			v.normal[0] = normal[0];
@@ -704,18 +736,149 @@ namespace gta4
 			g_api.detail_pieces++;
 		}
 
-		/// a piece inside the fine zone: the lattice vertices as api_piece computes them, every cell split into 0.5 unit cells.
-		/// fine vertex = lattice surface + w * (detail - the detail the lattice shows), w = 0 at the zone border
-		/// so the border matches the coarse pieces outside
+		// what the cells below 2 units add at a point
+		struct fine_detail_s
+		{
+			float weight = 0.0f; // 0 at the border to the cells of 2 units
+			float h = 0.0f;
+			float gx = 0.0f;     // true slopes
+			float gy = 0.0f;
+			float px = 0.0f;     // horizontal displacement
+			float py = 0.0f;
+		};
+
+		/// The detail baked by the simulation thread at a point: wakes, ripples and the short wind waves.
+		/// A function of the position alone, so neighbouring pieces agree on the vertices they share.
+		/// @param wind_gain	see wind_gain_at_level
+		/// @return false without detail there
+		bool sample_fine_detail(const float x, const float y, const float wind_gain, fine_detail_s& out)
+		{
+			constexpr int CHANNELS = water_dynamics::detail_s::CHANNELS;
+			const auto& detail = water_dynamics::frame().detail;
+			const float cheb = std::max(std::abs(x - static_cast<float>(g_params.lod_center_x)), std::abs(y - static_cast<float>(g_params.lod_center_y)));
+
+			// fades out towards the cells of 2 units, and towards the edge of the tessellated window like the wind sea
+			const auto r = detail_range();
+			const float window_edge = std::min(std::min(x - static_cast<float>(r[0]), static_cast<float>(r[1]) - x),
+				std::min(y - static_cast<float>(r[2]), static_cast<float>(r[3]) - y));
+
+			out.weight = smoothstep_to(g_params.fine_fade[1], static_cast<float>(g_params.fine_radius[1]) - cheb)
+				* smoothstep_to(g_params.far_wave_fade, window_edge);
+
+			float d[CHANNELS];
+			if (out.weight <= 0.0f || !detail.sample(x, y, d)) {
+				return false;
+			}
+
+			// Cells of 1 unit can not show waves of 0.5 units: there the detail is averaged over the cell (4 lookups).
+			// Cells of 0.5 units fade into that average towards their border
+			const float averaged = g_params.fine_radius[0]
+				? 1.0f - smoothstep_to(g_params.fine_fade[0], static_cast<float>(g_params.fine_radius[0]) - cheb)
+				: 1.0f;
+
+			if (averaged > 0.0f)
+			{
+				float sum[CHANNELS] = {};
+				float e[CHANNELS];
+				int found = 0;
+
+				for (const float ox : { -0.25f, 0.25f })
+				{
+					for (const float oy : { -0.25f, 0.25f })
+					{
+						if (detail.sample(x + ox, y + oy, e))
+						{
+							found++;
+							for (int c = 0; c < CHANNELS; c++) {
+								sum[c] += e[c];
+							}
+						}
+					}
+				}
+
+				if (found == 4)
+				{
+					for (int c = 0; c < CHANNELS; c++) {
+						d[c] += (0.25f * sum[c] - d[c]) * averaged;
+					}
+				}
+			}
+
+			out.h = d[0] + wind_gain * d[3];
+			out.gx = d[1] + wind_gain * d[4];
+			out.gy = d[2] + wind_gain * d[5];
+			out.px = wind_gain * d[6];
+			out.py = wind_gain * d[7];
+			return true;
+		}
+
+		/// Where cells of 0.5 units meet cells of 1 unit, the vertices in between two of the coarser ones are put on the
+		/// line between them, or the border would show gaps.
+		/// @param base		first vertex of the piece, cols x rows vertices of 0.5 unit cells
+		void close_fine_border(const std::uint32_t base, const int cols, const int rows, const int x1, const int x2, const int y1, const int y2)
+		{
+			const int r = g_params.fine_radius[0];
+			const auto on_border = [r](const int v, const int center)
+				{
+					return v == center - r || v == center + r;
+				};
+
+			const auto average = [](const remixapi_HardcodedVertex& a, const remixapi_HardcodedVertex& b, remixapi_HardcodedVertex& out)
+				{
+					float normal[3];
+					for (int k = 0; k < 3; k++)
+					{
+						out.position[k] = 0.5f * (a.position[k] + b.position[k]);
+						normal[k] = a.normal[k] + b.normal[k];
+					}
+
+					const float inv_len = 1.0f / std::max(std::sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]), 1e-6f);
+					for (int k = 0; k < 3; k++) {
+						out.normal[k] = normal[k] * inv_len;
+					}
+
+					out.texcoord[0] = 0.5f * (a.texcoord[0] + b.texcoord[0]);
+					out.texcoord[1] = 0.5f * (a.texcoord[1] + b.texcoord[1]);
+				};
+
+			auto* v = g_api.vertices.data() + base;
+
+			for (const int col : { 0, cols - 1 })
+			{
+				if (!on_border(col == 0 ? x1 : x2, g_params.lod_center_x)) {
+					continue;
+				}
+
+				for (int j = 1; j < rows - 1; j += 2) {
+					average(v[(j - 1) * cols + col], v[(j + 1) * cols + col], v[j * cols + col]);
+				}
+			}
+
+			for (const int row : { 0, rows - 1 })
+			{
+				if (!on_border(row == 0 ? y1 : y2, g_params.lod_center_y)) {
+					continue;
+				}
+
+				for (int i = 1; i < cols - 1; i += 2) {
+					average(v[row * cols + i - 1], v[row * cols + i + 1], v[row * cols + i]);
+				}
+			}
+		}
+
+		/// A piece of cells below 2 units: the whole unit vertices as api_piece computes them, every cell split further.
+		/// fine vertex = lattice surface + weight * (detail - the part of it the lattice shows already). The weight is 0 at the
+		/// border to the cells of 2 units, so that border matches the pieces outside.
+		/// @param cells_per_unit	2 for cells of 0.5 units, 1 for cells of 1 unit
 		void api_piece_fine(const int x1, const int x2, const int y1, const int y2, const float z1, const float z2, const float z3, const float z4,
-			const int polys_x, const int polys_y)
+			const int polys_x, const int polys_y, const int cells_per_unit)
 		{
 			g_api.uv_off_x = std::floor(static_cast<float>(x1) * g_api.uv_scale);
 			g_api.uv_off_y = std::floor(static_cast<float>(y1) * g_api.uv_scale);
 			const int dx = (x2 - x1) / polys_x;
 			const int dy = (y2 - y1) / polys_y;
-			const int div_x = dx * g_params.fine_div;
-			const int div_y = dy * g_params.fine_div;
+			const int div_x = dx * cells_per_unit;
+			const int div_y = dy * cells_per_unit;
 			const float inv_x = 1.0f / static_cast<float>(polys_x);
 			const float inv_y = 1.0f / static_cast<float>(polys_y);
 			const int cols = polys_x + 1;
@@ -724,6 +887,7 @@ namespace gta4
 			{
 				float z, gx, gy;     // surface height, slopes in the game's normal convention (normal scale applied)
 				float dh, dgx, dgy;  // its detail part (true slopes)
+				float wind_gain;     // see wind_gain_at_level
 			};
 
 			thread_local std::vector<lattice_s> lat;
@@ -740,12 +904,14 @@ namespace gta4
 						? z4 + static_cast<float>(polys_x - i) * (z3 - z4) * inv_x + static_cast<float>(polys_y - j) * (z2 - z4) * inv_y
 						: z1 + static_cast<float>(i) * (z2 - z1) * inv_x + static_cast<float>(j) * (z3 - z1) * inv_y;
 
+					const float wind_gain = wind_gain_at_level(z);
 					float normal[3] = { 0.0f, 0.0f, 1.0f };
 					DWORD color = 0u;
 					CWater_CalculateWavesForCoordinate_hk(x, y, 0, 0, &z, normal, &color);
 
-					const auto d = lattice_detail(x, y);
+					const auto d = lattice_detail(x, y, wind_gain);
 					auto& l = lat[static_cast<size_t>(j) * cols + i];
+					l.wind_gain = wind_gain;
 					l.z = z;
 					l.gx = normal[0] / normal[2];
 					l.gy = normal[1] / normal[2];
@@ -760,9 +926,7 @@ namespace gta4
 			const auto base = static_cast<std::uint32_t>(g_api.vertices.size());
 			const float fine_step_x = static_cast<float>(dx) / static_cast<float>(div_x);
 			const float fine_step_y = static_cast<float>(dy) / static_cast<float>(div_y);
-			constexpr float BLEND = 8.0f; // the detail fades in over the outer 8 units of the zone
 			const float p2g = g_params.phys_to_game * g_params.normal_scale; // true slope to the final normal convention
-			const auto& detail = water_dynamics::frame().detail;
 
 			for (int fj = 0; fj < frows; fj++)
 			{
@@ -798,52 +962,27 @@ namespace gta4
 					float z = tri(&lattice_s::z);
 					float gx = tri(&lattice_s::gx);
 					float gy = tri(&lattice_s::gy);
+					float px = x;
+					float py = y;
 
-					const float cheb = std::max(std::abs(x - static_cast<float>(g_params.lod_center_x)), std::abs(y - static_cast<float>(g_params.lod_center_y)));
-					const float w = smoothstep_to(BLEND, static_cast<float>(g_params.fine_radius) - cheb);
-					float px = x, py = y;
-					// detail baked by the simulation thread: height, slopes and the choppy displacement in one lookup
-					float d[water_dynamics::detail_s::CHANNELS];
-					if (w > 0.0f && detail.sample(x, y, d))
+					fine_detail_s d;
+					if (sample_fine_detail(x, y, tri(&lattice_s::wind_gain), d))
 					{
-						// 1 unit cells: the detail box filtered over the cell (4 lookups), the 0.5 m waves it cannot show average out
-						if (g_params.fine_div == 1)
-						{
-							float sum[water_dynamics::detail_s::CHANNELS] = {}, e[water_dynamics::detail_s::CHANNELS];
-							int got = 0;
-							for (const float o : { -0.25f, 0.25f })
-							{
-								for (const float q : { -0.25f, 0.25f })
-								{
-									if (detail.sample(x + o, y + q, e))
-									{
-										got++;
-										for (int c = 0; c < water_dynamics::detail_s::CHANNELS; c++) {
-											sum[c] += e[c];
-										}
-									}
-								}
-							}
-
-							if (got == 4)
-							{
-								for (int c = 0; c < water_dynamics::detail_s::CHANNELS; c++) {
-									d[c] = 0.25f * sum[c];
-								}
-							}
-						}
-
-						z += w * (d[0] - tri(&lattice_s::dh));
-						gx -= w * (d[1] - tri(&lattice_s::dgx)) * p2g;
-						gy -= w * (d[2] - tri(&lattice_s::dgy)) * p2g;
-						px += w * d[3];
-						py += w * d[4];
+						z += d.weight * (d.h - tri(&lattice_s::dh));
+						gx -= d.weight * (d.gx - tri(&lattice_s::dgx)) * p2g;
+						gy -= d.weight * (d.gy - tri(&lattice_s::dgy)) * p2g;
+						px += d.weight * d.px;
+						py += d.weight * d.py;
 					}
 
 					const float inv_len = 1.0f / std::sqrt(gx * gx + gy * gy + 1.0f);
 					const float normal[3] = { gx * inv_len, gy * inv_len, inv_len };
 					api_add_vertex(px, py, z, normal);
 				}
+			}
+
+			if (cells_per_unit == 2) {
+				close_fine_border(base, fcols, frows, x1, x2, y1, y2);
 			}
 
 			const auto row = static_cast<std::uint32_t>(fcols);
@@ -860,15 +999,12 @@ namespace gta4
 			g_api.fine_vertices += static_cast<std::uint32_t>(fcols * frows);
 		}
 
-		bool in_fine_zone(const int x1, const int x2, const int y1, const int y2)
+		/// True for a piece inside the square of this radius around the lod center.
+		bool inside_radius(const int radius, const int x1, const int x2, const int y1, const int y2)
 		{
-			if (!g_params.fine_radius) {
-				return false;
-			}
-
-			const int r = g_params.fine_radius;
-			return x1 >= g_params.lod_center_x - r && x2 <= g_params.lod_center_x + r
-				&& y1 >= g_params.lod_center_y - r && y2 <= g_params.lod_center_y + r;
+			return radius > 0
+				&& x1 >= g_params.lod_center_x - radius && x2 <= g_params.lod_center_x + radius
+				&& y1 >= g_params.lod_center_y - radius && y2 <= g_params.lod_center_y + radius;
 		}
 
 		using piece_fn = void(*)(int x1, int x2, int y1, int y2, float z1, float z2, float z3, float z4);
@@ -954,10 +1090,14 @@ namespace gta4
 				}
 			}
 
-			// the fine zone border (api path)
-			if (g_api.active && g_params.fine_radius)
+			// the borders of the cells below 2 units (api path)
+			for (int level = 0; g_api.active && level < 2; level++)
 			{
-				const int r = g_params.fine_radius;
+				const int r = g_params.fine_radius[level];
+				if (!r) {
+					continue;
+				}
+
 				for (const int line : { g_params.lod_center_x - r, g_params.lod_center_x + r })
 				{
 					if (strictly_inside(line, x1, x2))
@@ -1028,11 +1168,16 @@ namespace gta4
 
 			if (g_api.active)
 			{
-				if (in_fine_zone(x1, x2, y1, y2)) {
-					api_piece_fine(x1, x2, y1, y2, z1, z2, z3, z4, polys_x, polys_y);
-				} else {
+				if (inside_radius(g_params.fine_radius[0], x1, x2, y1, y2)) {
+					api_piece_fine(x1, x2, y1, y2, z1, z2, z3, z4, polys_x, polys_y, 2);
+				}
+				else if (inside_radius(g_params.fine_radius[1], x1, x2, y1, y2)) {
+					api_piece_fine(x1, x2, y1, y2, z1, z2, z3, z4, polys_x, polys_y, 1);
+				}
+				else {
 					api_piece(x1, x2, y1, y2, z1, z2, z3, z4, polys_x, polys_y);
 				}
+
 				return;
 			}
 
@@ -1135,7 +1280,7 @@ namespace gta4
 		// one mesh for the whole water render; the last render's mesh is destroyed once this one is drawn
 		bool api_submit()
 		{
-			static const auto gs = comp_settings::get();
+			static const auto cs = comp_settings::get();
 			const auto& bridge = shared::common::remix_api::get().m_bridge;
 
 			if (!g_api.material || g_material != g_material_in_use)
@@ -1184,26 +1329,26 @@ namespace gta4
 			if (!imgui::get()->m_dbg_disable_water_worldpos_logic)
 			{
 				modifiers |= static_cast<std::uint32_t>(RemixModifier::Translucent_WorldposAsUVs);
-				overrides.multiUse[0] = 0.01f * gs->water_texture_uv_scale._float();
+				overrides.multiUse[0] = 0.01f * cs->water_texture_uv_scale._float();
 			}
 
-			if (gs->water_texture_normal_fadeout_distance._float() > 0.0f)
+			if (cs->water_texture_normal_fadeout_distance._float() > 0.0f)
 			{
 				modifiers |= static_cast<std::uint32_t>(RemixModifier::Translucent_FadeNormalUntilDist);
-				overrides.multiUse[1] = gs->water_texture_normal_fadeout_distance._float();
+				overrides.multiUse[1] = cs->water_texture_normal_fadeout_distance._float();
 			}
 
-			if (gs->water_apply_shoreline_modifier._bool()) {
+			if (cs->water_apply_shoreline_modifier._bool()) {
 				modifiers |= static_cast<std::uint32_t>(RemixModifier::WaterShoreline);
 			}
 
 			overrides.modifierFlags = modifiers;
 
-			if (gs->override_water_texture_hash.get_as<bool>()) {
+			if (cs->override_water_texture_hash._bool()) {
 				overrides.hashOverride = shared::utils::string_hash32("water");
 			}
 
-			const bool animated_water = gs->water_apply_animated_water_category._bool();
+			const bool animated_water = cs->water_apply_animated_water_category._bool();
 			if (animated_water) {
 				overrides.categoryFlags = static_cast<std::uint32_t>(InstanceCategories::AnimatedWater);
 			}
@@ -1255,7 +1400,7 @@ namespace gta4
 		void __cdecl CWater_ScanThroughBlocks_hk(int phase_index)
 		{
 			PROFILE_ZONE_N("CWater::ScanThroughBlocks");
-			static const auto gs = comp_settings::get();
+			static const auto cs = comp_settings::get();
 			tag_list_buffer();
 
 			if (bypassed())
@@ -1265,8 +1410,8 @@ namespace gta4
 				return;
 			}
 
-			*game::pWaterDetailDist = gs->water_lod.get_as<bool>()
-				? std::clamp(static_cast<int>(gs->water_detail_radius.get_as<float>()), GAME_DETAIL_RADIUS, 600)
+			*game::pWaterDetailDist = cs->water_lod._bool()
+				? std::clamp(static_cast<int>(cs->water_detail_radius._float()), GAME_DETAIL_RADIUS, 600)
 				: GAME_DETAIL_RADIUS;
 
 			g_blocks_map = 0u;
@@ -1282,7 +1427,7 @@ namespace gta4
 			auto& far_distance = *reinterpret_cast<float*>(phase + RENDER_PHASE_FAR_DISTANCE);
 			const float saved = far_distance;
 
-			far_distance = saved * std::clamp(gs->water_block_distance_scale.get_as<float>(), 0.1f, 10.0f);
+			far_distance = saved * std::clamp(cs->water_block_distance_scale._float(), 0.1f, 10.0f);
 			CWater_ScanThroughBlocks_og(phase_index);
 			far_distance = saved;
 
@@ -1294,7 +1439,7 @@ namespace gta4
 	void water::on_render_begin()
 	{
 		PROFILE_ZONE();
-		static const auto gs = comp_settings::get();
+		static const auto cs = comp_settings::get();
 		g_api.active = false;
 		sync_overrides();
 		g_list_buffer_at_begin = game::pWaterListBufferIndex ? *game::pWaterListBufferIndex : -1;
@@ -1333,8 +1478,8 @@ namespace gta4
 
 		g_params.sim_base_x = 2 * ((static_cast<int>(cam_x) - SIM_CELLS) / 2);
 		g_params.sim_base_y = 2 * ((static_cast<int>(cam_y) - SIM_CELLS) / 2);
-		g_params.sim_edge_fade = std::max(gs->water_sim_edge_fade.get_as<float>(), 1.0f);
-		g_params.normal_scale = std::max(gs->water_vertex_normal_scale.get_as<float>(), 0.0f);
+		g_params.sim_edge_fade = std::max(cs->water_sim_edge_fade._float(), 1.0f);
+		g_params.normal_scale = std::max(cs->water_vertex_normal_scale._float(), 0.0f);
 
 		LARGE_INTEGER now;
 		QueryPerformanceCounter(&now);
@@ -1345,53 +1490,79 @@ namespace gta4
 		}
 		g_params.time = static_cast<double>(now.QuadPart - g_qpc_start.QuadPart) / static_cast<double>(g_qpc_frequency.QuadPart);
 
-		update_sim_rms(buffer);
-		g_params.far_waves = gs->water_far_waves.get_as<bool>();
-		g_params.far_wave_fade = std::max(gs->water_far_wave_fade.get_as<float>(), 0.0f);
-		build_waves(gs);
+		// while water_dynamics writes the game's wave grid there are no waves of the game to measure
+		g_params.game_waves = !water_dynamics::coupling_active();
+		if (g_params.game_waves) {
+			update_sim_rms(buffer);
+		}
 
-		g_api.active = gs->api_water_enabled.get_as<bool>() && renderer_api::is_runtime_supported();
+		const bool wind_waves = cs->water_wind_waves._bool();
+		const bool interactive = cs->water_interactive._bool();
+		g_params.far_waves = cs->water_far_waves._bool();
+		g_params.far_wave_fade = std::max(cs->water_far_wave_fade._float(), 0.0f);
+		build_waves(cs);
 
-		g_params.lod = gs->water_lod.get_as<bool>();
+		g_api.active = cs->api_water_enabled._bool() && renderer_api::is_runtime_supported();
+
+		g_params.lod = cs->water_lod._bool();
 
 		// the water's camera coordinates follow the gameplay camera, scripted cameras (cutscenes) use the render viewport's
-		float view_x = cam_x, view_y = cam_y;
+		float view_x = cam_x;
+		float view_y = cam_y;
 		if (game::pCurrentViewport && game::pCurrentViewport->wp)
 		{
 			view_x = game::pCurrentViewport->wp->cameraInv.m[3][0];
 			view_y = game::pCurrentViewport->wp->cameraInv.m[3][1];
 		}
 
-		// the fine zone and the rings follow the view camera while it is inside the tessellated window
+		// the rings follow the view camera while it is inside the tessellated window
 		{
 			const auto r = detail_range();
 			const bool inside = view_x > static_cast<float>(r[0] + 64) && view_x < static_cast<float>(r[1] - 64)
 				&& view_y > static_cast<float>(r[2] + 64) && view_y < static_cast<float>(r[3] - 64);
-			const float lx = inside ? view_x : cam_x, ly = inside ? view_y : cam_y;
-			g_params.lod_center_x = floor_to(static_cast<int>(lx), LOD_SNAP);
-			g_params.lod_center_y = floor_to(static_cast<int>(ly), LOD_SNAP);
+
+			g_params.lod_center_x = floor_to(static_cast<int>(inside ? view_x : cam_x), LOD_SNAP);
+			g_params.lod_center_y = floor_to(static_cast<int>(inside ? view_y : cam_y), LOD_SNAP);
 		}
 
-		water_dynamics::render_step(view_x, view_y);
-		g_params.dyn = water_dynamics::frame().wake.valid();
-		g_params.wind = water_dynamics::frame().ocean_on;
-		g_params.wind_far = std::max(gs->water_wind_wave_far_scale.get_as<float>(), 0.0f);
-		g_params.phys_to_game = 1.0f / std::max(g_params.normal_scale, 0.05f);
-		// the fine mesh shows the short wind waves and the interactive fields: without them it is only vertices
-		const float near_scale = gs->water_near_tessellation_scale.get_as<float>();
-		const bool fine_on = g_api.active && near_scale >= 0.375f && (gs->water_wind_waves.get_as<bool>() || gs->water_interactive.get_as<bool>());
-		g_params.fine_div = near_scale >= 0.75f ? FINE_DIV_PER_UNIT : 1;
-		g_params.fine_radius = fine_on ? std::max(0, floor_to(static_cast<int>(gs->water_detail_mesh_radius.get_as<float>()), LOD_SNAP)) : 0;
+		// Cells below 2 units show the short wind waves and the interactive fields, without them they are only vertices.
+		// Each cell size needs a ring of at least LOD_SNAP units
+		const int fine_cells = g_api.active && (wind_waves || interactive) ? std::clamp(cs->water_lod_fine_cells._int(), 0, 2) : 0;
+		const int radius_2 = std::clamp(floor_to(static_cast<int>(cs->water_lod_radius_2._float()), LOD_SNAP), fine_cells == 2 ? 2 * LOD_SNAP : LOD_SNAP, MAX_FINE_RADIUS);
+		const int radius_1 = std::clamp(floor_to(static_cast<int>(cs->water_lod_radius_1._float()), LOD_SNAP), LOD_SNAP, std::max(LOD_SNAP, radius_2 - LOD_SNAP));
 
-		// the fine zone sits inside the 2 unit ring with room for the ring blend
-		const int ring0_min = g_params.fine_radius ? g_params.fine_radius + LOD_SNAP : 0;
-		g_params.lod_radius[0] = std::max({ LOD_SNAP, ring0_min, floor_to(static_cast<int>(gs->water_lod_radius_4.get_as<float>()), LOD_SNAP) });
-		g_params.lod_radius[1] = std::max(g_params.lod_radius[0] + LOD_SNAP, floor_to(static_cast<int>(gs->water_lod_radius_8.get_as<float>()), LOD_SNAP));
+		g_params.fine_radius[0] = fine_cells == 2 ? radius_1 : 0;
+		g_params.fine_radius[1] = fine_cells >= 1 ? radius_2 : 0;
+
+		const int ring0_min = g_params.fine_radius[1] ? g_params.fine_radius[1] + LOD_SNAP : LOD_SNAP;
+		g_params.lod_radius[0] = std::max(ring0_min, floor_to(static_cast<int>(cs->water_lod_radius_4._float()), LOD_SNAP));
+		g_params.lod_radius[1] = std::max(g_params.lod_radius[0] + LOD_SNAP, floor_to(static_cast<int>(cs->water_lod_radius_8._float()), LOD_SNAP));
+
+		// A fade is never wider than the ring it runs in. The detail of the cells below 2 units fades out over the cells
+		// of 1 unit, or over the outer half without them
+		const float lod_blend = std::max(cs->water_lod_blend._float(), 0.0f);
+		g_params.lod_fade[0] = std::min(lod_blend, static_cast<float>(g_params.lod_radius[0] - g_params.fine_radius[1]));
+		g_params.lod_fade[1] = std::min(lod_blend, static_cast<float>(g_params.lod_radius[1] - g_params.lod_radius[0]));
+		g_params.fine_fade[0] = std::min(lod_blend, 0.5f * static_cast<float>(g_params.fine_radius[0]));
+		g_params.fine_fade[1] = std::min(lod_blend, g_params.fine_radius[0]
+			? static_cast<float>(g_params.fine_radius[1] - g_params.fine_radius[0])
+			: 0.5f * static_cast<float>(g_params.fine_radius[1]));
+
+		water_dynamics::render_step(view_x, view_y, static_cast<float>(g_params.fine_radius[1]));
+
+		const auto& frame = water_dynamics::frame();
+		g_params.wakes = frame.wake_on;
+		g_params.wind = frame.ocean_on;
+		g_params.long_scale = frame.long_scale;
+		g_params.short_scale = frame.short_scale;
+		g_params.inland_level = cs->water_inland_level._float();
+		g_params.inland_scale = std::max(cs->water_inland_wave_scale._float(), 0.0f);
+		g_params.phys_to_game = 1.0f / std::max(g_params.normal_scale, 0.05f);
 
 		g_params.valid = true;
 
-		g_api.cull_pieces = gs->api_water_cull_pieces.get_as<bool>();
-		g_api.uv_scale = 0.01f * gs->water_texture_uv_scale._float();
+		g_api.cull_pieces = cs->api_water_cull_pieces._bool();
+		g_api.uv_scale = 0.01f * cs->water_texture_uv_scale._float();
 		g_api.vertices.clear();
 		g_api.indices.clear();
 		g_api.detail_pieces = 0u;
@@ -1449,23 +1620,124 @@ namespace gta4
 	void water::devgui_stats()
 	{
 		const auto s = get_stats();
-
-		ImGui::Text("Tessellated radius %d, last render: %u pieces (%u culled), %u vertices", s.detail_radius, s.pieces, s.pieces_culled, s.vertices);
-		ImGui::Text("Wave height RMS: game simulation %.3f, procedural waves %.3f", s.sim_rms, s.far_wave_rms);
-
 		const auto d = water_dynamics::get_stats();
-		ImGui::Text("Wind %.2f -> wind sea Hs %.2f m (JONSWAP) | vehicles %d (pool %s), hulls %d, bodies %d, helis %d, splashes %d, explosions %d",
-			d.wind, d.ocean_hs, d.vehicles_seen, d.pool_ok ? "ok" : "-", d.hulls, d.bodies, d.helis, d.splashes, d.explosions);
-		ImGui::Text("Wake RMS %.4f m, ripple RMS %.4f m, simulation thread %.2f ms, fine mesh vertices %u",
-			d.wake_rms, d.ripple_rms, d.sim_ms, s.api_fine_vertices);
 
-		if (s.api_active)
+		const auto group = [](const char* name)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(name);
+			};
+
+		const auto cell = [](const char* label, const char* format, const auto... args)
+			{
+				ImGui::TableNextColumn();
+				ImGui::TextDisabled("%s", label);
+				ImGui::SameLine(0.0f, 6.0f);
+				ImGui::Text(format, args...);
+			};
+
+		if (ImGui::BeginTable("##water_stats", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_PadOuterX))
 		{
-			ImGui::Text("Remix API: %u vertices, %u triangles (%u tessellated pieces, %u flat rectangles)",
-				s.api_vertices, s.api_triangles, s.api_detail_pieces, s.api_flat_rectangles);
-		} else {
+			group("Mesh");
+			cell("Radius", "%d", s.detail_radius);
+			cell("Pieces", "%u", s.pieces);
+			cell("Culled", "%u", s.pieces_culled);
+			cell("Vertices", "%u", s.vertices);
+
+			if (s.api_active)
+			{
+				group("Remix API");
+				cell("Vertices", "%u", s.api_vertices);
+				cell("Triangles", "%u", s.api_triangles);
+				cell("Fine Vertices", "%u", s.api_fine_vertices);
+				cell("Flat Rectangles", "%u", s.api_flat_rectangles);
+			}
+
+			group("Wave Height RMS");
+			cell("Game", "%.3f", s.sim_rms);
+			cell("Procedural", "%.3f", s.far_wave_rms);
+			cell("Wake", "%.4f", d.wake_rms);
+			cell("Ripple", "%.4f", d.ripple_rms);
+
+			group("Wave Sources");
+			cell("Vehicles", "%d (pool %s)", d.vehicles_seen, d.pool_ok ? "ok" : "-");
+			cell("Hulls", "%d", d.hulls);
+			cell("Bodies", "%d", d.bodies);
+			cell("Helis", "%d", d.helis);
+
+			group("Simulation");
+			cell("Thread", "%.2f ms", d.sim_ms);
+			cell("Wind", "%.2f", d.wind);
+			cell("Splashes", "%d", d.splashes);
+			cell("Explosions", "%d", d.explosions);
+
+			ImGui::EndTable();
+		}
+
+		if (!s.api_active) {
 			ImGui::TextUnformatted("Drawn through the fixed function path");
 		}
+	}
+
+	void water::devgui_overview()
+	{
+		static const auto cs = comp_settings::get();
+		static imgui::debug_plot sim_history;
+		constexpr float MIN_PLOT_RANGE = 2.0f; // ms
+
+		const auto s = get_stats();
+		const bool simulated = cs->water_wind_waves._bool() || cs->water_interactive._bool();
+		const float sim_ms = simulated ? water_dynamics::get_stats().sim_ms : 0.0f;
+		sim_history.add(sim_ms);
+
+		const float start_x = ImGui::GetCursorPosX();
+		const float value_x = start_x + ImGui::CalcTextSize("Tessellated Radius").x + 24.0f;
+
+		const auto label = [&](const char* name)
+			{
+				ImGui::TextDisabled("%s", name);
+				ImGui::SameLine(value_x);
+			};
+
+		ImGui::BeginGroup();
+		{
+			label("Tessellated Radius");
+			ImGui::Text("%d", s.detail_radius);
+
+			label("Triangles");
+			if (s.api_active) {
+				ImGui::Text("%u", s.api_triangles);
+			} else {
+				ImGui::TextUnformatted("-");
+			}
+
+			label("Simulation Time");
+			if (simulated) {
+				ImGui::Text("%.2f ms", sim_ms);
+			} else {
+				ImGui::TextUnformatted("off");
+			}
+
+			ImGui::EndGroup();
+		}
+
+		const float plot_height = ImGui::GetItemRectSize().y;
+		const float plot_max = std::max(*std::max_element(std::begin(sim_history.values), std::end(sim_history.values)) * 1.25f, MIN_PLOT_RANGE);
+
+		ImGui::SameLine(value_x + ImGui::CalcTextSize("000.00 ms").x + 24.0f);
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.02f, 0.02f, 0.02f, 0.5f));
+		ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+		ImGui::PlotLines("##water_sim_time", sim_history.values, imgui::debug_plot::history_size, sim_history.offset, nullptr, 0.0f, plot_max,
+			ImVec2(ImGui::GetContentRegionAvail().x, plot_height));
+		ImGui::PopStyleColor(2);
+
+		char scale_top[32] = {};
+		snprintf(scale_top, sizeof(scale_top), "%.1f ms", plot_max);
+
+		const ImVec2 rect_min = ImGui::GetItemRectMin();
+		const ImVec2 rect_max = ImGui::GetItemRectMax();
+		ImGui::GetWindowDrawList()->AddText(ImVec2(rect_max.x - ImGui::CalcTextSize(scale_top).x - 4.0f, rect_min.y + 2.0f), ImGui::GetColorU32(ImGuiCol_TextDisabled), scale_top);
 	}
 
 	void water::devgui_debug()
