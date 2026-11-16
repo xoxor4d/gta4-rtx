@@ -641,7 +641,7 @@ namespace gta4::light_editor
 				"#    Cutscene lights (cutscene + light name) and vehicle head / rear lights (model + light) keep their hash while moving.\n"
 				"#\n"
 				"# :: How to edit:\n"
-				"#    > Light Editor (GUI -> Map Settings -> Light Tweaks -> Open Light Editor)\n"
+				"#    > Light Editor (GUI -> Creator Sections -> World Edits -> Game Light Tweaks -> Open Light Editor)\n"
 				"#    > Right click a light -> Ignore light. Save in the editor's toolbar\n"
 				"#\n"
 				"# ~~ IGNORE_LIGHTS = [\n"

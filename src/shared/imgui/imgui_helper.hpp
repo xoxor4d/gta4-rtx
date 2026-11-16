@@ -124,6 +124,25 @@ namespace ImGui
 	bool Widget_WrappedCollapsingHeader(const char* title_text, float height, const ImVec4& border_color, bool default_open = true, bool pre_spacing = false);
 	float Widget_ContainerWithCollapsingTitle(const char* child_name, float child_height, const std::function<void()>& callback, bool default_open = true, const char* icon = nullptr, const ImVec4* bg_col = nullptr, const ImVec4* border_col = nullptr);
 
+	// Parts of Widget_ContainerWithCollapsingTitle, for a container with the same look that is built from its own header.
+
+	/// left and right edge of the body of a container in the current window, screen space
+	void Widget_ContainerEdges(float& min_x, float& max_x);
+
+	/// Draws the frame of an open container header at the cursor, without an item. The cursor is left where the title of a
+	/// container starts, placed for frame high items.
+	/// @return	y of the lower edge of the header, screen space
+	float Widget_ContainerStaticHeader(const ImVec4& border_color);
+
+	/// background, border and drop shadow of the body of a container
+	void Widget_ContainerBody(const ImVec2& min, const ImVec2& max, const ImVec4& background_color, const ImVec4& border_color);
+
+	/// child window of the body of a container, call Widget_ContainerChildEnd whatever it returns
+	bool Widget_ContainerChildBegin(const char* child_name, float min_x, float max_x);
+
+	/// @return	height of the body of the container
+	float Widget_ContainerChildEnd();
+
 	float Widget_ContainerWithDropdownShadow(const float container_height, const std::function<void()>& callback, const ImVec4* bg_col = nullptr, const ImVec4* border_col = nullptr);
 	float Widget_ContainerWithDropdownShadowSquare(const float container_height, const std::function<void()>& callback, const ImVec4* bg_col = nullptr, const ImVec4* border_col = nullptr);
 	

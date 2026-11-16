@@ -427,7 +427,7 @@ namespace gta4::marker_editor
 				"# :: Can be used as anchor mesh (same one can be spawned multiple times)\n"
 				"#\n"
 				"# :: How to edit:\n"
-				"#    > Marker Editor (GUI -> Map Settings -> Map Markers -> Open Marker Editor)\n"
+				"#    > Marker Editor (GUI -> Creator Sections -> World Edits -> Map Markers -> Open Marker Editor)\n"
 				"#    > Add, move, rotate and scale markers in the world. Save in the editor's toolbar\n"
 				"#\n"
 				"# :: Notes:\n"

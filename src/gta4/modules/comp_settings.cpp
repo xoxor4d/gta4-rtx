@@ -441,6 +441,16 @@ namespace gta4
 				// misc settings
 				ASSIGN(discord_rpc);
 				ASSIGN(limit_option_sliders);
+				ASSIGN(menu_creator_sections);
+				ASSIGN(menu_background_blur);
+				ASSIGN(menu_color_window);
+				ASSIGN(menu_color_container);
+				ASSIGN(menu_color_container_border);
+				ASSIGN(menu_color_category_fade_start);
+				ASSIGN(menu_color_category_fade_end);
+				ASSIGN(menu_color_accent);
+				ASSIGN(menu_color_badge);
+				ASSIGN(do_not_pause_on_lost_focus);
 
 			#undef ASSIGN
 			}

@@ -28,8 +28,6 @@ namespace gta4
 		ImVec4 ImGuiCol_ContainerBackground = ImVec4(0.220f, 0.220f, 0.220f, 0.875f);
 		ImVec4 ImGuiCol_ContainerBorder = ImVec4(0.099f, 0.099f, 0.099f, 0.901f);
 
-		bool m_do_not_pause_on_lost_focus = false;
-		bool m_do_not_pause_on_lost_focus_changed = false;
 		bool m_pause_game = false;
 		bool m_pause_step_held = false;
 
@@ -608,35 +606,6 @@ namespace gta4
 
 		ImGuiStats m_stats = {};
 
-		// a place of the menu to show: its main tab gets selected, the container opened and scrolled to, the tab inside of it selected.
-		// labels are string literals and match up to their icon ("Water" matches "Water  <icon>")
-		struct menu_jump_s
-		{
-			const char* tab = nullptr;
-			const char* container = nullptr;
-			const char* container_tab = nullptr;
-			int frames_left = 0;            // a level only shows up once the one above it was opened
-			bool inside_tab = false;        // the requested main tab is the one being drawn
-			bool inside_container = false;
-		};
-
-		/// Shows a place of the menu, starting with the next frame.
-		/// @param tab				main tab
-		/// @param container		collapsing container inside of the tab (optional)
-		/// @param container_tab	tab inside of the container (optional)
-		void jump_to(const char* tab, const char* container = nullptr, const char* container_tab = nullptr);
-
-		/// @return ImGuiTabItemFlags_SetSelected while a jump asks for this tab inside of the requested container
-		ImGuiTabItemFlags jump_container_tab_flags(const char* label) const;
-
-		/// Called before a container is drawn.
-		/// @return true while a jump asks for it: it has to be opened and scrolled to
-		bool jump_enter_container(const char* name);
-
-		void jump_leave_container();
-
-
-
 		static bool is_initialized()
 		{
 			if (const auto im = imgui::get(); im && im->m_initialized){
@@ -646,19 +615,9 @@ namespace gta4
 		}
 
 	private:
-		void tab_about();
-		void tab_dev();
-		void tab_wip();
-		void tab_utilities();
-		void tab_compsettings();
-		void tab_map_settings();
 		bool m_im_window_focused = false;
 		bool m_im_window_hovered = false;
 		std::string m_devgui_custom_footer_content;
-		menu_jump_s m_jump;
-
-		/// @return ImGuiTabItemFlags_SetSelected while a jump asks for this main tab
-		ImGuiTabItemFlags jump_tab_flags(const char* label) const;
 
 		bool m_initialized = false;
 

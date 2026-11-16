@@ -36,7 +36,6 @@ namespace gta4
 	void on_begin_scene_cb()
 	{
 		GTA4_PERF_SCOPE(performance_section::BeginScene);
-		const auto im = imgui::get();
 		const auto& gs = comp_settings::get();
 
 		renderer_api::on_begin_scene();
@@ -80,16 +79,18 @@ namespace gta4
 			}
 		}
 
-		// do not pause if enabled
-		if (im->m_do_not_pause_on_lost_focus) {
+		// do not pause if enabled, the game gets its value back once when the setting is turned off
+		static bool no_pause_was_enabled = false;
+		const bool no_pause_enabled = gs->do_not_pause_on_lost_focus._bool();
+
+		if (no_pause_enabled) {
 			*game::ms_bNoBlockOnLostFocus = false;
 		}
-
-		if (im->m_do_not_pause_on_lost_focus_changed && !im->m_do_not_pause_on_lost_focus)
-		{
+		else if (no_pause_was_enabled) {
 			*game::ms_bNoBlockOnLostFocus = true;
-			im->m_do_not_pause_on_lost_focus_changed = false;
 		}
+
+		no_pause_was_enabled = no_pause_enabled;
 
 		game_pause::update();
 
