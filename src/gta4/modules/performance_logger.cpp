@@ -1,6 +1,10 @@
 #include "std_include.hpp"
 #include "performance_logger.hpp"
+
+#include <cmath>
+
 #include "shared/imgui/imgui_helper.hpp"
+#include "shared/imgui/menu_widgets.hpp"
 
 namespace gta4
 {
@@ -181,32 +185,51 @@ namespace gta4
 
 	void performance_logger::draw_imgui_panel_embedded()
 	{
-		ImGui::Style_ColorButtonPush(m_popout_enabled ? ImVec4(0.72f, 0.5f, 0.26f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Button), true);
-		if (ImGui::Button(m_popout_enabled ? "Hide Performance Overlay" : "Show Performance Overlay", ImVec2(ImGui::GetContentRegionAvail().x, 48))) {
-			m_popout_enabled = !m_popout_enabled;
-		}
-		ImGui::Style_ColorButtonPop();
-
 		if constexpr (shared::common::profiler::enabled) {
 			ImGui::TextUnformatted(shared::common::profiler::is_connected() ? "Tracy: profiler connected" : "Tracy: waiting for a profiler connection");
 		}
 
 		if (ImGui::TreeNode("Performance Overlay Settings ..."))
 		{
-			ImGui::Spacing(0, 4);
-			ImGui::SliderFloat("Hard Threshold (ms)", &m_spike_hard_ms, 8.0f, 100.0f, "%.1f");
-			ImGui::SliderFloat("Median Ratio", &m_spike_ratio, 1.1f, 3.0f, "%.2f");
+			namespace widgets = shared::imgui::menu;
+
+			// two sliders share the control column of a row
+			const auto slider_pair = [](const char* label, const char* first_id, float& first, const float first_min, const float first_max, const char* first_fmt,
+				const char* second_id, float& second, const float second_min, const float second_max, const char* second_fmt)
+				{
+					const float second_width = std::floor(widgets::row_begin(label) * 0.48f);
+
+					widgets::row_split(second_width);
+					ImGui::SliderFloat(first_id, &first, first_min, first_max, first_fmt);
+
+					widgets::row_second(second_width);
+					ImGui::SetNextItemWidth(second_width);
+					ImGui::SliderFloat(second_id, &second, second_min, second_max, second_fmt);
+				};
+
+			ImGui::Unindent();
 			ImGui::Spacing(0, 4);
 
-			ImGui::SliderFloat("Window Alpha", &m_window_bg_alpha, 0.0f, 1.0f, "%.2f");
-			ImGui::SliderFloat("Graph Alpha", &m_graph_bg_alpha, 0.0f, 1.0f, "%.2f");
-			ImGui::Spacing(0, 4);
+			widgets::row_begin("Spike: Hard Threshold");
+			ImGui::SliderFloat("##spike_hard_ms", &m_spike_hard_ms, 8.0f, 100.0f, "%.1f ms");
 
-			ImGui::SliderFloat("Window X", &m_window_x, 0.0f, 5000.0f, "%.2f");
-			ImGui::SliderFloat("Window Y", &m_window_y, 0.0f, 5000.0f, "%.2f");
-			ImGui::SliderFloat("Window Width", &m_window_width, 360.0f, 5120.0f, "%.2f");
-			ImGui::SliderFloat("Graph Height", &m_graph_height, 16.0f, 90.0f, "%.2f");
-			ImGui::Checkbox("Display Section Table", &m_display_section_table);
+			widgets::row_begin("Spike: Median Ratio");
+			ImGui::SliderFloat("##spike_ratio", &m_spike_ratio, 1.1f, 3.0f, "%.2f");
+
+			widgets::row_begin("Window Alpha");
+			ImGui::SliderFloat("##window_alpha", &m_window_bg_alpha, 0.0f, 1.0f, "%.2f");
+
+			widgets::row_begin("Graph Alpha");
+			ImGui::SliderFloat("##graph_alpha", &m_graph_bg_alpha, 0.0f, 1.0f, "%.2f");
+
+			slider_pair("Window X / Y", "##window_x", m_window_x, 0.0f, 5000.0f, "X %.0f", "##window_y", m_window_y, 0.0f, 5000.0f, "Y %.0f");
+			slider_pair("Window Width / Graph Height", "##window_width", m_window_width, 360.0f, 5120.0f, "W %.0f", "##graph_height", m_graph_height, 16.0f, 90.0f, "H %.0f");
+
+			widgets::row_begin("Section Table", nullptr, widgets::switch_width());
+			widgets::row_align_right(widgets::switch_width());
+			widgets::toggle_switch("##section_table", m_display_section_table);
+
+			ImGui::Indent();
 			ImGui::TreePop();
 		}
 	}

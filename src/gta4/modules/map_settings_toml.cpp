@@ -1,10 +1,16 @@
 #include "std_include.hpp"
+#include "map_settings_toml.hpp"
 
-namespace shared::common::toml_ext
+#include "map_settings.hpp"
+#include "shared/common/toml_ext.hpp"
+
+using shared::common::toml_ext::format_float;
+
+namespace gta4::map_settings_toml
 {
 	/// Builds a string containing all map markers
 	/// @return the final string in toml format
-	std::string build_map_marker_array(const std::vector<gta4::map_settings::marker_settings_s>& markers)
+	std::string build_map_marker_array(const std::vector<map_settings::marker_settings_s>& markers)
 	{
 		std::string toml_str = "MARKER = [\n"s;
 		for (auto& m : markers)
@@ -21,6 +27,28 @@ namespace shared::common::toml_ext
 
 			if (m.cull_distance > 0.0f) {
 				toml_str += ", cull_distance = " + format_float(m.cull_distance);
+			}
+
+			const bool on_weather = m.weather_type < game::WEATHER_NONE;
+			const bool between_hours = m.from_hour >= 0 && m.to_hour >= 0;
+
+			if (on_weather || between_hours)
+			{
+				std::string spawn_on;
+				if (on_weather)
+				{
+					// 'WEATHER_RAIN' -> 'RAIN'
+					spawn_on += "weather = \"" + std::string(game::eWeatherTypeStr[m.weather_type]).substr(8u) + "\"";
+					spawn_on += ", weather_transition_value = " + format_float(m.weather_transition_value);
+				}
+
+				if (between_hours)
+				{
+					spawn_on += on_weather ? ", " : "";
+					spawn_on += "between_hours = [" + std::to_string(m.from_hour) + ", " + std::to_string(m.to_hour) + "]";
+				}
+
+				toml_str += ", spawn_on = { " + spawn_on + " }";
 			}
 
 			toml_str += " },\n";
@@ -94,7 +122,7 @@ namespace shared::common::toml_ext
 
 	/// Builds a string containing all ignore game light hashes grouped by TOML file
 	/// @return the final string in toml format with TOML file comments
-	std::string build_ignore_lights_array_from_toml_info(const std::unordered_map<std::string, gta4::map_settings::lights_toml_info_s>& toml_info)
+	std::string build_ignore_lights_array_from_toml_info(const std::unordered_map<std::string, map_settings::lights_toml_info_s>& toml_info)
 	{
 		std::string toml_str = ""s;
 		
@@ -154,7 +182,7 @@ namespace shared::common::toml_ext
 
 	/// Builds a string containing all allowed game light hashes grouped by TOML file
 	/// @return the final string in toml format with TOML file comments
-	std::string build_allow_lights_array_from_toml_info(const std::unordered_map<std::string, gta4::map_settings::lights_toml_info_s>& toml_info)
+	std::string build_allow_lights_array_from_toml_info(const std::unordered_map<std::string, map_settings::lights_toml_info_s>& toml_info)
 	{
 		std::string toml_str = ""s;
 		
@@ -213,7 +241,7 @@ namespace shared::common::toml_ext
 
 	/// Builds a string containing all anti culling elements
 	/// @return the final string in toml format
-	std::string build_anticull_array(const std::vector<gta4::map_settings::anti_cull_meshes_s>& entries)
+	std::string build_anticull_array(const std::vector<map_settings::anti_cull_meshes_s>& entries)
 	{
 		auto index_count = 0u;
 
@@ -283,17 +311,17 @@ namespace shared::common::toml_ext
 	{
 		switch (light_type)
 		{
-			case gta4::map_settings::LIGHT_TYPE_SPOT:		return "true";
-			case gta4::map_settings::LIGHT_TYPE_RECT:		return "\"rect\"";
-			case gta4::map_settings::LIGHT_TYPE_DISK:		return "\"disk\"";
-			case gta4::map_settings::LIGHT_TYPE_CYLINDER:	return "\"cylinder\"";
+			case map_settings::LIGHT_TYPE_SPOT:		return "true";
+			case map_settings::LIGHT_TYPE_RECT:		return "\"rect\"";
+			case map_settings::LIGHT_TYPE_DISK:		return "\"disk\"";
+			case map_settings::LIGHT_TYPE_CYLINDER:	return "\"cylinder\"";
 			default:										return "false";
 		}
 	}
 
 	/// Builds a string containing all light override entries
 	/// @return the final string in toml format
-	std::string build_lightweak_array(const std::unordered_map<uint64_t, gta4::map_settings::light_override_s>& entries)
+	std::string build_lightweak_array(const std::unordered_map<uint64_t, map_settings::light_override_s>& entries)
 	{
 		std::string toml_str = "LIGHT_OVERRIDES = [\n"s;
 		for (auto& m : entries)
@@ -350,7 +378,7 @@ namespace shared::common::toml_ext
 	/// Helper function to build override properties string (without hash, without attached lights)
 	/// @param override_data The override data to build properties from
 	/// @return String containing comma-separated properties
-	std::string build_override_properties(const gta4::map_settings::light_override_s& override_data)
+	std::string build_override_properties(const map_settings::light_override_s& override_data)
 	{
 		std::string toml_str = "";
 
@@ -420,7 +448,7 @@ namespace shared::common::toml_ext
 	/// @param attached_lights The vector of attached lights
 	/// @param indent_prefix The prefix for indentation (e.g., "        " for 8 spaces)
 	/// @return String containing the attached array or empty string if no attached lights
-	std::string build_attached_lights_array(const std::vector<gta4::map_settings::light_override_s>& attached_lights, const std::string& indent_prefix)
+	std::string build_attached_lights_array(const std::vector<map_settings::light_override_s>& attached_lights, const std::string& indent_prefix)
 	{
 		if (attached_lights.empty()) {
 			return "";
@@ -450,7 +478,7 @@ namespace shared::common::toml_ext
 
 	/// Builds a string containing a complete TOML file's LIGHT_OVERRIDES
 	/// @return the final string in toml format
-	std::string build_lightweak_toml_file([[maybe_unused]] const std::string& filename, const gta4::map_settings::light_overrides_toml_info_s& toml_info)
+	std::string build_lightweak_toml_file([[maybe_unused]] const std::string& filename, const map_settings::light_overrides_toml_info_s& toml_info)
 	{
 		std::string toml_str = "LIGHT_OVERRIDES = [\n"s;
 
@@ -527,7 +555,7 @@ namespace shared::common::toml_ext
 
 	/// Builds a string containing a single light override category
 	/// @return the final string in toml format
-	std::string build_lightweak_single_category(const gta4::map_settings::light_override_category_info_s& category)
+	std::string build_lightweak_single_category(const map_settings::light_override_category_info_s& category)
 	{
 		if (category.overrides.empty()) {
 			return "";
@@ -571,7 +599,7 @@ namespace shared::common::toml_ext
 
 	/// Builds a string containing mixed format from all TOML files (categories + flat overrides)
 	/// @return the final string in toml format with TOML file comments
-	std::string build_lightweak_mixed_array(const std::unordered_map<std::string, gta4::map_settings::light_overrides_toml_info_s>& all_toml_info)
+	std::string build_lightweak_mixed_array(const std::unordered_map<std::string, map_settings::light_overrides_toml_info_s>& all_toml_info)
 	{
 		std::string toml_str = ""s;
 

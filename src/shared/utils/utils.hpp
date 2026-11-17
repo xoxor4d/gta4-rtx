@@ -161,6 +161,16 @@ namespace shared::utils
 
 	bool open_file_homepath(const std::string& sub_dir, const std::string& file_name, std::ifstream& file);
 
+	enum class write_file_result : std::uint8_t
+	{
+		ok,
+		write_failed,	// the temporary file could not be written
+		replace_failed,	// the temporary file could not take the place of the target
+	};
+
+	write_file_result write_file_atomic(const std::filesystem::path& target, std::string_view text);
+	bool is_valid_file_stem(std::string_view stem);
+
 	uint32_t data_hash32(const void* data, size_t size);
 	std::uint64_t string_hash64(const std::string_view& str);
 	std::uint32_t string_hash32(const std::string_view& str);

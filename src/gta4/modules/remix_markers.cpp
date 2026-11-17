@@ -151,6 +151,10 @@ namespace gta4
 
 		for (auto& m : msettings.map_markers)
 		{
+			if (m.internal__is_overridden) {
+				continue;
+			}
+
 			const bool needs_vis_check =
 				   m.weather_type != game::WEATHER_NONE
 				|| m.from_hour >= 0 && m.to_hour >= 0
@@ -201,6 +205,9 @@ namespace gta4
 						m.internal__is_hidden = fabs(m.origin.DistTo(player_pos)) > m.cull_distance;
 					}
 				}
+			}
+			else {
+				m.internal__is_hidden = false;
 			}
 
 			if (m.internal__is_hidden) {

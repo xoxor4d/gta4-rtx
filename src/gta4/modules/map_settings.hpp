@@ -34,9 +34,11 @@ namespace gta4
 			int from_hour = -1;
 			int to_hour = -1;
 			std::string comment;
+			std::string file; // toml file inside 'rtx_comp/markers' that holds the marker
 
 			std::uint32_t internal__frames_until_next_vis_check = 0u;
 			bool internal__is_hidden = false;
+			bool internal__is_overridden = false; // a file with a higher priority uses the marker number
 		};
 
 		// 'light_type' of a light override. Game lights are spheres or spots, the other shapes only exist as overrides
@@ -121,7 +123,8 @@ namespace gta4
 
 	struct map_settings_s
 	{
-		std::vector<marker_settings_s> map_markers;
+		std::vector<marker_settings_s> map_markers; // markers of all files, the order of a file's markers is their order in the file
+		std::set<std::string> marker_files; // toml files inside 'rtx_comp/markers', highest priority first
 		std::unordered_set<uint64_t> ignored_lights; // Flat set: highest priority (for runtime use)
 		std::unordered_set<uint64_t> allow_lights; // Flat set: highest priority (for runtime use)
 		std::unordered_map<uint64_t, light_override_s> light_overrides; // Flat map: highest priority override wins (for runtime use)
@@ -177,6 +180,7 @@ namespace gta4
 		static std::uint32_t next_light_override_order() { return ++m_light_override_order; }
 		static void rebuild_light_overrides_from_toml_info(); // Rebuilds light_overrides from toml_info based on priority
 		static void rebuild_lights_from_toml_info(); // Rebuilds ignored_lights and allow_lights from toml_info based on priority (excludes hashes with overrides)
+		static void resolve_marker_priority();
 
 	private:
 		bool m_initialized = false;

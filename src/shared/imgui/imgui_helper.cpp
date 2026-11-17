@@ -4,20 +4,10 @@
 #include "imgui_internal.h"
 #include "imgui_helper.hpp"
 
-#include "gta4/modules/imgui.hpp"
-#include "gta4/modules/natives.hpp"
 #include "shared/globals.hpp"
 
 namespace shared::imgui
 {
-	bool world_to_screen(const Vector& world_position, ImVec2& screen_position_out)
-	{
-		int32_t vp_id = 0u;
-		gta4::natives::GetGameViewportId(&vp_id);
-
-		return gta4::natives::GetViewportPositionOfCoord(world_position.x, world_position.y, world_position.z, vp_id, &screen_position_out.x, &screen_position_out.y);
-	}
-
 	void get_and_add_integers_to_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len, const bool clear_buf)
 	{
 		std::vector<int> temp_vec;
@@ -216,6 +206,10 @@ namespace shared::imgui
 
 namespace ImGui
 {
+	// frame padding of the header of Widget_ContainerWithCollapsingTitle and the indent inside of its child
+	constexpr ImVec2 CONTAINER_HEADER_PADDING = ImVec2(4.0f, 12.0f);
+	constexpr float CONTAINER_CHILD_INDENT = 2.0f;
+
 	void Spacing(const float& x, const float& y) {
 		Dummy(ImVec2(x, y));
 	}
@@ -616,43 +610,6 @@ namespace ImGui
 		return false;
 	}
 
-	void Draw3DCircle(ImDrawList* draw_list, const Vector& world_pos, const Vector& normal, const float radius, const bool filled, const ImColor& color, const float& thickness, int num_points)
-	{
-		num_points = std::clamp(num_points, 7, 200);
-		static ImVec2 points[200];
-
-		float step = 6.2831f / (float)num_points;
-		float theta = 0.f;
-
-		// Create a vector that's not parallel to the normal
-		Vector temp = (std::abs(normal.x) > 0.9f) ? Vector(0, 1, 0) : Vector(1, 0, 0);
-
-		// Right vector is perpendicular to the normal and temp vector
-		Vector right = normal.Cross(temp);
-		right.Normalize();
-
-		// Up vector is perpendicular to both normal and right vectors
-		Vector up = right.Cross(normal);
-		up.Normalize();
-
-		for (auto i = 0u; i < (std::uint32_t)num_points; i++, theta += step) 
-		{
-			//Vector world_space = { world_pos.x + radius * cos(theta), world_pos.y, world_pos.z - radius * sin(theta) };
-			Vector world_space = world_pos + (right * cos(theta) + up * sin(theta)) * radius;
-			Vector screen_space;
-			//common::imgui::world2screen(world_space, screen_space); // TODO
-
-			points[i].x = screen_space.x;
-			points[i].y = screen_space.y;
-		}
-
-		if (filled) {
-			draw_list->AddConvexPolyFilled(points, num_points, color);
-		} else {
-			draw_list->AddPolyline(points, num_points, color, true, thickness);
-		}
-	}
-
 	void TableHeaderDropshadow(const float height, const float max_alpha, const float neg_y_offset, const float custom_width)
 	{
 		const float dshadow_height = height;
@@ -915,6 +872,17 @@ namespace ImGui
 	/// @param default_open	True to collapse by default
 	/// @param pre_spacing	8y Spacing in-front of Header
 	/// @return				False if Header collapsed
+	ImVec4 open_header_color()
+	{
+		ImVec4 color = GetStyleColorVec4(ImGuiCol_Header);
+		color.x += 0.1f;
+		color.y += 0.1f;
+		color.z += 0.1f;
+		color.w += 0.1f;
+
+		return color;
+	}
+
 	bool Widget_WrappedCollapsingHeader(const char* title_text, const float height, const ImVec4& border_color, const bool default_open, const bool pre_spacing)
 	{
 		if (pre_spacing) {
@@ -933,13 +901,7 @@ namespace ImGui
 		const bool is_open = TreeNodeUpdateNextOpen(storage_id, open_flag);
 
 		if (is_open) {
-			//PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.3f, 0.3f, 0.8f));
-			auto header_color_tweak = g.Style.Colors[ImGuiCol_Header];
-			header_color_tweak.x += 0.1f;
-			header_color_tweak.y += 0.1f;
-			header_color_tweak.z += 0.1f;
-			header_color_tweak.w += 0.1f;
-			PushStyleColor(ImGuiCol_Header, header_color_tweak);
+			PushStyleColor(ImGuiCol_Header, open_header_color());
 		}
 
 		const auto state = CollapsingHeader(title_text, open_flag | ImGuiTreeNodeFlags_SpanFullWidth);
@@ -963,24 +925,94 @@ namespace ImGui
 		return state;
 	}
 
+	void Widget_ContainerEdges(float& min_x, float& max_x)
+	{
+		const auto window = GetCurrentWindow();
+		const auto& style = GetStyle();
+
+		min_x = window->WorkRect.Min.x - style.WindowPadding.x * 0.5f + 1.0f;
+		max_x = window->WorkRect.Max.x + style.WindowPadding.x * 0.5f - 1.0f;
+	}
+
+	float Widget_ContainerStaticHeader(const ImVec4& border_color)
+	{
+		const auto window = GetCurrentWindow();
+
+		PushFont(shared::imgui::font::BOLD);
+		const float font_size = GetFontSize();
+		PopFont();
+
+		// frame of an open framed tree node with the padding Widget_ContainerWithCollapsingTitle gives its header
+		const float outer_extend = IM_TRUNC(window->WindowPadding.x * 0.5f);
+		const ImVec2 cursor = window->DC.CursorPos;
+		const ImVec2 frame_min(window->WorkRect.Min.x - outer_extend, cursor.y);
+		const ImVec2 frame_max(window->WorkRect.Max.x + outer_extend, cursor.y + font_size + CONTAINER_HEADER_PADDING.y * 2.0f);
+
+		PushStyleColor(ImGuiCol_Border, border_color);
+		RenderFrame(frame_min, frame_max, ColorConvertFloat4ToU32(open_header_color()), true, 0.0f);
+		PopStyleColor();
+
+		// a tree node leaves the width of its arrow in front of the label
+		const float title_offset = font_size + CONTAINER_HEADER_PADDING.x * 3.0f;
+		SetCursorScreenPos(ImVec2(cursor.x + title_offset, cursor.y + (frame_max.y - frame_min.y - GetFrameHeight()) * 0.5f));
+
+		return frame_max.y;
+	}
+
+	void Widget_ContainerBody(const ImVec2& min, const ImVec2& max, const ImVec4& background_color, const ImVec4& border_color)
+	{
+		const auto draw_list = GetWindowDrawList();
+
+		draw_list->AddRect(min + ImVec2(-1, 1), max + ImVec2(1, 1), ColorConvertFloat4ToU32(border_color), 10.0f, ImDrawFlags_RoundCornersBottom);
+		draw_list->AddRectFilled(min, max, ColorConvertFloat4ToU32(background_color), 10.0f, ImDrawFlags_RoundCornersBottom);
+
+		// dropshadow
+		const ImVec2 dshadow_pmin(min.x - 1.0f, min.y + GetStyle().ItemSpacing.y - 4.0f);
+		const ImVec2 dshadow_pmax(max.x + 1.0f, dshadow_pmin.y + 48.0f);
+
+		const auto col_bottom = ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.0f));
+		const auto col_top = ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.4f));
+		draw_list->AddRectFilledMultiColor(dshadow_pmin, dshadow_pmax, col_top, col_top, col_bottom, col_bottom);
+	}
+
+	bool Widget_ContainerChildBegin(const char* child_name, const float min_x, const float max_x)
+	{
+		PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2.0f, 4.0f));
+		PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(6.0f, 8.0f));
+		const bool visible = BeginChild(child_name, ImVec2(max_x - min_x - GetStyle().FramePadding.x - 2.0f, 0.0f),
+			ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_AutoResizeY);
+
+		Indent(CONTAINER_CHILD_INDENT);
+		return visible;
+	}
+
+	float Widget_ContainerChildEnd()
+	{
+		Unindent(CONTAINER_CHILD_INDENT);
+		EndChild();
+		PopStyleVar(2);
+
+		SetCursorScreenPos(GetCursorScreenPos() + ImVec2(0, 8.0f));
+		return GetItemRectSize().y + 6.0f;
+	}
+
 	float Widget_ContainerWithCollapsingTitle(const char* child_name, const float child_height, const std::function<void()>& callback, const bool default_open, const char* icon, const ImVec4* bg_col, const ImVec4* border_col)
 	{
 		const std::string child_str = "[ "s + child_name + " ]"s;
-		const float child_indent = 2.0f;
 
 		const ImVec4 background_color = bg_col ? *bg_col : ImVec4(0.220f, 0.220f, 0.220f, 0.863f);
 		const ImVec4 border_color = border_col ? *border_col : ImVec4(0.099f, 0.099f, 0.099f, 0.901f);
 
 		const auto& style = GetStyle();
 
-		const auto window = GetCurrentWindow();
-		const auto min_x = window->WorkRect.Min.x - style.WindowPadding.x * 0.5f + 1.0f;
-		const auto max_x = window->WorkRect.Max.x + style.WindowPadding.x * 0.5f - 1.0f;
+		float min_x = 0.0f;
+		float max_x = 0.0f;
+		Widget_ContainerEdges(min_x, max_x);
 
 		PushFont(shared::imgui::font::BOLD);
 
 		const auto spos_pre_header = GetCursorScreenPos();
-		const auto expanded = Widget_WrappedCollapsingHeader(child_str.c_str(), 12.0f, border_color, default_open, false);
+		const auto expanded = Widget_WrappedCollapsingHeader(child_str.c_str(), CONTAINER_HEADER_PADDING.y, border_color, default_open, false);
 
 		PopFont();
 
@@ -994,45 +1026,28 @@ namespace ImGui
 			SetCursorScreenPos(spos_post_header);
 		}
 
-		if (expanded)
+		if (!expanded)
 		{
-			const auto min = ImVec2(min_x, GetCursorScreenPos().y - style.ItemSpacing.y);
-			const auto max = ImVec2(max_x, min.y + child_height);
-
-			GetWindowDrawList()->AddRect(min + ImVec2(-1, 1), max + ImVec2(1, 1), ColorConvertFloat4ToU32(border_color), 10.0f, ImDrawFlags_RoundCornersBottom);
-			GetWindowDrawList()->AddRectFilled(min, max, ColorConvertFloat4ToU32(background_color), 10.0f, ImDrawFlags_RoundCornersBottom);
-
-			// dropshadow
-			{
-				const auto dshadow_pmin = GetCursorScreenPos() - ImVec2(GetStyle().WindowPadding.x * 0.5f, 4);
-				const auto dshadow_pmax = dshadow_pmin + ImVec2(GetContentRegionAvail().x + GetStyle().WindowPadding.x, 48.0f);
-
-				const auto col_bottom = ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.0f));
-				const auto col_top = ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 0.4f));
-				GetWindowDrawList()->AddRectFilledMultiColor(dshadow_pmin, dshadow_pmax, col_top, col_top, col_bottom, col_bottom);
-			}
-
-			PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2.0f, 4.0f));
-			PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(6.0f, 8.0f));
-			BeginChild(child_name, ImVec2(max.x - min.x - style.FramePadding.x - 2.0f, 0.0f),
-				/*ImGuiChildFlags_Borders | */ ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_AutoResizeY);
-
-			Indent(child_indent);
-			PushClipRect(min, max, true);
-			if (callback) 
-			{
-				Indent(4);
-				callback();
-				Unindent(4);
-			}
-			PopClipRect();
-			Unindent(child_indent);
-
-			EndChild();
-			PopStyleVar(2);
+			SetCursorScreenPos(GetCursorScreenPos() + ImVec2(0, 8.0f));
+			return GetItemRectSize().y + 6.0f;
 		}
-		SetCursorScreenPos(GetCursorScreenPos() + ImVec2(0, 8.0f));
-		return GetItemRectSize().y + 6.0f/*- 28.0f*/;
+
+		const auto min = ImVec2(min_x, GetCursorScreenPos().y - style.ItemSpacing.y);
+		const auto max = ImVec2(max_x, min.y + child_height);
+
+		Widget_ContainerBody(min, max, background_color, border_color);
+		Widget_ContainerChildBegin(child_name, min_x, max_x);
+
+		PushClipRect(min, max, true);
+		if (callback)
+		{
+			Indent(4);
+			callback();
+			Unindent(4);
+		}
+		PopClipRect();
+
+		return Widget_ContainerChildEnd();
 	}
 
 
@@ -1118,7 +1133,7 @@ namespace ImGui
 
 	float Widget_CategoryWithVerticalLabel(const char* category_text, const std::function<void()>& callback, const ImVec4* text_color, const ImVec4* line_color)
 	{
-		const auto im = gta4::imgui::get();
+		const auto& fade = shared::imgui::widget_style;
 
 		const ImVec4 default_text_color = GetStyleColorVec4(ImGuiCol_Text);
 		const ImVec4 default_line_color = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
@@ -1218,8 +1233,8 @@ namespace ImGui
 			const ImVec2 left_gradient_pmin = ImVec2(left_gradient_start_x, start_pos.y);
 			const ImVec2 left_gradient_pmax = ImVec2(left_gradient_end_x, start_pos.y + content_height);
 			
-			const auto col_left = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundEnd));   // Transparent on the left
-			const auto col_right = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundStart)); // Semi-transparent at the line
+			const auto col_left = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_end);   // Transparent on the left
+			const auto col_right = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_start); // Semi-transparent at the line
 			draw_list->AddRectFilledMultiColor(left_gradient_pmin, left_gradient_pmax, col_left, col_right, col_right, col_left);
 		}
 		
@@ -1232,8 +1247,8 @@ namespace ImGui
 			const ImVec2 gradient_pmin = ImVec2(gradient_start_x, start_pos.y);
 			const ImVec2 gradient_pmax = ImVec2(gradient_end_x, start_pos.y + content_height);
 			
-			const auto col_left = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundStart));  // Semi-transparent at the line
-			const auto col_right = ColorConvertFloat4ToU32(ImVec4(im->ImGuiCol_VerticalFadeContainerBackgroundEnd));  // Transparent on the right
+			const auto col_left = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_start);  // Semi-transparent at the line
+			const auto col_right = ColorConvertFloat4ToU32(fade.vertical_fade_container_bg_end);  // Transparent on the right
 			draw_list->AddRectFilledMultiColor(gradient_pmin, gradient_pmax, col_left, col_right, col_right, col_left);
 		}
 		

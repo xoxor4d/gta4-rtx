@@ -1,10 +1,18 @@
 #pragma once
 #include <array>
+#include "imgui.h"
 #include "font_defines.hpp"
 
 namespace shared::imgui
 {
-	bool world_to_screen(const Vector& world_position, ImVec2& screen_position_out);
+	struct widget_style_s
+	{
+		ImVec4 vertical_fade_container_bg_start = ImVec4(0.0f, 0.0f, 0.0f, 0.65f);
+		ImVec4 vertical_fade_container_bg_end = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+	};
+
+	// colors of the helper widgets, set by the game module
+	inline widget_style_s widget_style;
 
 	void get_and_add_integers_to_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len = 0u, bool clear_buf = false);
 	void get_and_remove_integers_from_set(char* str, std::unordered_set<std::uint32_t>& set, const std::uint32_t& buf_len = 0u, bool clear_buf = false);
@@ -106,7 +114,6 @@ namespace ImGui
 
 	bool TextUnformatted_ClippedByColumnTooltip(const char* str);
 
-	void Draw3DCircle(ImDrawList* draw_list, const Vector& world_pos, const Vector& normal, float radius, bool filled, const ImColor& color, const float& thickness, int num_points = 200);
 	void TableHeaderDropshadow(float height = 12.0f, float max_alpha = 0.6f, float neg_y_offset = 0.0f, float custom_width = 0.0f);
 
 	bool Widget_PrettyDragVec3(const char* ID, float* vec_in, bool show_label = false, float label_size = 80.0f, float speed = 0.25f, float min = -FLT_MAX, float max = FLT_MAX,
@@ -116,6 +123,25 @@ namespace ImGui
 
 	bool Widget_WrappedCollapsingHeader(const char* title_text, float height, const ImVec4& border_color, bool default_open = true, bool pre_spacing = false);
 	float Widget_ContainerWithCollapsingTitle(const char* child_name, float child_height, const std::function<void()>& callback, bool default_open = true, const char* icon = nullptr, const ImVec4* bg_col = nullptr, const ImVec4* border_col = nullptr);
+
+	// Parts of Widget_ContainerWithCollapsingTitle, for a container with the same look that is built from its own header.
+
+	/// left and right edge of the body of a container in the current window, screen space
+	void Widget_ContainerEdges(float& min_x, float& max_x);
+
+	/// Draws the frame of an open container header at the cursor, without an item. The cursor is left where the title of a
+	/// container starts, placed for frame high items.
+	/// @return	y of the lower edge of the header, screen space
+	float Widget_ContainerStaticHeader(const ImVec4& border_color);
+
+	/// background, border and drop shadow of the body of a container
+	void Widget_ContainerBody(const ImVec2& min, const ImVec2& max, const ImVec4& background_color, const ImVec4& border_color);
+
+	/// child window of the body of a container, call Widget_ContainerChildEnd whatever it returns
+	bool Widget_ContainerChildBegin(const char* child_name, float min_x, float max_x);
+
+	/// @return	height of the body of the container
+	float Widget_ContainerChildEnd();
 
 	float Widget_ContainerWithDropdownShadow(const float container_height, const std::function<void()>& callback, const ImVec4* bg_col = nullptr, const ImVec4* border_col = nullptr);
 	float Widget_ContainerWithDropdownShadowSquare(const float container_height, const std::function<void()>& callback, const ImVec4* bg_col = nullptr, const ImVec4* border_col = nullptr);

@@ -22,6 +22,9 @@ namespace gta4::free_camera
 	float get_look_sensitivity();
 	void set_look_sensitivity(float sensitivity);
 
+	/// moves the active camera so that it looks at 'target' from 'distance' along its current view direction
+	void focus(const Vector& target, float distance);
+
 	/// reads mouse and keyboard, once per imgui frame while the camera is active:
 	/// hold the right mouse button to look around and move (WASD, Q/E down/up, Shift/Space fast/slow), mouse wheel changes the speed
 	void update_input();
