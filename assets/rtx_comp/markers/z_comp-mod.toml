@@ -1,23 +1,33 @@
 # ##########################################################################################################################################
-# >> Spawn unique markers meshes
+# >> Spawn unique marker meshes
 #
 # :: Can be used as anchor mesh (same one can be spawned multiple times)
-#    > They can be spawned and adjusted in-game via the imgui menu
+#
+# :: How to edit:
+#    > Marker Editor (GUI -> Map Settings -> Map Markers -> Open Marker Editor)
+#    > Add, move, rotate and scale markers in the world. Save in the editor's toolbar
+#
+# :: Notes:
+#    > A marker number can be used several times within a file, every entry spawns
+#    > Priority: files are processed in alphabetical order (earlier files have higher priority).
+#      A number that a file uses is dropped from every file with a lower priority
+#    > Numbers 9000-9099 are reserved
+#    > Comments: the comment above an entry is kept and shown as the name of the marker
 #
 # ~~ Parameters
-#   {          
-#       #                                   comment         
+#   {
+#       #                                   comment
 #       marker_num =                        num of marker                                                           [Int 0-Inf]
 #       position = []                       position of the marker mesh                                             [3D Vector]
-#       rotation = []                       rotation of the marker mesh                                             [3D Vector]
+#       rotation = []                       rotation of the marker mesh in degrees                                  [3D Vector]
 #       scale = []                          scale of the marker mesh                                                [3D Vector]
 #       cull_distance =                     disable drawing of marker mesh after this distance from the player      [Float]
 #       spawn_on = {
 #           weather = "TYPE"                only spawn marker when THIS weather is active                           [STRING] - [EXTRASUNNY, SUNNY, SUNNY_WINDY, CLOUDY, RAIN, DRIZZLE, FOGGY, LIGHTNING]
-#           weather_transition_value =      transition value the weather needs to be at for the marker to show      [Float 0-1] 
+#           weather_transition_value =      transition value the weather needs to be at for the marker to show      [Float 0-1]
 #           between_hours = [from, to]      only spawn marker between certain hours (from-to)                       [2D Int]
 #       }
-#   }, 
+#   },
 #   { ... },
 
 MARKER = [
