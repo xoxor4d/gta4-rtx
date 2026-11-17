@@ -615,6 +615,10 @@ namespace gta4
 		return m_pIDirect3DDevice9->GetNPatchMode();
 	}
 
+	IDirect3DDevice9* d3d9ex::get_original_device(IDirect3DDevice9* proxy) {
+		return proxy ? static_cast<D3D9Device*>(proxy)->get_original() : nullptr;
+	}
+
 	HRESULT d3d9ex::D3D9Device::DrawPrimitive([[maybe_unused]] D3DPRIMITIVETYPE PrimitiveType, [[maybe_unused]] UINT StartVertex, [[maybe_unused]] UINT PrimitiveCount)
 	{
 		count_call(call_type::Draw);

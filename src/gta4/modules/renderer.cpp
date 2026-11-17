@@ -1,6 +1,12 @@
 #include "std_include.hpp"
 #include "renderer.hpp"
 #include "renderer_api.hpp"
+#include "d3d9ex.hpp"
+
+namespace gta4
+{
+	extern std::vector<void(*)(IDirect3DDevice9*)> g_post_injection_callbacks;
+}
 #include "water.hpp"
 #include "distant_lights.hpp"
 
@@ -3746,6 +3752,19 @@ namespace gta4
 			}
 
 			m_triggered_remix_injection = true;
+
+			// other plugins draw their screen space effects on top of the path traced frame now
+			if (!g_post_injection_callbacks.empty())
+			{
+				auto runtime_dev = dev;
+				if (dev == shared::globals::d3d_device) {
+					runtime_dev = d3d9ex::get_original_device(dev);
+				}
+
+				for (const auto& cb : g_post_injection_callbacks) {
+					cb(runtime_dev);
+				}
+			}
 		}
 	}
 
@@ -4380,5 +4399,28 @@ namespace gta4
 		// -----
 		m_initialized = true;
 		shared::common::log("Renderer", "Module initialized.", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+	}
+}
+
+
+// -----
+// Post injection callbacks for other plugins (e.g. Fusion Rain Droplets)
+//
+// Screen space effects the game draws before its HUD would be covered by the path traced frame, which the runtime
+// only puts on the back buffer at the mod's injection. A plugin registers a callback here and draws its effect from
+// it: the callback runs right after the injection, on the runtime's device (draws on it skip the mod's per draw
+// handling). The injection may fire while the game draws into a target of its own (e.g. the phone screen): check the
+// bound render target before drawing. The timing of the injection itself does not change.
+// A callback must leave the device state as it found it. Registering the same callback twice is a no-op.
+
+namespace gta4
+{
+	std::vector<void(*)(IDirect3DDevice9*)> g_post_injection_callbacks;
+}
+
+extern "C" __declspec(dllexport) void gta4rtx_RegisterPostInjectionCallback(void(*callback)(IDirect3DDevice9* runtime_device))
+{
+	if (callback && std::find(gta4::g_post_injection_callbacks.begin(), gta4::g_post_injection_callbacks.end(), callback) == gta4::g_post_injection_callbacks.end()) {
+		gta4::g_post_injection_callbacks.push_back(callback);
 	}
 }

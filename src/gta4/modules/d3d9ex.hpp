@@ -29,6 +29,9 @@ namespace gta4
 		static const char* call_type_name(call_type t);
 		static void on_end_scene();
 
+		/// the runtime's device behind the proxy device (shared::globals::d3d_device)
+		static IDirect3DDevice9* get_original_device(IDirect3DDevice9* proxy);
+
 	private:
 		static inline call_counts s_calls_this_frame = {};
 		static inline call_counts s_calls_last_frame = {};
@@ -159,6 +162,9 @@ namespace gta4
 			HRESULT __stdcall DrawTriPatch(UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo) override;
 			HRESULT __stdcall DeletePatch(UINT Handle) override;
 			HRESULT __stdcall CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) override;
+
+			/// the runtime's device behind this wrapper (draws on it skip the mod's draw handling)
+			IDirect3DDevice9* get_original() const { return m_pIDirect3DDevice9; }
 
 		private:
 			IDirect3DDevice9 *m_pIDirect3DDevice9;
