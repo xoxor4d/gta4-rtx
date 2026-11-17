@@ -32,9 +32,9 @@ namespace shared::imgui::menu
 	/// small rounded tag, vertically centered on the current line
 	void badge(const char* text, const ImVec4& color);
 
-	/// header over the available width that shows or hides what follows it, 'hint' is drawn dimmed behind the label.
+	/// pill in the middle of a divider line that shows or hides what follows it.
 	/// @return	the state of 'open' after a click was handled
-	bool fold_header(const char* label, bool& open, const char* hint = nullptr);
+	bool fold_header(const char* label, bool& open);
 
 	/// text input with a button that clears it. True if the text changed
 	bool search_field(const char* id, char* buffer, std::size_t buffer_size, const char* hint, float width);

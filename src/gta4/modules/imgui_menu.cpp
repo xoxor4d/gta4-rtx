@@ -898,7 +898,7 @@ namespace gta4::menu
 		}
 
 		ImGui::Spacing(0, 6);
-		const bool show = widgets::fold_header("Advanced", open, "Detailed settings");
+		const bool show = widgets::fold_header("Advanced", open);
 		ImGui::Spacing(0, 8);
 
 		if (show) {

@@ -269,7 +269,7 @@ namespace gta4
 		constexpr float FOOTER_HEIGHT = 20.0f;
 		constexpr float BLUR_TINT_ALPHA_SCALE = 0.6f;
 
-		ImGui::SetNextWindowSize(ImVec2(900, 800), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(996, 720), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(720.0f, 520.0f), ImVec2(FLT_MAX, FLT_MAX));
 
 		const auto& cs = comp_settings::get();

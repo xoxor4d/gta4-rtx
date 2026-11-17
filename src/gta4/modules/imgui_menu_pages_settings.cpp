@@ -1032,7 +1032,7 @@ namespace gta4::menu
 
 		advanced([]()
 			{
-				group("Phone Modes", ICON_FA_MOBILE_ALT, phone_advanced);
+				group("Phone Modes", ICON_FA_MOBILE_ALT, phone_advanced, true);
 			});
 	}
 
@@ -1049,25 +1049,6 @@ namespace gta4::menu
 			{
 				const auto& gs = comp_settings::get();
 
-				category("Menu", [&]()
-					{
-						ImGui::PushID("othermenu");
-						if (compsettings_bool_widget("Blur Background", gs->menu_background_blur)) {
-							settings::on_changed(gs->menu_background_blur);
-						}
-
-						ImGui::Spacing(0, 4);
-						compsettings_color_widget("Window Background", gs->menu_color_window, 4, COLOR_FLAGS_ALPHA);
-						compsettings_color_widget("Container Background", gs->menu_color_container, 4, COLOR_FLAGS_ALPHA);
-						compsettings_color_widget("Container Border", gs->menu_color_container_border, 4, COLOR_FLAGS_ALPHA);
-						compsettings_color_widget("Category Fade Start", gs->menu_color_category_fade_start, 4, COLOR_FLAGS_ALPHA);
-						compsettings_color_widget("Category Fade End", gs->menu_color_category_fade_end, 4, COLOR_FLAGS_ALPHA);
-						compsettings_color_widget("Accent", gs->menu_color_accent, 4, COLOR_FLAGS_OPAQUE);
-						compsettings_color_widget("New Badge", gs->menu_color_badge, 4, COLOR_FLAGS_OPAQUE);
-						ImGui::PopID();
-					});
-
-				ImGui::Spacing(0, SEPARATOR_SPACING);
 				category("Remix", [&]()
 					{
 						ImGui::PushID("otherremix");
@@ -1083,6 +1064,25 @@ namespace gta4::menu
 						compsettings_bool_widget("Load ColorMaps Only", gs->load_colormaps_only);
 						compsettings_bool_widget("Unpin Main Thread from Processor 0", gs->unpin_main_thread);
 						compsettings_bool_widget("Do not Pause on Lost Focus", gs->do_not_pause_on_lost_focus);
+						ImGui::PopID();
+					});
+
+				ImGui::Spacing(0, SEPARATOR_SPACING);
+				category("Menu", [&]()
+					{
+						ImGui::PushID("othermenu");
+						if (compsettings_bool_widget("Blur Background", gs->menu_background_blur)) {
+							settings::on_changed(gs->menu_background_blur);
+						}
+
+						ImGui::Spacing(0, 4);
+						compsettings_color_widget("Window Background", gs->menu_color_window, 4, COLOR_FLAGS_ALPHA);
+						compsettings_color_widget("Container Background", gs->menu_color_container, 4, COLOR_FLAGS_ALPHA);
+						compsettings_color_widget("Container Border", gs->menu_color_container_border, 4, COLOR_FLAGS_ALPHA);
+						compsettings_color_widget("Category Fade Start", gs->menu_color_category_fade_start, 4, COLOR_FLAGS_ALPHA);
+						compsettings_color_widget("Category Fade End", gs->menu_color_category_fade_end, 4, COLOR_FLAGS_ALPHA);
+						compsettings_color_widget("Accent", gs->menu_color_accent, 4, COLOR_FLAGS_OPAQUE);
+						compsettings_color_widget("New Badge", gs->menu_color_badge, 4, COLOR_FLAGS_OPAQUE);
 						ImGui::PopID();
 					});
 			});

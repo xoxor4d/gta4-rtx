@@ -1490,50 +1490,50 @@ namespace gta4::mesh_inspector
 		/// what gets listed, picked and drawn in the world
 		void draw_options(inspector_s& ins)
 		{
-			const float spacing = ImGui::GetStyle().ItemSpacing.x;
-			const float label_width = ImGui::CalcTextSize("Min Radius").x + ImGui::GetStyle().ItemInnerSpacing.x;
-			const float half = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
-			const float second_column = ImGui::GetCursorPosX() + half + spacing;
+			constexpr float CHECKBOX_GAP = 18.0f;
+			constexpr float VALUE_WIDTH = 64.0f;
+			constexpr float COMBO_WIDTH = 130.0f;
 
 			ImGui::SeparatorText("Inspector Options");
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, 6.0f));
 
 			ImGui::Checkbox("HD", &ins.show_hd);
 			TT("Lists HD meshes.");
 
-			ImGui::SameLine(0, 14);
+			ImGui::SameLine(0, CHECKBOX_GAP);
 			ImGui::Checkbox("LOD", &ins.show_lod);
 			TT("Lists LOD meshes. Their boxes span several buildings and get in the way when picking.");
 
-			ImGui::SameLine(0, 14);
+			ImGui::SameLine(0, CHECKBOX_GAP);
 			ImGui::Checkbox("Only Forced", &ins.only_forced);
 			TT("Only lists meshes that an anti cull category forces.");
 
-			ImGui::SameLine(0, 14);
+			ImGui::SameLine(0, CHECKBOX_GAP);
 			ImGui::Checkbox("Pick Visible Only", &ins.pick_visible_only);
 			TT("Clicks in the world only pick meshes that were drawn last frame. The table still lists every mesh.");
 
 			ImGui::Checkbox("Boxes on Forced", &ins.boxes_on_forced);
 			TT("Draws a box around every listed mesh that an anti cull category forces.");
 
-			ImGui::SameLine(0, 14);
+			ImGui::SameLine(0, CHECKBOX_GAP);
 			ImGui::Checkbox("Labels", &ins.show_labels);
 			TT("Model index and name on the listed meshes in the world.");
 
-			ImGui::SameLine(second_column);
-			ImGui::SetNextItemWidth(half - label_width);
+			ImGui::SameLine(0, CHECKBOX_GAP);
+			ImGui::SetNextItemWidth(VALUE_WIDTH);
 			ImGui::DragInt("Max Labels", &ins.max_labels, 0.2f, 1, 300);
 			TT("Labels go to the largest meshes first and are skipped where they would overlap.");
 
-			ImGui::SetNextItemWidth(half - label_width);
+			ImGui::SetNextItemWidth(VALUE_WIDTH);
 			ImGui::DragFloat("Min Radius", &ins.min_radius, 0.5f, 0.0f, 1000.0f, "%.1f");
 			TT("Meshes with a smaller bounding radius are not listed.");
 
-			ImGui::SameLine(second_column);
-			ImGui::SetNextItemWidth(half - label_width);
+			ImGui::SameLine(0, CHECKBOX_GAP);
+			ImGui::SetNextItemWidth(VALUE_WIDTH);
 			ImGui::DragFloat("Min Height", &ins.min_height, 0.5f, 0.0f, 1000.0f, "%.1f");
 			TT("Meshes lower than this are not listed.");
 
-			ImGui::SetNextItemWidth(half - label_width);
+			ImGui::SetNextItemWidth(COMBO_WIDTH);
 			auto lod_view = static_cast<int>(ins.lod_view);
 			if (ImGui::Combo("LOD View", &lod_view, "Off\0LOD (hide HD)\0Lowest LOD\0"))
 			{
@@ -1547,10 +1547,7 @@ namespace gta4::mesh_inspector
 			   "Lowest LOD: only draws meshes without a lod parent.\n"
 			   "Picking a mode enables LOD entries in the list.");
 
-			ImGui::SameLine(second_column);
-			ImGui::SetNextItemWidth(half - label_width);
-			ImGui::DragInt("Highlight", &ins.highlight_model_index, 1.0f, -1, 0xFFFF);
-			TT("Draws a box around every listed instance of this model index. -1 = off.\nClicking an index of a category or of the lod fade exclusions sets it.");
+			ImGui::PopStyleVar();
 		}
 
 		void draw_categories_window(inspector_s& ins)
@@ -1580,7 +1577,7 @@ namespace gta4::mesh_inspector
 			ImGui::PopStyleColor();
 
 			// the options keep their place at the bottom, the tabs scroll above them
-			const float options_height = ImGui::GetFrameHeightWithSpacing() * 4.0f + ImGui::GetTextLineHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+			const float options_height = (ImGui::GetFrameHeight() + 6.0f) * 4.0f + ImGui::GetTextLineHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y * 2.0f;
 
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 			ImGui::BeginChild("##mi_tabs_area", ImVec2(0.0f, -options_height));

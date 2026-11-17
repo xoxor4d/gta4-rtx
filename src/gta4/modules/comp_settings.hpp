@@ -2486,14 +2486,14 @@ namespace gta4
 			variable menu_creator_sections = {
 				"menu_creator_sections",
 				("Lists the sections for creators in the F4 menu: world edits, lights, culling and debug."),
-				"1.7.3",
+				"1.7.4",
 				false
 			};
 
 			variable menu_background_blur = {
 				"menu_background_blur",
 				("Blurs the game behind the window of the F4 menu."),
-				"1.7.3",
+				"1.7.4",
 				true
 			};
 
@@ -2501,49 +2501,49 @@ namespace gta4
 				"menu_color_window",
 				("Background colour of the F4 menu window.\n"
 				 "With 'menu_background_blur' it tints the blurred game behind the window, at 60% of its alpha."),
-				"1.7.3",
-				0.0f, 0.0f, 0.0f, 0.97f
+				"1.7.4",
+				0.1f, 0.1f, 0.1f, 0.90f
 			};
 
 			variable menu_color_container = {
 				"menu_color_container",
 				("Background colour of the containers of the F4 menu."),
-				"1.7.3",
-				0.17f, 0.17f, 0.17f, 0.875f
+				"1.7.4",
+				0.89f, 0.65f, 0.00f, 0.02f
 			};
 
 			variable menu_color_container_border = {
 				"menu_color_container_border",
 				("Border colour of the containers of the F4 menu."),
-				"1.7.3",
-				0.477f, 0.39f, 0.25f, 0.90f
+				"1.7.4",
+				0.33f, 0.29f, 0.23f, 1.00f
 			};
 
 			variable menu_color_category_fade_start = {
 				"menu_color_category_fade_start",
 				("Colour the background fade of a category starts with, next to its vertical label."),
-				"1.7.3",
+				"1.7.4",
 				0.0f, 0.0f, 0.0f, 0.65f
 			};
 
 			variable menu_color_category_fade_end = {
 				"menu_color_category_fade_end",
 				("Colour the background fade of a category ends with."),
-				"1.7.3",
+				"1.7.4",
 				0.0f, 0.0f, 0.0f, 0.0f
 			};
 
 			variable menu_color_accent = {
 				"menu_color_accent",
 				("Accent colour of the F4 menu: switches, the selected sidebar entry, icon tiles and the outline of a search result."),
-				"1.7.3",
+				"1.7.4",
 				0.94f, 0.63f, 0.01f, 1.0f
 			};
 
 			variable menu_color_badge = {
 				"menu_color_badge",
 				("Colour of the badge that marks new settings in the F4 menu."),
-				"1.7.3",
+				"1.7.4",
 				0.94f, 0.63f, 0.01f, 1.0f
 			};
 

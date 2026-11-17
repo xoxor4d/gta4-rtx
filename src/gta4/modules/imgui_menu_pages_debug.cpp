@@ -909,9 +909,9 @@ namespace gta4::menu
 	void pages::debug()
 	{
 		group("Shaders", ICON_FA_ELLIPSIS_H, dev_shader_container);
-		group("DEBUG Section", ICON_FA_TERMINAL, dev_debug_container);
+		group("DEBUG Section", ICON_FA_TERMINAL, dev_debug_container, true);
 #if DEBUG
-		group("Other Settings", ICON_FA_MEMORY, dev_other_container, true);
+		group("Other Settings", ICON_FA_MEMORY, dev_other_container);
 #endif
 	}
 }

@@ -222,37 +222,47 @@ namespace shared::imgui::menu
 		draw_list->AddText(font, font_size, ImVec2(min.x + PADDING_X, min.y + PADDING_Y), IM_COL32(0, 0, 0, 255), text);
 	}
 
-	bool fold_header(const char* label, bool& open, const char* hint)
+	bool fold_header(const char* label, bool& open)
 	{
-		constexpr float ICON_OFFSET = 10.0f;
-		constexpr float LABEL_OFFSET = 32.0f;
-		constexpr float HINT_GAP = 12.0f;
+		constexpr float PADDING_X = 14.0f;
+		constexpr float ICON_GAP = 8.0f;
+		constexpr float LINE_GAP = 10.0f;
 
-		const ImGuiStyle& style = ImGui::GetStyle();
-		const float height = ImGui::GetFrameHeight() + 4.0f;
-		const ImVec2 min = ImGui::GetCursorScreenPos();
-		const ImVec2 max(min.x + ImGui::GetContentRegionAvail().x, min.y + height);
+		const char* icon = open ? ICON_FA_CHEVRON_UP : ICON_FA_CHEVRON_DOWN;
+		const float label_width = ImGui::CalcTextSize(label).x;
+		const float icon_width = ImGui::CalcTextSize(icon).x;
+		const float height = ImGui::GetFrameHeight();
+		const float pill_width = PADDING_X * 2.0f + label_width + ICON_GAP + icon_width;
+
+		const ImVec2 row_min = ImGui::GetCursorScreenPos();
+		const float row_width = ImGui::GetContentRegionAvail().x;
+		const ImVec2 pill_min(std::floor(row_min.x + (row_width - pill_width) * 0.5f), row_min.y);
+		const ImVec2 pill_max(pill_min.x + pill_width, pill_min.y + height);
 
 		ImGui::PushID(label);
-		if (ImGui::InvisibleButton("##fold_header", ImVec2(max.x - min.x, height))) {
+		ImGui::SetCursorScreenPos(pill_min);
+		if (ImGui::InvisibleButton("##fold_header", ImVec2(pill_width, height))) {
 			open = !open;
 		}
 		const bool hovered = ImGui::IsItemHovered();
 		ImGui::PopID();
 
+		// the row keeps the full width, whatever follows starts below it at the left edge
+		ImGui::SetCursorScreenPos(row_min);
+		ImGui::Dummy(ImVec2(row_width, height));
+
 		const auto draw_list = ImGui::GetWindowDrawList();
-		draw_list->AddRectFilled(min, max, hovered ? ImGui::GetColorU32(ImGuiCol_HeaderHovered, 0.35f) : ImGui::GetColorU32(ImGuiCol_Header), style.FrameRounding);
-		draw_list->AddRect(min, max, ImGui::GetColorU32(ImGuiCol_Separator, 0.6f), style.FrameRounding);
+		const ImU32 line_color = ImGui::GetColorU32(ImGuiCol_Separator, 0.6f);
+		const ImU32 text_color = hovered || open ? ImGui::ColorConvertFloat4ToU32(menu_style.accent) : ImGui::GetColorU32(ImGuiCol_Text);
+		const float line_y = std::floor(row_min.y + height * 0.5f);
 
-		const float text_y = min.y + (height - ImGui::GetFontSize()) * 0.5f;
-		draw_list->AddText(ImVec2(min.x + ICON_OFFSET, text_y), ImGui::GetColorU32(ImGuiCol_Text), open ? ICON_FA_CHEVRON_DOWN : ICON_FA_CHEVRON_RIGHT);
-		draw_list->AddText(ImVec2(min.x + LABEL_OFFSET, text_y), ImGui::GetColorU32(ImGuiCol_Text), label);
+		draw_list->AddLine(ImVec2(row_min.x, line_y), ImVec2(pill_min.x - LINE_GAP, line_y), line_color);
+		draw_list->AddLine(ImVec2(pill_max.x + LINE_GAP, line_y), ImVec2(row_min.x + row_width, line_y), line_color);
+		draw_list->AddRect(pill_min, pill_max, hovered ? text_color : line_color, height * 0.5f);
 
-		if (hint)
-		{
-			const float hint_x = min.x + LABEL_OFFSET + ImGui::CalcTextSize(label).x + HINT_GAP;
-			draw_list->AddText(ImVec2(hint_x, text_y), ImGui::GetColorU32(ImGuiCol_TextDisabled), hint);
-		}
+		const float text_y = pill_min.y + (height - ImGui::GetFontSize()) * 0.5f;
+		draw_list->AddText(ImVec2(pill_min.x + PADDING_X, text_y), text_color, label);
+		draw_list->AddText(ImVec2(pill_min.x + PADDING_X + label_width + ICON_GAP, text_y), text_color, icon);
 
 		return open;
 	}
