@@ -9,6 +9,205 @@
 
 namespace gta4
 {
+	// -----
+	// Game values for RemixFX effects, written with SetGameValue (an effect binds a parameter with 'param.<id>.gamevalue').
+	// What the game hands Fusion Rain Droplets, for remix-shaders/lens_drops.remixfx.slang, which is a port of it:
+	//   gta4.lens.rain:     the weather's rain on the frames the game asks for raindrops on the camera, 0 on the others
+	//   gta4.lens.blood:    blood on the camera, event counter (+1 per splatter; the effect turns one into its burst)
+	//   gta4.lens.splash:   water on the camera, a running count of drops: 20 per splash of the camera, and the splashes
+	//                       of the water within 6 m of the camera, fewer the further off (Fusion Rain Droplets' StartEffect)
+	//   gta4.lens.spray:    a spray the camera stands in (the Middle Park fountain), the amount a frame, 0 outside of it
+	//   gta4.lens.timestep: the game's own frame time in seconds, 0 while it is paused
+	// Counters, not pulses, so an effect never misses an event that happened between two of its frames.
+
+	namespace lens_fx
+	{
+		float* weather_rain = nullptr;
+		float* timestep = nullptr;
+		std::uintptr_t camera_matrix = 0u; // right, up, at, pos rows of 16 bytes
+		std::atomic<float> rain_request = 0.0f;
+		std::atomic<bool> rain_requested = false;
+		std::atomic<std::uint32_t> blood_events = 0u;
+		std::atomic<std::uint32_t> splash_drops = 0u;
+
+		// the splashes of the water the game starts, landed on the lens with the next frame
+		constexpr float SPLASH_RADIUS = 6.0f;
+		std::mutex splash_mutex;
+		std::vector<std::pair<Vector, float>> splashes;
+
+		// Fusion Rain Droplets' DropsOfAmount of a splash: an amount of 1 is 20 drops
+		void add_splash_amount(const float amount)
+		{
+			if (amount > 0.0f) {
+				splash_drops.fetch_add(static_cast<std::uint32_t>(amount * 20.0f));
+			}
+		}
+
+		// the game's camera effect requests (raindrops / blood / water on the lens), flags it sets during the frame;
+		// replaces the function that consumes them (the game's own lens effects are not drawn under Remix anyway)
+		void __fastcall on_camera_fx_requests(std::uint8_t* self, [[maybe_unused]] void* edx)
+		{
+			if (self[0]) // blood_cam
+			{
+				blood_events.fetch_add(1u);
+				self[0] = 0u;
+			}
+
+			if (self[12]) // rain_drops
+			{
+				rain_request.store(weather_rain ? *weather_rain : 1.0f);
+				rain_requested.store(true);
+				self[12] = 0u;
+			}
+
+			if (self[28]) // water_splash_cam
+			{
+				add_splash_amount(1.0f);
+				self[28] = 0u;
+			}
+		}
+
+		// the effects the game starts: the splashes of everything that goes through the water near the camera
+		typedef void(__fastcall* start_effect_t)(std::uint8_t* effect, void* edx);
+		start_effect_t start_effect_og = nullptr;
+
+		void __fastcall start_effect_hk(std::uint8_t* effect, void* edx)
+		{
+			// the game moves an effect that is attached to something to its place as it starts it
+			start_effect_og(effect, edx);
+
+			if (const auto rule = *reinterpret_cast<std::uint8_t**>(effect + 0x78); rule)
+			{
+				if (const auto name = *reinterpret_cast<const char**>(rule + 0xF8); name)
+				{
+					const std::string_view effect_name(name);
+					if (effect_name.starts_with("water_splash_") && effect_name != "water_splash_cam")
+					{
+						// a limb that goes through the surface splashes less than a body or a car that falls in
+						const bool limb = effect_name == "water_splash_ped_in" || effect_name == "water_splash_ped_out" || effect_name == "water_splash_ped_wade";
+						const auto p = reinterpret_cast<float*>(effect + 0x110);
+						std::lock_guard lock(splash_mutex);
+						splashes.emplace_back(Vector(p[0], p[1], p[2]), limb ? 0.5f : 2.0f);
+					}
+				}
+			}
+		}
+
+		bool camera_position(Vector& out)
+		{
+			if (!camera_matrix) {
+				return false;
+			}
+			const auto p = reinterpret_cast<const float*>(camera_matrix + 0x30);
+			out = Vector(p[0], p[1], p[2]);
+			return true;
+		}
+
+		/// once a frame: the splashes of the frame before, by how far from the camera they are
+		void process_splashes()
+		{
+			static std::vector<std::pair<Vector, float>> pending;
+			{
+				std::lock_guard lock(splash_mutex);
+				pending.swap(splashes);
+			}
+
+			Vector cam;
+			if (camera_position(cam))
+			{
+				for (const auto& [point, amount] : pending)
+				{
+					const float len = sqrtf(cam.DistToSqr(point));
+					if (len < SPLASH_RADIUS) {
+						add_splash_amount(amount * (1.0f - len / SPLASH_RADIUS));
+					}
+				}
+			}
+			pending.clear();
+		}
+
+		/// the spray the camera stands in, the amount a frame (Fusion Rain Droplets' global emitters)
+		float spray_now()
+		{
+			Vector cam;
+			if (!camera_position(cam)) {
+				return 0.0f;
+			}
+
+			const Vector fountain(-234.365f, 769.001f, 6.83f); // middle park fountain
+			return cam.DistToSqr(fountain) <= 50.0f ? 10.0f : 0.0f;
+		}
+
+		/// the rain of this frame: the weather's rain if the game asked for drops on the camera since the last frame
+		float rain_now()
+		{
+			const bool requested = rain_requested.exchange(false);
+			return requested ? rain_request.load() : 0.0f;
+		}
+
+		float timestep_now()
+		{
+			return timestep ? *timestep : -1.0f;
+		}
+
+		void install()
+		{
+			const auto fx_requests = shared::utils::mem::find_pattern("56 8B F1 80 3E 00 74 08", 0, "lens_fx: camera fx requests", true, 0u);
+			if (!fx_requests)
+			{
+				shared::common::log("Timecycle", "lens fx: camera fx requests not found, RemixFX lens game values stay 0", shared::common::LOG_TYPE::LOG_TYPE_WARN, false);
+				return;
+			}
+
+			// another plugin (Fusion Rain Droplets) already took the function over: leave it to that one
+			if (*reinterpret_cast<std::uint8_t*>(fx_requests) == 0xE9)
+			{
+				shared::common::log("Timecycle", "lens fx: camera fx requests already hooked by another plugin, RemixFX lens game values stay 0", shared::common::LOG_TYPE::LOG_TYPE_WARN, false);
+				return;
+			}
+
+			if (const auto rain = shared::utils::mem::find_pattern("F3 0F 11 05 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? F3 0F 11 0D", 4, "lens_fx: weather rain", true, 0u); rain) {
+				weather_rain = *reinterpret_cast<float**>(rain);
+			}
+			else if (const auto rain2 = shared::utils::mem::find_pattern("F3 0F 11 05 ? ? ? ? E8 ? ? ? ? 84 C0 74 15 E8 ? ? ? ? 84 C0", 4, "lens_fx: weather rain (alt)", true, 0u); rain2) {
+				weather_rain = *reinterpret_cast<float**>(rain2);
+			}
+
+			// the game only asks for raindrops on the camera while it looks up: ask regardless
+			if (const auto look_up = shared::utils::mem::find_pattern("76 15 B3 01", 0, "lens_fx: rain only looking up", true, 0u); look_up) {
+				shared::utils::hook::nop(look_up, 2);
+			}
+			else if (const auto look_up2 = shared::utils::mem::find_pattern("74 16 33 C0 80 7C 06", 0, "lens_fx: rain only looking up (alt)", true, 0u); look_up2)
+			{
+				shared::utils::hook::nop(look_up2 - 9u, 3);
+				shared::utils::hook::set(look_up2 - 9u, 0xB0, 0x01); // mov al, 1
+			}
+
+			// the camera, the way Fusion Rain Droplets reads it
+			if (const auto cam = shared::utils::mem::find_pattern("B9 ? ? ? ? E8 ? ? ? ? 84 C0 75 13 6A 01 6A 01 68 F4 01 00 00 B9 ? ? ? ? E8 ? ? ? ? 57", 1, "lens_fx: camera matrix", true, 0u); cam) {
+				camera_matrix = *reinterpret_cast<std::uint32_t*>(cam);
+			}
+			else if (const auto cam2 = shared::utils::mem::find_pattern("7A 21 B9", 3, "lens_fx: camera matrix (alt)", true, 0u); cam2) {
+				camera_matrix = *reinterpret_cast<std::uint32_t*>(cam2);
+			}
+
+			// the game's frame time
+			if (const auto ts = shared::utils::mem::find_pattern("D8 0D ? ? ? ? 83 C0 30", 0, "lens_fx: timestep", true, 0u); ts) {
+				timestep = *reinterpret_cast<float**>(ts - 9u);
+			}
+			else if (const auto ts2 = shared::utils::mem::find_pattern("F3 0F 10 05 ? ? ? ? 8B 02 51", 4, "lens_fx: timestep (alt)", true, 0u); ts2) {
+				timestep = *reinterpret_cast<float**>(ts2);
+			}
+
+			if (const auto start_effect = shared::utils::mem::find_pattern("56 8B F1 83 7E 10 00 8D 46 10 75 06 83 78 08 00 74 0A 56 50 8B 40 0C FF D0 83 C4 08", 0, "lens_fx: start effect", true, 0u); start_effect) {
+				shared::utils::hook::detour(start_effect, &start_effect_hk, reinterpret_cast<void**>(&start_effect_og));
+			}
+
+			shared::utils::hook(fx_requests, on_camera_fx_requests, HOOK_JUMP).install()->quick();
+			shared::common::log("Timecycle", "lens fx: RemixFX lens game values active", shared::common::LOG_TYPE::LOG_TYPE_DEFAULT, false);
+		}
+	}
+
 	// for visualization of values in gui
 #define ASSIGN_IMGUI_VIS_FLOAT(name) \
 		im->m_timecyc_curr_##name = timecycle->##name; \
@@ -207,6 +406,44 @@ namespace gta4
 			const auto& vars = remix_vars::get();
 			const auto& gs = comp_settings::get();
 			remix_vars::option_value val{};
+
+			// RemixFX game values (see lens_fx): effects bind a parameter to these keys with 'param.<id>.gamevalue'.
+			// Written only when they change; a runtime without RemixFX game value bindings just stores them.
+			if (shared::common::remix_api::is_initialized())
+			{
+				const auto& bridge = shared::common::remix_api::get().m_bridge;
+
+				static float s_sent_rain = -1.0f, s_sent_spray = -1.0f, s_sent_timestep = -2.0f;
+				static std::uint32_t s_sent_blood = ~0u, s_sent_splash = ~0u;
+
+				lens_fx::process_splashes();
+
+				if (const float rain = lens_fx::rain_now(); std::fabs(rain - s_sent_rain) > 0.0001f)
+				{
+					bridge.SetGameValue("gta4.lens.rain", std::format("{:.4f}", rain).c_str());
+					s_sent_rain = rain;
+				}
+				if (const auto blood = lens_fx::blood_events.load(); blood != s_sent_blood)
+				{
+					bridge.SetGameValue("gta4.lens.blood", std::to_string(blood).c_str());
+					s_sent_blood = blood;
+				}
+				if (const auto splash = lens_fx::splash_drops.load(); splash != s_sent_splash)
+				{
+					bridge.SetGameValue("gta4.lens.splash", std::to_string(splash).c_str());
+					s_sent_splash = splash;
+				}
+				if (const float spray = lens_fx::spray_now(); spray != s_sent_spray)
+				{
+					bridge.SetGameValue("gta4.lens.spray", std::format("{:.1f}", spray).c_str());
+					s_sent_spray = spray;
+				}
+				if (const float ts = lens_fx::timestep_now(); std::fabs(ts - s_sent_timestep) > 0.00001f)
+				{
+					bridge.SetGameValue("gta4.lens.timestep", std::format("{:.6f}", ts).c_str());
+					s_sent_timestep = ts;
+				}
+			}
 
 			//auto first_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8910);
 			//auto third_timecycle = reinterpret_cast<game::TimeCycleParams*>(0x15E8B20);
@@ -610,6 +847,7 @@ namespace gta4
 	timecycle::timecycle()
 	{
 		p_this = this;
+		lens_fx::install();
 
 		// -----
 		m_initialized = true;
