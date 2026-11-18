@@ -1205,10 +1205,12 @@ namespace gta4
 
 		const auto& pidx = ctx.info.preset_index;
 
-		// no longer needed because of patch @ game::cond_jmp_addr__skip_deferred_light_rendering02
-		/*if (ctx.info.shader_name.ends_with("deferred_lighting.fxc")) {
+		// The deferred lights themselves are skipped by the patch @ game::cond_jmp_addr__skip_deferred_light_rendering02,
+		// but the shader still draws elsewhere: a ped standing in water gets a deferred_lighting draw the runtime takes for
+		// world geometry, a column through the ped from the water to the top of the screen. Nothing of it belongs in the scene.
+		if (ctx.info.shader_name.ends_with("deferred_lighting.fxc")) {
 			ctx.modifiers.do_not_render = true;
-		}*/
+		}
 
 		if (info->num_vs_constants > 0)
 		{
