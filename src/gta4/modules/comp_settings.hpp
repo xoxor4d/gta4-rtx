@@ -1439,7 +1439,25 @@ namespace gta4
 				true
 			};
 
-			
+			variable vehicle_wheel_spin_limit =
+			{
+				"vehicle_wheel_spin_limit",
+				("Limit how far a wheel visibly turns per frame. A fast wheel turns so far between two frames that its\n"
+				"motion vectors become useless and DLSS / frame generation smear the tyre and rim."),
+				"1.8.0",
+				true
+			};
+
+			variable vehicle_wheel_spin_max_step =
+			{
+				"vehicle_wheel_spin_max_step",
+				("Most a wheel visibly turns per frame, in degrees, while 'vehicle_wheel_spin_limit' is on.\n"
+				"Lower values are cleaner but make fast wheels look slower."),
+				"1.8.0",
+				15.0f
+			};
+
+
 
 			// -----
 			variable fixed_function_trees =

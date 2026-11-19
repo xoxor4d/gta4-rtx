@@ -833,6 +833,7 @@ namespace gta4::menu
 
 			rows::toggle("Vehicle Dirt", gs->vehicle_dirt_enabled);
 			rows::toggle("Vehicle Livery", gs->vehicle_livery_enabled);
+			rows::toggle("Limit Wheel Spin", gs->vehicle_wheel_spin_limit);
 			rows::toggle("Limit Game Quality Sliders", gs->limit_option_sliders);
 		}
 		widgets::grid_end();
@@ -929,6 +930,16 @@ namespace gta4::menu
 			{
 				ImGui::PushID("vehgeneral");
 				compsettings_bool_widget("Force Vertex Color Usage", gs->vehicle_force_vertex_colors);
+				ImGui::PopID();
+			});
+
+		ImGui::Spacing(0, SEPARATOR_SPACING);
+		category("Wheels", [&]()
+			{
+				ImGui::PushID("vehwheels");
+				ImGui::BeginDisabled(!gs->vehicle_wheel_spin_limit.get_as<bool>());
+				compsettings_float_widget("Wheel Spin: Max Degrees per Frame", gs->vehicle_wheel_spin_max_step, 1.0f, 90.0f, 0.1f, "%.1f");
+				ImGui::EndDisabled();
 				ImGui::PopID();
 			});
 	}

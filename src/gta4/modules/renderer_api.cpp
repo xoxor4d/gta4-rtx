@@ -138,7 +138,8 @@ namespace gta4
 			std::uint32_t index_count = 0u;
 			std::uint32_t last_used_frame = 0u;
 			std::uint32_t bone_count = 0u;			// skinned mesh: bone transforms every instance has to carry
-			bool transient = false;					// a shape of one frame (flat tyre), destroyed once unused
+			bool transient = false;					// the shape of one wheel (flat tyre), destroyed once unused
+			std::uint32_t refreshed_frame = 0u;		// flat tyre: frame its vertices were last sent
 			bool uv_fallback = false;				// built from UV0 because the requested texcoord set was not usable
 			bool wound = false;						// ped wound overlay (the wounded triangles of a ped mesh, weight in the vertex alpha)
 			std::uint64_t replacement_hash = 0u;	// geometry asset hash of the D3D9 draw (USD replacement key), 0 = none
@@ -818,6 +819,70 @@ namespace gta4
 			float g_debug_light_offset = 0.0f; // light instances pushed off the unlit mesh along their normals
 
 			renderer_api::draw_pose_s g_vehicle_pose;
+
+			// flat tyres deform while the wheel turns. Each one keeps a mesh of its own that is updated in place, so the runtime
+			// has last frame's vertices for motion vectors. The tyre draws carry no vehicle, a wheel is found again by where
+			// it should be now
+			struct flat_wheel_s
+			{
+				std::uint64_t id = 0u;
+				std::uint32_t frame = 0u;
+				bool moved = false;		// move is known (seen in two consecutive frames)
+				float pos[3] = {};
+				float move[3] = {};		// per frame
+			};
+			std::vector<flat_wheel_s> g_flat_wheels; // expired in on_begin_scene
+			std::uint64_t g_flat_wheel_ids = 0u;
+
+			/// id of the flat wheel at pos (world), the same every frame for as long as the wheel is drawn
+			std::uint64_t flat_wheel_id(const float pos[3])
+			{
+				const auto dist2 = [](const float a[3], const float b[3])
+				{
+					const float d[3] = { a[0] - b[0], a[1] - b[1], a[2] - b[2] };
+					return d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+				};
+
+				flat_wheel_s* best = nullptr;
+				float best_dist = FLT_MAX;
+
+				for (auto& w : g_flat_wheels)
+				{
+					// the other geometries and passes of the wheel
+					if (w.frame == g_frame)
+					{
+						if (dist2(w.pos, pos) < 1e-6f) {
+							return w.id;
+						}
+						continue;
+					}
+
+					// a wheel seen once has no known movement yet and is searched for in a wider radius
+					const float expected[3] = { w.pos[0] + w.move[0], w.pos[1] + w.move[1], w.pos[2] + w.move[2] };
+					const float dist = dist2(expected, pos);
+					if (dist < (w.moved ? 1.0f : 16.0f) && dist < best_dist)
+					{
+						best_dist = dist;
+						best = &w;
+					}
+				}
+
+				if (!best)
+				{
+					g_flat_wheels.push_back({ .id = ++g_flat_wheel_ids, .frame = g_frame, .pos = { pos[0], pos[1], pos[2] } });
+					return g_flat_wheel_ids;
+				}
+
+				best->moved = best->frame + 1u == g_frame;
+				for (auto i = 0; i < 3; i++)
+				{
+					best->move[i] = best->moved ? pos[i] - best->pos[i] : 0.0f;
+					best->pos[i] = pos[i];
+				}
+
+				best->frame = g_frame;
+				return best->id;
+			}
 
 			// gta_vehicle_lightsemissive: the vertex alpha of a light mesh is the index of its light in dimmerSet[15], the vertex
 			// shader scales the vertex color by that light's brightness and the pixel shader adds texture x color x emissiveMultiplier
@@ -4315,10 +4380,27 @@ namespace gta4
 		{
 			// the per wheel block RenderInstanced uploads: matWheelTransform, tyreDeformParams, tyreDeformParams2
 			const auto reg = ctx.info.vs_wheel_transform_register >= 0 ? ctx.info.vs_wheel_transform_register : 64;
-			pose_read = SUCCEEDED(dev->GetVertexShaderConstantF(static_cast<UINT>(reg), &vehicles::g_vehicle_pose.tyre_constants[0][0], 6));
+			auto& pose = vehicles::g_vehicle_pose;
+			pose_read = SUCCEEDED(dev->GetVertexShaderConstantF(static_cast<UINT>(reg), &pose.tyre_constants[0][0], 6));
 
-			vehicles::g_vehicle_pose.flat_tyre = true;
-			vehicles::g_vehicle_pose.flat_hash = hash_words(vehicles::g_vehicle_pose.tyre_constants, sizeof(vehicles::g_vehicle_pose.tyre_constants));
+			// the switch is on for every wheel of a vehicle with a burst tyre, the intact ones come without a deform radius
+			if (pose_read && pose.tyre_constants[5][0] > 0.0f)
+			{
+				// no deform amount: the rubber is gone, a shape that stays the same while the wheel turns
+				const bool rubber_gone = pose.tyre_constants[5][3] == 0.0f;
+
+				pose.flat_tyre = true;
+				pose.flat_tyre_refresh = !rubber_gone;
+
+				if (rubber_gone) {
+					pose.flat_hash = hash_words(&pose.tyre_constants[5][0], sizeof(float));
+				}
+				else
+				{
+					const float pos[3] = { pose.transform.matrix[0][3], pose.transform.matrix[1][3], pose.transform.matrix[2][3] };
+					pose.flat_hash = vehicles::flat_wheel_id(pos);
+				}
+			}
 		}
 
 		// the unlit light mesh: its emission comes with the instances of the emissive pass, the scale would only
@@ -4518,7 +4600,10 @@ namespace gta4
 				return true;
 			}
 
-			if (rec && mesh_it != g_meshes.end())
+			// a flat tyre is deformed again once per frame, below
+			const bool refresh = mesh_it != g_meshes.end() && pose && pose->flat_tyre_refresh && mesh_it->second.refreshed_frame != g_frame;
+
+			if (rec && mesh_it != g_meshes.end() && !refresh)
 			{
 				const auto mat_it = g_materials.find(mesh_it->second.material_key);
 				if (mat_it == g_materials.end()) {
@@ -4683,7 +4768,9 @@ namespace gta4
 		const auto draw_hash = mesh_variant_hash(hash, pose);
 
 		auto mesh_it = g_meshes.find(draw_hash);
-		if (mesh_it != g_meshes.end()) {
+		bool refresh = mesh_it != g_meshes.end() && pose && pose->flat_tyre_refresh && mesh_it->second.refreshed_frame != g_frame;
+
+		if (mesh_it != g_meshes.end() && !refresh) {
 			cache::g_cache_hits_this_frame++;
 		}
 		else
@@ -4719,6 +4806,14 @@ namespace gta4
 			}
 
 			PROFILE_ZONE_VALUE(g_vertices.size());
+
+			// the runtime only takes new vertices for a mesh of the same size
+			if (refresh && (mesh_it->second.vertex_count != g_vertices.size() || mesh_it->second.index_count != g_indices.size()))
+			{
+				cache::destroy_mesh_locked(draw_hash);
+				mesh_it = g_meshes.end();
+				refresh = false;
+			}
 
 			remixapi_MeshInfoSurfaceTriangles triangles =
 			{
@@ -4788,23 +4883,33 @@ namespace gta4
 				return false;
 			}
 
-			mesh_record mrec = {};
-			mrec.mesh = mesh;
-			mrec.material_key = material_key;
-			mrec.vertex_colors_dropped = drop_vertex_colors;
-			mrec.transient = pose && pose->flat_tyre;
-			mrec.uv_fallback = uv_fallback;
-			mrec.bone_count = bone_count;
-			mrec.replacement_hash = replacement_hash;
-			mrec.vertex_count = static_cast<std::uint32_t>(g_vertices.size());
-			mrec.index_count = static_cast<std::uint32_t>(g_indices.size());
-			mrec.bytes = mrec.vertex_count * sizeof(remixapi_HardcodedVertex) + mrec.index_count * sizeof(std::uint32_t);
-			mrec.bytes += static_cast<std::uint32_t>(g_blend_weights.size() * sizeof(float) + g_blend_indices.size() * sizeof(std::uint32_t));
+			// a mesh created again under its hash keeps its place in the runtime and gets the new vertices
+			if (refresh)
+			{
+				mesh_it->second.vertex_colors_dropped = drop_vertex_colors;
+				mesh_it->second.refreshed_frame = g_frame;
+			}
+			else
+			{
+				mesh_record mrec = {};
+				mrec.mesh = mesh;
+				mrec.material_key = material_key;
+				mrec.vertex_colors_dropped = drop_vertex_colors;
+				mrec.transient = pose && pose->flat_tyre;
+				mrec.refreshed_frame = g_frame;
+				mrec.uv_fallback = uv_fallback;
+				mrec.bone_count = bone_count;
+				mrec.replacement_hash = replacement_hash;
+				mrec.vertex_count = static_cast<std::uint32_t>(g_vertices.size());
+				mrec.index_count = static_cast<std::uint32_t>(g_indices.size());
+				mrec.bytes = mrec.vertex_count * sizeof(remixapi_HardcodedVertex) + mrec.index_count * sizeof(std::uint32_t);
+				mrec.bytes += static_cast<std::uint32_t>(g_blend_weights.size() * sizeof(float) + g_blend_indices.size() * sizeof(std::uint32_t));
 
-			g_cache_bytes += mrec.bytes;
+				g_cache_bytes += mrec.bytes;
 
-			mesh_it = g_meshes.emplace(draw_hash, mrec).first;
-			cache::g_creates_this_frame++;
+				mesh_it = g_meshes.emplace(draw_hash, mrec).first;
+				cache::g_creates_this_frame++;
+			}
 		}
 
 		mesh_it->second.last_used_frame = g_frame;
@@ -5017,6 +5122,7 @@ namespace gta4
 	{
 		PROFILE_ZONE();
 		g_frame++;
+		std::erase_if(vehicles::g_flat_wheels, [](const auto& w) { return w.frame + 2u < g_frame; });
 		textures::process_texture_writes();
 		send_global_wetness();
 

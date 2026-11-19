@@ -79,7 +79,8 @@ namespace gta4
 			std::uint64_t damage_hash = 0u;
 			float bound_radius = 0.0f;
 
-			bool flat_tyre = false;       // tyreDeformSwitchOn: flattened against the ground, a new shape every frame
+			bool flat_tyre = false;       // tyreDeformSwitchOn: flattened against the ground
+			bool flat_tyre_refresh = false; // the shape changes while the wheel turns: the mesh keeps its hash, its vertices are sent again every frame
 			float tyre_constants[6][4] = {}; // matWheelTransform rows, tyreDeformParams, tyreDeformParams2
 			std::uint64_t flat_hash = 0u;
 

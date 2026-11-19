@@ -80,6 +80,7 @@ namespace gta4::game
 
 	extern uint8_t* m_CodePause;
 	extern uint8_t* ms_bUserPause;
+	extern float* ms_fTimeStep; // CTimer::ms_fTimeStep
 	extern int* m_dwCutsceneState;
 	extern float* ms_fTimePassedSinceLastAudioStart;
 	extern void* g_CutsceneAudioEntity;
@@ -296,6 +297,7 @@ namespace gta4::game
 	extern uint32_t hk_addr__vehicle_fbibuffalo_sirens;
 
 	extern uint32_t hk_addr__vehicle_do_lights;
+	extern uint32_t hk_addr__wheel_process_matrix;
 	extern uint32_t hk_addr__scene_light_list_assign01;
 	extern uint32_t hk_addr__scene_light_list_assign02;
 	extern uint32_t hk_addr__cutscene_add_light;

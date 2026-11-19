@@ -72,6 +72,7 @@ namespace gta4::game
 
 	uint8_t* m_CodePause = nullptr;
 	uint8_t* ms_bUserPause = nullptr;
+	float* ms_fTimeStep = nullptr;
 	int* m_dwCutsceneState = nullptr;
 	float* ms_fTimePassedSinceLastAudioStart = nullptr;
 	void* g_CutsceneAudioEntity = nullptr;
@@ -264,6 +265,7 @@ namespace gta4::game
 	uint32_t hk_addr__vehicle_fbibuffalo_sirens = 0u;
 
 	uint32_t hk_addr__vehicle_do_lights = 0u;
+	uint32_t hk_addr__wheel_process_matrix = 0u;
 	uint32_t hk_addr__scene_light_list_assign01 = 0u;
 	uint32_t hk_addr__scene_light_list_assign02 = 0u;
 	uint32_t hk_addr__cutscene_add_light = 0u;
@@ -520,6 +522,11 @@ namespace gta4::game
 		// CTimer::ms_bUserPause, the pause menu's pause flag, read right before m_CodePause (CTimer::ms_bScriptPause)
 		if (const auto offset = shared::utils::mem::find_pattern("0A 05 ? ? ? ? 0A 05 ? ? ? ? 75 ? F6 43", 2, "ms_bUserPause", use_pattern, 0x4C4D49); offset) {
 			ms_bUserPause = (uint8_t*)*(DWORD*)offset; found_pattern_count++;
+		} total_pattern_count++;
+
+		// CTimer::ms_fTimeStep, seconds of game time the current frame advances
+		if (const auto offset = shared::utils::mem::find_pattern("F3 0F 10 05 ? ? ? ? D9 7C 24 16 F3 0F 59 05 ? ? ? ? 0F B7 44 24 16 F3 0F 11 44 24 18 0D 00 0C 00 00", 4, "ms_fTimeStep", use_pattern, 0x4959B5); offset) {
+			ms_fTimeStep = (float*)*(DWORD*)offset; found_pattern_count++;
 		} total_pattern_count++;
 
 		// CCutsceneManager::GetTimeStep: timer = audio play time - ms_fTimePassedSinceLastAudioStart
@@ -931,6 +938,9 @@ namespace gta4::game
 
 		// CVehicle light update (head, rear, sirens ..)
 		PATTERN_OFFSET_SIMPLE(hk_addr__vehicle_do_lights, "55 8B EC 83 E4 F0 81 EC C8 01 00 00 A1 ? ? ? ? 33 C4 89 84 24 C4 01 00 00 80 3D ? ? ? ? 00 8B 45 08 56 8B F1 57", 0, 0xA435E0);
+
+		// CWheel::ProcessWheelMatrix(CVehicle*): writes the wheel's spin and steering into the skeleton (vehicle PreRender)
+		PATTERN_OFFSET_SIMPLE(hk_addr__wheel_process_matrix, "83 EC 08 56 57 8B 7C 24 14 8B F1 8B 07 8B CF 8B 80 A0 00 00 00 89 74 24 0C FF D0", 0, 0xACF2D0);
 
 		// CLights::AddSceneLightOrdered: the two CLightSource copies into the scene light list (append / replace the farthest light when full)
 		PATTERN_OFFSET_SIMPLE(hk_addr__scene_light_list_assign01, "56 8B 35 ? ? ? ? 8D 46 01 3D 80 02 00 00 7D 31 FF 74 24 08", 0x20, 0xABD2C0); // 0xABD2E0

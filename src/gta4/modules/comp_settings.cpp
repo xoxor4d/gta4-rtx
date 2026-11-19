@@ -299,6 +299,8 @@ namespace gta4
 
 				ASSIGN(vehicle_livery_enabled);
 				ASSIGN(vehicle_force_vertex_colors);
+				ASSIGN(vehicle_wheel_spin_limit);
+				ASSIGN(vehicle_wheel_spin_max_step);
 
 				ASSIGN(fixed_function_trees);
 				ASSIGN(tree_foliage_alpha_cutout_value);

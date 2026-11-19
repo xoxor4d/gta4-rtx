@@ -733,6 +733,69 @@ namespace gta4
 	}
 
 
+	// A wheel that turns too far between two frames leaves DLSS and frame generation without usable motion vectors.
+	// CWheel::ProcessWheelMatrix puts the spin angle into the skeleton once per rendered frame: it is handed an angle
+	// that advances by a limited step per frame instead, the wheel's own angle is put back afterwards
+	namespace wheel_spin
+	{
+		constexpr std::uint32_t CWHEEL_ANGLE = 0x7Cu;				// radians, wrapped to [-pi, pi]
+		constexpr std::uint32_t CWHEEL_ANGULAR_VELOCITY = 0x80u;	// radians per second
+		constexpr float TAU = 6.28318531f;
+
+		struct wheel_s
+		{
+			float angle = 0.0f;			// the wheel's angle when last seen
+			float shown_angle = 0.0f;
+		};
+		std::unordered_map<void*, wheel_s> g_wheels;
+
+		void(__fastcall* process_wheel_matrix_og)(void* wheel, void* edx, void* vehicle) = nullptr;
+
+		void __fastcall process_wheel_matrix_hk(void* wheel, void* edx, void* vehicle)
+		{
+			static const auto gs = comp_settings::get();
+			if (!wheel || !gs->vehicle_wheel_spin_limit.get_as<bool>())
+			{
+				process_wheel_matrix_og(wheel, edx, vehicle);
+				return;
+			}
+
+			auto& angle = *reinterpret_cast<float*>(static_cast<std::uint8_t*>(wheel) + CWHEEL_ANGLE);
+			const float angular_velocity = *reinterpret_cast<float*>(static_cast<std::uint8_t*>(wheel) + CWHEEL_ANGULAR_VELOCITY);
+			const float real_angle = angle;
+
+			if (g_wheels.size() > 4096u) {
+				g_wheels.clear();
+			}
+
+			const auto [it, added] = g_wheels.try_emplace(wheel, wheel_s { real_angle, real_angle });
+			auto& w = it->second;
+
+			if (!added && real_angle != w.angle)
+			{
+				// the wrapped difference loses whole turns, the angular velocity tells how many
+				float step = std::remainder(real_angle - w.angle, TAU);
+				step += TAU * std::round((angular_velocity * *game::ms_fTimeStep - step) / TAU);
+
+				const float max_step = std::clamp(gs->vehicle_wheel_spin_max_step.get_as<float>(), 0.0f, 180.0f) * 0.01745329f;
+				w.shown_angle = std::remainder(w.shown_angle + std::clamp(step, -max_step, max_step), TAU);
+				w.angle = real_angle;
+			}
+
+			angle = w.shown_angle;
+			process_wheel_matrix_og(wheel, edx, vehicle);
+			angle = real_angle;
+		}
+
+		void install()
+		{
+			if (game::hk_addr__wheel_process_matrix && game::ms_fTimeStep) {
+				shared::utils::hook::detour(game::hk_addr__wheel_process_matrix, &process_wheel_matrix_hk, DETOUR_CAST(process_wheel_matrix_og));
+			}
+		}
+	}
+
+
 	// A general culling function used by lights, npc's and other? things ..
 	int __fastcall frustum_planes_check_hk(game::grcViewport* vp, [[maybe_unused]] void* fastcall_arg, float orgX, float orgY, float orgZ, float distanceToObject, float* outAdjustedNearDistance)
 	{
@@ -1410,6 +1473,7 @@ namespace gta4
 		// cutscene timer honors the utilities pause toggle
 		game_pause::install(); // 0x9C2C80
 		free_camera::install(); // 0xC462FE
+		wheel_spin::install(); // 0xACF2D0
 
 		// light culling check 0xABD093 - detour frustum check function - can lead to issues when a script waits for certain objects to culled?
 		shared::utils::hook::detour(game::hk_addr__frustum_check, &frustum_planes_check_hk, nullptr); // 0x431E40
